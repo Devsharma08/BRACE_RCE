@@ -4,8 +4,7 @@ import { githubRestHeaders } from "../../Lib/githubClient.js";
 import { internalCache } from "../../Lib/cache.js";
 import type { GitHubContentItem } from "../../types/github.js";
 
-
-export const getFiles = async (req: Request, res: Response) => {
+export const getFiles = async (_req: Request, res: Response) => {
   try {
     const cached = internalCache.get(CACHE_KEYS.files);
     if (cached) {

@@ -8,12 +8,14 @@
     "module": "esnext",
     "target": "esnext",
     "lib": ["esnext"],        // Essential for modern Node.js features
-    "types": ["node"],        // Connects to your @types/node dependency 
+    "types": ["node", "jest"],        // Connects to node and jest typings 
     
     /* Other Outputs */
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+
+    "esModuleInterop": true,
 
     /* Stricter Typechecking */
     "noUncheckedIndexedAccess": true,

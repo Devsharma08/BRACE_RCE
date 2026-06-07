@@ -1,432 +1,292 @@
 import dotenv from "dotenv";
 import path from "path";
-import { pathToFileURL } from "url";
+dotenv.config({ path: path.resolve(process.cwd(), ".env.development") });
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Level, PrismaClient } from "../src/generated/prisma/client.js";
-import { rawProblems, type RawSeedProblem } from "./leetcodeProblems.js";
+import { PrismaClient } from "../src/generated/prisma/client.js";
 
-const loadEnv = () => {
-  const envPath = path.resolve(process.cwd(), process.env.NODE_MODE === "production" ? ".env.production" : ".env.development");
-  const result = dotenv.config({ path: envPath, override: true });
-  if (result.error) {
-    const fallbackPath = path.resolve(process.cwd(), ".env");
-    dotenv.config({ path: fallbackPath, override: false });
-  }
-};
-loadEnv();
+const connectionString = process.env.DIRECT_URL!;
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
-const MAX_TEST_CASES_PER_PROBLEM = 3;
-const GITHUB_OID_PATTERN = /^[a-f0-9]{40}$/i;
-
-type SeedProblem = Omit<RawSeedProblem, "difficulty_level"> & {
-  difficulty_level: Level;
-};
-
-const getConnectionString = () => {
-  const directUrl = process.env.DIRECT_URL;
-
-  if (!directUrl) {
-    throw new Error("DIRECT_URL is required to seed LeetCode problems.");
-  }
-
-  return directUrl;
-};
-
-const maskConnectionString = (connectionString: string) =>
-  connectionString.replace(/:([^@]+)@/, ":***@");
-
-const toLevel = (difficulty: RawSeedProblem["difficulty_level"]): Level => {
-  const level = Level[difficulty];
-
-  if (!level) {
-    throw new Error(`Unsupported difficulty level: ${difficulty}`);
-  }
-
-  return level;
-};
-
-export const problems: SeedProblem[] = rawProblems.map((problem) => ({
-  ...problem,
-  difficulty_level: toLevel(problem.difficulty_level),
-}));
-
-export const validateSeedData = () => {
-  const problemNames = new Set<string>();
-  const problemNumbers = new Set<number>();
-  const githubOids = new Set<string>();
-
-  for (const problem of problems) {
-    if (!problem.name.toLowerCase().startsWith("leetcode")) {
-      throw new Error(`Seed data must stay LeetCode-only. Invalid problem: ${problem.name}`);
-    }
-
-    if (problemNames.has(problem.name)) {
-      throw new Error(`Duplicate problem name in seed data: ${problem.name}`);
-    }
-    problemNames.add(problem.name);
-
-    if (problemNumbers.has(problem.problem_number)) {
-      throw new Error(`Duplicate problem_number in seed data: ${problem.problem_number}`);
-    }
-
-    if (!Number.isInteger(problem.problem_number) || problem.problem_number <= 0) {
-      throw new Error(`${problem.name} has an invalid problem_number: ${problem.problem_number}`);
-    }
-    problemNumbers.add(problem.problem_number);
-
-    if (githubOids.has(problem.github_oid)) {
-      throw new Error(`Duplicate github_oid in seed data: ${problem.github_oid}`);
-    }
-
-    if (!GITHUB_OID_PATTERN.test(problem.github_oid)) {
-      throw new Error(`${problem.name} has an invalid github_oid: ${problem.github_oid}`);
-    }
-    githubOids.add(problem.github_oid);
-
-    if (problem.test_cases.length === 0) {
-      throw new Error(`${problem.name} must include at least one test case.`);
-    }
-
-    if (problem.test_cases.length > MAX_TEST_CASES_PER_PROBLEM) {
-      throw new Error(
-        `${problem.name} has ${problem.test_cases.length} test cases. Maximum allowed is ${MAX_TEST_CASES_PER_PROBLEM}.`,
-      );
-    }
-
-    if (problem.code_snippets.length === 0) {
-      throw new Error(`${problem.name} must include at least one code snippet.`);
-    }
-
-    for (const snippet of problem.code_snippets) {
-      if (snippet.language !== "java" && snippet.language !== "javascript") {
-        throw new Error(`${problem.name} has unsupported snippet language: ${snippet.language}`);
+const problems = [
+  {
+    name: "LeetCode-01E.java",
+    problem_number: 1,
+    github_oid: "67a013521d80b36dba6b2d0b1f9bf2b824c79028",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Given an array of integers \`nums\` and an integer \`target\`, return indices of the two numbers such that they add up to \`target\`.`,
+    problem_hints: ["Use a hash map."],
+    test_cases: [
+      { input: "4\n2 7 11 15\n9", expectedOutput: "0 1", is_public: true },
+      { input: "3\n3 2 4\n6", expectedOutput: "1 2", is_public: true },
+      { input: "2\n3 3\n6", expectedOutput: "0 1", is_public: false },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var twoSum = function(nums, target) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nconst n = parseInt(input[0]);\nconst nums = input.slice(1, n + 1).map(Number);\nconst target = parseInt(input[n + 1]);\nconst res = twoSum(nums, target);\nconsole.log(res.join(" "));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        \n        return new int[]{};\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n        for(int i=0; i<n; i++) nums[i] = sc.nextInt();\n        int target = sc.nextInt();\n        Solution sol = new Solution();\n        int[] res = sol.twoSum(nums, target);\n        System.out.print(res[0] + " " + res[1]);\n    }\n}`
       }
-    }
-  }
-};
-
-const createPrisma = () => {
-  const connectionString = getConnectionString();
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
-
-  return { connectionString, pool, prisma };
-};
-
-const PROBLEM_CATEGORY_MAP: Record<string, string> = {
-  "LeetCode-01E": "array",
-  "LeetCode-02M": "linked list",
-  "LeetCode-03M": "string",
-  "LeetCode-04H": "searching",
-  "LeetCode-05M": "dynamic prog",
-  "LeetCode-06M": "string",
-  "LeetCode-07M": "math",
-  "LeetCode-08M": "string",
-  "LeetCode-09E": "math",
-  "LeetCode-100E": "tree",
-  "LeetCode-101E": "tree",
-  "LeetCode-102M": "tree",
-  "LeetCode-103M": "tree",
-  "LeetCode-1046E": "queue",
-  "LeetCode-104E": "tree",
-  "LeetCode-105M": "tree",
-  "LeetCode-106M": "tree",
-  "LeetCode-108E": "tree",
-  "LeetCode-110E": "tree",
-  "LeetCode-111E": "tree",
-  "LeetCode-112E": "tree",
-  "LeetCode-114M": "tree",
-  "LeetCode-118M": "array",
-  "LeetCode-119E": "array",
-  "LeetCode-11M": "array",
-  "LeetCode-120M": "dynamic prog",
-  "LeetCode-121E": "array",
-  "LeetCode-1249M": "stack",
-  "LeetCode-125E": "string",
-  "LeetCode-127H": "graph",
-  "LeetCode-128M": "array",
-  "LeetCode-130M": "graph",
-  "LeetCode-133M": "graph",
-  "LeetCode-138M": "linked list",
-  "LeetCode-13E": "math",
-  "LeetCode-139M": "dynamic prog",
-  "LeetCode-141E": "linked list",
-  "LeetCode-142M": "linked list",
-  "LeetCode-143M": "linked list",
-  "LeetCode-1448M": "tree",
-  "LeetCode-148M": "linked list",
-  "LeetCode-1480E": "array",
-  "LeetCode-14E": "string",
-  "LeetCode-15M": "array",
-  "LeetCode-150M": "stack",
-  "LeetCode-152M": "dynamic prog",
-  "LeetCode-153M": "searching",
-  "LeetCode-155E": "stack",
-  "LeetCode-160E": "linked list",
-  "LeetCode-162M": "searching",
-  "LeetCode-167M": "array",
-  "LeetCode-169E": "array",
-  "LeetCode-17M": "backtracking",
-  "LeetCode-189E": "array",
-  "LeetCode-19M": "linked list",
-  "LeetCode-199M": "tree",
-  "LeetCode-198M": "dynamic prog",
-  "LeetCode-20E": "stack",
-  "LeetCode-200M": "graph",
-  "LeetCode-205E": "string",
-  "LeetCode-206E": "linked list",
-  "LeetCode-207M": "graph",
-  "LeetCode-208M": "tree",
-  "LeetCode-21E": "linked list",
-  "LeetCode-210M": "graph",
-  "LeetCode-213M": "dynamic prog",
-  "LeetCode-215M": "queue",
-  "LeetCode-217E": "array",
-  "LeetCode-219E": "array",
-  "LeetCode-22M": "backtracking",
-  "LeetCode-224H": "stack",
-  "LeetCode-225E": "stack",
-  "LeetCode-226E": "tree",
-  "LeetCode-23H": "linked list",
-  "LeetCode-230M": "tree",
-  "LeetCode-232E": "stack",
-  "LeetCode-234E": "linked list",
-  "LeetCode-235E": "tree",
-  "LeetCode-237E": "linked list",
-  "LeetCode-238M": "array",
-  "LeetCode-239H": "queue",
-  "LeetCode-242E": "string",
-  "LeetCode-25H": "linked list",
-  "LeetCode-26E": "array",
-  "LeetCode-261M": "graph",
-  "LeetCode-2622M": "array",
-  "LeetCode-2625M": "recursion",
-  "LeetCode-2627M": "recursion",
-  "LeetCode-2637M": "recursion",
-  "LeetCode-269H": "graph",
-  "LeetCode-27E": "array",
-  "LeetCode-2705M": "recursion",
-  "LeetCode-271M": "string",
-  "LeetCode-2721M": "recursion",
-  "LeetCode-2722M": "array",
-  "LeetCode-277M": "array",
-  "LeetCode-278E": "searching",
-  "LeetCode-279M": "dynamic prog",
-  "LeetCode-28E": "string",
-  "LeetCode-286M": "graph",
-  "LeetCode-287M": "searching",
-  "LeetCode-29M": "math",
-  "LeetCode-290E": "string",
-  "LeetCode-295H": "queue",
-  "LeetCode-297H": "tree",
-  "LeetCode-300M": "dynamic prog",
-  "LeetCode-309M": "dynamic prog",
-  "LeetCode-31M": "array",
-  "LeetCode-32H": "stack",
-  "LeetCode-323M": "graph",
-  "LeetCode-322M": "dynamic prog",
-  "LeetCode-33M": "searching",
-  "LeetCode-332M": "graph",
-  "LeetCode-34M": "searching",
-  "LeetCode-347M": "queue",
-  "LeetCode-35E": "searching",
-  "LeetCode-355M": "graph",
-  "LeetCode-366M": "tree",
-  "LeetCode-378M": "queue",
-  "LeetCode-38M": "string",
-  "LeetCode-383E": "string",
-  "LeetCode-394M": "stack",
-  "LeetCode-41H": "array",
-  "LeetCode-412E": "math",
-  "LeetCode-417M": "graph",
-  "LeetCode-42H": "array",
-  "LeetCode-43M": "math",
-  "LeetCode-49M": "string",
-  "LeetCode-496E": "stack",
-  "LeetCode-50M": "math",
-  "LeetCode-51H": "backtracking",
-  "LeetCode-53M": "array",
-  "LeetCode-543E": "tree",
-  "LeetCode-547M": "graph",
-  "LeetCode-55M": "greedy",
-  "LeetCode-56M": "interval problems",
-  "LeetCode-57M": "interval problems",
-  "LeetCode-572E": "tree",
-  "LeetCode-58E": "string",
-  "LeetCode-61M": "linked list",
-  "LeetCode-62M": "dynamic prog",
-  "LeetCode-621M": "greedy",
-  "LeetCode-63M": "dynamic prog",
-  "LeetCode-64M": "dynamic prog",
-  "LeetCode-647M": "dynamic prog",
-  "LeetCode-66E": "array",
-  "LeetCode-67E": "string",
-  "LeetCode-68H": "string",
-  "LeetCode-684M": "graph",
-  "LeetCode-69E": "math",
-  "LeetCode-695M": "graph",
-  "LeetCode-70E": "dynamic prog",
-  "LeetCode-703E": "queue",
-  "LeetCode-704E": "searching",
-  "LeetCode-71M": "stack",
-  "LeetCode-739M": "stack",
-  "LeetCode-74M": "searching",
-  "LeetCode-743M": "graph",
-  "LeetCode-75M": "array",
-  "LeetCode-752M": "graph",
-  "LeetCode-759H": "interval problems",
-  "LeetCode-76H": "string",
-  "LeetCode-778H": "graph",
-  "LeetCode-78M": "backtracking",
-  "LeetCode-785M": "graph",
-  "LeetCode-787M": "graph",
-  "LeetCode-79M": "backtracking",
-  "LeetCode-797M": "graph",
-  "LeetCode-802M": "graph",
-  "LeetCode-82H": "linked list",
-  "LeetCode-83E": "linked list",
-  "LeetCode-84H": "stack",
-  "LeetCode-841M": "graph",
-  "LeetCode-853M": "stack",
-  "LeetCode-86M": "linked list",
-  "LeetCode-875M": "searching",
-  "LeetCode-876E": "linked list",
-  "LeetCode-88E": "array",
-  "LeetCode-91M": "dynamic prog",
-  "LeetCode-92M": "linked list",
-  "LeetCode-94E": "tree",
-  "LeetCode-973M": "queue",
-  "LeetCode-98M": "tree",
-  "LeetCode-994M": "graph",
-  "LeetCode-997E": "graph",
-};
-
-export function inferDataStructure(name: string, definition: string): string {
-  const cleanName = name.trim().split(".")[0];
-  if (cleanName && PROBLEM_CATEGORY_MAP[cleanName]) {
-    return PROBLEM_CATEGORY_MAP[cleanName];
-  }
-
-  const content = `${name} ${definition}`.toLowerCase();
-  
-  if (content.includes("linked list") || content.includes("listnode") || content.includes("list node") || content.includes("merge k sorted lists")) {
-    return "linked list";
-  }
-  if (content.includes("binary tree") || content.includes("treenode") || content.includes(" bst") || content.includes("tree") || content.includes("postorder") || content.includes("preorder") || content.includes("inorder")) {
-    return "tree";
-  }
-  if (content.includes("graph") || content.includes("clone graph") || content.includes("course schedule") || content.includes("dijkstra") || content.includes("bipartite")) {
-    return "graph";
-  }
-  if (content.includes("stack") || content.includes("valid parentheses") || content.includes("parentheses")) {
-    return "stack";
-  }
-  if (content.includes("queue")) {
-    return "queue";
-  }
-  if (content.includes("dynamic programming") || content.includes("dp") || content.includes("coin change") || content.includes("longest common subsequence") || content.includes("climbing stairs") || content.includes("edit distance") || content.includes("house robber") || content.includes("word break")) {
-    return "dynamic prog";
-  }
-  if (content.includes("greedy") || content.includes("jump game") || content.includes("gas station")) {
-    return "greedy";
-  }
-  if (content.includes("backtracking") || content.includes("n-queens") || content.includes("permutations") || content.includes("subsets") || content.includes("combination sum") || content.includes("sudoku")) {
-    return "backtracking";
-  }
-  if (content.includes("recursion") || content.includes("recursive")) {
-    return "recursion";
-  }
-  if (content.includes("binary search") || content.includes("search in rotated") || content.includes("search a 2d matrix") || content.includes("searching")) {
-    return "searching";
-  }
-  if (content.includes("interval") || content.includes("merge intervals") || content.includes("insert interval") || content.includes("meeting rooms")) {
-    return "interval problems";
-  }
-  if (content.includes("string") || content.includes("palindrome") || content.includes("valid anagram") || content.includes("substring") || content.includes("anagram") || content.includes("atoi") || content.includes("reverse string")) {
-    return "string";
-  }
-  if (content.includes("math") || content.includes("pow") || content.includes("sqrt") || content.includes("integer") || content.includes("two sum") || content.includes("sum") || content.includes("add") || content.includes("digit") || content.includes("reverse integer")) {
-    return "math";
-  }
-  if (content.includes("array") || content.includes("matrix") || content.includes("rotate image") || content.includes("spiral matrix") || content.includes("nums") || content.includes("indices") || content.includes("subarrays")) {
-    return "array";
-  }
-  return "array"; // Default fallback
-}
+    ],
+  },
+  {
+    name: "LeetCode-02M.java",
+    problem_number: 2,
+    github_oid: "93969c1d8d756ed2f5f1bfc443c0e2186625ff5f",
+    difficulty_level: "MEDIUM" as const,
+    problem_definition: `Add two numbers represented as linked lists.`,
+    problem_hints: ["Keep track of the carry."],
+    test_cases: [
+      { input: "3\n2 4 3\n3\n5 6 4", expectedOutput: "7 0 8", is_public: true },
+      { input: "1\n0\n1\n0", expectedOutput: "0", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `/**\n * Definition for singly-linked list.\n * function ListNode(val, next) {\n *     this.val = (val===undefined ? 0 : val)\n *     this.next = (next===undefined ? null : next)\n * }\n */\nvar addTwoNumbers = function(l1, l2) {\n    \n};`,
+        wrapperCode: `function ListNode(val, next) { this.val = (val===undefined ? 0 : val); this.next = (next===undefined ? null : next); }\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nlet ptr = 0;\nconst n1 = parseInt(input[ptr++]);\nlet l1 = null, tail1 = null;\nfor(let i=0; i<n1; i++) { const node = new ListNode(parseInt(input[ptr++])); if(!l1) { l1=node; tail1=node; } else { tail1.next=node; tail1=node; } }\nconst n2 = parseInt(input[ptr++]);\nlet l2 = null, tail2 = null;\nfor(let i=0; i<n2; i++) { const node = new ListNode(parseInt(input[ptr++])); if(!l2) { l2=node; tail2=node; } else { tail2.next=node; tail2=node; } }\nlet res = addTwoNumbers(l1, l2);\nconst out = [];\nwhile(res) { out.push(res.val); res = res.next; }\nconsole.log(out.join(" "));`
+      },
+      {
+        language: "java",
+        code: `/**\n * Definition for singly-linked list.\n * public class ListNode {\n *     int val;\n *     ListNode next;\n *     ListNode() {}\n *     ListNode(int val) { this.val = val; }\n *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }\n * }\n */\nclass Solution {\n    public ListNode addTwoNumbers(ListNode l1, ListNode l2) {\n        return null;\n    }\n}`,
+        wrapperCode: `class ListNode { int val; ListNode next; ListNode() {} ListNode(int val) { this.val = val; } ListNode(int val, ListNode next) { this.val = val; this.next = next; } }\npublic class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int n1 = sc.nextInt();\n        ListNode l1 = null, tail1 = null;\n        for(int i=0; i<n1; i++) {\n            ListNode node = new ListNode(sc.nextInt());\n            if(l1 == null) { l1 = node; tail1 = node; } else { tail1.next = node; tail1 = node; }\n        }\n        int n2 = sc.nextInt();\n        ListNode l2 = null, tail2 = null;\n        for(int i=0; i<n2; i++) {\n            ListNode node = new ListNode(sc.nextInt());\n            if(l2 == null) { l2 = node; tail2 = node; } else { tail2.next = node; tail2 = node; }\n        }\n        Solution sol = new Solution();\n        ListNode res = sol.addTwoNumbers(l1, l2);\n        while(res != null) {\n            System.out.print(res.val + (res.next != null ? " " : ""));\n            res = res.next;\n        }\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-03M.java",
+    problem_number: 3,
+    github_oid: "9d51bad1004d468f0ac051dd468b1afb4118e5d3",
+    difficulty_level: "MEDIUM" as const,
+    problem_definition: `Find the length of the longest substring without repeating characters.`,
+    problem_hints: ["Use a sliding window."],
+    test_cases: [
+      { input: "abcabcbb", expectedOutput: "3", is_public: true },
+      { input: "bbbbb", expectedOutput: "1", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var lengthOfLongestSubstring = function(s) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').replace(/\\r?\\n$/, '');\nconsole.log(lengthOfLongestSubstring(input));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public int lengthOfLongestSubstring(String s) {\n        return 0;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextLine()) return;\n        String s = sc.nextLine();\n        Solution sol = new Solution();\n        System.out.print(sol.lengthOfLongestSubstring(s));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-04H.java",
+    problem_number: 4,
+    github_oid: "8f39117c6921856cf14f210a71b30bed718779c8",
+    difficulty_level: "HARD" as const,
+    problem_definition: `Find the median of two sorted arrays.`,
+    problem_hints: ["Binary search."],
+    test_cases: [
+      { input: "2\n1 3\n1\n2", expectedOutput: "2.00000", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var findMedianSortedArrays = function(nums1, nums2) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nlet ptr = 0;\nconst m = parseInt(input[ptr++]);\nconst nums1 = input.slice(ptr, ptr + m).map(Number);\nptr += m;\nconst n = parseInt(input[ptr++]);\nconst nums2 = input.slice(ptr, ptr + n).map(Number);\nconsole.log(findMedianSortedArrays(nums1, nums2).toFixed(5));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public double findMedianSortedArrays(int[] nums1, int[] nums2) {\n        return 0.0;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int m = sc.nextInt();\n        int[] nums1 = new int[m];\n        for(int i=0; i<m; i++) nums1[i] = sc.nextInt();\n        int n = sc.nextInt();\n        int[] nums2 = new int[n];\n        for(int i=0; i<n; i++) nums2[i] = sc.nextInt();\n        Solution sol = new Solution();\n        System.out.printf("%.5f", sol.findMedianSortedArrays(nums1, nums2));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-05M.java",
+    problem_number: 5,
+    github_oid: "473d9f0eba85b7d488ffd0f8d8c68cdbce0c3a4e",
+    difficulty_level: "MEDIUM" as const,
+    problem_definition: `Return the longest palindromic substring in s.`,
+    problem_hints: ["Expand around center."],
+    test_cases: [
+      { input: "babad", expectedOutput: "bab", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var longestPalindrome = function(s) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').replace(/\\r?\\n$/, '');\nconsole.log(longestPalindrome(input));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public String longestPalindrome(String s) {\n        return "";\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextLine()) return;\n        String s = sc.nextLine();\n        Solution sol = new Solution();\n        System.out.print(sol.longestPalindrome(s));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-20E.java",
+    problem_number: 20,
+    github_oid: "8b0b86420efb5693e0b9a5b71a237fac503d4641",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Determine if the input string is valid.`,
+    problem_hints: ["Use a stack."],
+    test_cases: [
+      { input: "()[]{}", expectedOutput: "true", is_public: true },
+      { input: "(]", expectedOutput: "false", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var isValid = function(s) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').replace(/\\r?\\n$/, '');\nconsole.log(isValid(input));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public boolean isValid(String s) {\n        return false;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextLine()) return;\n        String s = sc.nextLine();\n        Solution sol = new Solution();\n        System.out.print(sol.isValid(s));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-21E.java",
+    problem_number: 21,
+    github_oid: "975cabd5e3ed98ab0b9046dc9a67486ee7f7c1be",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Merge two sorted linked lists.`,
+    problem_hints: ["Use a dummy head."],
+    test_cases: [
+      { input: "3\n1 2 4\n3\n1 3 4", expectedOutput: "1 1 2 3 4 4", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var mergeTwoLists = function(list1, list2) {\n    \n};`,
+        wrapperCode: `function ListNode(val, next) { this.val = (val===undefined ? 0 : val); this.next = (next===undefined ? null : next); }\nconst fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nlet ptr = 0;\nconst n1 = parseInt(input[ptr++]);\nlet l1 = null, tail1 = null;\nfor(let i=0; i<n1; i++) { const node = new ListNode(parseInt(input[ptr++])); if(!l1) { l1=node; tail1=node; } else { tail1.next=node; tail1=node; } }\nconst n2 = parseInt(input[ptr++]);\nlet l2 = null, tail2 = null;\nfor(let i=0; i<n2; i++) { const node = new ListNode(parseInt(input[ptr++])); if(!l2) { l2=node; tail2=node; } else { tail2.next=node; tail2=node; } }\nlet res = mergeTwoLists(l1, l2);\nconst out = [];\nwhile(res) { out.push(res.val); res = res.next; }\nconsole.log(out.join(" "));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public ListNode mergeTwoLists(ListNode list1, ListNode list2) {\n        return null;\n    }\n}`,
+        wrapperCode: `class ListNode { int val; ListNode next; ListNode() {} ListNode(int val) { this.val = val; } ListNode(int val, ListNode next) { this.val = val; this.next = next; } }\npublic class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int n1 = sc.nextInt();\n        ListNode l1 = null, tail1 = null;\n        for(int i=0; i<n1; i++) {\n            ListNode node = new ListNode(sc.nextInt());\n            if(l1 == null) { l1 = node; tail1 = node; } else { tail1.next = node; tail1 = node; }\n        }\n        int n2 = sc.nextInt();\n        ListNode l2 = null, tail2 = null;\n        for(int i=0; i<n2; i++) {\n            ListNode node = new ListNode(sc.nextInt());\n            if(l2 == null) { l2 = node; tail2 = node; } else { tail2.next = node; tail2 = node; }\n        }\n        Solution sol = new Solution();\n        ListNode res = sol.mergeTwoLists(l1, l2);\n        while(res != null) {\n            System.out.print(res.val + (res.next != null ? " " : ""));\n            res = res.next;\n        }\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-121E.java",
+    problem_number: 121,
+    github_oid: "abd9bcf674fde34a7cd15f1c2178e37f573fabe3",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Maximize your profit by choosing a single day to buy and a different day to sell.`,
+    problem_hints: ["Track the minimum price seen so far."],
+    test_cases: [
+      { input: "6\n7 1 5 3 6 4", expectedOutput: "5", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var maxProfit = function(prices) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nconst n = parseInt(input[0]);\nconst prices = input.slice(1, n + 1).map(Number);\nconsole.log(maxProfit(prices));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public int maxProfit(int[] prices) {\n        return 0;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] prices = new int[n];\n        for(int i=0; i<n; i++) prices[i] = sc.nextInt();\n        Solution sol = new Solution();\n        System.out.print(sol.maxProfit(prices));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-704E.java",
+    problem_number: 704,
+    github_oid: "f4e323242c80d60a67e780a55e100a1bfa364c25",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Binary Search algorithm.`,
+    problem_hints: ["Maintain left and right pointers."],
+    test_cases: [
+      { input: "6\n-1 0 3 5 9 12\n9", expectedOutput: "4", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var search = function(nums, target) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\s+/);\nif (!input[0]) process.exit(0);\nconst n = parseInt(input[0]);\nconst nums = input.slice(1, n + 1).map(Number);\nconst target = parseInt(input[n + 1]);\nconsole.log(search(nums, target));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public int search(int[] nums, int target) {\n        return -1;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextInt()) return;\n        int n = sc.nextInt();\n        int[] nums = new int[n];\n        for(int i=0; i<n; i++) nums[i] = sc.nextInt();\n        int target = sc.nextInt();\n        Solution sol = new Solution();\n        System.out.print(sol.search(nums, target));\n    }\n}`
+      }
+    ],
+  },
+  {
+    name: "LeetCode-125E.java",
+    problem_number: 125,
+    github_oid: "3589b6cae424511420a375ea3d0929cf6d0e473b",
+    difficulty_level: "EASY" as const,
+    problem_definition: `Return true if string is a valid palindrome.`,
+    problem_hints: ["Use two pointers."],
+    test_cases: [
+      { input: "A man, a plan, a canal: Panama", expectedOutput: "true", is_public: true },
+      { input: "race a car", expectedOutput: "false", is_public: true },
+    ],
+    code_snippets: [
+      {
+        language: "javascript",
+        code: `var isPalindrome = function(s) {\n    \n};`,
+        wrapperCode: `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').replace(/\\r?\\n$/, '');\nconsole.log(isPalindrome(input));`
+      },
+      {
+        language: "java",
+        code: `class Solution {\n    public boolean isPalindrome(String s) {\n        return false;\n    }\n}`,
+        wrapperCode: `public class Main {\n    public static void main(String[] args) {\n        java.util.Scanner sc = new java.util.Scanner(System.in);\n        if(!sc.hasNextLine()) return;\n        String s = sc.nextLine();\n        Solution sol = new Solution();\n        System.out.print(sol.isPalindrome(s));\n    }\n}`
+      }
+    ],
+  },
+];
 
 async function main() {
-  validateSeedData();
+  console.log("🌱 Starting seed for LeetCode problems...\n");
+  console.log("📡 Connecting to:", process.env.DIRECT_URL?.replace(/:([^@]+)@/, ":***@"));
 
-  const { connectionString, pool, prisma } = createPrisma();
+  console.log("🗑️  Wiping old records...");
+  await prisma.problem.deleteMany();
 
-  try {
-    console.log(`Starting LeetCode problem seed for ${problems.length} problems...`);
-    console.log("Connecting to:", maskConnectionString(connectionString));
+  for (const p of problems) {
+    const { test_cases, code_snippets, ...problemData } = p;
 
-    const problemNumbers = problems.map((problem) => problem.problem_number);
-    const githubOids = problems.map((problem) => problem.github_oid);
+    const problem = await prisma.problem.upsert({
+      where: { problem_number: problemData.problem_number },
+      update: problemData,
+      create: problemData,
+    });
 
-    await prisma.$transaction(
-      async (tx) => {
-        const conflictingProblems = await tx.problem.findMany({
-          where: {
-            OR: [{ problem_number: { in: problemNumbers } }, { github_oid: { in: githubOids } }],
-          },
-          select: { id: true },
-        });
+    await prisma.testCase.deleteMany({ where: { problemId: problem.id } });
+    await prisma.codeSnippet.deleteMany({ where: { problemId: problem.id } });
 
-        if (conflictingProblems.length > 0) {
-          await tx.problem.deleteMany({
-            where: { id: { in: conflictingProblems.map((problem) => problem.id) } },
-          });
-        }
+    await prisma.testCase.createMany({
+      data: test_cases.map((tc) => ({ ...tc, problemId: problem.id })),
+    });
+    await prisma.codeSnippet.createMany({
+      data: code_snippets.map((cs) => ({ ...cs, problemId: problem.id })),
+    });
 
-        for (const problemSeed of problems) {
-          const { test_cases, code_snippets, ...problemData } = problemSeed;
+    console.log(`✅ Seeded: [#${problem.problem_number}] ${problem.name} (${problem.difficulty_level})`);
+  }
 
-          await tx.problem.create({
-            data: {
-              ...problemData,
-              data_structure: inferDataStructure(problemData.name, problemData.problem_definition),
-              test_cases: {
-                create: test_cases,
-              },
-              code_snippets: {
-                create: code_snippets,
-              },
-            },
-          });
+  console.log("\n🎉 Seed complete!");
+}
 
-          console.log(
-            `Seeded [#${problemSeed.problem_number}] ${problemSeed.name}: ${test_cases.length} tests, ${code_snippets.length} snippets`,
-          );
-        }
-      },
-      { maxWait: 20_000, timeout: 120_000 },
-    );
-
-    console.log("LeetCode problem seed complete.");
-  } finally {
+main()
+  .catch((e) => {
+    console.error("❌ Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
     await prisma.$disconnect();
     await pool.end();
-  }
-}
-
-const isDirectRun = () => {
-  const entry = process.argv[1];
-
-  if (!entry) {
-    return false;
-  }
-
-  return import.meta.url === pathToFileURL(path.resolve(entry)).href;
-};
-
-if (isDirectRun()) {
-  main().catch((error) => {
-    console.error("Seed failed:", error);
-    process.exit(1);
   });
-}

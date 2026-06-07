@@ -260,7 +260,6 @@ model Problem {
   problem_definition String     @db.Text
   problem_hints      String[]
   difficulty_level   Level
-  data_structure     String?
   
   // Relations
   test_cases         TestCase[]
