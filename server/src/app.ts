@@ -6,6 +6,7 @@ import { githubRouter } from "./routes/github.js";
 
 export const createApp = (): Express => {
   const app = express();
+  app.set("trust proxy", 1);
 
   app.use(cors());
   app.use(express.json());
