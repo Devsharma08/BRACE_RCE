@@ -6,32 +6,9 @@
 
 
 
-<!-- ✅implement caching of results if code not changed -->
+<!-- implement caching of results if code not changed -->
 onChange = setCode(prev=>{...prev});
-<!-- ✅and on code change and again run code results changes -->
-<!-- ✅so result only changes when run clicked and result will be cached unless -->
-<!-- ✅cache result will only change when run clicked for that perticular oid -->
-<!-- ✅useMemo(()=>runcode(),[code])  ... not used usememo here use ref is the best choice   -->
-
-✅ custom input - imp for standalone terminal - need to put language
-for que make a search pannel
-and in que place que desc will be shown
-
-
-## LiveTerminal - 2.0 features
-But what if you REALLY want a live, typing terminal?
-If your true goal is to let a user type live into the terminal screen while the code is running (like a real bash cloud console), you cannot use a simple Express POST request. A standard HTTP request is "one-and-done"—it can't stay open for live typing.
-
-To build a truly live interactive terminal, you would need to implement:
-
-WebSockets (Socket.io): To create a persistent, two-way communication pipe between the browser and your Node.js server.
-
-Docker Streams: Instead of execAsync, your backend must spawn the Docker container as an interactive process (docker run -i) and hook into its stdin and stdout streams live.
-
-Xterm.js: A frontend library that renders a real, working terminal window in the browser.
-
-When the user types a key in the browser terminal, Socket.io sends that character to the backend, which pipes it straight into the running Docker container's stdin.
-
-next - 
-1. reset to original/init state
-2. format document
+<!-- and on code change and again run code results changes -->
+<!-- so result only changes when run clicked and result will be cached unless -->
+<!-- cache result will only change when run clicked for that perticular oid -->
+<!-- useMemo(()=>runcode(),[code])  ... not used usememo here use ref is the best choice   -->
