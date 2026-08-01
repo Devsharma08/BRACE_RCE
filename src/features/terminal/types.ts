@@ -1,4 +1,4 @@
-export type SupportedLanguage = "javascript" | "java";
+export type SupportedLanguage = "javascript" | "java" | "";
 
 export type ExecutionMode = "RUN" | "SUBMIT";
 
@@ -12,9 +12,11 @@ export type FileContentResponse = {
   content?: string;
   test_cases?: RawTestCase[];
   id?: string;
+  name?: string;
   problem_definition?: string;
   problem_hints?: unknown;
   difficulty_level?: string;
+  data_structure?: string;
 };
 
 export type ProblemTestCase = {
@@ -33,6 +35,10 @@ export type ExecutionDetail = {
   passed: boolean;
   runtimeError?: string | null;
   problemId?: string;
+  metrics?: {
+    durationMs: number;
+    memoryKb: number;
+  } | null;
 };
 
 export type ExecutionResult = {
@@ -49,4 +55,6 @@ export type ExecuteCodeRequest = {
   language: SupportedLanguage;
   oid: string;
   mode: ExecutionMode;
+  customInput?: string;
+  fileName?: string;
 };

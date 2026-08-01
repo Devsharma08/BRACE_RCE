@@ -13,6 +13,10 @@ export type CodeContextType = {
     output: unknown;
     setActiveFile: (activeFile: string) => void;
     setOutput: (output: unknown) => void;
+    customInput: string;
+    setCustomInput: (input: string) => void;
+    customInputActive: boolean;
+    setCustomInputActive: (active: boolean) => void;
 }
 
 export const CodeContext = createContext<CodeContextType>({
@@ -26,4 +30,8 @@ export const CodeContext = createContext<CodeContextType>({
     output: null,
     setActiveFile: () => {},
     setOutput: () => {},
+    customInput: "",
+    setCustomInput: () => {},
+    customInputActive: false,
+    setCustomInputActive: () => {}
 });

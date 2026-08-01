@@ -27,11 +27,17 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
         try {
             setIsLoading(true);
             const response : { data : { user : User} } = await api.get("/auth/me");
-            setUser(response.data.user);
+            if(response.data.user){
+                setUser(response.data.user);
+            }else{
+                setUser(null);
+            }
         } catch (error) {
+            console.error("Auth check failed :",error);
             setUser(null);
         }finally{
             setIsLoading(false);
+            return;
         }
     }
 
@@ -49,7 +55,7 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
     }
 
     return (
-        <AuthContext.Provider value={{user,logout,isAuthenticated,isLoading,checkAuth,setUser,setIsLoading}}>
+        <AuthContext.Provider value={{user,logout,isAuthenticated,isLoading,checkAuth}}>
             {children}
         </AuthContext.Provider>
     )

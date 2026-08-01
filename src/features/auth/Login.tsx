@@ -57,8 +57,27 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0d1117] px-4">
-      <div className="max-w-md w-full bg-[#161b22] border border-[#30363d] rounded-2xl p-8 shadow-2xl">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-[#0d1117]">
+      {/* Left Side: Generated Cyber Art */}
+      <div className="hidden md:flex flex-col justify-center items-center relative overflow-hidden border-r border-white/5 bg-black">
+        <img 
+          src="/signin-art.png" 
+          alt="Cyber Terminal UI" 
+          className="absolute inset-0 w-full h-full object-cover opacity-75"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-transparent to-transparent"></div>
+        <div className="relative z-10 p-12 text-center backdrop-blur-sm bg-black/30 border border-white/10 rounded-2xl mx-8 shadow-2xl">
+          <h2 className="text-3xl font-bold text-white mb-3 tracking-tight uppercase">Enter the Arena</h2>
+          <p className="text-sm text-cyan-400 font-mono tracking-widest">// AUTHENTICATE_USER</p>
+        </div>
+      </div>
+
+      {/* Right Side: Form */}
+      <div className="flex items-center justify-center px-4 py-12 relative">
+        {/* Subtle glowing background effect for the form side */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        <div className="max-w-md w-full bg-[#161b22]/80 backdrop-blur-md border border-[#30363d] rounded-2xl p-8 shadow-2xl relative z-10">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
           <p className="text-[#8b949e]">Sign in to continue your coding battles</p>
@@ -144,6 +163,7 @@ export const Login = () => {
             Create one now
           </Link>
         </p>
+      </div>
       </div>
     </div>
   );
