@@ -3,6 +3,7 @@ import { prisma } from "../Lib/prisma.js";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken'
+import type { AuthRequest } from "../middleware/authentication.js";
 
 
 
@@ -60,6 +61,7 @@ export class AuthController {
                 return res.status(401).json({ message: "Invalid password" })
             }
             this.setTokenCookie(res, user.id);
+            
             res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
         } catch (error) {
             return res.status(500).json({ message: "Something went wrong" })
@@ -71,7 +73,7 @@ export class AuthController {
         res.status(200).json({ message: "Logged out successfully" })
     }
 
-    me = async (req: Request, res: Response) => {
+    me = async (req: AuthRequest, res: Response) => {
         try {
             const userId = req.userId;
             const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, username: true, avatarUrl: true, email: true } })

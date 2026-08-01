@@ -9,6 +9,11 @@ import Terminal from './pages/Terminal.tsx'
 import { CodeContext, type TestCase } from './context/codeContext.tsx'
 import { FileNamesContext, type FileEntry } from './context/fileNamesContext.tsx'
 import { UserResponseContext } from './context/responseContent.tsx'
+import { AuthProvider } from './context/authContext.tsx'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+import { Login } from './features/auth/Login.tsx'
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 const Root = () => {
   const [filesData, setFilesData] = useState<FileEntry[]>([])
@@ -26,10 +31,14 @@ const Root = () => {
     <StrictMode>
       <Suspense fallback={<div>loading</div>}>
         <Router>
+          <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+          <AuthProvider>
           <Routes>
+
             <Route path="/" element={<App />}>
               <Route index element={<Home />} />
               <Route path="about" element={<About />} />
+              <Route path='/login' element={<Login/>}/>
               <Route
                 path="terminal"
                 element={
@@ -64,6 +73,8 @@ const Root = () => {
               />
             </Route>
           </Routes>
+          </AuthProvider>
+          </GoogleOAuthProvider>
         </Router>
       </Suspense>
     </StrictMode>

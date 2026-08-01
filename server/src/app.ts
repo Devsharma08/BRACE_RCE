@@ -10,9 +10,12 @@ import {authRouter} from "./routes/auth.js";
 export const createApp = (): Express => {
   const app = express();
   app.set("trust proxy", 1);
-  app.use(cookieParser());
-  app.use(cors());
   app.use(express.json());
+  app.use(cookieParser());
+  app.use(cors({
+    origin:["http://localhost:5173", "http://localhost:3000"],
+    credentials:true
+  }));
   app.use("/api/execute", executeRouter);
   app.use("/api/github", githubRouter);
   app.use("/api/auth",authRouter);

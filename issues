@@ -1,14 +1,33 @@
-1. ✅ no context implementation
-2. ✅ output result not changing on switching questions
+0. Adding more languages support in docker container like c/c++ , python.
 
-3. - i dont-know - for wrong output error is not coming
-4. ⏳ for custom input ---- before hand check if possible
+1. PvP Coding Battles ⭐⭐⭐⭐⭐
+This is honestly the feature I'd build first.
+Imagine opening your IDE and seeing:
+Friends Online (Dev Sharma, Akash, Rohit) -> Challenge
+Click Challenge.
+Select Difficulty (Easy, Medium, Hard, Custom)
+Both users receive: "Dev Sharma challenged you. Accept?"
+Once accepted: Starting in 3... 2... 1... GO!
+Now both get: same question, same starter code, same hidden test cases, timer.
+During battle: Your progress (Passed 2/10 tests), Opponent (Passed 5/10 tests). No code sharing. Only progress.
+Winner: Solved first, Accuracy, Execution Time -> +120 Rating
+You can even build: ELO Ranking, Global leaderboard, College leaderboard, Friends leaderboard, Weekly tournaments.
 
+2. AI Progressive Coding Agent ⭐⭐⭐⭐⭐
+Instead your IDE becomes a mentor.
+Example: User -> Build Todo App
+Agent: Step 1 Create a Todo model. Need a hint? (Yes/No)
+Hint: A todo should contain Title, Completed, CreatedAt
+User writes. Agent checks. Great! Now create CRUD endpoints.
+If stuck, Hint 2: Look at Express Router. router.post(...)
+Still stuck: Would you like partial code? Just router.post(...)
+This is progressive disclosure. Very few IDEs do this well.
+Levels: Beginner (Maximum hints), Intermediate (Only conceptual hints), Expert (No hints).
 
+3. File Sharing ⭐⭐⭐⭐
+Instead of sharing whole project. Share main.py (Only Read, Expires in 24 Hours). Generate link.
+Receiver sees: Preview, Copy, Fork, Comment.
+Later: Share Folder -> Then src/components -> Eventually Entire Workspace.
+Permissions: Read, Comment, Edit, Fork Only. GitHub Gist meets Google Docs.
 
-<!-- implement caching of results if code not changed -->
-onChange = setCode(prev=>{...prev});
-<!-- and on code change and again run code results changes -->
-<!-- so result only changes when run clicked and result will be cached unless -->
-<!-- cache result will only change when run clicked for that perticular oid -->
-<!-- useMemo(()=>runcode(),[code])  ... not used usememo here use ref is the best choice   -->
+4. Should we implement screen sharing feature for live viewcast
