@@ -12,9 +12,17 @@ export const createApp = (): Express => {
   app.set("trust proxy", 1);
   app.use(express.json());
   app.use(cookieParser());
-  app.use(cors({
-    origin:["http://localhost:5173", "http://localhost:3000"],
-    credentials:true
+  const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+  // @ts-ignore - Bypass faulty TS definition for cors in ESM
+  app.use((cors as any)({
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true
   }));
   app.use("/api/execute", executeRouter);
   app.use("/api/github", githubRouter);

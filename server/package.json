@@ -32,12 +32,14 @@
     "jsonwebtoken": "^9.0.3",
     "node-cache": "^5.1.2",
     "pg": "^8.20.0",
+    "socket.io": "^4.8.3",
     "typescript": "^6.0.3",
     "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.10",

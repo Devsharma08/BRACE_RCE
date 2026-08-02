@@ -1,7 +1,8 @@
-import { Router } from "express";
+import { Router, type Router as ExpressRouter } from "express";
 import authcontroller from "../controllers/auth.js";
 import { authentication } from "../middleware/authentication.js";
-export const authRouter = Router();
+
+export const authRouter: ExpressRouter = Router();
 
 authRouter.post('/signup', authcontroller.signup);
 authRouter.post('/signin', authcontroller.signin);

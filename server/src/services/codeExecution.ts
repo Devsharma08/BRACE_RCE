@@ -1,12 +1,7 @@
-import { exec } from "child_process";
 import type { Request, Response } from "express";
-import fs from "fs/promises";
-import path from "path";
-import { promisify } from "util";
-import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../Lib/prisma.js";
 
-type SupportedLanguage = "javascript" | "java";
+type SupportedLanguage = "javascript" | "java" | "c" | "cpp" | "python";
 type ExecutionMode = "RUN" | "SUBMIT";
 
 type ExecuteBody = {
@@ -14,6 +9,7 @@ type ExecuteBody = {
   language?: unknown;
   oid?: unknown;
   mode?: unknown;
+  customInput?: unknown;
 };
 
 type TestCaseRecord = {
@@ -36,8 +32,6 @@ type ExecutionDetail = {
   runtimeError: string | null;
 };
 
-const execAsync = promisify(exec);
-
 const normalize = (value: string) => (value || "").replace(/\r\n/g, "\n").trim();
 
 const problemIdPayload = (currentCase: TestCaseRecord) => {
@@ -49,161 +43,159 @@ const getExecutionMode = (mode: unknown): ExecutionMode => {
 };
 
 const getLanguage = (language: unknown): SupportedLanguage => {
-  return language === "java" ? "java" : "javascript";
-};
-
-const getJavaImports = () => {
-  return ["import java.util.*", "import java.io.*", "import java.math.*", "import java.util.stream.*"]
-    .map((importLine) => `${importLine};`)
-    .join("\n");
-};
-
-const prepareSourceFile = async ({
-  code,
-  language,
-  tempDir,
-  wrapperCode,
-}: {
-  code: string;
-  language: SupportedLanguage;
-  tempDir: string;
-  wrapperCode: string;
-}) => {
-  if (language === "java") {
-    const autoImports = getJavaImports();
-    const processedCode = wrapperCode
-      ? `${autoImports}\n\n${code}\n${wrapperCode}`
-      : `${autoImports}\n\n${code.replace(/class\s+[A-Za-z0-9_]+/, "class Solution")}\n\npublic class Main {\n  public static void main(String[] args) {\n    try {\n      try {\n        java.lang.reflect.Method mainMethod = Solution.class.getMethod("main", String[].class);\n        mainMethod.invoke(null, (Object)args);\n      } catch (NoSuchMethodException e) {\n        new Solution();\n      }\n    } catch (java.lang.reflect.InvocationTargetException e) {\n      e.getCause().printStackTrace(System.err);\n    } catch (Exception e) {\n      e.printStackTrace(System.err);\n    }\n  }\n}`;
-
-    await fs.writeFile(path.join(tempDir, "Main.java"), processedCode);
-
-    return {
-      dockerImage: "eclipse-temurin:17-alpine",
-      runCommand: "javac Main.java && java Main < input.txt",
-    };
+  switch (language) {
+    case 'cpp': return 'cpp';
+    case 'py': return 'python';
+    case 'javascript': return 'javascript';
+    case 'java': return 'java';
+    case 'c': return 'c';
+    default: return 'javascript';
   }
-
-  const fileName = "index.js";
-  const processedCode = wrapperCode ? `${code}\n${wrapperCode}` : code;
-  await fs.writeFile(path.join(tempDir, fileName), processedCode);
-
-  return {
-    dockerImage: "node:18-slim",
-    runCommand: `node ${fileName} < input.txt`,
-  };
 };
 
-const buildDockerCommand = ({
-  dockerImage,
-  runCommand,
-  tempDir,
-}: {
-  dockerImage: string;
-  runCommand: string;
-  tempDir: string;
-}) => {
-  return `docker run --rm \
-                --network none \
-                --user 1000:1000 \
-                --pids-limit 64 \
-                --memory="128m" \
-                --cpus=".5" \
-                -v "${tempDir}:/app" \
-                -w /app \
-                ${dockerImage} \
-                sh -c "timeout 20s ${runCommand}"`;
-};
+const getExtension = (language: SupportedLanguage) => {
+  const extensionMap = {
+    "javascript": "js",
+    "java": "java",
+    "c": "c",
+    "cpp": "cpp",
+    "python": "py",
+  }
+  return extensionMap[language];
+}
+
+const pistonVersionMapping: Record<string, string> = {
+  'python':"3.13.2",
+  'javascript':"22.11.1",
+  'java':"25",
+  'c':"10",
+  'cpp':"25.3",
+  "typescript":'5.9.3'
+}
 
 export const executeCode = async (req: Request, res: Response) => {
-  const { code, language, oid, mode } = req.body as ExecuteBody;
+  const { code, language, oid, mode, customInput } = req.body as ExecuteBody;
+  
   const sourceCode = typeof code === "string" ? code : "";
   const githubOid = typeof oid === "string" ? oid : "";
   const executionMode = getExecutionMode(mode);
   const executionLanguage = getLanguage(language);
-  const jobId = uuidv4();
-  const tempDir = path.join(process.cwd(), "temp", jobId);
+  const userCustomInput = typeof customInput === "string" ? customInput : "";
 
   try {
-    await fs.mkdir(tempDir, { recursive: true });
-
-    const fileData = await prisma.problem.findUnique({
-      where: { github_oid: githubOid },
-      select: {
-        test_cases: true,
-        code_snippets: true,
-      },
-    });
-
-    const testCases = (fileData?.test_cases ?? []) as TestCaseRecord[];
-    const codeSnippets = (fileData?.code_snippets ?? []) as CodeSnippetRecord[];
-    const wrapperCode = codeSnippets.find((snippet) => snippet.language === executionLanguage)?.wrapperCode ?? "";
-    const casesToRun =
-      testCases.length === 0
-        ? [{ input: "", expectedOutput: "" }]
-        : executionMode === "SUBMIT"
-          ? testCases
-          : testCases.slice(0, 1);
-
-    const { dockerImage, runCommand } = await prepareSourceFile({
-      code: sourceCode,
-      language: executionLanguage,
-      tempDir,
-      wrapperCode,
-    });
+    let casesToRun: TestCaseRecord[] = [];
+    
+    // Fetch test cases from DB if it's a real problem
+    if (githubOid && !githubOid.startsWith("local-")) {
+        const fileData = await prisma.problem.findUnique({
+          where: { github_oid: githubOid },
+          select: { test_cases: true }
+        });
+        
+        const testCases = (fileData?.test_cases ?? []) as TestCaseRecord[];
+        
+        if (executionMode === "SUBMIT") {
+            casesToRun = testCases;
+        } else {
+            casesToRun = testCases.slice(0, 1);
+        }
+    }
+    
+    // Override if custom input is provided
+    if (userCustomInput.length > 0) {
+        casesToRun = [{ input: userCustomInput, expectedOutput: "" }];
+    }
+    
+    if (casesToRun.length === 0) {
+        casesToRun = [{ input: "", expectedOutput: "" }];
+    }
 
     const results: ExecutionDetail[] = [];
     let totalPassed = 0;
 
     for (const [index, currentCase] of casesToRun.entries()) {
-      const testCasePath = path.join(tempDir, "input.txt");
-      await fs.writeFile(testCasePath, (currentCase.input || "").trim());
+        const testCaseInput = currentCase.input || "";
+        
+        const payload = {
+          "language": executionLanguage,
+          "version": pistonVersionMapping[executionLanguage],
+          "files": [
+            {
+              "name": `main.${getExtension(executionLanguage)}`,
+              "content": sourceCode,
+            }
+          ],
+          "stdin": testCaseInput,
+          "compile_timeout": 10000,
+          "run_timeout": 10000,
+          "compile_memory_limit": -1,
+          "run_memory_limit": -1
+        };
 
-      const dockerCmd = buildDockerCommand({ dockerImage, runCommand, tempDir });
+        try {
+            const pistonResponse = await fetch("https://api.piston.new/v2/execute", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                // Remove the Authorization header if you aren't actually using an API Key
+                "Authorization": `Bearer ${process.env.PISTON_API_KEY || ''}`
+              },
+              body: JSON.stringify(payload)
+            });
 
-      try {
-        const { stdout, stderr } = await execAsync(dockerCmd);
+            if (!pistonResponse.ok) {
+                throw new Error("Failed to execute code");
+            }
 
-        if (normalize(stderr)) {
-          results.push({
-            testCaseIndex: index,
-            output: stdout,
-            expectedOutput: currentCase.expectedOutput,
-            passed: false,
-            runtimeError: stderr,
-          });
-          break;
+            // Piston returns data.compile and data.run
+            const data = await pistonResponse.json() as any;
+            
+            const runOutput = data.run?.output || "";
+            const compileOutput = data.compile?.output || "";
+            
+            if (data.compile && data.compile.code !== 0) {
+                results.push({
+                    testCaseIndex: index,
+                    output: "",
+                    expectedOutput: currentCase.expectedOutput,
+                    passed: false,
+                    runtimeError: compileOutput || "Compilation Error",
+                });
+                break;
+            }
+
+            const actualOutput = normalize(data.run?.stdout || runOutput);
+            const expectedOutput = normalize(currentCase.expectedOutput);
+            
+            const isCustomInputRun = userCustomInput.length > 0;
+            const passed = isCustomInputRun ? true : (actualOutput === expectedOutput);
+
+            if (passed) totalPassed++;
+
+            results.push({
+                testCaseIndex: index,
+                output: runOutput,
+                expectedOutput: currentCase.expectedOutput,
+                passed,
+                ...problemIdPayload(currentCase),
+                runtimeError: data.run?.stderr || null,
+            });
+
+            if (executionMode === "SUBMIT" && !passed && !isCustomInputRun) {
+                break;
+            }
+        } catch (execError) {
+            const message = execError instanceof Error ? execError.message : "Piston Connection Error";
+            results.push({
+                testCaseIndex: index,
+                output: "",
+                expectedOutput: currentCase.expectedOutput,
+                passed: false,
+                ...problemIdPayload(currentCase),
+                runtimeError: `Network or Piston Error: ${message}`,
+            });
+            break;
         }
-
-        const actualOutput = normalize(stdout);
-        const expectedOutput = normalize(currentCase.expectedOutput);
-        const passed = actualOutput === expectedOutput;
-
-        if (passed) totalPassed++;
-
-        results.push({
-          testCaseIndex: index,
-          output: stdout,
-          expectedOutput: currentCase.expectedOutput,
-          passed,
-          ...problemIdPayload(currentCase),
-          runtimeError: null,
-        });
-
-        if (executionMode === "SUBMIT" && !passed) {
-          break;
-        }
-      } catch (execError) {
-        const error = execError as { stdout?: string; stderr?: string };
-        results.push({
-          testCaseIndex: index,
-          output: error.stdout || "",
-          expectedOutput: currentCase.expectedOutput,
-          passed: false,
-          ...problemIdPayload(currentCase),
-          runtimeError: error.stderr || "Timeout or Execution Interruption",
-        });
-        break;
-      }
     }
 
     return res.json({
@@ -211,14 +203,12 @@ export const executeCode = async (req: Request, res: Response) => {
       totalCases: casesToRun.length,
       passedCases: totalPassed,
       status: totalPassed === casesToRun.length ? "PASSED" : "FAILED",
-      problemId: testCases[0]?.problemId || "",
+      problemId: casesToRun[0]?.problemId || "",
       details: results,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown execution failure";
     console.error("System Core Fault:", error);
     return res.status(500).json({ error: "System execution failure", details: message });
-  } finally {
-    await fs.rm(tempDir, { recursive: true, force: true });
   }
 };

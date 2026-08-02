@@ -7,7 +7,21 @@ import type {
 } from "./types";
 
 export const detectLanguageFromFileName = (fileName: string): SupportedLanguage => {
-  return fileName.toLowerCase().endsWith(".java") ? "java" : "javascript";
+  const ext = fileName.split('.')[1];
+  switch (ext) {
+    case 'java':
+      return 'java';
+    case 'js':
+      return 'javascript';
+    case 'cpp':
+      return 'c++';
+    case 'py':
+      return 'python';
+    case 'c':
+      return 'c' ; 
+    default:
+      throw new Error('Unsupported language');
+  }
 };
 
 export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCase[] => {
@@ -41,8 +55,7 @@ export const formatExecutionOutput = (result: ExecutionResult, mode: ExecutionMo
   const caseDetails = details
     .map(
       (detail) =>
-        `Test Case ${detail.testCaseIndex + 1}:\nExpected: ${detail.expectedOutput}\nOutput: ${detail.output}\nResult: ${
-          detail.passed ? "Passed" : "Failed"
+        `Test Case ${detail.testCaseIndex + 1}:\nExpected: ${detail.expectedOutput}\nOutput: ${detail.output}\nResult: ${detail.passed ? "Passed" : "Failed"
         }${detail.runtimeError ? "\nError: " + detail.runtimeError : ""}`,
     )
     .join("\n\n");

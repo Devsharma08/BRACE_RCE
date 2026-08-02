@@ -34,7 +34,7 @@ const Header = () => {
                   <span>[ LOGOUT - {user?.username} ]</span>
                </button>
             ) : (
-               <Link to="/login" className='flex items-center gap-2 px-3 py-1.5 bg-indigo-950/20 border border-indigo-500/30 hover:border-indigo-400 rounded-none transition-all duration-300 text-indigo-400 uppercase tracking-wider'>
+               <Link to="/signin" className='flex items-center gap-2 px-3 py-1.5 bg-indigo-950/20 border border-indigo-500/30 hover:border-indigo-400 rounded-none transition-all duration-300 text-indigo-400 uppercase tracking-wider'>
                   <LogIn className='w-3.5 h-3.5' />
                   <span>[ LOGIN ]</span>
                </Link>
@@ -63,7 +63,7 @@ const Header = () => {
                   <span>[ LOGOUT ]</span>
                </button>
             ) : (
-               <Link to="/login" onClick={() => setIsMenuOpen(false)} className='flex items-center gap-2 rounded-none px-3 py-2 text-indigo-400 hover:bg-indigo-950/20 border border-transparent hover:border-indigo-500/30 transition-all uppercase'>
+               <Link to="/signin" onClick={() => setIsMenuOpen(false)} className='flex items-center gap-2 rounded-none px-3 py-2 text-indigo-400 hover:bg-indigo-950/20 border border-transparent hover:border-indigo-500/30 transition-all uppercase'>
                   <LogIn className='w-3.5 h-3.5' />
                   <span>[ LOGIN ]</span>
                </Link>

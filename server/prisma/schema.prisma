@@ -5,246 +5,27 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-}
-
-model Answer {
-  id         String   @id
-  text       String
-  questionId String
-  createdAt  DateTime @default(now())
-  authorId   String
-  User       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  Question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-}
-
-model College {
-  id                     String                   @id
-  name                   String
-  location               String
-  state                  String?
-  city                   String?
-  rating                 Float
-  fees                   Int
-  popularFor             String
-  imgUrl                 String
-  type                   String?
-  CollegeDetails         CollegeDetails?
-  CollegeFacility        CollegeFacility[]
-  Course                 Course[]
-  Cutoff                 Cutoff[]
-  Event                  Event[]
-  PlacementStat          PlacementStat[]
-  Question               Question[]
-  Review                 Review[]
-  UserCollegePreferences UserCollegePreferences[]
-
-  @@index([city])
-  @@index([fees])
-  @@index([name])
-  @@index([rating])
-  @@index([state, fees])
-  @@index([state])
-  @@index([state, rating])
-  @@index([type])
-}
-
-model CollegeDetails {
-  id          String  @id
-  collegeId   String  @unique
-  description String
-  imageUrl    String
-  programs    String
-  College     College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-}
-
-model CollegeFacility {
-  collegeId  String
-  facilityId String
-  College    College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  Facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-
-  @@id([collegeId, facilityId])
-}
-
-model Course {
-  id               String          @id
-  collegeId        String
-  name             String
-  level            String
-  durationInYears  Int
-  tuitionFee       Int
-  seatsAvailable   Int?
-  courseCategoryId String?
-  College          College         @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  CourseCategory   CourseCategory? @relation(fields: [courseCategoryId], references: [id])
-
-  @@index([collegeId])
-  @@index([durationInYears])
-  @@index([level])
-  @@index([name])
-  @@index([tuitionFee])
-}
-
-model CourseCategory {
-  id              String   @id
-  name            String   @unique
-  description     String
-  rules           String
-  expectedJobs    String[]
-  avgPackage      Float?
-  enrollmentStats String?
-  opportunities   String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime
-  Course          Course[]
-
-  @@index([name])
-}
-
-model Cutoff {
-  id        String  @id
-  collegeId String
-  examName  String
-  maxRank   Int
-  category  String?
-  College   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
-  @@index([collegeId])
-  @@index([examName])
-  @@index([examName, maxRank])
-  @@index([maxRank])
-}
-
-model Event {
-  id          String   @id
-  collegeId   String
-  title       String
-  description String?
-  date        DateTime
-  type        String
-  College     College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
-  @@index([collegeId])
-}
-
-model Exam {
-  id          String    @id
-  name        String    @unique
-  fullName    String?
-  description String?
-  date        DateTime?
-  type        String?
-  level       String?
-  imgUrl      String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime
-
-  @@index([level])
-}
-
-model Facility {
-  id              String            @id
-  name            String            @unique
-  iconUrl         String?
-  CollegeFacility CollegeFacility[]
-}
-
-model PlacementStat {
-  id                  String   @id
-  collegeId           String
-  year                Int
-  highestPackage      Float?
-  averagePackage      Float?
-  placementPercentage Float?
-  topRecruiters       String[]
-  College             College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-
-  @@index([collegeId])
-}
-
-model Question {
-  id        String   @id
-  text      String
-  collegeId String
-  createdAt DateTime @default(now())
-  authorId  String
-  Answer    Answer[]
-  User      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  College   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-}
-
-model Review {
-  id        String   @id
-  collegeId String
-  userId    String
-  rating    Float
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  College   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, collegeId])
-  @@index([collegeId])
-  @@index([userId])
+  //url      = env("DATABASE_URL")
+  //directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                     String                   @id
-  username               String                   @unique
-  email                  String?                  @unique
-  password               String?
-  role                   String                   @default("STUDENT")
-  avatarUrl              String?
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime
-  Answer                 Answer[]
-  Question               Question[]
-  Review                 Review[]
-  UserAcademicRecord     UserAcademicRecord[]
-  UserCollegePreferences UserCollegePreferences[]
-  UserProfile            UserProfile?
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String?  @unique
+  password  String?
+  role      String   @default("USER")
+  avatarUrl String?
+  
+  performances UserPersonalPerformance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model UserAcademicRecord {
-  id       String  @id
-  userId   String
-  examName String
-  score    Float?
-  rank     Int?
-  category String?
-  User     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model UserCollegePreferences {
-  id        String  @id
-  userId    String
-  collegeId String
-  College   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
-  User      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model UserProfile {
-  id                String   @id
-  userId            String   @unique
-  fullName          String?
-  mobileNumber      String?
-  gender            String?
-  city              String?
-  studyDestination  String?
-  currentStatus     String?
-  courseInterested  String?
-  educationDetails  Json?
-  experienceDetails Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime
-  User              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-/* ------------  from here all model for online editor ---------- */
-
+// ------------------------------------------------------
+// PROBLEMS & EXECUTION
+// ------------------------------------------------------
 
 enum Level {
   EASY
@@ -261,9 +42,11 @@ model Problem {
   problem_hints      String[]
   difficulty_level   Level
   
-  // Relations
   test_cases         TestCase[]
-  code_snippets      CodeSnippet[] // To store starter code for Java/JS
+  code_snippets      CodeSnippet[]
+  
+  commonEvents       Event[]
+  performances       UserPersonalPerformance[]
   
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -271,7 +54,7 @@ model Problem {
 
 model TestCase {
   id             String   @id @default(uuid())
-  input          String   @db.Text // Input to be piped into Docker
+  input          String   @db.Text // Input to be piped into Docker/Piston
   expectedOutput String   @db.Text // Output to compare against
   is_public      Boolean  @default(true) // Public cases show in the UI
   
@@ -280,11 +63,61 @@ model TestCase {
 }
 
 model CodeSnippet {
-  id        String  @id @default(uuid())
-  language  String  // "java", "javascript"
-  code      String  @db.Text // The boilerplate/starter code
+  id          String  @id @default(uuid())
+  language    String  // "java", "javascript", "python", "c", "cpp"
+  code        String  @db.Text // The boilerplate/starter code
+  wrapperCode String? @db.Text // Hidden wrapper code
   
-  problemId String
-  wrapperCode String? @db.Text
-  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  problemId   String
+  problem     Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+// ------------------------------------------------------
+// PVP CODING BATTLES
+// ------------------------------------------------------
+
+enum EventType {
+  FRIENDS
+  BOT
+  PUBLIC
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  name        String?   // Optional event name
+  type        EventType @default(PUBLIC)
+  status      String    @default("WAITING") // WAITING, IN_PROGRESS, FINISHED
+  
+  // If all users in the event solve the same question
+  commonProblemId String?
+  commonProblem   Problem? @relation(fields: [commonProblemId], references: [id])
+  
+  // Participants and their performances
+  performances UserPersonalPerformance[]
+  
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model UserPersonalPerformance {
+  id           String   @id @default(uuid())
+  
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  problemId    String?
+  problem      Problem? @relation(fields: [problemId], references: [id])
+  
+  // Metrics
+  questionsSolved Int     @default(0)
+  timeTakenMs     Int?    // Time taken to solve
+  status          String  @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT
+  score           Int     @default(0)
+  
+  createdAt       DateTime @default(now())
 }
