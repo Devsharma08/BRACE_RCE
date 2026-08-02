@@ -11,6 +11,7 @@ import { CodeContext, type TestCase } from './context/codeContext.tsx'
 import { FileNamesContext, type FileEntry } from './context/fileNamesContext.tsx'
 import { UserResponseContext } from './context/responseContent.tsx'
 import { AuthProvider } from './context/authContext.tsx'
+import { SocketProvider } from './context/socketContext.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Login } from './features/auth/Login.tsx'
 import {Signup} from './features/auth/Signup.tsx'
@@ -38,6 +39,7 @@ const Root = () => {
         <Router>
           <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
+            <SocketProvider>
           <Routes>
 
             <Route path="/" element={<App />}>
@@ -84,6 +86,7 @@ const Root = () => {
               />
             </Route>
           </Routes>
+          </SocketProvider>
           </AuthProvider>
           </GoogleOAuthProvider>
         </Router>

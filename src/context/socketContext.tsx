@@ -1,0 +1,71 @@
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { io, Socket } from "socket.io-client";
+
+interface SocketContextType {
+  socket: Socket | null;
+  isConnected: boolean;
+  matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND";
+  findMatch: () => void;
+}
+
+const SocketContext = createContext<SocketContextType | undefined>(undefined);
+
+export const SocketProvider = ({ children }: { children: ReactNode }) => {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND">("IDLE");
+
+  useEffect(() => {
+
+    const newSocket = io("http://localhost:5000", {
+      withCredentials: true,
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("🟢 Connected to PvP Server");
+      setIsConnected(true);
+    });
+
+    newSocket.on("disconnect", () => {
+      console.log("🔴 Disconnected from PvP Server");
+      setIsConnected(false);
+      setMatchmakingStatus("IDLE");
+    });
+
+    // --- PVP MATCHMAKING EVENTS ---
+    newSocket.on("match_found", (data) => {
+      console.log("⚔️ MATCH FOUND!", data);
+      setMatchmakingStatus("FOUND");
+      
+      // We will redirect to the battle arena here soon!
+      alert(`MATCH FOUND! Room: ${data.roomName}`);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  const findMatch = () => {
+    if (socket) {
+      setMatchmakingStatus("SEARCHING");
+      socket.emit("join_matchmaking");
+    }
+  };
+
+  return (
+    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, findMatch }}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
+
+export const useSocket = () => {
+  const context = useContext(SocketContext);
+  if (!context) {
+    throw new Error("useSocket must be used within a SocketProvider");
+  }
+  return context;
+};
