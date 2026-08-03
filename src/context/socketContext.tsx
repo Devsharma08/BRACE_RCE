@@ -50,7 +50,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       // We will redirect to the battle arena here soon!
       const res = confirm(`MATCH FOUND! Room: ${data.roomName}`);
       if(res){
-        navigate(`/battle/${data.roomName}`);
+        navigate(`/battle/${data.roomName}?oid=${data.problemId}`);
       }
 
     });

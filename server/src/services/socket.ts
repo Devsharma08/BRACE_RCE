@@ -84,12 +84,20 @@ export const initSocketServer = (io: Server) => {
                 const player2 = waitingQueue.shift()!;
                 console.log('Match found : ', player1.userId, " ", player2.userId);
 
+                // fetch a random problem from the DB!
+                const problems = await prisma.problem.findMany({
+                    select:{id:true,github_oid:true}
+                })
+                
+                const randomProblems = problems.length > 0 ? problems[Math.floor(Math.random() * problems.length)] : null;
+
                 // create a event in db
                 const event = await prisma.event.create({
                     data: {
                         type: 'PUBLIC',
                         status: 'IN_PROGRESS',
-                        startedAt: new Date()
+                        startedAt: new Date(),
+                        commonProblemId:randomProblems?.id
                     }
                 })
 
@@ -118,11 +126,7 @@ export const initSocketServer = (io: Server) => {
                 socket2.join(roomName);
 
                 // notify them of match
-                io.to(roomName).emit("match_found", { eventId: event.id, roomName, message: "Match Found" });
-
-
-
-
+                io.to(roomName).emit("match_found", { eventId: event.id, roomName, message: "Match Found",problemId:randomProblems?.github_oid || "local-battle" });
 
             }
 
