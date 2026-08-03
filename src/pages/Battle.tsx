@@ -59,6 +59,11 @@ export const Battle = () => {
             if (data.result === "OPPONENT_WON") {
                 setBattleResult("LOST");
             }
+
+            // If the opponent surrenders, we win!
+            if (data.result === "OPPONENT_SURRENDERED") {
+                setBattleResult("WON");
+            }
         });
     }
 
@@ -67,6 +72,13 @@ export const Battle = () => {
       socket?.off("battle_update");
     };
   }, [socket, navigate, oid, roomId]);
+
+  const handleSurrender = () => {
+    if(confirm("Are you sure you want to surrender?")){
+        setBattleResult("LOST");
+        socket?.emit('surrender_battle',roomId);
+    }
+  }
 
 
 
@@ -152,12 +164,20 @@ const handleRunCode = async() => {
                  dangerouslySetInnerHTML={{ __html: problemDescription }}
               />
            </div>
+           <div className="flex gap-3 mt-auto">
+           <button 
+               onClick={handleSurrender}
+               className="w-1/3 py-4 bg-rose-900/20 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-500 text-rose-300 font-mono font-bold tracking-widest rounded-lg transition-all"
+             >
+               [ SURRENDER ]
+             </button>
            <button 
              onClick={handleRunCode}
-             className="mt-auto w-full py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/50 hover:border-cyan-400 text-cyan-100 font-mono font-bold tracking-widest rounded-lg transition-all"
+             className="mt-auto w-2/3 py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/50 hover:border-cyan-400 text-cyan-100 font-mono font-bold tracking-widest rounded-lg transition-all"
            >
              [ SUBMIT BATTLE ]
            </button>
+          </div>
         </div>
       </div>
             {/* POST BATTLE MODAL */}

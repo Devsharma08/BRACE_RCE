@@ -137,6 +137,25 @@ export const initSocketServer = (io: Server) => {
             console.log(`User ${userId} joined room ${roomId}`)
         })
 
+        socket.on('leave_matchmaking',()=>{
+            const index = waitingQueue.findIndex((p)=>p.userId === userId)
+            if(index !== -1){
+                waitingQueue.splice(index,1)
+                console.log(`User ${userId} left the matchmaking queue`)
+            }
+        })
+
+        socket.on('surrender_battle',(roomId:string)=>{
+            console.log(`User ${userId} surrendered in room ${roomId}`)
+            socket.to(roomId).emit('battle_update',{
+                status:'Opponent Surrendered! \n You Win 🏆',
+                progress:0,
+                result:"OPPONENT_SURRENDERED"
+            })
+            
+
+        })
+
         socket.on('battle_action', (data: { roomId: string, userId: string, status: string, progress: number }) => {
             if (data.roomId) {
                 // Broadcast the action to the other player in the room

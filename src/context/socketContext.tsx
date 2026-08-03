@@ -9,6 +9,7 @@ interface SocketContextType {
   isConnected: boolean;
   matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND";
   findMatch: () => void;
+  cancelMatch:() => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -60,6 +61,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  const cancelMatch = () => {
+    if(socket){
+      setMatchmakingStatus("IDLE");
+      socket.emit("leave_matchmaking");
+    }
+  }
+
   const findMatch = () => {
     if (socket) {
       setMatchmakingStatus("SEARCHING");
@@ -68,7 +76,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, findMatch }}>
+    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, findMatch, cancelMatch }}>
       {children}
     </SocketContext.Provider>
   );
