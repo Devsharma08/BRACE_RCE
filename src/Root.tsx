@@ -15,18 +15,23 @@ import { SocketProvider } from './context/socketContext.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Login } from './features/auth/Login.tsx'
 import {Signup} from './features/auth/Signup.tsx'
+import type { SupportedLanguage, ExecutionResult } from './features/terminal/types'
+import {Battle} from './pages/Battle.tsx'
+
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 const Root = () => {
   const [filesData, setFilesData] = useState<FileEntry[]>([])
   const [code, setCode] = useState('')
-  const [language, setLanguage] = useState('javascript')
   const [testCases, setTestCases] = useState<TestCase[]>([])
   const [activeFile, setActiveFile] = useState('')
-  const [output, setOutput] = useState<unknown>(null)
   const [customInput, setCustomInput] = useState<string>('')
   const [customInputActive, setCustomInputActive] = useState<boolean>(false)
+    const [language, setLanguage] = useState<SupportedLanguage>('javascript')
+  // ...
+  const [output, setOutput] = useState<ExecutionResult | null>(null)
+
 
 
   // response context states
@@ -48,6 +53,8 @@ const Root = () => {
               <Route path='/signin' element={<Login/>}/>
               <Route path='/signup' element={<Signup/>}/>
               <Route path="/ds/:slug" element={<DataStructureDetail />} />
+              <Route path="/battle/:roomId" element={<Battle />} />
+
               <Route
                 path="terminal"
                 element={

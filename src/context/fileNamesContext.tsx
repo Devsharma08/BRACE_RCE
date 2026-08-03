@@ -6,6 +6,11 @@ export type FileEntry = {
     downloadUrl?: string;
     type?: string;
     path?: string;
+    isLocal?: boolean;
+    data_structure?: string;
+    difficulty_level?: string;
+    diffculty_level?: string; // (Legacy typo handler)
+    language?: string;
 }
 
 export type FileNamesContextType = {

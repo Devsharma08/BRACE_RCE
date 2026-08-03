@@ -7,6 +7,7 @@ import { useAuth } from '../../context/authContext';
 import axios from 'axios';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 
+import { backendURL } from '../../config/api';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -17,7 +18,7 @@ export const Login = () => {
   
   const navigate = useNavigate();
   const { checkAuth } = useAuth();
-
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaToken) {
@@ -29,7 +30,7 @@ export const Login = () => {
       setLoading(true);
       setError('');
       // Using withCredentials to ensure the cookie is saved
-      await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/signin`, {
+      await axios.post(`${backendURL}/auth/signin`, {
         email,
         password,
         captchaToken

@@ -1,4 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+
 import { io, Socket } from "socket.io-client";
 
 interface SocketContextType {
@@ -14,9 +17,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND">("IDLE");
+  const navigate = useNavigate();
 
   useEffect(() => {
-
     const newSocket = io("http://localhost:5000", {
       withCredentials: true,
     });
@@ -27,6 +30,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       console.log("🟢 Connected to PvP Server");
       setIsConnected(true);
     });
+
+    newSocket.on("connect_error", (err) => {
+      console.error("🔴 Socket Connection Error:", err.message);
+    });
+
 
     newSocket.on("disconnect", () => {
       console.log("🔴 Disconnected from PvP Server");
@@ -40,7 +48,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setMatchmakingStatus("FOUND");
       
       // We will redirect to the battle arena here soon!
-      alert(`MATCH FOUND! Room: ${data.roomName}`);
+      const res = confirm(`MATCH FOUND! Room: ${data.roomName}`);
+      if(res){
+        navigate(`/battle/${data.roomName}`);
+      }
+
     });
 
     return () => {

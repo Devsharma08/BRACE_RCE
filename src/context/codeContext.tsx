@@ -1,18 +1,19 @@
 import { createContext } from "react";
+import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 
 export type TestCase = { input: string; expectedOutput: string; problemId?: string };
 
 export type CodeContextType = {
     code: string;
-    language: string;
+    language: SupportedLanguage;
     setCode: (code: string) => void;
-    setLanguage: (language: string) => void;
+    setLanguage: (language: SupportedLanguage) => void;
     testCases: TestCase[];
     setTestCases: (testCases: TestCase[]) => void;
     activeFile: string;
-    output: unknown;
+    output: ExecutionResult | null;
     setActiveFile: (activeFile: string) => void;
-    setOutput: (output: unknown) => void;
+    setOutput: (output: ExecutionResult | null) => void;
     customInput: string;
     setCustomInput: (input: string) => void;
     customInputActive: boolean;
@@ -21,7 +22,7 @@ export type CodeContextType = {
 
 export const CodeContext = createContext<CodeContextType>({
     code: "",
-    language: "",
+    language: "javascript",
     setCode: () => {},
     setLanguage: () => {},
     testCases: [],
