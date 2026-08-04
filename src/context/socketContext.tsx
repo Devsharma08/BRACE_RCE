@@ -1,15 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
-
 import { io, Socket } from "socket.io-client";
 
 interface SocketContextType {
   socket: Socket | null;
   isConnected: boolean;
-  matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND";
+  matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND_PENDING";
+  pendingMatchId: string | null;
   findMatch: () => void;
-  cancelMatch:() => void;
+  cancelMatch: () => void;
+  acceptMatch: () => void;
+  declineMatch: () => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -17,14 +19,12 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND">("IDLE");
+  const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND_PENDING">("IDLE");
+  const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000", {
-      withCredentials: true,
-    });
-
+    const newSocket = io("http://localhost:5000", { withCredentials: true });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
@@ -32,41 +32,44 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(true);
     });
 
-    newSocket.on("connect_error", (err) => {
-      console.error("🔴 Socket Connection Error:", err.message);
-    });
-
-
     newSocket.on("disconnect", () => {
-      console.log("🔴 Disconnected from PvP Server");
       setIsConnected(false);
       setMatchmakingStatus("IDLE");
+      setPendingMatchId(null);
     });
 
-    // --- PVP MATCHMAKING EVENTS ---
-    newSocket.on("match_found", (data) => {
-      console.log("⚔️ MATCH FOUND!", data);
-      setMatchmakingStatus("FOUND");
-      
-      // We will redirect to the battle arena here soon!
-      const res = confirm(`MATCH FOUND! Room: ${data.roomName}`);
-      if(res){
-        navigate(`/battle/${data.roomName}?oid=${data.problemId}`);
-      }
+    // Both players found, waiting for accept
+    newSocket.on("match_found_pending", (data) => {
+      console.log("⚔️ MATCH FOUND PENDING!", data);
+      setPendingMatchId(data.matchId);
+      setMatchmakingStatus("FOUND_PENDING");
+    });
 
+    // Both players accepted, match is actually starting!
+    newSocket.on("match_starting", (data) => {
+      setMatchmakingStatus("IDLE");
+      setPendingMatchId(null);
+      navigate(`/battle/${data.roomName}?oid=${data.problemId}`);
+    });
+
+    // Someone declined or timed out
+    newSocket.on("match_declined", () => {
+      setMatchmakingStatus("IDLE");
+      setPendingMatchId(null);
+      alert("Match was declined or timed out.");
     });
 
     return () => {
       newSocket.disconnect();
     };
-  }, []);
+  }, [navigate]);
 
   const cancelMatch = () => {
-    if(socket){
+    if (socket) {
       setMatchmakingStatus("IDLE");
       socket.emit("leave_matchmaking");
     }
-  }
+  };
 
   const findMatch = () => {
     if (socket) {
@@ -75,8 +78,22 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const acceptMatch = () => {
+    if (socket && pendingMatchId) {
+      socket.emit("accept_match", pendingMatchId);
+    }
+  };
+
+  const declineMatch = () => {
+    if (socket && pendingMatchId) {
+      socket.emit("decline_match", pendingMatchId);
+      setMatchmakingStatus("IDLE");
+      setPendingMatchId(null);
+    }
+  };
+
   return (
-    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, findMatch, cancelMatch }}>
+    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, pendingMatchId, findMatch, cancelMatch, acceptMatch, declineMatch }}>
       {children}
     </SocketContext.Provider>
   );
@@ -84,8 +101,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
-  if (!context) {
-    throw new Error("useSocket must be used within a SocketProvider");
-  }
+  if (!context) throw new Error("useSocket must be used within a SocketProvider");
   return context;
 };

@@ -1,14 +1,22 @@
 import { Socket, Server } from "socket.io";
 import { prisma } from "../Lib/prisma.js";
 import jwt from "jsonwebtoken";
-import { log } from "node:console";
-import { captureRejectionSymbol } from "node:events";
 
 // IN-MEMORY QUEUE
 interface WaitingPlayer {
-    userId: string;
-    socketId: string;
+    userId: string ;
+    socketId: string ;
+    accepted:boolean ;
 }
+
+interface PendingMatch{
+    matchId:string ;
+    player1:WaitingPlayer ;
+    player2:WaitingPlayer ;
+    timeoutId:NodeJS.Timeout ;
+}
+
+const pendingMatches = new Map<string,PendingMatch>();
 
 const waitingQueue: WaitingPlayer[] = [];
 
@@ -76,13 +84,34 @@ export const initSocketServer = (io: Server) => {
             }
 
             // add to queue
-            waitingQueue.push({ userId, socketId: socket.id });
+            waitingQueue.push({ userId, socketId: socket.id,accepted:false });
 
             // check if we have enough players from the queue
             if (waitingQueue.length >= 2) {
                 const player1 = waitingQueue.shift()!;
                 const player2 = waitingQueue.shift()!;
                 console.log('Match found : ', player1.userId, " ", player2.userId);
+                const matchId = `pending-${Date.now()}` ;
+
+                // create a pending match that expires in 15 sec
+                const pendingMatch:PendingMatch = {
+                    matchId,
+                    player1,
+                    player2,
+                    timeoutId:setTimeout(()=>{
+                        if(pendingMatches.has(matchId)){
+                            io.to(player1.socketId).emit('match_declined',{message:'Match expired'}) ;
+                            io.to(player2.socketId).emit('match_declined',{message:'Match expired'}) ;
+                            pendingMatches.delete(matchId)
+                        }
+                    },15000)
+                }
+
+                pendingMatches.set(matchId,pendingMatch)
+
+                // notify players to accept
+                io.to(player1.socketId).emit('match_found_pending',{matchId})
+                io.to(player2.socketId).emit('match_found_pending',{matchId})
 
                 // fetch a random problem from the DB!
                 const problems = await prisma.problem.findMany({
@@ -137,6 +166,54 @@ export const initSocketServer = (io: Server) => {
             console.log(`User ${userId} joined room ${roomId}`)
         })
 
+        socket.on('accept_match',async(matchId:string)=>{
+            const match = pendingMatches.get(matchId);
+            if(!match) return ;
+            if(match.player1.userId === userId){
+                match.player1.accepted = true;
+            }
+
+            if(match.player2.userId===userId){
+                match.player2.accepted = true;
+            }
+
+            // check if both accepted
+            if(match.player1.accepted && match.player2.accepted){
+                clearTimeout(match.timeoutId);
+                pendingMatches.delete(matchId);
+
+               // Fetch a random problem from the DB!
+                const problems = await prisma.problem.findMany({ select:{id:true,github_oid:true} });
+                const randomProblems = problems.length > 0 ? problems[Math.floor(Math.random() * problems.length)] : null;
+                // Create DB event
+                const event = await prisma.event.create({
+                    data: {
+                        type: 'PUBLIC',
+                        status: 'IN_PROGRESS',
+                        startedAt: new Date(),
+                        commonProblemId: randomProblems?.id
+                    }
+                });
+                await prisma.userPersonalPerformance.createMany({
+                    data: [
+                        { userId: match.player1.userId, eventId: event.id, status: 'PENDING' },
+                        { userId: match.player2.userId, eventId: event.id, status: 'PENDING' }
+                    ]
+                });
+                const roomName = `room-${event.id}`;
+                const socket1 = io.sockets.sockets.get(match.player1.socketId);
+                const socket2 = io.sockets.sockets.get(match.player2.socketId);
+                socket1?.join(roomName);
+                socket2?.join(roomName);
+                io.to(roomName).emit("match_starting", { 
+                    eventId: event.id, 
+                    roomName, 
+                    problemId: randomProblems?.github_oid || "local-battle" 
+                });
+            }
+
+        })
+
         socket.on('leave_matchmaking',()=>{
             const index = waitingQueue.findIndex((p)=>p.userId === userId)
             if(index !== -1){
@@ -145,6 +222,16 @@ export const initSocketServer = (io: Server) => {
             }
         })
 
+        socket.on("decline_match", (matchId: string) => {
+            const match = pendingMatches.get(matchId);
+            if (match) {
+                clearTimeout(match.timeoutId);
+                pendingMatches.delete(matchId);
+                io.to(match.player1.socketId).emit("match_declined");
+                io.to(match.player2.socketId).emit("match_declined");
+            }
+        });
+
         socket.on('surrender_battle',(roomId:string)=>{
             console.log(`User ${userId} surrendered in room ${roomId}`)
             socket.to(roomId).emit('battle_update',{
@@ -152,8 +239,6 @@ export const initSocketServer = (io: Server) => {
                 progress:0,
                 result:"OPPONENT_SURRENDERED"
             })
-            
-
         })
 
         socket.on('battle_action', (data: { roomId: string, userId: string, status: string, progress: number }) => {

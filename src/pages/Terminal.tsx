@@ -19,6 +19,7 @@ import {
 } from "../features/terminal/executionOutput";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { ExecutionMode, FileContentResponse, SupportedLanguage } from "../features/terminal/types";
+import { NotesPanel } from "../components/ui/NotesPanel";
 const LOCAL_FILE_ID_PREFIX = "local-";
 const LOCAL_FILE_STORAGE_PREFIX = "localFile:";
 
@@ -425,6 +426,8 @@ const Terminal = () => {
       setIsCustomInputRun(false);
    };
 
+   const roomId = "terminal-page";
+
    const handleDeleteLocalFile = useCallback((oid: string) => {
       if (!oid) return;
 
@@ -500,6 +503,7 @@ const Terminal = () => {
                   <span className="truncate">SYS // TERMINAL_WORKSPACE</span>
                </div>
                <span className="truncate text-slate-500 uppercase">{filesLoading ? "SYNCING..." : activeFileName}</span>
+               <NotesPanel storageKey={`battle-${roomId}`} />
             </div>
 
             <div className='flex-1 min-h-0 relative'>

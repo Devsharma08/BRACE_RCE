@@ -5,7 +5,7 @@ import StickyFeatureShowcase from "../features/home/components/StickyFeatureShow
 import { useSocket } from "../context/socketContext";
 
 const Home = () => {
-  const { findMatch, matchmakingStatus, isConnected } = useSocket();
+  const { findMatch, matchmakingStatus, isConnected, acceptMatch, declineMatch,cancelMatch } = useSocket();
 
   return (
     <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6">
@@ -39,7 +39,7 @@ const Home = () => {
             <span>
               {matchmakingStatus === "IDLE" && "[ PvP: FIND MATCH ]"}
               {matchmakingStatus === "SEARCHING" && "[ SEARCHING... ]"}
-              {matchmakingStatus === "FOUND" && "[ MATCH FOUND! ]"}
+              {matchmakingStatus === "FOUND_PENDING" && "[ MATCH FOUND! ]"}
             </span>
             {matchmakingStatus === "SEARCHING" && (
               <span className="w-2 h-3.5 bg-rose-400 animate-ping shrink-0"></span>
@@ -58,6 +58,49 @@ const Home = () => {
 
         </div>
       </div>
+            {/* CANCEL SEARCH BUTTON */}
+      {matchmakingStatus === "SEARCHING" && (
+        <button 
+          onClick={cancelMatch}
+          className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 px-6 py-2 border border-rose-500/50 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-sm tracking-widest rounded-full backdrop-blur-md transition-all"
+        >
+          [ CANCEL SEARCH ]
+        </button>
+      )}
+
+      {/* MATCH ACCEPTANCE MODAL */}
+      {matchmakingStatus === "FOUND_PENDING" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+          <div className="flex flex-col items-center justify-center p-12 bg-[#0b0c0e] border border-cyan-500/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+            
+            {/* Radar Sweep Effect */}
+            <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,rgba(34,211,238,0)_0%,rgba(34,211,238,0.1)_100%)] animate-[spin_3s_linear_infinite]" />
+            <div className="absolute inset-0 border-[40px] border-[#0b0c0e] rounded-full scale-150" />
+            
+            <h2 className="font-mono text-3xl font-bold tracking-[0.2em] text-white mb-2 relative z-10 animate-pulse drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">
+              MATCH FOUND
+            </h2>
+            <p className="text-cyan-400/70 text-xs tracking-widest mb-10 relative z-10 font-mono">
+              AWAITING OPPONENT...
+            </p>
+
+            <div className="flex gap-4 w-full relative z-10">
+              <button 
+                onClick={declineMatch}
+                className="w-1/2 py-4 bg-rose-950/40 hover:bg-rose-900 border border-rose-500/50 text-rose-300 font-mono font-bold tracking-widest rounded-lg transition-all"
+              >
+                [ DECLINE ]
+              </button>
+              <button 
+                onClick={acceptMatch}
+                className="w-1/2 py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/80 hover:border-cyan-400 text-cyan-100 font-mono font-bold tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+              >
+                [ ACCEPT ]
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
