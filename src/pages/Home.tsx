@@ -3,9 +3,11 @@ import BentoGrid from "../features/home/components/BentoGrid";
 import HeroSection from "../features/home/components/HeroSection";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
 import { useSocket } from "../context/socketContext";
+import { useState } from "react";
 
 const Home = () => {
   const { findMatch, matchmakingStatus, isConnected, acceptMatch, declineMatch,cancelMatch } = useSocket();
+  const [difficulty,setDifficulty] = useState("ANY");
 
   return (
     <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6">
@@ -29,22 +31,37 @@ const Home = () => {
 
         {/* Right Side: Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          
-          {/* NEW PVP MATCHMAKING BUTTON */}
-          <button 
-            onClick={findMatch}
-            disabled={!isConnected || matchmakingStatus !== "IDLE"}
-            className="group relative inline-flex items-center justify-center gap-2 border border-rose-500/35 bg-rose-950/10 hover:border-rose-400 hover:text-rose-400 hover:bg-rose-950/20 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-rose-400 transition-all duration-300 cursor-pointer select-none rounded-xl w-full sm:w-auto text-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span>
-              {matchmakingStatus === "IDLE" && "[ PvP: FIND MATCH ]"}
-              {matchmakingStatus === "SEARCHING" && "[ SEARCHING... ]"}
-              {matchmakingStatus === "FOUND_PENDING" && "[ MATCH FOUND! ]"}
-            </span>
-            {matchmakingStatus === "SEARCHING" && (
-              <span className="w-2 h-3.5 bg-rose-400 animate-ping shrink-0"></span>
-            )}
-          </button>
+                  {/* NEW PVP MATCHMAKING BUTTON & FILTER */}
+          <div className="flex gap-2 w-full sm:w-auto">
+            {/* Difficulty Selector */}
+            <select 
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              disabled={matchmakingStatus !== "IDLE"}
+              className="bg-black/40 border border-slate-700/50 text-slate-300 font-mono text-xs font-bold tracking-widest px-4 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-50"
+            >
+              <option value="ANY">ALL LEVELS</option>
+              <option value="EASY">EASY</option>
+              <option value="MEDIUM">MEDIUM</option>
+              <option value="HARD">HARD</option>
+            </select>
+
+            <button 
+              onClick={() => findMatch(difficulty)}
+              disabled={!isConnected || matchmakingStatus !== "IDLE"}
+              className="group relative inline-flex items-center justify-center gap-2 border border-rose-500/35 bg-rose-950/10 hover:border-rose-400 hover:text-rose-400 hover:bg-rose-950/20 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-rose-400 transition-all duration-300 cursor-pointer select-none rounded-xl w-full sm:w-auto text-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>
+                {matchmakingStatus === "IDLE" && "[ PvP: FIND MATCH ]"}
+                {matchmakingStatus === "SEARCHING" && "[ SEARCHING... ]"}
+                {matchmakingStatus === "FOUND_PENDING" && "[ MATCH FOUND! ]"}
+              </span>
+              {matchmakingStatus === "SEARCHING" && (
+                <span className="w-2 h-3.5 bg-rose-400 animate-ping shrink-0"></span>
+              )}
+            </button>
+          </div>
+
 
           {/* Existing Terminal Button */}
           <Link 

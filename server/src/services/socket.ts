@@ -7,6 +7,7 @@ interface WaitingPlayer {
     userId: string ;
     socketId: string ;
     accepted:boolean ;
+    difficulty:string ;
 }
 
 interface PendingMatch{
@@ -14,6 +15,7 @@ interface PendingMatch{
     player1:WaitingPlayer ;
     player2:WaitingPlayer ;
     timeoutId:NodeJS.Timeout ;
+    targetDifficulty:string;
 }
 
 const pendingMatches = new Map<string,PendingMatch>();
@@ -75,91 +77,63 @@ export const initSocketServer = (io: Server) => {
         console.log(`🔌 User Connected: ${userId} (Socket ID: ${socket.id})`);
 
         // PVP matching events
-        socket.on("join_matchmaking", async () => {
-            console.log(`User ${userId} joined the match making queue`)
+        socket.on("join_matchmaking", async (difficulty = "ANY") => {
+            console.log(`User ${userId} joined queue for ${difficulty}`);
 
-            // prevent users from joining multiple times
-            if (waitingQueue.some(p => p.userId == userId)) {
-                return;
+            if (waitingQueue.some(p => p.userId === userId)) return;
+            waitingQueue.push({ userId, socketId: socket.id, accepted: false, difficulty });
+
+            // 1. Find a compatible match!
+            let p1Index = -1, p2Index = -1;
+            for (let i = 0; i < waitingQueue.length; i++) {
+                for (let j = i + 1; j < waitingQueue.length; j++) {
+                    const p1 = waitingQueue[i];
+                    const p2 = waitingQueue[j];
+                    
+                    // Match if they want the same difficulty OR if either selected "ANY"
+                    if (p1.difficulty === "ANY" || p2.difficulty === "ANY" || p1.difficulty === p2.difficulty) {
+                        p1Index = i;
+                        p2Index = j;
+                        break;
+                    }
+                }
+                if (p1Index !== -1) break;
             }
 
-            // add to queue
-            waitingQueue.push({ userId, socketId: socket.id,accepted:false });
+            // 2. If compatible match found
+            if (p1Index !== -1 && p2Index !== -1) {
+                const player2 = waitingQueue.splice(p2Index, 1)[0];
+                const player1 = waitingQueue.splice(p1Index, 1)[0];
+                console.log('Compatible Match found : ', player1.userId, " ", player2.userId);
 
-            // check if we have enough players from the queue
-            if (waitingQueue.length >= 2) {
-                const player1 = waitingQueue.shift()!;
-                const player2 = waitingQueue.shift()!;
-                console.log('Match found : ', player1.userId, " ", player2.userId);
-                const matchId = `pending-${Date.now()}` ;
+                // Determine final problem difficulty
+                let targetDifficulty = "EASY"; // Fallback
+                if (player1.difficulty !== "ANY") targetDifficulty = player1.difficulty;
+                else if (player2.difficulty !== "ANY") targetDifficulty = player2.difficulty;
+                else targetDifficulty = ["EASY", "MEDIUM", "HARD"][Math.floor(Math.random() * 3)];
 
-                // create a pending match that expires in 15 sec
-                const pendingMatch:PendingMatch = {
+                const matchId = `pending-${Date.now()}`;
+                
+                const pendingMatch: PendingMatch = {
                     matchId,
                     player1,
                     player2,
-                    timeoutId:setTimeout(()=>{
+                    targetDifficulty, // Store it here!
+                    timeoutId: setTimeout(() => {
                         if(pendingMatches.has(matchId)){
-                            io.to(player1.socketId).emit('match_declined',{message:'Match expired'}) ;
-                            io.to(player2.socketId).emit('match_declined',{message:'Match expired'}) ;
-                            pendingMatches.delete(matchId)
+                            io.to(player1.socketId).emit('match_declined', { message:'Match expired' });
+                            io.to(player2.socketId).emit('match_declined', { message:'Match expired' });
+                            pendingMatches.delete(matchId);
                         }
-                    },15000)
-                }
+                    }, 15000)
+                };
 
-                pendingMatches.set(matchId,pendingMatch)
-
-                // notify players to accept
-                io.to(player1.socketId).emit('match_found_pending',{matchId})
-                io.to(player2.socketId).emit('match_found_pending',{matchId})
-
-                // fetch a random problem from the DB!
-                const problems = await prisma.problem.findMany({
-                    select:{id:true,github_oid:true}
-                })
-                
-                const randomProblems = problems.length > 0 ? problems[Math.floor(Math.random() * problems.length)] : null;
-
-                // create a event in db
-                const event = await prisma.event.create({
-                    data: {
-                        type: 'PUBLIC',
-                        status: 'IN_PROGRESS',
-                        startedAt: new Date(),
-                        commonProblemId:randomProblems?.id
-                    }
-                })
-
-                // create performance record for both players
-                await prisma.userPersonalPerformance.createMany({
-                    data: [
-                        { userId: player1.userId, eventId: event.id, status: 'PENDING' },
-                        { userId: player2.userId, eventId: event.id, status: 'PENDING' }
-                    ]
-                })
-
-                const roomName = `room-${event.id}`;
-
-                // both players join the same room
-                const socket1 = io.sockets.sockets.get(player1.socketId);
-                const socket2 = io.sockets.sockets.get(player2.socketId);
-
-                if (!socket1 || !socket2) {
-                    console.log("One of the sockets is missing. Starting new match making queue...");
-                    // @TODO: Implement retry logic or notify users.
-                    return;
-                }
-
-                // add them to the room
-                socket1.join(roomName);
-                socket2.join(roomName);
-
-                // notify them of match
-                io.to(roomName).emit("match_found", { eventId: event.id, roomName, message: "Match Found",problemId:randomProblems?.github_oid || "local-battle" });
-
+                pendingMatches.set(matchId, pendingMatch);
+                io.to(player1.socketId).emit('match_found_pending', { matchId });
+                io.to(player2.socketId).emit('match_found_pending', { matchId });
             }
-
         });
+
 
         socket.on('join_battle', (roomId: string) => {
             socket.join(roomId);
@@ -183,7 +157,7 @@ export const initSocketServer = (io: Server) => {
                 pendingMatches.delete(matchId);
 
                // Fetch a random problem from the DB!
-                const problems = await prisma.problem.findMany({ select:{id:true,github_oid:true} });
+                const problems = await prisma.problem.findMany({ where:{difficulty_level:match.targetDifficulty as any}, select:{id:true,github_oid:true} });
                 const randomProblems = problems.length > 0 ? problems[Math.floor(Math.random() * problems.length)] : null;
                 // Create DB event
                 const event = await prisma.event.create({

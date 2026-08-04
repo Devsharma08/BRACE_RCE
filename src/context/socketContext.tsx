@@ -8,7 +8,7 @@ interface SocketContextType {
   isConnected: boolean;
   matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND_PENDING";
   pendingMatchId: string | null;
-  findMatch: () => void;
+  findMatch: (difficulty?:string) => void;
   cancelMatch: () => void;
   acceptMatch: () => void;
   declineMatch: () => void;
@@ -71,10 +71,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const findMatch = () => {
+  const findMatch = (difficulty:string = "ANY") => {
     if (socket) {
       setMatchmakingStatus("SEARCHING");
-      socket.emit("join_matchmaking");
+      socket.emit("join_matchmaking",difficulty);
     }
   };
 
