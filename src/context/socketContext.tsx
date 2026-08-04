@@ -12,6 +12,7 @@ interface SocketContextType {
   cancelMatch: () => void;
   acceptMatch: () => void;
   declineMatch: () => void;
+  activeBattleRoom:{roomId:string,problemId:string} | null ;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -21,6 +22,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND_PENDING">("IDLE");
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
+  const [activeBattleRoom, setActiveBattleRoom] = useState<{ roomId: string, problemId: string } | null>(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,9 +31,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("🟢 Connected to PvP Server");
+      console.log("Connected to Socket.IO server!");
       setIsConnected(true);
+      newSocket.emit("check_active_battle");
     });
+
+    newSocket.on("active_battle_found",(data)=>{
+      setActiveBattleRoom(data);
+    })
 
     newSocket.on("disconnect", () => {
       setIsConnected(false);
@@ -51,6 +59,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setPendingMatchId(null);
       navigate(`/battle/${data.roomName}?oid=${data.problemId}`);
     });
+
 
     // Someone declined or timed out
     newSocket.on("match_declined", () => {
@@ -93,7 +102,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected, matchmakingStatus, pendingMatchId, findMatch, cancelMatch, acceptMatch, declineMatch }}>
+    <SocketContext.Provider value={{ socket, activeBattleRoom, isConnected , matchmakingStatus, pendingMatchId, findMatch, cancelMatch, acceptMatch, declineMatch }}>
       {children}
     </SocketContext.Provider>
   );

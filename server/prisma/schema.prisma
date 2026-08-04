@@ -116,7 +116,7 @@ model UserPersonalPerformance {
   // Metrics
   questionsSolved Int     @default(0)
   timeTakenMs     Int?    // Time taken to solve
-  status          String  @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT
+  status          String  @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT , SURRENDER
   score           Int     @default(0)
   
   createdAt       DateTime @default(now())

@@ -135,10 +135,85 @@ export const initSocketServer = (io: Server) => {
         });
 
 
-        socket.on('join_battle', (roomId: string) => {
+        socket.on('join_battle', async (roomId: string) => {
             socket.join(roomId);
             console.log(`User ${userId} joined room ${roomId}`)
+             try {
+            const eventId = roomId.replace('room-','')
+            const event  = await prisma.event.findUnique({ where:{ id :eventId}})
+
+            if(!event) return;
+
+            if(event && event.startedAt && event.status === 'IN_PROGRESS'){
+                // Lazy Expiration Check: If more than 10 minutes (600,000 ms) have passed
+                const timePassed = Date.now() - new Date(event.startedAt).getTime();
+                if (timePassed >= 600 * 1000) {
+                    await prisma.event.update({
+                        where: { id: eventId },
+                        data: {
+                            status: 'FINISHED',
+                            finishedAt: new Date(),
+                            performances: { updateMany: { where: { eventId }, data: { status: 'TIMEOUT' } } }
+                        }
+                    }).catch(e => console.error(e));
+                    return; // Don't emit state, it's over!
+                }
+
+                socket.emit("battle_state",{
+                    startedAt:event.startedAt,
+                    status:event.status
+                })
+            }
+            
+        } catch (error) {
+            console.log('Error fetching event for battle state:',error);
+        }
         })
+
+        socket.on("check_active_battle",async()=>{
+            try {
+                const activePerformance = await prisma.userPersonalPerformance.findFirst({
+                    where:{
+                        userId: userId,
+                        status: 'PENDING',
+                        event: {
+                            status: 'IN_PROGRESS'
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    include:{
+                        event:{
+                            include:{commonProblem:true}
+                        }
+                    }
+                })
+                if(activePerformance && activePerformance.event.status === 'IN_PROGRESS'){
+                    // Lazy Expiration Check: Auto-cleanup zombie matches!
+                    const startedAt = activePerformance.event.startedAt;
+                    if (startedAt && (Date.now() - new Date(startedAt).getTime() >= 600 * 1000)) {
+                        console.log(`Auto-expiring zombie match ${activePerformance.eventId} for user ${userId}`);
+                        await prisma.event.update({
+                            where: { id: activePerformance.eventId },
+                            data: {
+                                status: 'FINISHED',
+                                finishedAt: new Date(),
+                                performances: { updateMany: { where: { eventId: activePerformance.eventId }, data: { status: 'TIMEOUT' } } }
+                            }
+                        }).catch(e => console.error(e));
+                        return; // Do NOT emit active_battle_found, let them start a new one!
+                    }
+
+                    console.log('Active battle found for user:',userId)
+                    socket.emit('active_battle_found',{
+                        roomId:`room-${activePerformance.eventId}`,
+                        problemId:activePerformance.event.commonProblem?.github_oid || "local-battle"
+                    })
+                }
+            } catch (error) {
+                console.log('Error fetching active battle:',error);   
+            }
+        })
+       
 
         socket.on('accept_match',async(matchId:string)=>{
             const match = pendingMatches.get(matchId);
@@ -206,21 +281,69 @@ export const initSocketServer = (io: Server) => {
             }
         });
 
-        socket.on('surrender_battle',(roomId:string)=>{
-            console.log(`User ${userId} surrendered in room ${roomId}`)
+        socket.on('surrender_battle', async (roomId: string) => {
+            const eventId = roomId.replace("room-", "");
+            await prisma.event.update({
+                where: { id: eventId },
+                data: { status: 'FINISHED', finishedAt: new Date() }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: userId },
+                data: { status: 'SURRENDER' }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: { not: userId } },
+                data: { status: 'PASSED' }
+            }).catch(e => console.error(e));
+
             socket.to(roomId).emit('battle_update',{
                 status:'Opponent Surrendered! \n You Win 🏆',
                 progress:0,
                 result:"OPPONENT_SURRENDERED"
             })
-        })
+        });
 
-        socket.on('battle_action', (data: { roomId: string, userId: string, status: string, progress: number }) => {
+        socket.on('battle_action', async (data: { roomId: string, userId: string, status: string, progress: number, result?: string }) => {
             if (data.roomId) {
+                if (data.result) {
+                    const eventId = data.roomId.replace("room-", "");
+                    
+                    let senderStatus = 'FAILED';
+                    let receiverStatus = 'PASSED';
+                    
+                    if (data.result === 'OPPONENT_WON') {
+                        // The sender passed all tests, meaning the sender won and receiver lost.
+                        senderStatus = 'PASSED';
+                        receiverStatus = 'FAILED';
+                    } else if (data.result === 'OPPONENT_SURRENDERED') {
+                        // The sender timed out or abandoned.
+                        senderStatus = data.status.includes("Time's Up") ? 'TIMEOUT' : 'SURRENDER';
+                        receiverStatus = 'PASSED';
+                    }
+
+                    await prisma.event.update({
+                        where: { id: eventId },
+                        data: { status: 'FINISHED', finishedAt: new Date() }
+                    }).catch(e => console.error(e));
+
+                    await prisma.userPersonalPerformance.updateMany({
+                        where: { eventId: eventId, userId: userId },
+                        data: { status: senderStatus }
+                    }).catch(e => console.error(e));
+
+                    await prisma.userPersonalPerformance.updateMany({
+                        where: { eventId: eventId, userId: { not: userId } },
+                        data: { status: receiverStatus }
+                    }).catch(e => console.error(e));
+                }
+
                 // Broadcast the action to the other player in the room
                 socket.to(data.roomId).emit('battle_update', {
                     status: data.status,
-                    progress: data.progress
+                    progress: data.progress,
+                    result: data.result
                 });
             }
         });
