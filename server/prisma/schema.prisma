@@ -19,6 +19,10 @@ model User {
   
   performances UserPersonalPerformance[]
 
+  // friends system (self-relation)
+  friends User[] @relation("UserFriends")
+  friendOf User[] @relation("UserFriends")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -37,7 +41,7 @@ model Problem {
   id                 String     @id @default(uuid())
   name               String
   problem_number     Int        @unique
-  github_oid         String     @unique // Link to your GitHub file structure
+  github_oid         String?     @unique // Link to your GitHub file structure
   problem_definition String     @db.Text
   problem_hints      String[]
   difficulty_level   Level
@@ -47,6 +51,11 @@ model Problem {
   
   commonEvents       Event[]
   performances       UserPersonalPerformance[]
+
+  timeLimitMs Int? @default(600000)
+
+  // playlist relation (connects to event)
+  events Event[] @relation("EventProblems")
   
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -94,6 +103,14 @@ model Event {
   
   // Participants and their performances
   performances UserPersonalPerformance[]
+
+  // create room support
+  roomCode String? @unique 
+  password String?
+  maxUsers Int @default(2)
+
+  // playlist relation (connects to problem)
+  problems Problem[] @relation("EventProblems")
   
   startedAt   DateTime?
   finishedAt  DateTime?

@@ -1,27 +1,47 @@
 import { Socket, Server } from "socket.io";
 import { prisma } from "../Lib/prisma.js";
 import jwt from "jsonwebtoken";
+import { connect } from "node:http2";
 
 // IN-MEMORY QUEUE
 interface WaitingPlayer {
-    userId: string ;
-    socketId: string ;
-    accepted:boolean ;
-    difficulty:string ;
+    userId: string;
+    socketId: string;
+    accepted: boolean;
+    difficulty: string;
 }
 
-interface PendingMatch{
-    matchId:string ;
-    player1:WaitingPlayer ;
-    player2:WaitingPlayer ;
-    timeoutId:NodeJS.Timeout ;
-    targetDifficulty:string;
+interface PendingMatch {
+    matchId: string;
+    player1: WaitingPlayer;
+    player2: WaitingPlayer;
+    timeoutId: NodeJS.Timeout;
+    targetDifficulty: string;
 }
 
-const pendingMatches = new Map<string,PendingMatch>();
+interface CustomLobby {
+    hostId: string;
+    users: string[];
+    maxUsers: number;
+    password?: string;
+    targetDifficulty: string;
+    problemsIds: string[];
+    expiresAt: number;
+}
+
+const LOBBY_TTL_MS = 15 * 60 * 1000; // 15 min constraint
+
+const activeLobbies = new Map<string, CustomLobby>();
+
+const pendingMatches = new Map<string, PendingMatch>();
 
 const waitingQueue: WaitingPlayer[] = [];
 
+
+// quick helper function to generate a 6-digit code
+function generateRoomCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
 // Verify the jwt token
 const verifyToken = (token: string) => {
@@ -76,6 +96,19 @@ export const initSocketServer = (io: Server) => {
         const userId = socket.data.userId;
         console.log(`🔌 User Connected: ${userId} (Socket ID: ${socket.id})`);
 
+        // garbage collector to cleanup the abandoned connection lobbies
+        setInterval(() => {
+            const now = Date.now();
+            for (const [code, lobby] of activeLobbies.entries()) {
+                if (now > lobby.expiresAt) {
+                    io.to(`lobby-${code}`).emit('lobby_error', "Lobby expired due to inactivity!");
+                    activeLobbies.delete(code);
+                    console.log(`Cleaned up stale lobby ${code} due to inactivity`);
+                }
+            }
+        }, 60000); // checks every 60 seconds
+
+
         // PVP matching events
         socket.on("join_matchmaking", async (difficulty = "ANY") => {
             console.log(`User ${userId} joined queue for ${difficulty}`);
@@ -89,7 +122,7 @@ export const initSocketServer = (io: Server) => {
                 for (let j = i + 1; j < waitingQueue.length; j++) {
                     const p1 = waitingQueue[i];
                     const p2 = waitingQueue[j];
-                    
+
                     // Match if they want the same difficulty OR if either selected "ANY"
                     if (p1.difficulty === "ANY" || p2.difficulty === "ANY" || p1.difficulty === p2.difficulty) {
                         p1Index = i;
@@ -113,16 +146,16 @@ export const initSocketServer = (io: Server) => {
                 else targetDifficulty = ["EASY", "MEDIUM", "HARD"][Math.floor(Math.random() * 3)];
 
                 const matchId = `pending-${Date.now()}`;
-                
+
                 const pendingMatch: PendingMatch = {
                     matchId,
                     player1,
                     player2,
                     targetDifficulty, // Store it here!
                     timeoutId: setTimeout(() => {
-                        if(pendingMatches.has(matchId)){
-                            io.to(player1.socketId).emit('match_declined', { message:'Match expired' });
-                            io.to(player2.socketId).emit('match_declined', { message:'Match expired' });
+                        if (pendingMatches.has(matchId)) {
+                            io.to(player1.socketId).emit('match_declined', { message: 'Match expired' });
+                            io.to(player2.socketId).emit('match_declined', { message: 'Match expired' });
                             pendingMatches.delete(matchId);
                         }
                     }, 15000)
@@ -134,46 +167,166 @@ export const initSocketServer = (io: Server) => {
             }
         });
 
+        // ------------------------------------
+        // CUSTOM MULTIPLAYER LOOBIES
+        // ------------------------------------
+
+        // HOST CREATES A ROOM
+        socket.on('create_custom_room', async (data: {
+            maxUsers: number,
+            password?: string,
+            difficulty: string,
+            problemsIds?: string[],
+        }) => {
+            const roomCode = generateRoomCode();
+            activeLobbies.set(roomCode, {
+                hostId: userId,
+                users: [userId],
+                maxUsers: data.maxUsers || 2,
+                password: data.password,
+                targetDifficulty: data.difficulty || 'ANY',
+                problemsIds: data.problemsIds || [],
+                expiresAt: Date.now() + LOBBY_TTL_MS // assign connection constraint
+            })
+
+            socket.join(`lobby-${roomCode}`);
+
+            Socket.emit('custom_room_created', {
+                roomCode,
+                isHost: true,
+                currentUsers: 1,
+                maxUsers: data.maxUsers || 2,
+                difficulty: data.difficulty || 'ANY',
+            })
+        })
+
+        // PLAYERS JOIN VIA CODE
+        socket.on('join_custom_room', (data: {
+            roomCode: string, password?: string
+        }) => {
+            const lobby = activeLobbies.get(data.roomCode.toUpperCase());
+
+            if (!lobby) return socket.emit(`lobby_error`, `Lobby not found!`)
+
+            if (lobby.password && lobby.password !== data.password) return socket.emit('lobby_error', "Incorrect Password!");
+
+            if (lobby.users.length >= lobby.maxUsers) return socket.emit('lobby_error', "Lobby is full!");
+
+            if (lobby.users.includes(userId)) return socket.emit('lobby_error', "You are already in this lobby!");
+
+            lobby.users.push(userId);
+            socket.join(`lobby-${data.roomCode}`);
+
+            io.to(`lobby-${data.roomCode}`).emit('lobby_updated',{
+                currentUsers:lobby.users.length,
+                maxUsers:lobby.maxUsers
+            })
+
+        })
+
+        // HOST STARTS THE MATCH
+        socket.on('start_custom_match',async(roomCode:string)=>{
+            const lobby = activeLobbies.get(roomCode);
+            if(!lobby || lobby.hostId !== userId) return ;
+
+
+            let selectedProblemIds = lobby.problemsIds;
+
+            // if no custom questions were provided,pick a random as a fallback 
+            if(!selectedProblemIds || selectedProblemIds.length === 0){
+                const problems = await prisma.problem.findMany({
+                    where:lobby.targetDifficulty === 'ANY' ? {} : {
+                            difficulty_level:lobby.targetDifficulty as any
+                    },
+                    select:{id:true}
+                });
+
+                if(problems.length > 0 ){
+                    selectedProblemIds = [problems[Math.floor(Math.random()*problems.length)].id];
+
+                }
+            }
+
+            // create event and connect the playlist
+            const event = await prisma.event.create({
+                data:{
+                    type:"FRIENDS",
+                    status:"IN_PROGRESS",
+                    startedAt:new Date(),
+                    roomCode:roomCode,
+                    maxUsers:lobby.maxUsers,
+                    password:lobby.password,
+                    problems:{
+                        connect:selectedProblemIds.map((id)=>({id})),
+                    },
+                    performances:{
+                        create:lobby.users.map(uId=>({
+                            userId:uId,
+                            status:"PENDING"
+                        }))
+                    },
+                    include:{problems:true}
+                }
+            })
+
+            const firstProblem = event.problems[0];
+
+            // route everyone to the battle arena!
+            io.to(`lobby-${roomCode}`).emit('custom_match_started', {
+                roomId: `room-${event.id}`,
+                problemId: firstProblem?.github_oid || "local-battle",
+                timeLimitMs: firstProblem?.timeLimitMs || 600000
+            });
+            activeLobbies.delete(roomCode);
+
+            // clean up the lobby after 5 minutes
+            setTimeout(()=>{
+                activeLobbies.delete(roomCode);
+                io.to(`lobby-${roomCode}`).emit('lobby_ended');
+            },LOBBY_TTL_MS);
+
+        })
+
 
         socket.on('join_battle', async (roomId: string) => {
             socket.join(roomId);
             console.log(`User ${userId} joined room ${roomId}`)
-             try {
-            const eventId = roomId.replace('room-','')
-            const event  = await prisma.event.findUnique({ where:{ id :eventId}})
+            try {
+                const eventId = roomId.replace('room-', '')
+                const event = await prisma.event.findUnique({ where: { id: eventId } })
 
-            if(!event) return;
+                if (!event) return;
 
-            if(event && event.startedAt && event.status === 'IN_PROGRESS'){
-                // Lazy Expiration Check: If more than 10 minutes (600,000 ms) have passed
-                const timePassed = Date.now() - new Date(event.startedAt).getTime();
-                if (timePassed >= 600 * 1000) {
-                    await prisma.event.update({
-                        where: { id: eventId },
-                        data: {
-                            status: 'FINISHED',
-                            finishedAt: new Date(),
-                            performances: { updateMany: { where: { eventId }, data: { status: 'TIMEOUT' } } }
-                        }
-                    }).catch(e => console.error(e));
-                    return; // Don't emit state, it's over!
+                if (event && event.startedAt && event.status === 'IN_PROGRESS') {
+                    // Lazy Expiration Check: If more than 10 minutes (600,000 ms) have passed
+                    const timePassed = Date.now() - new Date(event.startedAt).getTime();
+                    if (timePassed >= 600 * 1000) {
+                        await prisma.event.update({
+                            where: { id: eventId },
+                            data: {
+                                status: 'FINISHED',
+                                finishedAt: new Date(),
+                                performances: { updateMany: { where: { eventId }, data: { status: 'TIMEOUT' } } }
+                            }
+                        }).catch(e => console.error(e));
+                        return; // Don't emit state, it's over!
+                    }
+
+                    socket.emit("battle_state", {
+                        startedAt: event.startedAt,
+                        status: event.status
+                    })
                 }
 
-                socket.emit("battle_state",{
-                    startedAt:event.startedAt,
-                    status:event.status
-                })
+            } catch (error) {
+                console.log('Error fetching event for battle state:', error);
             }
-            
-        } catch (error) {
-            console.log('Error fetching event for battle state:',error);
-        }
         })
 
-        socket.on("check_active_battle",async()=>{
+        socket.on("check_active_battle", async () => {
             try {
                 const activePerformance = await prisma.userPersonalPerformance.findFirst({
-                    where:{
+                    where: {
                         userId: userId,
                         status: 'PENDING',
                         event: {
@@ -181,13 +334,13 @@ export const initSocketServer = (io: Server) => {
                         }
                     },
                     orderBy: { createdAt: 'desc' },
-                    include:{
-                        event:{
-                            include:{commonProblem:true}
+                    include: {
+                        event: {
+                            include: { commonProblem: true }
                         }
                     }
                 })
-                if(activePerformance && activePerformance.event.status === 'IN_PROGRESS'){
+                if (activePerformance && activePerformance.event.status === 'IN_PROGRESS') {
                     // Lazy Expiration Check: Auto-cleanup zombie matches!
                     const startedAt = activePerformance.event.startedAt;
                     if (startedAt && (Date.now() - new Date(startedAt).getTime() >= 600 * 1000)) {
@@ -203,36 +356,36 @@ export const initSocketServer = (io: Server) => {
                         return; // Do NOT emit active_battle_found, let them start a new one!
                     }
 
-                    console.log('Active battle found for user:',userId)
-                    socket.emit('active_battle_found',{
-                        roomId:`room-${activePerformance.eventId}`,
-                        problemId:activePerformance.event.commonProblem?.github_oid || "local-battle"
+                    console.log('Active battle found for user:', userId)
+                    socket.emit('active_battle_found', {
+                        roomId: `room-${activePerformance.eventId}`,
+                        problemId: activePerformance.event.commonProblem?.github_oid || "local-battle"
                     })
                 }
             } catch (error) {
-                console.log('Error fetching active battle:',error);   
+                console.log('Error fetching active battle:', error);
             }
         })
-       
 
-        socket.on('accept_match',async(matchId:string)=>{
+
+        socket.on('accept_match', async (matchId: string) => {
             const match = pendingMatches.get(matchId);
-            if(!match) return ;
-            if(match.player1.userId === userId){
+            if (!match) return;
+            if (match.player1.userId === userId) {
                 match.player1.accepted = true;
             }
 
-            if(match.player2.userId===userId){
+            if (match.player2.userId === userId) {
                 match.player2.accepted = true;
             }
 
             // check if both accepted
-            if(match.player1.accepted && match.player2.accepted){
+            if (match.player1.accepted && match.player2.accepted) {
                 clearTimeout(match.timeoutId);
                 pendingMatches.delete(matchId);
 
-               // Fetch a random problem from the DB!
-                const problems = await prisma.problem.findMany({ where:{difficulty_level:match.targetDifficulty as any}, select:{id:true,github_oid:true} });
+                // Fetch a random problem from the DB!
+                const problems = await prisma.problem.findMany({ where: { difficulty_level: match.targetDifficulty as any }, select: { id: true, github_oid: true } });
                 const randomProblems = problems.length > 0 ? problems[Math.floor(Math.random() * problems.length)] : null;
                 // Create DB event
                 const event = await prisma.event.create({
@@ -254,19 +407,19 @@ export const initSocketServer = (io: Server) => {
                 const socket2 = io.sockets.sockets.get(match.player2.socketId);
                 socket1?.join(roomName);
                 socket2?.join(roomName);
-                io.to(roomName).emit("match_starting", { 
-                    eventId: event.id, 
-                    roomName, 
-                    problemId: randomProblems?.github_oid || "local-battle" 
+                io.to(roomName).emit("match_starting", {
+                    eventId: event.id,
+                    roomName,
+                    problemId: randomProblems?.github_oid || "local-battle"
                 });
             }
 
         })
 
-        socket.on('leave_matchmaking',()=>{
-            const index = waitingQueue.findIndex((p)=>p.userId === userId)
-            if(index !== -1){
-                waitingQueue.splice(index,1)
+        socket.on('leave_matchmaking', () => {
+            const index = waitingQueue.findIndex((p) => p.userId === userId)
+            if (index !== -1) {
+                waitingQueue.splice(index, 1)
                 console.log(`User ${userId} left the matchmaking queue`)
             }
         })
@@ -298,10 +451,10 @@ export const initSocketServer = (io: Server) => {
                 data: { status: 'PASSED' }
             }).catch(e => console.error(e));
 
-            socket.to(roomId).emit('battle_update',{
-                status:'Opponent Surrendered! \n You Win 🏆',
-                progress:0,
-                result:"OPPONENT_SURRENDERED"
+            socket.to(roomId).emit('battle_update', {
+                status: 'Opponent Surrendered! \n You Win 🏆',
+                progress: 0,
+                result: "OPPONENT_SURRENDERED"
             })
         });
 
@@ -309,10 +462,10 @@ export const initSocketServer = (io: Server) => {
             if (data.roomId) {
                 if (data.result) {
                     const eventId = data.roomId.replace("room-", "");
-                    
+
                     let senderStatus = 'FAILED';
                     let receiverStatus = 'PASSED';
-                    
+
                     if (data.result === 'OPPONENT_WON') {
                         // The sender passed all tests, meaning the sender won and receiver lost.
                         senderStatus = 'PASSED';
