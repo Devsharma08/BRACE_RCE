@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import { executeRouter } from "./routes/execute.js";
 import { githubRouter } from "./routes/github.js";
 import {authRouter} from "./routes/auth.js";
+import { friendsRouter } from "./routes/friends.js";
 
 export const createApp = (): Express => {
   const app = express();
@@ -27,7 +28,9 @@ export const createApp = (): Express => {
   app.use("/api/execute", executeRouter);
   app.use("/api/github", githubRouter);
   app.use("/api/auth",authRouter);
+  app.use("/api/friends",friendsRouter);
 
+  
   app.get("/health", (_req: Request, res: Response) => {
     console.log("Health Check");
     res.send("Everything's Good!");

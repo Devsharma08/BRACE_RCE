@@ -8,11 +8,24 @@ interface SocketContextType {
   isConnected: boolean;
   matchmakingStatus: "IDLE" | "SEARCHING" | "FOUND_PENDING";
   pendingMatchId: string | null;
-  findMatch: (difficulty?:string) => void;
+  findMatch: (difficulty?: string) => void;
   cancelMatch: () => void;
   acceptMatch: () => void;
   declineMatch: () => void;
-  activeBattleRoom:{roomId:string,problemId:string} | null ;
+  activeBattleRoom: { roomId: string; problemId: string } | null;
+  customLobby: CustomLobbyState | null;
+  createCustomRoom:(maxUsers:number,password?:string,difficulty?:string,problemIds?:string[]) => void;
+  joinCustomRoom:()=>void;
+  startCustomMatch:() => void;
+  leaveCustomMatch:() => void;
+}
+
+export interface CustomLobbyState {
+  roomCode: string;
+  isHost: boolean;
+  currentUsers: number;
+  maxUsers: number;
+  difficulty: string;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -20,9 +33,15 @@ const SocketContext = createContext<SocketContextType | undefined>(undefined);
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [matchmakingStatus, setMatchmakingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND_PENDING">("IDLE");
+  const [matchmakingStatus, setMatchmakingStatus] = useState<
+    "IDLE" | "SEARCHING" | "FOUND_PENDING"
+  >("IDLE");
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
-  const [activeBattleRoom, setActiveBattleRoom] = useState<{ roomId: string, problemId: string } | null>(null);
+  const [activeBattleRoom, setActiveBattleRoom] = useState<{
+    roomId: string;
+    problemId: string;
+  } | null>(null);
+  const [customLobby, setCustomLobby] = useState<CustomLobbyState | null>(null);
 
   const navigate = useNavigate();
 
@@ -30,15 +49,43 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     const newSocket = io("http://localhost:5000", { withCredentials: true });
     setSocket(newSocket);
 
+    newSocket.on('custom_room_created',(data:CustomLobbyState)=>{
+      setCustomLobby(data);
+    })
+
+    newSocket.on("lobby_updated",(data:{
+      currentUsers:number,maxUsers:number
+    })=>{
+      setCustomLobby(prev => prev ? ({...prev,...data}) : null);
+    })
+
+    newSocket.on("lobby_error",(msg:string)=>{
+      alert(msg);
+    })
+
+    newSocket.on('lobby_ended',()=>{
+      setCustomLobby(null);
+      alert("Lobby has ended.");
+
+    })
+
+    newSocket.on("custom_match_started",(data:{
+      roomId:string,problemId:string,timeLimitMs:number
+    })=>{
+      setCustomLobby(null);
+      navigate(`/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`);
+    })
+
+
     newSocket.on("connect", () => {
       console.log("Connected to Socket.IO server!");
       setIsConnected(true);
       newSocket.emit("check_active_battle");
     });
 
-    newSocket.on("active_battle_found",(data)=>{
+    newSocket.on("active_battle_found", (data) => {
       setActiveBattleRoom(data);
-    })
+    });
 
     newSocket.on("disconnect", () => {
       setIsConnected(false);
@@ -60,7 +107,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       navigate(`/battle/${data.roomName}?oid=${data.problemId}`);
     });
 
-
     // Someone declined or timed out
     newSocket.on("match_declined", () => {
       setMatchmakingStatus("IDLE");
@@ -80,12 +126,34 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const findMatch = (difficulty:string = "ANY") => {
+  const findMatch = (difficulty: string = "ANY") => {
     if (socket) {
       setMatchmakingStatus("SEARCHING");
-      socket.emit("join_matchmaking",difficulty);
+      socket.emit("join_matchmaking", difficulty);
     }
   };
+
+    const createCustomRoom = (maxUsers = 2 , password?:string ,difficulty="ANY",problemIds?:string[] ) =>{
+      socket?.emit("create_custom_room",{maxUsers,password,
+        difficulty,problemsIds: problemIds
+      })}
+
+    const joinCustomRoom = (roomCode:string,password?:string) => {
+      socket?.emit('join_custom_room',{
+        roomCode,
+        password
+      })
+    }
+
+    const startCustomMatch = () => {
+      if(customLobby?.isHost) socket?.emit("start_custom_match",customLobby.roomCode)
+    }
+
+    const leaveCustomMatch = () => {
+    if(!customLobby?.isHost) socket?.emit("leave_custom_room",customLobby.roomCode)
+    else if(customLobby?.isHost) socket?.emit("delete_custom_room",customLobby.roomCode)
+    setCustomLobby(null);
+    }
 
   const acceptMatch = () => {
     if (socket && pendingMatchId) {
@@ -102,7 +170,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <SocketContext.Provider value={{ socket, activeBattleRoom, isConnected , matchmakingStatus, pendingMatchId, findMatch, cancelMatch, acceptMatch, declineMatch }}>
+    <SocketContext.Provider
+      value={{
+        socket,
+        activeBattleRoom,
+        isConnected,
+        matchmakingStatus,
+        pendingMatchId,
+        findMatch,
+        cancelMatch,
+        acceptMatch,
+        joinCustomRoom,
+        leaveCustomMatch,
+        createCustomRoom,
+        startCustomMatch,
+        declineMatch,
+        customLobby,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );
@@ -110,6 +195,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
-  if (!context) throw new Error("useSocket must be used within a SocketProvider");
+  if (!context)
+    throw new Error("useSocket must be used within a SocketProvider");
   return context;
 };
