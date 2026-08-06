@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import BentoGrid from "../features/home/components/BentoGrid";
 import HeroSection from "../features/home/components/HeroSection";
-import FriendsSidebar from "../components/FriendSidebar";
+import FriendsDashboard from "../components/FriendDashboard";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
 import { useSocket } from "../context/socketContext";
 import { useState } from "react";
@@ -35,7 +35,7 @@ const Home = () => {
   return (
     <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6">
       <HeroSection />
-      <FriendsSidebar/>
+      <FriendsDashboard/>
       <StickyFeatureShowcase />
       <BentoGrid />
 

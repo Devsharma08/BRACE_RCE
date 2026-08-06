@@ -19,12 +19,32 @@ model User {
   
   performances UserPersonalPerformance[]
 
+  SentMessage Message[] @relation("SentMessage")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  sendRequest FriendRequest[] @relation("SentRequest")
+  receivedRequest FriendRequest[] @relation("ReceivedRequest")
+
+  
   // friends system (self-relation)
   friends User[] @relation("UserFriends")
   friendOf User[] @relation("UserFriends")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model FriendRequest {
+  id String @id @default(uuid())
+  senderId String
+  sender User @relation("SentRequest",fields:[senderId],references:[id])
+  receiverId String  
+  receiver User @relation("ReceivedRequest",fields:[receiverId],references:[id])
+
+  status String @default("PENDING") // PENDING,ACCEPTED,DECLINED,BLOCK
+
+  createdAt DateTime @default(now())
+  @@unique([senderId,receiverId]) // prevent duplicate requests
 }
 
 // ------------------------------------------------------
@@ -137,4 +157,18 @@ model UserPersonalPerformance {
   score           Int     @default(0)
   
   createdAt       DateTime @default(now())
+}
+
+model Message {
+  id String @id @default(uuid())
+  content String @db.Text
+
+  senderId String
+  sender User @relation("SentMessage",fields:[senderId],references:[id])
+
+  receiverId String
+  receiver User @relation("ReceivedMessages", fields:[receiverId],references:[id])
+
+  createdAt DateTime @default(now())
+  
 }

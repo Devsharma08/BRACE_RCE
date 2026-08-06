@@ -1,0 +1,74 @@
+src/controllers/friends.ts(11,17): error TS2375: Type '{ id: string | undefined; }' is not assignable to type 'UserWhereUniqueInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ id: string | undefined; }' is not assignable to type '{ id: string; username: string; email: string; } & { id?: string; username?: string; email?: string; AND?: UserWhereInput | UserWhereInput[]; OR?: UserWhereInput[]; ... 12 more ...; friendOf?: UserListRelationFilter; }'.
+    Type '{ id: string | undefined; }' is missing the following properties from type '{ id: string; username: string; email: string; }': username, email
+src/controllers/friends.ts(14,46): error TS2339: Property 'friends' does not exist on type '{ id: string; createdAt: Date; updatedAt: Date; username: string; email: string | null; avatarUrl: string | null; password: string | null; role: string; }'.
+src/controllers/friends.ts(29,45): error TS2412: Type 'string | string[] | undefined' is not assignable to type 'string | StringFilter<"Message"> | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/controllers/friends.ts(30,27): error TS2412: Type 'string | string[] | undefined' is not assignable to type 'string | StringFilter<"Message"> | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/controllers/friends.ts(54,21): error TS2322: Type '{ not: string | undefined; }' is not assignable to type 'string | StringFilter<"User"> | undefined'.
+  Type '{ not: string | undefined; }' is not assignable to type 'StringFilter<"User">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'not' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string | NestedStringFilter<"User">'.
+        Type 'undefined' is not assignable to type 'string | NestedStringFilter<"User">'.
+src/controllers/friends.ts(75,17): error TS2375: Type '{ id: string | undefined; }' is not assignable to type 'UserWhereUniqueInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ id: string | undefined; }' is not assignable to type '{ id: string; username: string; email: string; } & { id?: string; username?: string; email?: string; AND?: UserWhereInput | UserWhereInput[]; OR?: UserWhereInput[]; ... 12 more ...; friendOf?: UserListRelationFilter; }'.
+    Type '{ id: string | undefined; }' is missing the following properties from type '{ id: string; username: string; email: string; }': username, email
+src/controllers/friends.ts(80,23): error TS2339: Property 'friends' does not exist on type '{ id: string; createdAt: Date; updatedAt: Date; username: string; email: string | null; avatarUrl: string | null; password: string | null; role: string; }'.
+src/controllers/friends.ts(86,25): error TS2375: Type '{ senderId: string | undefined; receiverId: any; status: string; }' is not assignable to type 'FriendRequestWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'senderId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+      Type 'undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+src/controllers/friends.ts(87,25): error TS2375: Type '{ senderId: any; receiverId: string | undefined; status: string; }' is not assignable to type 'FriendRequestWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'receiverId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+      Type 'undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+src/controllers/friends.ts(125,17): error TS2375: Type '{ receiverId: string | undefined; status: string; }' is not assignable to type 'FriendRequestWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'receiverId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+      Type 'undefined' is not assignable to type 'string | StringFilter<"FriendRequest">'.
+src/controllers/friends.ts(141,17): error TS2375: Type '{ id: string | undefined; }' is not assignable to type 'UserWhereUniqueInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ id: string | undefined; }' is not assignable to type '{ id: string; username: string; email: string; } & { id?: string; username?: string; email?: string; AND?: UserWhereInput | UserWhereInput[]; OR?: UserWhereInput[]; ... 12 more ...; friendOf?: UserListRelationFilter; }'.
+    Type '{ id: string | undefined; }' is missing the following properties from type '{ id: string; username: string; email: string; }': username, email
+src/controllers/friends.ts(159,40): error TS2375: Type '{ id: string | undefined; }' is not assignable to type 'UserWhereUniqueInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ id: string | undefined; }' is not assignable to type '{ id: string; username: string; email: string; } & { id?: string; username?: string; email?: string; AND?: UserWhereInput | UserWhereInput[]; OR?: UserWhereInput[]; ... 12 more ...; friendOf?: UserListRelationFilter; }'.
+    Type '{ id: string | undefined; }' is missing the following properties from type '{ id: string; username: string; email: string; }': username, email
+src/controllers/friends.ts(159,82): error TS2322: Type '{ id: string | string[] | undefined; }' is not assignable to type 'UserWhereUniqueInput | UserWhereUniqueInput[] | undefined'.
+  Types of property 'id' are incompatible.
+    Type 'string | string[] | undefined' is not assignable to type 'string | undefined'.
+      Type 'string[]' is not assignable to type 'string'.
+src/controllers/friends.ts(160,49): error TS2412: Type 'string | string[] | undefined' is not assignable to type 'string | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/controllers/github/getFiles.test.ts(1,22): error TS2307: Cannot find module '@jest/globals' or its corresponding type declarations.
+src/env.test.ts(1,22): error TS2307: Cannot find module '@jest/globals' or its corresponding type declarations.
+src/services/socket.ts(207,25): error TS18048: 'p1' is possibly 'undefined'.
+src/services/socket.ts(207,52): error TS18048: 'p2' is possibly 'undefined'.
+src/services/socket.ts(207,79): error TS18048: 'p1' is possibly 'undefined'.
+src/services/socket.ts(207,97): error TS18048: 'p2' is possibly 'undefined'.
+src/services/socket.ts(220,58): error TS18048: 'player1' is possibly 'undefined'.
+src/services/socket.ts(220,79): error TS18048: 'player2' is possibly 'undefined'.
+src/services/socket.ts(224,21): error TS18048: 'player1' is possibly 'undefined'.
+src/services/socket.ts(224,70): error TS18048: 'player1' is possibly 'undefined'.
+src/services/socket.ts(225,26): error TS18048: 'player2' is possibly 'undefined'.
+src/services/socket.ts(225,75): error TS18048: 'player2' is possibly 'undefined'.
+src/services/socket.ts(226,22): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/socket.ts(232,21): error TS2322: Type 'WaitingPlayer | undefined' is not assignable to type 'WaitingPlayer'.
+  Type 'undefined' is not assignable to type 'WaitingPlayer'.
+src/services/socket.ts(233,21): error TS2322: Type 'WaitingPlayer | undefined' is not assignable to type 'WaitingPlayer'.
+  Type 'undefined' is not assignable to type 'WaitingPlayer'.
+src/services/socket.ts(237,35): error TS18048: 'player1' is possibly 'undefined'.
+src/services/socket.ts(238,35): error TS18048: 'player2' is possibly 'undefined'.
+src/services/socket.ts(245,23): error TS18048: 'player1' is possibly 'undefined'.
+src/services/socket.ts(246,23): error TS18048: 'player2' is possibly 'undefined'.
+src/services/socket.ts(262,41): error TS2379: Argument of type '{ hostId: any; users: any[]; maxUsers: number; password: string | undefined; targetDifficulty: string; problemsIds: string[]; expiresAt: number; }' is not assignable to parameter of type 'CustomLobby' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'password' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/socket.ts(274,20): error TS2339: Property 'emit' does not exist on type 'typeof Socket'.
+src/services/socket.ts(325,43): error TS2532: Object is possibly 'undefined'.
+src/services/socket.ts(348,21): error TS2353: Object literal may only specify known properties, and 'include' does not exist in type '(Without<EventCreateInput, EventUncheckedCreateInput> & EventUncheckedCreateInput) | (Without<...> & EventCreateInput)'.
+src/services/socket.ts(352,40): error TS2339: Property 'problems' does not exist on type '{ id: string; name: string | null; createdAt: Date; updatedAt: Date; password: string | null; status: string; type: EventType; roomCode: string | null; maxUsers: number; startedAt: Date | null; finishedAt: Date | null; commonProblemId: string | null; }'.
+src/services/socket.ts(472,21): error TS2375: Type '{ type: "PUBLIC"; status: string; startedAt: Date; commonProblemId: string | undefined; }' is not assignable to type '(Without<EventCreateInput, EventUncheckedCreateInput> & EventUncheckedCreateInput) | (Without<...> & EventCreateInput)' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ type: "PUBLIC"; status: string; startedAt: Date; commonProblemId: string | undefined; }' is not assignable to type 'Without<EventUncheckedCreateInput, EventCreateInput> & EventCreateInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Type '{ type: "PUBLIC"; status: string; startedAt: Date; commonProblemId: string | undefined; }' is not assignable to type 'Without<EventUncheckedCreateInput, EventCreateInput>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'commonProblemId' are incompatible.
+        Type 'string | undefined' is not assignable to type 'never'.
+          Type 'undefined' is not assignable to type 'never'.

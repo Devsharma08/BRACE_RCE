@@ -17,6 +17,7 @@ import { Login } from './features/auth/Login.tsx'
 import {Signup} from './features/auth/Signup.tsx'
 import type { SupportedLanguage, ExecutionResult } from './features/terminal/types'
 import {Battle} from './pages/Battle.tsx'
+import FriendsDashboard from './components/FriendDashboard.tsx'
 
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -53,6 +54,7 @@ const Root = () => {
               <Route path='/signin' element={<Login/>}/>
               <Route path='/signup' element={<Signup/>}/>
               <Route path="/ds/:slug" element={<DataStructureDetail />} />
+              <Route path="/friends" element={<FriendsDashboard/>} />
               <Route path="/battle/:roomId" element={<Battle />} />
 
               <Route

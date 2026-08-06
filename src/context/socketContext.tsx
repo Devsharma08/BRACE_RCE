@@ -14,10 +14,19 @@ interface SocketContextType {
   declineMatch: () => void;
   activeBattleRoom: { roomId: string; problemId: string } | null;
   customLobby: CustomLobbyState | null;
-  createCustomRoom:(maxUsers:number,password?:string,difficulty?:string,problemIds?:string[]) => void;
-  joinCustomRoom:()=>void;
-  startCustomMatch:() => void;
-  leaveCustomMatch:() => void;
+  createCustomRoom: (
+    maxUsers: number,
+    password?: string,
+    difficulty?: string,
+    problemIds?: string[],
+  ) => void;
+  joinCustomRoom: () => void;
+  startCustomMatch: () => void;
+  leaveCustomMatch: () => void;
+  sendDirectMessage: (targetUserId: string, content: string) => void;
+  sendChallenge: (targetUserId: string, problemId?: string) => void;
+  acceptChallenge: (challengerId: string) => void;
+  declineChallenge: (targetUserId: string) => void;
 }
 
 export interface CustomLobbyState {
@@ -42,6 +51,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     problemId: string;
   } | null>(null);
   const [customLobby, setCustomLobby] = useState<CustomLobbyState | null>(null);
+  const [incomingChallenge, setIncomingChallenge] = useState<{ challengerId: string, challengerUsername?: string } | null>(null);
+
 
   const navigate = useNavigate();
 
@@ -49,33 +60,40 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     const newSocket = io("http://localhost:5000", { withCredentials: true });
     setSocket(newSocket);
 
-    newSocket.on('custom_room_created',(data:CustomLobbyState)=>{
+    newSocket.on("custom_room_created", (data: CustomLobbyState) => {
       setCustomLobby(data);
-    })
+    });
 
-    newSocket.on("lobby_updated",(data:{
-      currentUsers:number,maxUsers:number
-    })=>{
-      setCustomLobby(prev => prev ? ({...prev,...data}) : null);
-    })
+    newSocket.on("incoming_challenge", (data: { challengerId: string, challengerUsername?: string }) => {
+      setIncomingChallenge(data);
+    });
 
-    newSocket.on("lobby_error",(msg:string)=>{
+
+    newSocket.on(
+      "lobby_updated",
+      (data: { currentUsers: number; maxUsers: number }) => {
+        setCustomLobby((prev) => (prev ? { ...prev, ...data } : null));
+      },
+    );
+
+    newSocket.on("lobby_error", (msg: string) => {
       alert(msg);
-    })
+    });
 
-    newSocket.on('lobby_ended',()=>{
+    newSocket.on("lobby_ended", () => {
       setCustomLobby(null);
       alert("Lobby has ended.");
+    });
 
-    })
-
-    newSocket.on("custom_match_started",(data:{
-      roomId:string,problemId:string,timeLimitMs:number
-    })=>{
-      setCustomLobby(null);
-      navigate(`/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`);
-    })
-
+    newSocket.on(
+      "custom_match_started",
+      (data: { roomId: string; problemId: string; timeLimitMs: number }) => {
+        setCustomLobby(null);
+        navigate(
+          `/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`,
+        );
+      },
+    );
 
     newSocket.on("connect", () => {
       console.log("Connected to Socket.IO server!");
@@ -119,6 +137,23 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [navigate]);
 
+  const sendDirectMessage = (targetUserId: string, content: string) => {
+    socket?.emit("send_direct_message", { targetUserId, content });
+  };
+  const declineChallenge = (targetUserId: string) => {
+    socket?.emit("decline_challenge", { targetUserId });
+    setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
+  };
+
+  const sendChallenge = (targetUserId: string, problemId?: string) => {
+    socket?.emit("send_challenge", { targetUserId, problemId });
+  };
+
+  const acceptChallenge = (challengerId: string) => {
+    socket?.emit("accept_challenge", { challengerId });
+    setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
+  };
+
   const cancelMatch = () => {
     if (socket) {
       setMatchmakingStatus("IDLE");
@@ -133,27 +168,39 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-    const createCustomRoom = (maxUsers = 2 , password?:string ,difficulty="ANY",problemIds?:string[] ) =>{
-      socket?.emit("create_custom_room",{maxUsers,password,
-        difficulty,problemsIds: problemIds
-      })}
+  const createCustomRoom = (
+    maxUsers = 2,
+    password?: string,
+    difficulty = "ANY",
+    problemIds?: string[],
+  ) => {
+    socket?.emit("create_custom_room", {
+      maxUsers,
+      password,
+      difficulty,
+      problemsIds: problemIds,
+    });
+  };
 
-    const joinCustomRoom = (roomCode:string,password?:string) => {
-      socket?.emit('join_custom_room',{
-        roomCode,
-        password
-      })
-    }
+  const joinCustomRoom = (roomCode: string, password?: string) => {
+    socket?.emit("join_custom_room", {
+      roomCode,
+      password,
+    });
+  };
 
-    const startCustomMatch = () => {
-      if(customLobby?.isHost) socket?.emit("start_custom_match",customLobby.roomCode)
-    }
+  const startCustomMatch = () => {
+    if (customLobby?.isHost)
+      socket?.emit("start_custom_match", customLobby.roomCode);
+  };
 
-    const leaveCustomMatch = () => {
-    if(!customLobby?.isHost) socket?.emit("leave_custom_room",customLobby.roomCode)
-    else if(customLobby?.isHost) socket?.emit("delete_custom_room",customLobby.roomCode)
+  const leaveCustomMatch = () => {
+    if (!customLobby?.isHost)
+      socket?.emit("leave_custom_room", customLobby.roomCode);
+    else if (customLobby?.isHost)
+      socket?.emit("delete_custom_room", customLobby.roomCode);
     setCustomLobby(null);
-    }
+  };
 
   const acceptMatch = () => {
     if (socket && pendingMatchId) {
@@ -181,11 +228,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         cancelMatch,
         acceptMatch,
         joinCustomRoom,
+        incomingChallenge,
         leaveCustomMatch,
         createCustomRoom,
         startCustomMatch,
         declineMatch,
         customLobby,
+        sendChallenge,
+        sendDirectMessage,
+        acceptChallenge,
+        declineChallenge,
       }}
     >
       {children}

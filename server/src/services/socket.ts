@@ -37,6 +37,9 @@ const pendingMatches = new Map<string, PendingMatch>();
 
 const waitingQueue: WaitingPlayer[] = [];
 
+const onlineUsers = new Map<string,string>();
+
+
 
 // quick helper function to generate a 6-digit code
 function generateRoomCode() {
@@ -96,6 +99,14 @@ export const initSocketServer = (io: Server) => {
         const userId = socket.data.userId;
         console.log(`🔌 User Connected: ${userId} (Socket ID: ${socket.id})`);
 
+        // register user as online
+        onlineUsers.set(userId, socket.id);
+
+        // let everyone know this user just came online - later to only frineds
+        io.emit("user_online_status", {
+            userId, status: "ONLINE"
+        })
+
         // garbage collector to cleanup the abandoned connection lobbies
         setInterval(() => {
             const now = Date.now();
@@ -107,6 +118,75 @@ export const initSocketServer = (io: Server) => {
                 }
             }
         }, 60000); // checks every 60 seconds
+
+        // DIRECT CHAT AND CHALLENGES
+        socket.on("send_direct_message",async(data:{targetUserId:string,content:string})=>{
+            // save to DB
+            const message = await prisma.message.create({
+                data:{
+                    senderId:userId,
+                    receiverId:data.targetUserId,
+                    content:data.content
+                }
+            });
+
+            const targetSocketId = onlineUsers.get(data.targetUserId);
+
+            if (targetSocketId) {
+                io.to(targetSocketId).emit("receive_direct_message", message);
+            }
+        })
+
+        //DIRECT CHALLENGE PING
+        socket.on("send_challenge",(data:{targetUserId:string,username:string,difficulty:string})=>{
+            const targetSocketId = onlineUsers.get(data.targetUserId);
+
+            if(targetSocketId){
+                io.to(targetSocketId).emit("incoming_challenge",{
+                    challengerId:userId,
+                    challengerUsername:data.username,
+                    difficulty:data.difficulty
+                })
+            } else{
+                socket.emit("lobby_error","User is offline!");
+            }
+        })
+
+        // CHALLENGE ACCEPT
+        socket.on("accept_challenge",async(data:{challengerId:string})=>{
+            const challengerSocketId = onlineUsers.get(data.challengerId);
+
+            if(!challengerSocketId){
+                return socket.emit('lobby_error',"Chanllenger went offline!")
+            }
+
+            // create a brand new custom event behind the scenes
+            const event = await prisma.event.create({
+                data:{
+                    type:"FRIENDS",
+                    status:"IN_PROGRESS",
+                    startedAt:new Date(),
+                    maxUsers:2,
+                    performances:{
+                        create:[{userId:userId,status:"PENDING"},{
+                            userId:data.challengerId,
+                            status:"PENDING"
+                        }]
+                    }
+                }
+            })
+
+            const roomId = `room-${event.id}`;
+            const problemId = "local-battle" // or fetch a random battle here
+            
+            // Instantly wrap both players to arena 
+            io.to(socket.id).emit("custom_match_started",{
+                roomId,problemId,timeLimitMs:600000
+            })
+
+            io.to(challengerSocketId).emit("custom_match_started", { roomId, problemId, timeLimitMs: 600000 });
+
+        })
 
 
         // PVP matching events
@@ -502,6 +582,10 @@ export const initSocketServer = (io: Server) => {
         });
 
         socket.on("disconnect", () => {
+            onlineUsers.delete(userId);
+            io.emit("user_online_status",{
+                userId,status:"OFFLINE"
+            })
             console.log(`❌ User Disconnected: ${userId}`);
         });
     });
