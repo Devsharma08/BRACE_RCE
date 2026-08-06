@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback ,useRef} from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchFileContent } from "../features/terminal/api";
 import { useParams, useNavigate } from "react-router-dom";
@@ -6,21 +6,32 @@ import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import type { SupportedLanguage } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import { Code, Swords, User, Activity, Trophy, Skull,ChevronLeft,ChevronRight } from "lucide-react";
+import { Code, Swords, User, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send } from "lucide-react";
 import { Timer } from "../components/Timer";
 import { NotesPanel } from "../components/ui/NotesPanel";
+
+interface BattleMessage {
+id:string;
+socketId:string;
+content:string;
+createdAt:string;
+}
 
 export const Battle = () => {
   const { roomId } = useParams<{ roomId: string; oid: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const oid = searchParams.get("oid");
-  const { socket, isConnected } = useSocket();
+  const { socket, isConnected,sendBattleMessage } = useSocket();
   const [isPanelOpen,setIsPanelOpen] = useState(true);
 
   const [code, setCode] = useState<string>(
     "// Your goal: Two Sum\n// Write your solution below!\n\nfunction twoSum(nums, target) {\n  \n}",
   );
+  const [battleMessages,setBattleMessages] = useState<BattleMessage[]>([]);
+  const [newBattleMessage,setNewBattleMessage] = useState("");
+  const [activePanelTab,setActivePanelTab] = useState<"PROBLEM" | "CHAT">("PROBLEM");
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
   const [problemName, setProblemName] = useState<string>("Problem Name");
@@ -99,6 +110,30 @@ export const Battle = () => {
       socket?.off("battle_update");
     };
   }, [socket, navigate, oid, roomId]);
+
+  useEffect(()=>{
+    if(!socket) return ;
+    const handleReceiveBattleMsg = (msg:BattleMessage)=>{
+      setBattleMessages(prev=>[...prev,msg]);
+    }
+    socket.on("receive_battle_message",handleReceiveBattleMsg)
+    return ()=>{
+    socket.off("receive_battle_message",handleReceiveBattleMsg)
+    }
+  },[socket])
+
+  useEffect(()=>{
+    if(activePanelTab === "CHAT"){
+      chatEndRef.current?.scrollIntoView({behavior:"smooth"})
+    }
+  },[battleMessages,activePanelTab]);
+
+  const handleBattleMessage = (e:React.FormEvent) => {
+    e.preventDefault();
+    if( !newBattleMessage.trim() && roomId ) return;
+    sendBattleMessage(roomId,newBattleMessage);
+    setNewBattleMessage("");
+  }
 
   const handleSurrender = () => {
     if (confirm("Are you sure you want to surrender?")) {
@@ -213,22 +248,72 @@ export const Battle = () => {
       <div className="flex-1 min-h-0 flex">
         
         {/* SLIDING PROBLEM DRAWER */}
-        <div 
-          className={`absolute top-0 left-0 max-h-[100vh] h-full overflow-y-auto w-[400px] sm:w-[450px] bg-[#050505]/95 backdrop-blur-xl border-r border-cyan-500/30 z-20 flex flex-col p-6 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[20px_0_50px_rgba(0,0,0,0.5)] ${
+        <div
+          className={`absolute top-0 left-0 max-h-[100vh] h-full overflow-hidden w-[400px] sm:w-[450px] bg-[#050505]/95 backdrop-blur-xl border-r border-cyan-500/30 z-20 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-[20px_0_50px_rgba(0,0,0,0.5)] ${
             isPanelOpen ? "translate-x-0" : "-translate-x-full"
           }`}
         >
-          <div className="border border-white/10 w-full h-full rounded-lg p-5 bg-black/40 overflow-y-auto custom-scrollbar shadow-inner">
-            <h3 className="font-mono text-sm text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider border-b border-white/5 pb-3">
-              <Code className="w-4 h-4" /> PROBLEM: {problemName}
-            </h3>
-            <div
-              className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: problemDescription }}
-            />
+          {/* TABS HEADER */}
+          <div className="flex bg-cyan-950/20 border-b border-cyan-500/20 shrink-0">
+            <button 
+              onClick={() => setActivePanelTab("PROBLEM")} 
+              className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "PROBLEM" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+            >
+              <Code className="w-4 h-4 mx-auto mb-1" /> PROBLEM
+            </button>
+            <button 
+              onClick={() => setActivePanelTab("CHAT")} 
+              className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "CHAT" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+            >
+              <MessageSquare className="w-4 h-4 mx-auto mb-1" /> CHAT
+            </button>
           </div>
 
-          <div className="flex flex-col gap-3 mt-auto">
+          {/* TAB CONTENT (SCROLLABLE) */}
+          <div className="flex-1 overflow-y-auto p-6 scrollbar-hide flex flex-col custom-scrollbar">
+            {activePanelTab === "PROBLEM" ? (
+              <div className="border border-white/10 w-full rounded-lg p-5 bg-black/40 shadow-inner h-max">
+                <h3 className="font-mono text-sm text-cyan-400 mb-4 flex items-center gap-2 uppercase tracking-wider border-b border-white/5 pb-3">
+                  <Code className="w-4 h-4" /> PROBLEM: {problemName}
+                </h3>
+                <div
+                  className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: problemDescription }}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col h-full">
+                <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
+                  {battleMessages.length === 0 && <p className="text-center text-slate-500 font-mono text-xs mt-4">NO MESSAGES YET</p>}
+                  {battleMessages.map(msg => {
+                     const isMe = msg.socketId === socket?.id;
+                     return (
+                       <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                         <div className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${isMe ? 'bg-cyan-900/40 border border-cyan-500/30 text-cyan-100' : 'bg-slate-800/50 border border-slate-700 text-slate-300'}`}>
+                           {msg.content}
+                         </div>
+                       </div>
+                     );
+                  })}
+                  <div ref={chatEndRef} />
+                </div>
+                <form onSubmit={handleBattleMessage} className="mt-auto flex gap-2 pt-2 border-t border-cyan-500/20 shrink-0">
+                  <input 
+                    type="text" 
+                    value={newBattleMessage} 
+                    onChange={(e) => setNewBattleMessage(e.target.value)} 
+                    placeholder="TRANSMIT..." 
+                    className="flex-1 bg-black/50 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
+                  />
+                  <button type="submit" className="p-3 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg transition-all">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 mt-auto p-6 border-t border-cyan-500/20 bg-black/20">
             <button
               onClick={handleRunCode}
               disabled={isSubmitting}

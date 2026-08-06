@@ -27,6 +27,7 @@ interface SocketContextType {
   sendChallenge: (targetUserId: string, problemId?: string) => void;
   acceptChallenge: (challengerId: string) => void;
   declineChallenge: (targetUserId: string) => void;
+  sendBattleMessage: (roomId:string,content:string) => void;
 }
 
 export interface CustomLobbyState {
@@ -168,6 +169,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const sendBattleMessage = (roomId:string,content:string) => {
+    socket?.emit("send_battle_message",{roomId,content});
+  }
+
   const createCustomRoom = (
     maxUsers = 2,
     password?: string,
@@ -238,6 +243,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         sendDirectMessage,
         acceptChallenge,
         declineChallenge,
+        sendBattleMessage
       }}
     >
       {children}

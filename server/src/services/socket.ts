@@ -581,6 +581,23 @@ export const initSocketServer = (io: Server) => {
             }
         });
 
+        // IN BATTLE CHAT
+        socket.on("send_battle_message",(data:{
+            roomId:string,
+            content:string
+        }) => {
+            const {roomId,content} = data ;
+            const message = {
+                id:Date.now().toString(),
+                socketId:socket.id,
+                content,
+                createdAt:new Date().toISOString()
+            }
+
+            // broadcast strictly to players in this arena
+            io.to(roomId).emit("receive_battle_message",message);
+        })
+
         socket.on("disconnect", () => {
             onlineUsers.delete(userId);
             io.emit("user_online_status",{
