@@ -4,7 +4,7 @@ import { type Response } from 'express';
 import { request } from 'node:http';
 
 class Friends {
-    // GET ALL FRIENDS
+    // ALL FRIENDS
     async getFriends(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
@@ -18,7 +18,7 @@ class Friends {
         }
     }
 
-    // GET ALL MESSAGES
+    // ALL MESSAGES
     async getMessages(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
@@ -77,6 +77,11 @@ class Friends {
             const userId = (req as AuthRequest).userId;
             const { targetUserId } = req.body;
 
+            // WIPE OUT any pending requests from the target user to us
+            await prisma.friendRequest.deleteMany({
+                where: { senderId: targetUserId, receiverId: userId as string, status: "PENDING" }
+            });
+
             await prisma.friendRequest.upsert({
                 where: { senderId_receiverId: { senderId: userId as string, receiverId: targetUserId } },
                 update: { status: "BLOCK" },
@@ -95,6 +100,7 @@ class Friends {
 
             const userId = (req as AuthRequest).userId;
             const { targetUserId } = req.body;
+
             // check if already friends
             const user = await prisma.user.findUnique({
                 where: { id: userId },
@@ -171,7 +177,7 @@ class Friends {
         }
     }
 
-    // GET PENDING REQUESTS
+    // PENDING REQUESTS
     async getPendingRequests(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
@@ -210,11 +216,23 @@ class Friends {
     async deleteFriend(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
-            const targetId = req.params.id; // Changed to match your routes parameter!
+            const targetId = req.params.id; 
+            
+            // Wipe out their entire chat history
+            await prisma.message.deleteMany({
+                where: {
+                    OR: [
+                        { senderId: userId as string, receiverId: targetId },
+                        { senderId: targetId, receiverId: userId as string }
+                    ]
+                }
+            });
+
             // Disconnect both ways
             await prisma.user.update({ where: { id: userId }, data: { friends: { disconnect: { id: targetId } } } });
             await prisma.user.update({ where: { id: targetId }, data: { friends: { disconnect: { id: userId as string } } } });
-            return res.json({ message: "Friend removed!" });
+            
+            return res.json({ message: "Friend and chat history removed!" });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
         }
@@ -254,7 +272,27 @@ class Friends {
         }
     }
 
-    
+    // REJECT REQUEST
+    async rejectFriendRequest(req:AuthRequest,res:Response) {
+        try {
+            const {requestId} = req.body;
+            await prisma.friendRequest.delete({
+                where:{
+                    id:requestId
+                }
+            })
+
+            return res.json({
+                message:"Request rejected!"
+            })
+        } catch (error) {
+            console.log("Error rejecting request",error);
+            return res.status(500).json({
+                message:"Server error"
+            })
+        }
+    }
+
 }
 
 export const FriendController = new Friends();

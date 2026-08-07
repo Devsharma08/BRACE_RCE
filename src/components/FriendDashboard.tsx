@@ -53,7 +53,7 @@ export default function FriendsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [blockedUsers,setBlockedUsers] = useState<Friend[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<Friend[]>([]);
 
   const fetchFriends = () =>
     api
@@ -66,11 +66,10 @@ export default function FriendsDashboard() {
       .get("/friends/requests")
       .then((res) => setPendingRequests(res.data.requests))
       .catch(console.error);
-      
-  
+
   const getBlockedUsers = async () => {
     try {
-      const res = await api.get("/friends/blocked")
+      const res = await api.get("/friends/blocked");
       console.log("blocked users: ", res.data);
       setBlockedUsers(res.data.users.map((req: any) => req.receiver));
     } catch (e) {
@@ -92,7 +91,6 @@ export default function FriendsDashboard() {
         .catch(console.error);
     }
   }, [activeTab]);
-
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -129,6 +127,15 @@ export default function FriendsDashboard() {
         },
       ]);
       setNewMessage("");
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    try {
+      await api.post("/friends/reject", { requestId });
+      fetchRequests();
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -171,7 +178,7 @@ export default function FriendsDashboard() {
       await api.post("/friends/request", { targetUserId });
       alert("Request Sent!");
     } catch (e) {
-       alert(e.response?.data?.message || "Failed to send request");
+      alert(e.response?.data?.message || "Failed to send request");
     }
   };
 
@@ -246,14 +253,18 @@ export default function FriendsDashboard() {
             className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "REQUESTS" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
           >
             <Bell className="w-4 h-4 mx-auto mb-1" /> REQUESTS
-            {pendingRequests.length > 0 && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+            {pendingRequests.length > 0 && (
+              <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            )}
           </button>
           <button
             onClick={() => setLeftPaneMode("BLOCK")}
             className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "BLOCK" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
           >
             <Ban className="w-4 h-4 mx-auto mb-1" /> BLOCK
-            {pendingRequests.length > 0 && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+            {pendingRequests.length > 0 && (
+              <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            )}
           </button>
         </div>
 
@@ -368,12 +379,15 @@ export default function FriendsDashboard() {
                     >
                       <Check className="w-4 h-4" />
                     </button>
-                    
+
                     {/* REJECT BUTTON */}
-                    <button className="p-2 bg-rose-950/40 text-rose-400 hover:bg-rose-900 rounded">
+                    <button
+                      onClick={() => handleRejectRequest(req.id)}
+                      className="p-2 bg-rose-950/40 text-rose-400 hover:bg-rose-900 rounded"
+                    >
                       <X className="w-4 h-4" />
                     </button>
-                    
+
                     {/* BLOCK BUTTON */}
                     <button
                       onClick={() => handleBlockRequest(req.senderId)}
@@ -396,7 +410,8 @@ export default function FriendsDashboard() {
                   NO BLOCKED USERS
                 </p>
               ) : (
-                blockedUsers &&blockedUsers?.map((user:Friend) => (
+                blockedUsers &&
+                blockedUsers?.map((user: Friend) => (
                   <div
                     key={user?.id}
                     className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-black/40"

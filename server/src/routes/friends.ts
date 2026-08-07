@@ -35,3 +35,5 @@ friendsRouter.get("/blocked", authentication, FriendController.getBlockedUsers);
 // POST unblock user
 friendsRouter.post("/unblock", authentication, FriendController.unblockUser);
 
+// POST REJECT REQUEST
+friendsRouter.post("/reject",FriendController.rejectFriendRequest);

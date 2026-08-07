@@ -16,15 +16,20 @@ model User {
   password  String?
   role      String   @default("USER")
   avatarUrl String?
+  bio String? @default("try beat me")
   
   performances UserPersonalPerformance[]
 
   SentMessage Message[] @relation("SentMessage")
   receivedMessages Message[] @relation("ReceivedMessages")
 
+  hostedEvents Event[] @relation("HostedEvents")
+  createdProblems Problem[] @relation("UserProblems")
+
   sendRequest FriendRequest[] @relation("SentRequest")
   receivedRequest FriendRequest[] @relation("ReceivedRequest")
 
+  TemplateSubscription TemplateSubscription[]
   
   // friends system (self-relation)
   friends User[] @relation("UserFriends")
@@ -60,11 +65,16 @@ enum Level {
 model Problem {
   id                 String     @id @default(uuid())
   name               String
-  problem_number     Int        @unique
+  problem_number     Int?        @unique
   github_oid         String?     @unique // Link to your GitHub file structure
   problem_definition String     @db.Text
   problem_hints      String[]
   difficulty_level   Level
+
+  //custom problem fields
+  creatorId String?
+  creator User? @relation("UserProblems",fields:[creatorId],references:[id])
+  isCustom Boolean @default(false)
   
   test_cases         TestCase[]
   code_snippets      CodeSnippet[]
@@ -116,6 +126,14 @@ model Event {
   name        String?   // Optional event name
   type        EventType @default(PUBLIC)
   status      String    @default("WAITING") // WAITING, IN_PROGRESS, FINISHED
+  version Int @default(1)
+
+  // Advance rooom fields
+  isPublic Boolean @default(true) // visible in lobby
+  description String? @db.Text
+  hostId String?
+  host User? @relation("HostedEvents",fields:[hostId],references:[id])
+  isTemplate Boolean @default(false)
   
   // If all users in the event solve the same question
   commonProblemId String?
@@ -123,6 +141,8 @@ model Event {
   
   // Participants and their performances
   performances UserPersonalPerformance[]
+
+  subscribers TemplateSubscription[]
 
   // create room support
   roomCode String? @unique 
@@ -171,4 +191,20 @@ model Message {
 
   createdAt DateTime @default(now())
   
+}
+
+model TemplateSubscription {
+  id                String   @id @default(uuid())
+  
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  templateEventId   String
+  templateEvent     Event    @relation(fields: [templateEventId], references: [id], onDelete: Cascade)
+  
+  subscribedVersion Int      // Locks in the version of the template they subscribed to
+
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, templateEventId]) // A user can only subscribe to a template once
 }
