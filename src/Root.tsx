@@ -19,6 +19,12 @@ import type { SupportedLanguage, ExecutionResult } from './features/terminal/typ
 import {Battle} from './pages/Battle.tsx'
 import FriendsDashboard from './components/FriendDashboard.tsx'
 import Profile from './pages/Profile.tsx'
+import CreateProblem from './pages/CreateProblem.tsx'
+import CreateRoom from './pages/CreateRoom.tsx'
+import Lobby from './pages/Lobby.tsx'
+
+
+
 
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -58,6 +64,9 @@ const Root = () => {
               <Route path="/friends" element={<FriendsDashboard/>} />
               <Route path="/profile" element={<Profile/>} />
               <Route path="/battle/:roomId" element={<Battle />} />
+              <Route path="/problems/create" element={<CreateProblem/>} />
+              <Route path="/rooms/create" element={<CreateRoom/>} />
+              <Route path="/lobby" element={<Lobby/>} />
 
               <Route
                 path="terminal"
