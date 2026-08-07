@@ -111,6 +111,27 @@ class Friends {
             });
             if (existingReq) return res.status(400).json({ message: "Request already sent!" });
 
+            // Check if they already sent US a request (Auto-accept scenario)
+            const reverseReq = await prisma.friendRequest.findFirst({
+                where: { senderId: targetUserId, receiverId: userId as string, status: "PENDING" }
+            });
+
+            if (reverseReq) {
+                // Auto-accept it!
+                await prisma.friendRequest.update({
+                    where: { id: reverseReq.id },
+                    data: { status: "ACCEPTED" }
+                });
+                await prisma.user.update({
+                    where: { id: userId as string },
+                    data: { friends: { connect: { id: targetUserId } } }
+                });
+                await prisma.user.update({
+                    where: { id: targetUserId },
+                    data: { friends: { connect: { id: userId as string } } }
+                });
+                return res.json({ message: "Request accepted! You are now friends." });
+            }
 
             // checking for block in EITHER direction
             const blockCheck = await prisma.friendRequest.findFirst({
@@ -198,6 +219,42 @@ class Friends {
             return res.status(500).json({ message: "Server error" });
         }
     }
+
+    // GET ALL BLOCK USERS
+    async getBlockedUsers(req:AuthRequest,res:Response){
+        try {
+            const userId = (req as AuthRequest).userId;
+            const blocked = await prisma.friendRequest.findMany({
+                where: { senderId: userId, status: "BLOCK" },
+                include: { receiver: { select: { id: true, username: true } } }
+            });
+            return res.json({ totalBlocked:blocked.length , users : blocked });
+        } catch (error) {
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // POST UNBLOCK USER
+    async unblockUser(req:AuthRequest,res:Response){
+        try {
+            const userId = (req as AuthRequest).userId;
+            const {targetUserId} = req.body;
+            // Best practice: Delete the block record completely so they start fresh
+            await prisma.friendRequest.delete({
+                where: { 
+                    senderId_receiverId: { 
+                        senderId: userId as string, 
+                        receiverId: targetUserId 
+                    } 
+                }
+            });
+            return res.json({ message: "User unblocked successfully" });
+        } catch (error) {
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    
 }
 
 export const FriendController = new Friends();

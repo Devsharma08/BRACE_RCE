@@ -29,3 +29,9 @@ friendsRouter.delete("/remove/:id", authentication,FriendController.deleteFriend
 // POST block user
 friendsRouter.post("/block", authentication, FriendController.blockUser);
 
+// GET block users
+friendsRouter.get("/blocked", authentication, FriendController.getBlockedUsers);
+
+// POST unblock user
+friendsRouter.post("/unblock", authentication, FriendController.unblockUser);
+

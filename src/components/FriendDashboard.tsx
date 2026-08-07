@@ -48,26 +48,40 @@ export default function FriendsDashboard() {
 
   // New States for Search & Requests
   const [leftPaneMode, setLeftPaneMode] = useState<
-    "FRIENDS" | "SEARCH" | "REQUESTS"
+    "FRIENDS" | "SEARCH" | "REQUESTS" | "BLOCK"
   >("FRIENDS");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [blockedUsers,setBlockedUsers] = useState<Friend[]>([]);
 
   const fetchFriends = () =>
     api
       .get("/friends")
       .then((res) => setFriends(res.data.friends))
       .catch(console.error);
+
   const fetchRequests = () =>
     api
       .get("/friends/requests")
       .then((res) => setPendingRequests(res.data.requests))
       .catch(console.error);
+      
+  
+  const getBlockedUsers = async () => {
+    try {
+      const res = await api.get("/friends/blocked")
+      console.log("blocked users: ", res.data);
+      setBlockedUsers(res.data.users.map((req: any) => req.receiver));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     fetchFriends();
     fetchRequests();
+    getBlockedUsers();
   }, []);
 
   useEffect(() => {
@@ -78,6 +92,7 @@ export default function FriendsDashboard() {
         .catch(console.error);
     }
   }, [activeTab]);
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,8 +135,20 @@ export default function FriendsDashboard() {
   const handleBlockRequest = async (targetUserId: string) => {
     try {
       await api.post("/friends/block", { targetUserId });
-      fetchRequests(); // Refresh to remove the blocked request from UI
+      fetchRequests();
+      getBlockedUsers();
       alert("User has been blocked.");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const unblockUser = async (targetUserId: string) => {
+    try {
+      await api.post("/friends/unblock", { targetUserId });
+      fetchRequests(); // Refresh requests list
+      getBlockedUsers(); // Refresh the blocked users list so they disappear from UI
+      alert("User has been unblocked.");
     } catch (e) {
       console.error(e);
     }
@@ -219,6 +246,13 @@ export default function FriendsDashboard() {
             className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "REQUESTS" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
           >
             <Bell className="w-4 h-4 mx-auto mb-1" /> REQUESTS
+            {pendingRequests.length > 0 && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+          </button>
+          <button
+            onClick={() => setLeftPaneMode("BLOCK")}
+            className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "BLOCK" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+          >
+            <Ban className="w-4 h-4 mx-auto mb-1" /> BLOCK
             {pendingRequests.length > 0 && <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
           </button>
         </div>
@@ -353,12 +387,44 @@ export default function FriendsDashboard() {
               ))}
             </>
           )}
+
+          {/* BLOCK TAB */}
+          {leftPaneMode === "BLOCK" && (
+            <>
+              {blockedUsers && blockedUsers.length === 0 ? (
+                <p className="text-slate-500 font-mono text-xs text-center mt-4">
+                  NO BLOCKED USERS
+                </p>
+              ) : (
+                blockedUsers &&blockedUsers?.map((user:Friend) => (
+                  <div
+                    key={user?.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-black/40"
+                  >
+                    <span className="font-mono text-sm text-slate-300">
+                      {user?.username}
+                    </span>
+                    <div className="flex gap-2">
+                      {/* UNBLOCK BUTTON */}
+                      <button
+                        onClick={() => unblockUser(user.id)}
+                        className="p-2 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900 rounded"
+                        title="Unblock User"
+                      >
+                        <Ban className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
         </div>
       </div>
 
       {/* RIGHT COLUMN: ACTION HUB / CHAT */}
       <div className="flex-1 flex flex-col bg-[#0b0c0e] border border-cyan-500/20 rounded-2xl overflow-hidden relative">
-        {!activeTab ? (
+        {leftPaneMode === "FRIENDS" && !activeTab ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-500 font-mono tracking-widest">
             <Swords className="w-16 h-16 mb-4 opacity-20" />
             SELECT A FRIEND TO INITIATE UPLINK
@@ -367,7 +433,7 @@ export default function FriendsDashboard() {
           <>
             <div className="p-6 border-b border-cyan-500/20 bg-cyan-950/10 flex justify-between items-center">
               <h3 className="font-mono text-xl font-bold text-white tracking-widest uppercase">
-                {activeTab.username}
+                {activeTab?.username}
               </h3>
               <button
                 onClick={() => sendChallenge(activeTab.id)}
