@@ -9,6 +9,8 @@ import {authRouter} from "./routes/auth.js";
 import { friendsRouter } from "./routes/friends.js";
 import profileRouter from "./routes/profile.js";
 import { roomsRouter } from "./routes/room.js";
+import { problemsRouter } from "./routes/problems.js";
+
 
 
 export const createApp = (): Express => {
@@ -34,6 +36,7 @@ export const createApp = (): Express => {
   app.use("/api/friends",friendsRouter);
   app.use("/api/profile", profileRouter);
   app.use("/api/rooms", roomsRouter);
+  app.use("/api/problems", problemsRouter);
 
   
   app.get("/health", (_req: Request, res: Response) => {
