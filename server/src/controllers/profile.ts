@@ -106,6 +106,67 @@ class Profile {
             return res.status(500).json({ status: "error", message: "Internal server error" });
         }
     }
+
+    // CREATE CUSTOM PROBLEM
+    async createCustomProblem(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { 
+                name, 
+                problem_definition, 
+                problem_hints, 
+                difficulty_level,
+                test_cases,     
+                code_snippets   
+            } = req.body;
+
+            // Map the difficulty to specific time limits (in milliseconds)
+            // EASY: 15 mins, MEDIUM: 20 mins, HARD: 30 mins
+            const diffLevel = difficulty_level || Level.MEDIUM;
+            const timeLimitMap: Record<string, number> = {
+                "EASY": 15 * 60 * 1000,
+                "MEDIUM": 20 * 60 * 1000,
+                "HARD": 30 * 60 * 1000
+            };
+            const timeLimitMs = timeLimitMap[diffLevel];
+
+            // Using Prisma Nested Writes to create the Problem, Test Cases, and Snippets all at once
+            const newProblem = await prisma.problem.create({
+                data: {
+                    name,
+                    problem_definition,
+                    problem_hints: problem_hints || [],
+                    difficulty_level: diffLevel,
+                    timeLimitMs, // <-- Saving the calculated time limit here
+                    isCustom: true,
+                    creatorId: userId,
+                    
+                    test_cases: {
+                        create: test_cases.map((tc: any) => ({
+                            input: tc.input,
+                            expectedOutput: tc.expectedOutput,
+                            is_public: tc.is_public ?? true // False means it's a hidden edge case
+                        }))
+                    },
+
+                    code_snippets: {
+                        create: code_snippets.map((cs: any) => ({
+                            language: cs.language,
+                            code: cs.code,
+                            wrapperCode: cs.wrapperCode
+                        }))
+                    }
+                },
+                include: { test_cases: true, code_snippets: true }
+            });
+
+            return res.json({ status: "success", message: "Custom problem created!", problem: newProblem });
+        } catch (error) {
+            console.error("Create custom problem error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
 }
 
 export const profileController = new Profile();

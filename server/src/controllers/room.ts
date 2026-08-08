@@ -25,6 +25,26 @@ class Rooms {
         }
     }
 
+    // GET MY EVENTS (BOTH PUBLIC AND PRIVATE)
+    async getMyEvents(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const events = await prisma.event.findMany({
+                where: { hostId: userId },
+                include: {
+                    host: { select: { username: true, avatarUrl: true } },
+                    problems: { select: { difficulty_level: true } }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            return res.json({ status: "success", events });
+        } catch (error) {
+            console.error("Fetch my events error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+
     // GET PUBLIC TEMPLATES
     async getTemplates(req: AuthRequest, res: Response) {
         try {
@@ -48,7 +68,7 @@ class Rooms {
         try {
             const userId = req.userId as string;
             const { 
-                name, description, isPublic, password, maxUsers, 
+                name, description, isPublic, password, maxUsers,totalTimeLimitMs,
                 isTemplate, problemIds 
             } = req.body;
 
@@ -61,6 +81,7 @@ class Rooms {
                     description,
                     isPublic,
                     password,
+                    totalTimeLimitMs,
                     maxUsers: maxUsers || 2,
                     isTemplate,
                     hostId: userId,
@@ -127,6 +148,7 @@ class Rooms {
                     isPublic: template.isPublic,
                     maxUsers: template.maxUsers,
                     isTemplate: false, // This is a live room, not a template!
+                    totalTimeLimitMs:template.totalTimeLimitMs,
                     hostId: userId,
                     roomCode,
                     type: "PUBLIC",
@@ -193,6 +215,81 @@ class Rooms {
             return res.json({ status: "success", message: "Room unlocked!" });
         } catch (error) {
             console.error("Unlock room error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // DELETE EVENT (ROOM OR TEMPLATE)
+    async deleteEvent(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId } = req.params; // Grabbing ID from URL parameter
+
+            const event = await prisma.event.findUnique({ where: { id: eventId } });
+            if (!event || event.hostId !== userId) {
+                return res.status(403).json({ message: "Unauthorized to delete this event" });
+            }
+
+            await prisma.event.delete({ where: { id: eventId } });
+
+            return res.json({ status: "success", message: "Event deleted successfully" });
+        } catch (error) {
+            console.error("Delete event error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // TOGGLE EVENT VISIBILITY (PUBLIC/PRIVATE)
+    async toggleEventVisibility(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId, isPublic } = req.body;
+
+            const event = await prisma.event.findUnique({ where: { id: eventId } });
+            if (!event || event.hostId !== userId) {
+                return res.status(403).json({ message: "Unauthorized to modify this event" });
+            }
+
+            const updatedEvent = await prisma.event.update({
+                where: { id: eventId },
+                data: { isPublic }
+            });
+
+            return res.json({ 
+                status: "success", 
+                message: `Event is now ${isPublic ? 'Public' : 'Private'}!`, 
+                event: updatedEvent 
+            });
+        } catch (error) {
+            console.error("Toggle visibility error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // GET LIVE ROOM BY CODE
+    async getLiveRoom(req: AuthRequest, res: Response) {
+        try {
+            const { roomCode } = req.params;
+            const event = await prisma.event.findFirst({
+                where: { roomCode, isTemplate: false },
+                include: {
+                    host: { select: { username: true, avatarUrl: true, id: true } },
+                    problems: {
+                        include: {
+                            test_cases: true,
+                            code_snippets: true
+                        }
+                    }
+                }
+            });
+
+            if (!event) {
+                return res.status(404).json({ message: "Room not found or has concluded." });
+            }
+
+            return res.json({ status: "success", room: event });
+        } catch (error) {
+            console.error("Get live room error:", error);
             return res.status(500).json({ message: "Server error" });
         }
     }

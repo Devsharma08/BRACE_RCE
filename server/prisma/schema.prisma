@@ -148,6 +148,7 @@ model Event {
   roomCode String? @unique 
   password String?
   maxUsers Int @default(2)
+  totalTimeLimitMs Int? 
 
   // playlist relation (connects to problem)
   problems Problem[] @relation("EventProblems")

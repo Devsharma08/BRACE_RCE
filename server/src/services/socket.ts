@@ -368,33 +368,80 @@ export const initSocketServer = (io: Server) => {
         })
 
 
+        socket.on('start_event', async (roomCode: string) => {
+            try {
+                const event = await prisma.event.findFirst({ where: { roomCode } });
+                if (!event || event.hostId !== userId) return;
+
+                const startedAt = new Date();
+                const finishedAt = event.totalTimeLimitMs 
+                    ? new Date(startedAt.getTime() + event.totalTimeLimitMs)
+                    : null;
+
+                await prisma.event.update({
+                    where: { id: event.id },
+                    data: { status: 'IN_PROGRESS', startedAt, finishedAt }
+                });
+
+                io.to(roomCode).emit('battle_state', {
+                    startedAt,
+                    status: 'IN_PROGRESS',
+                    finishedAt
+                });
+            } catch (error) {
+                console.log('Error starting event:', error);
+            }
+        });
+
         socket.on('join_battle', async (roomId: string) => {
             socket.join(roomId);
             console.log(`User ${userId} joined room ${roomId}`)
             try {
-                const eventId = roomId.replace('room-', '')
-                const event = await prisma.event.findUnique({ where: { id: eventId } })
+                // Determine if roomId is a UUID (from matchmaking) or a 6-char roomCode
+                let event;
+                if (roomId.startsWith('room-')) {
+                    const eventId = roomId.replace('room-', '');
+                    event = await prisma.event.findUnique({ where: { id: eventId } });
+                } else {
+                    event = await prisma.event.findFirst({ where: { roomCode: roomId } });
+                }
 
                 if (!event) return;
 
                 if (event && event.startedAt && event.status === 'IN_PROGRESS') {
-                    // Lazy Expiration Check: If more than 10 minutes (600,000 ms) have passed
-                    const timePassed = Date.now() - new Date(event.startedAt).getTime();
-                    if (timePassed >= 600 * 1000) {
+                    // Expiration Check
+                    const finishedAt = event.finishedAt?.getTime();
+                    if (finishedAt && Date.now() >= finishedAt) {
                         await prisma.event.update({
-                            where: { id: eventId },
+                            where: { id: event.id },
                             data: {
                                 status: 'FINISHED',
-                                finishedAt: new Date(),
-                                performances: { updateMany: { where: { eventId }, data: { status: 'TIMEOUT' } } }
+                                performances: { updateMany: { where: { eventId: event.id }, data: { status: 'TIMEOUT' } } }
                             }
                         }).catch(e => console.error(e));
-                        return; // Don't emit state, it's over!
+                        
+                        socket.emit("battle_state", { status: 'FINISHED' });
+                        return;
+                    } else if (!finishedAt) {
+                        // Fallback for old matchmaking rooms
+                        const timePassed = Date.now() - new Date(event.startedAt).getTime();
+                        if (timePassed >= 600 * 1000) {
+                            await prisma.event.update({
+                                where: { id: event.id },
+                                data: {
+                                    status: 'FINISHED',
+                                    finishedAt: new Date(),
+                                    performances: { updateMany: { where: { eventId: event.id }, data: { status: 'TIMEOUT' } } }
+                                }
+                            }).catch(e => console.error(e));
+                            return; 
+                        }
                     }
 
                     socket.emit("battle_state", {
                         startedAt: event.startedAt,
-                        status: event.status
+                        status: event.status,
+                        finishedAt: event.finishedAt
                     })
                 }
 
