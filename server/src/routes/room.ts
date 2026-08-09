@@ -12,7 +12,7 @@ roomsRouter.get("/my-events", roomController.getMyEvents);
 // Get available rooms and templates
 roomsRouter.get("/lobby", roomController.getLobbyRooms);
 roomsRouter.get("/templates", roomController.getTemplates);
-roomsRouter.get("/live/:roomCode", roomController.getLiveRoom);
+roomsRouter.get("/live/:roomId", roomController.getLiveRoom);
 
 // Create or clone
 roomsRouter.post("/create", roomController.createRoom);

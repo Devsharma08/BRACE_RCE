@@ -20,6 +20,9 @@ model User {
   
   performances UserPersonalPerformance[]
 
+  matchmakingQueue  MatchmakingQueue[]
+
+
   SentMessage Message[] @relation("SentMessage")
   receivedMessages Message[] @relation("ReceivedMessages")
 
@@ -119,6 +122,9 @@ enum EventType {
   FRIENDS
   BOT
   PUBLIC
+  ONE_VS_ONE
+  CUSTOM
+  TOURNAMENT
 }
 
 model Event {
@@ -126,14 +132,14 @@ model Event {
   name        String?   // Optional event name
   type        EventType @default(PUBLIC)
   status      String    @default("WAITING") // WAITING, IN_PROGRESS, FINISHED
-  version Int @default(1)
+  version Int? @default(1)
 
   // Advance rooom fields
-  isPublic Boolean @default(true) // visible in lobby
+  isPublic Boolean? @default(true) // visible in lobby
   description String? @db.Text
   hostId String?
   host User? @relation("HostedEvents",fields:[hostId],references:[id])
-  isTemplate Boolean @default(false)
+  isTemplate Boolean? @default(false)
   
   // If all users in the event solve the same question
   commonProblemId String?
@@ -193,6 +199,29 @@ model Message {
   createdAt DateTime @default(now())
   
 }
+enum MatchmakingStatus {
+  WAITING
+  MATCHED
+  CANCELLED
+  EXPIRED
+}
+
+model MatchmakingQueue {
+  id String @id @default(uuid())
+
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  preferredDifficulty Level
+
+  status MatchmakingStatus @default(WAITING)
+
+  joinedAt DateTime @default(now())
+  matchedAt DateTime?
+
+  @@index([status, preferredDifficulty])
+}
+
 
 model TemplateSubscription {
   id                String   @id @default(uuid())

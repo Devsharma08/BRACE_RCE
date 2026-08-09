@@ -4,12 +4,13 @@ import HeroSection from "../features/home/components/HeroSection";
 import FriendsDashboard from "../components/FriendDashboard";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
 import { useSocket } from "../context/socketContext";
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { Activity } from "lucide-react";
 
 const Home = () => {
   const {
     findMatch,
+    socket,
     matchmakingStatus,
     activeBattleRoom,
     isConnected,
@@ -22,7 +23,7 @@ const Home = () => {
     startCustomMatch,
     leaveCustomMatch
   } = useSocket();
-  const [difficulty, setDifficulty] = useState("ANY");
+  const [difficulty, setDifficulty] = useState("MEDIUM");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   
@@ -30,6 +31,25 @@ const Home = () => {
   const [roomMaxUsers, setRoomMaxUsers] = useState(2);
   const [roomPassword, setRoomPassword] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [searchState, setSearchState] = useState<{ wait: number, levels: string[] } | null>(null);
+
+
+  useEffect(() => {
+    if (!socket) return;
+    
+    const onSearchState = (data: any) => {
+      setSearchState({ wait: data.waitingSeconds, levels: data.allowedDifficulties });
+    };
+    
+    socket.on("matchmaking_search_state", onSearchState);
+    
+    return () => {
+      socket.off("matchmaking_search_state", onSearchState);
+    };
+  }, [socket]);
+
+
+
 
 
   return (
@@ -76,7 +96,6 @@ const Home = () => {
                 disabled={matchmakingStatus !== "IDLE"}
                 className="bg-black/40 border border-slate-700/50 text-slate-300 font-mono text-xs font-bold tracking-widest px-4 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-50"
               >
-                <option value="ANY">ALL LEVELS</option>
                 <option value="EASY">EASY</option>
                 <option value="MEDIUM">MEDIUM</option>
                 <option value="HARD">HARD</option>
@@ -127,14 +146,45 @@ const Home = () => {
         </div>
       </div>
       {/* CANCEL SEARCH BUTTON */}
+            {/* MATCHMAKING SEARCH MODAL */}
       {matchmakingStatus === "SEARCHING" && (
-        <button
-          onClick={cancelMatch}
-          className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 px-6 py-2 border border-rose-500/50 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-sm tracking-widest rounded-full backdrop-blur-md transition-all"
-        >
-          [ CANCEL SEARCH ]
-        </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+          <div className="flex flex-col items-center p-12 bg-[#0b0c0e] border border-cyan-500/30 rounded-2xl max-w-md w-full">
+            <h2 className="text-2xl font-bold text-white tracking-widest mb-6 animate-pulse">
+              FINDING OPPONENT...
+            </h2>
+            
+            <div className="w-full bg-black/50 p-6 rounded-lg border border-slate-800 mb-8">
+              <p className="text-slate-400 text-xs mb-4 uppercase tracking-widest">
+                Searching Difficulties:
+              </p>
+              <div className="flex gap-3 mb-6">
+                {searchState?.levels.map(lvl => (
+                  <span key={lvl} className="px-3 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-xs font-bold">
+                    {lvl}
+                  </span>
+                ))}
+              </div>
+              
+              <div className="flex justify-between items-center text-xs font-mono text-slate-500">
+                <span>WAITING: {searchState?.wait || 0}s</span>
+                <span>
+                  {searchState && searchState.wait < 10 ? "Expanding search in " + (10 - searchState.wait) + "s..." : 
+                   searchState && searchState.wait < 20 ? "Expanding search in " + (20 - searchState.wait) + "s..." : "Maximum Search Width"}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={cancelMatch}
+              className="w-full py-3 border border-rose-500/50 text-rose-400 hover:bg-rose-950/40 rounded-lg tracking-widest font-bold"
+            >
+              [ CANCEL SEARCH ]
+            </button>
+          </div>
+        </div>
       )}
+
 
       {/* MATCH ACCEPTANCE MODAL */}
       {matchmakingStatus === "FOUND_PENDING" && (

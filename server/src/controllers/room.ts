@@ -10,7 +10,8 @@ class Rooms {
                 where: { 
                     isPublic: true, 
                     isTemplate: false, 
-                    status: "WAITING" 
+                    status: "WAITING",
+                    type: "PUBLIC"
                 },
                 include: {
                     host: { select: { username: true, avatarUrl: true } },
@@ -266,25 +267,43 @@ class Rooms {
         }
     }
 
-    // GET LIVE ROOM BY CODE
+    // GET LIVE ROOM BY CODE OR ID
     async getLiveRoom(req: AuthRequest, res: Response) {
         try {
-            const { roomCode } = req.params;
-            const event = await prisma.event.findFirst({
-                where: { roomCode, isTemplate: false },
-                include: {
-                    host: { select: { username: true, avatarUrl: true, id: true } },
-                    problems: {
-                        include: {
-                            test_cases: true,
-                            code_snippets: true
+            const { roomId } = req.params;
+            let event;
+
+            if (roomId.startsWith("room-")) {
+                const eventId = roomId.replace("room-", "");
+                event = await prisma.event.findUnique({
+                    where: { id: eventId },
+                    include: {
+                        host: { select: { username: true, avatarUrl: true } },
+                        problems: {
+                            include: { test_cases: true, code_snippets: true }
+                        },
+                        commonProblem: {
+                            include: { test_cases: true, code_snippets: true }
+                        },
+                        performances: {
+                            include: { user: { select: { id: true, username: true, avatarUrl: true, bio: true } } }
                         }
                     }
-                }
-            });
+                });
+            } else {
+                event = await prisma.event.findFirst({
+                    where: { roomId, isTemplate: false },
+                    include: {
+                        host: { select: { username: true, avatarUrl: true, id: true } },
+                        problems: {
+                            include: { test_cases: true, code_snippets: true }
+                        }
+                    }
+                });
+            }
 
             if (!event) {
-                return res.status(404).json({ message: "Room not found or has concluded." });
+                return res.status(404).json({ message: "Room not found or has ended." });
             }
 
             return res.json({ status: "success", room: event });

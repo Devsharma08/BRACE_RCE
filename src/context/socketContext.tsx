@@ -20,7 +20,7 @@ interface SocketContextType {
     difficulty?: string,
     problemIds?: string[],
   ) => void;
-  joinCustomRoom: () => void;
+  joinCustomRoom: (roomCode: string, password?: string) => void;
   startCustomMatch: () => void;
   leaveCustomMatch: () => void;
   sendDirectMessage: (targetUserId: string, content: string) => void;

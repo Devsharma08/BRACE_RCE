@@ -26,6 +26,7 @@ export const Battle = () => {
   const [battleState, setBattleState] = useState<any>({ status: "WAITING" });
   const [isHost, setIsHost] = useState(false);
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
+  const [opponent, setOpponent] = useState<any>(null);
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -62,12 +63,24 @@ export const Battle = () => {
         
         const roomData = roomRes.data.room;
         setRoom(roomData);
-        setProblems(roomData.problems);
         setIsHost(profileRes.data.data.id === roomData.hostId);
+
+        let targetProblems = [];
+        if (roomData.type === 'ONE_VS_ONE') {
+          targetProblems = [roomData.commonProblem];
+          setProblems(targetProblems);
+          const myId = profileRes.data.data.id;
+          const oppPerf = roomData.performances?.find((p:any) => p.user.id !== myId);
+          setOpponent(oppPerf?.user || null);
+        } else {
+          targetProblems = roomData.problems;
+          setProblems(targetProblems);
+        }
         
         // Initialize codes
         const initialCodes: Record<string, string> = {};
-        roomData.problems.forEach((p: any) => {
+        targetProblems.forEach((p: any) => {
+          if (!p) return;
           const jsSnip = p.code_snippets?.find((s:any) => s.language === 'javascript');
           initialCodes[p.id] = jsSnip ? jsSnip.code : "// Write your code here";
         });
@@ -177,8 +190,13 @@ export const Battle = () => {
     if (!activeProblem) return;
     setIsSubmitting(true);
     try {
-      const res = await executeCode(code, language, activeProblem.id);
-      if (res.run.status === "PASSED") {
+      const res = await executeCode({
+        code, 
+        language, 
+        oid: activeProblem.github_oid || activeProblem.id,
+        mode: "SUBMIT"
+      });
+      if (res.status === "PASSED") {
          socket?.emit("battle_action", { roomId, status: "Passed tests!", progress: 100, result: "OPPONENT_WON" });
          setBattleResult("WON");
       } else {
@@ -246,23 +264,34 @@ export const Battle = () => {
             )}
           </div>
 
-          {/* PROBLEM NAV GRID */}
-          <div className="p-4 border-b border-cyan-500/20 bg-cyan-950/10">
-            <p className="text-xs text-slate-500 tracking-widest mb-3">MISSION PLAYLIST ({problems.length})</p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-              {problems.map((p, idx) => (
-                <button 
-                  key={p.id}
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`shrink-0 w-10 h-10 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
-                    ${currentIndex === idx ? "bg-cyan-500 border-cyan-400 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]" : "bg-black/50 border-slate-700 text-slate-400 hover:border-cyan-500/50"}
-                  `}
-                >
-                  {idx + 1}
-                </button>
-              ))}
+          {/* PROBLEM NAV GRID OR OPPONENT PROFILE */}
+          {room?.type === "ONE_VS_ONE" && opponent ? (
+            <div className="p-4 border-b border-rose-500/20 bg-rose-950/10 flex items-center gap-4">
+              <img src={opponent.avatarUrl} alt="Opponent" className="w-12 h-12 rounded-full border border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.3)]" />
+              <div>
+                <p className="text-[10px] text-rose-500 tracking-widest font-bold">VS OPPONENT</p>
+                <p className="font-mono text-white text-sm font-bold">{opponent.username}</p>
+                <p className="text-xs text-slate-400 mt-1">Rating: {opponent.rating || 'N/A'}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="p-4 border-b border-cyan-500/20 bg-cyan-950/10">
+              <p className="text-xs text-slate-500 tracking-widest mb-3">MISSION PLAYLIST ({problems.length})</p>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                {problems.map((p, idx) => (
+                  <button 
+                    key={p.id}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`shrink-0 w-10 h-10 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
+                      ${currentIndex === idx ? "bg-cyan-500 border-cyan-400 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]" : "bg-black/50 border-slate-700 text-slate-400 hover:border-cyan-500/50"}
+                    `}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* TAB HEADERS */}
           <div className="flex border-b border-cyan-500/20 bg-black/40">
@@ -289,6 +318,36 @@ export const Battle = () => {
                   </span>
                 </div>
                 <div className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: activeProblem?.problem_definition || "No definition." }} />
+                
+                {/* TEST CASES SECTION */}
+                {activeProblem?.test_cases && activeProblem.test_cases.length > 0 && (
+                  <div className="mt-8">
+                    <h4 className="font-mono text-cyan-500 font-bold text-sm tracking-widest mb-4 border-b border-cyan-500/20 pb-2">
+                      PUBLIC EXAMPLES
+                    </h4>
+                    <div className="flex flex-col gap-4">
+                      {activeProblem.test_cases.filter((tc: any) => tc.is_public).map((tc: any, index: number) => (
+                        <div key={tc.id} className="bg-black/60 border border-white/5 rounded-lg p-4 font-mono text-xs shadow-inner">
+                          <p className="text-slate-500 tracking-widest mb-2 font-bold">EXAMPLE {index + 1}</p>
+                          <div className="mb-3">
+                            <span className="text-cyan-600 block mb-1">Input:</span>
+                            <pre className="text-slate-300 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap">{tc.input}</pre>
+                          </div>
+                          <div>
+                            <span className="text-emerald-600 block mb-1">Expected Output:</span>
+                            <pre className="text-emerald-400 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap">{tc.expectedOutput}</pre>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-center">
+                      <p className="text-amber-500/80 font-mono text-xs tracking-widest font-bold">
+                        TOTAL TEST CASES TO PASS: {activeProblem.test_cases.length}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col h-full">
