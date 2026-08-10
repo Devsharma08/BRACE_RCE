@@ -45,6 +45,7 @@ export const Battle = () => {
   const [codes, setCodes] = useState<Record<string, string>>({});
   // Store local start times per problem when first visited
   const [problemStartTimes, setProblemStartTimes] = useState<Record<string, number>>({});
+  const [countdown,setCountDown] = useState<number>(0);
 
   // --- CHAT STATE ---
   const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
@@ -132,6 +133,16 @@ export const Battle = () => {
 
     const interval = setInterval(() => {
       const now = Date.now();
+
+      if(battleState.startedAt){
+        const startDiff = new Date(battleState.startedAt).getTime() - now ;
+        if(startDiff > 0 ){
+          setCountDown(Math.ceil(startDiff/1000));
+          return ;
+        } else {
+          setCountDown(0);
+        }
+      }
       
       // Global Timer (from server finishedAt)
       if (battleState.finishedAt) {
@@ -222,7 +233,20 @@ export const Battle = () => {
   }
 
   return (
+
+    
     <div className="flex w-full h-screen bg-[#050505] overflow-hidden relative">
+
+      {countdown > 0 && (
+        <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
+          <h2 className="text-2xl font-bold text-cyan-400 mb-4 tracking-[0.5em]">GET READY</h2>
+          <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-500 animate-pulse drop-shadow-[0_0_30px_rgba(34,211,238,0.8)]">
+            {countdown}
+          </div>
+        </div>
+      )}
+
+      
       
       {/* LEFT PANEL */}
       <div
@@ -404,7 +428,7 @@ export const Battle = () => {
              </div>
            )}
         </div>
-        <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} />
+        <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} isDisabled={countdown > 0} />
       </div>
 
       {battleResult && (

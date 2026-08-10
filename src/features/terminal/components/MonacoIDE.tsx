@@ -25,6 +25,7 @@ type MonacoIDEProps = {
   ) => Promise<void> | void;
   onCodeChange: (code: string) => void;
   onFormatMount?: (formatAction: () => void) => void;
+  isDisabled?: boolean;
 };
 
 const JAVA_BOILERPLATE = [
@@ -40,7 +41,7 @@ const JAVA_BOILERPLATE = [
   "}",
 ].join("\n");
 
-const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, onFormatMount }: MonacoIDEProps) => {
+const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, onFormatMount, isDisabled }: MonacoIDEProps) => {
   const editorRef = useRef<EditorInstance | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const lastFileKeyRef = useRef<string | null>(null);
@@ -240,6 +241,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
           formatOnType: true,
           formatOnPaste: true,
           autoIndent: "full",
+          readOnly: isDisabled,
         }}
         onChange={(value) => onCodeChange(value ?? "")}
         onMount={handleEditorDidMount}

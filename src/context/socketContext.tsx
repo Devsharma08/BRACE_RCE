@@ -46,6 +46,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const [matchmakingStatus, setMatchmakingStatus] = useState<
     "IDLE" | "SEARCHING" | "FOUND_PENDING"
   >("IDLE");
+  const [pendingOpponent, setPendingOpponent] = useState<{username:string,id:string,avatarUrl:string,bio:string} | null>(null);
+  const [queueDifficulty, setQueueDifficulty] = useState<string>("MEDIUM");
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null);
   const [activeBattleRoom, setActiveBattleRoom] = useState<{
     roomId: string;
@@ -53,7 +55,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   } | null>(null);
   const [customLobby, setCustomLobby] = useState<CustomLobbyState | null>(null);
   const [incomingChallenge, setIncomingChallenge] = useState<{ challengerId: string, challengerUsername?: string } | null>(null);
-
+  const [isClicked,setIsClicked] = useState<boolean>();
 
   const navigate = useNavigate();
 
@@ -115,6 +117,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     // Both players found, waiting for accept
     newSocket.on("match_found_pending", (data) => {
       console.log("⚔️ MATCH FOUND PENDING!", data);
+      setPendingOpponent(data.opponent);
       setPendingMatchId(data.matchId);
       setMatchmakingStatus("FOUND_PENDING");
     });
@@ -132,6 +135,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setPendingMatchId(null);
       alert("Match was declined or timed out.");
     });
+
+    newSocket.on("match_opponent_declined",()=>{
+      setPendingMatchId(null);
+      setMatchmakingStatus("SEARCHING")
+      newSocket.emit("join_matchmaking",queueDifficulty);
+    })
 
     return () => {
       newSocket.disconnect();
@@ -151,12 +160,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const acceptChallenge = (challengerId: string) => {
+    setIsClicked(true);
     socket?.emit("accept_challenge", { challengerId });
     setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
   };
 
   const cancelMatch = () => {
     if (socket) {
+      setIsClicked(true);
       setMatchmakingStatus("IDLE");
       socket.emit("leave_matchmaking");
     }
@@ -164,6 +175,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   const findMatch = (difficulty: string = "ANY") => {
     if (socket) {
+      setQueueDifficulty(difficulty);
       setMatchmakingStatus("SEARCHING");
       socket.emit("join_matchmaking", difficulty);
     }
@@ -234,6 +246,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         acceptMatch,
         joinCustomRoom,
         incomingChallenge,
+        pendingOpponent,
         leaveCustomMatch,
         createCustomRoom,
         startCustomMatch,
@@ -243,7 +256,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         sendDirectMessage,
         acceptChallenge,
         declineChallenge,
-        sendBattleMessage
+        sendBattleMessage,
+        isClicked
       }}
     >
       {children}

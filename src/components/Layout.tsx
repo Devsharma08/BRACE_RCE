@@ -7,7 +7,7 @@ import { useAuth } from '../context/authContext'
 
 const Layout = () => {
   const { pathname } = useLocation()
-  const hidden = pathname === "/terminal" || pathname === "/signin" || pathname === "/signup" ;
+  const hidden = pathname === "/terminal" || pathname === "/signin" || pathname === "/signup" || pathname.includes("/battle") ;
   
   return (
     <div className='flex flex-col min-h-screen relative w-full'>
