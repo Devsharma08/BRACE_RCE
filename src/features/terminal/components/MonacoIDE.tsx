@@ -7,10 +7,12 @@ type EditorInstance = Parameters<OnMount>[0];
 type FormattingModel = {
   getLinesContent: () => string[];
 };
+
 type FormattingEdit = {
   range: InstanceType<Monaco["Range"]>;
   text: string;
 };
+
 
 type MonacoIDEProps = {
   code: string;
@@ -216,7 +218,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
   }, [code, language, isLocal]);
 
   return (
-    <div className="h-full min-h-0 overflow-hidden border border-white/10 bg-[#01050f] sm:rounded-xl">
+    <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-white/10 bg-[#01050f] sm:rounded-xl">
       <Editor
         height="100%"
         language={language}

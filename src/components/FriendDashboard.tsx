@@ -17,6 +17,7 @@ import { api } from "../config/api";
 interface Friend {
   id: string;
   username: string;
+  requestSent?: boolean;
 }
 interface Message {
   id: string;

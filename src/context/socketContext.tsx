@@ -23,6 +23,9 @@ interface SocketContextType {
   joinCustomRoom: (roomCode: string, password?: string) => void;
   startCustomMatch: () => void;
   leaveCustomMatch: () => void;
+  pendingOpponent: { username: string; id: string; avatarUrl: string; bio: string } | null;
+  isClicked: boolean;
+  incomingChallenge: any;
   sendDirectMessage: (targetUserId: string, content: string) => void;
   sendChallenge: (targetUserId: string, problemId?: string) => void;
   acceptChallenge: (challengerId: string) => void;

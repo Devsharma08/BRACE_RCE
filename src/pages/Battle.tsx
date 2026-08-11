@@ -249,13 +249,9 @@ export const Battle = () => {
       
       
       {/* LEFT PANEL */}
-      <div
-        className={`absolute z-20 left-0 top-0 h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          isPanelOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        style={{ width: "min(450px, 100vw)" }}
-      >
-        <div className="flex flex-col h-full">
+      <div className={`relative z-20 h-full transition-all duration-300 shrink-0 ${isPanelOpen ? "w-[450px]" : "w-0"}`}>
+        <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden">
+          <div className="flex flex-col h-full w-[450px]">
           
           {/* HOST / TIMERS HEADER */}
           <div className="p-4 border-b border-cyan-500/20 bg-black/40">
@@ -350,7 +346,7 @@ export const Battle = () => {
                       PUBLIC EXAMPLES
                     </h4>
                     <div className="flex flex-col gap-4">
-                      {activeProblem.test_cases.filter((tc: any) => tc.is_public).map((tc: any, index: number) => (
+                      {activeProblem.test_cases.slice(0, 2).map((tc: any, index: number) => (
                         <div key={tc.id} className="bg-black/60 border border-white/5 rounded-lg p-4 font-mono text-xs shadow-inner">
                           <p className="text-slate-500 tracking-widest mb-2 font-bold">EXAMPLE {index + 1}</p>
                           <div className="mb-3">
@@ -401,13 +397,14 @@ export const Battle = () => {
             </button>
           </div>
         </div>
+        </div>
 
-        <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] ${isPanelOpen ? "left-[100%]" : "left-0"}`}>
+        <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}>
           {isPanelOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
         </button>
       </div>
 
-      <div className={`flex-1 h-full relative z-10 transition-all duration-300 ${isPanelOpen ? "pl-[450px]" : "pl-0"}`}>
+      <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
            {battleState.status === "WAITING" && (
              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
@@ -428,7 +425,7 @@ export const Battle = () => {
              </div>
            )}
         </div>
-        <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} isDisabled={countdown > 0} />
+        <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} isDisabled={countdown > 0 && countdown <= 10 && battleState.status === "IN_PROGRESS"} />
       </div>
 
       {battleResult && (
