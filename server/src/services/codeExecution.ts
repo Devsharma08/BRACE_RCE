@@ -90,11 +90,18 @@ export const executeCode = async (req: Request, res: Response) => {
   try {
     let casesToRun: TestCaseRecord[] = [];
 
-    // Fetch test cases from DB if it's a real problem
+    // Fetch test cases and wrapper code from DB if it's a real problem
+    let finalCode = sourceCode;
+    
     if (githubOid && !githubOid.startsWith("local-")) {
-      const fileData = await prisma.problem.findUnique({
-        where: { github_oid: githubOid },
-        select: { test_cases: true }
+      const fileData = await prisma.problem.findFirst({
+        where: { 
+          OR: [
+            { github_oid: githubOid },
+            { id: githubOid }
+          ]
+        },
+        select: { test_cases: true, code_snippets: true }
       });
 
       const testCases = (fileData?.test_cases ?? []) as TestCaseRecord[];
@@ -104,6 +111,14 @@ export const executeCode = async (req: Request, res: Response) => {
       } else {
         casesToRun = testCases.slice(0, 1);
       }
+      
+      const snippet = fileData?.code_snippets?.find((s: any) => s.language === executionLanguage);
+      if (snippet && snippet.wrapperCode) {
+        finalCode = `${sourceCode}\n${snippet.wrapperCode}`;
+      }
+      console.log("EXECUTION LANGUAGE:", executionLanguage);
+      console.log("FOUND SNIPPET:", snippet ? "YES" : "NO");
+      console.log("FINAL CODE:\n", finalCode);
     }
 
     // Override if custom input is provided
@@ -127,12 +142,12 @@ export const executeCode = async (req: Request, res: Response) => {
         "files": [
           {
             "name": `main.${getExtension(executionLanguage)}`,
-            "content": sourceCode,
+            "content": finalCode,
           }
         ],
         "stdin": testCaseInput,
-        "compile_timeout": 10000,
-        "run_timeout": 10000,
+        "compile_timeout": 3000,
+        "run_timeout": 3000,
         "compile_memory_limit": -1,
         "run_memory_limit": -1
       };
@@ -141,22 +156,27 @@ export const executeCode = async (req: Request, res: Response) => {
 
       try {
         // 1. Try hitting the public Piston API first
-        const pistonResponse = await fetch("http://localhost:2000/api/v2/execute", {
+        const pistonResponse = await fetch("http://127.0.0.1:2000/api/v2/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
 
-        if (!pistonResponse?.ok) throw new Error("Piston API blocked or down");
+        if (!pistonResponse?.ok) {
+          const errText = await pistonResponse.text();
+          console.error("Piston API error response:", pistonResponse.status, errText);
+          throw new Error("Piston API blocked or down: " + pistonResponse.status);
+        }
         data = await pistonResponse?.json();
 
       } catch (apiError) {
+        console.error("Fetch threw:", apiError);
         // 2. FALLBACK: Execute JavaScript locally if Piston fails!
         if (executionLanguage === "javascript") {
           console.log("⚠️ Piston API failed. Falling back to local Node.js execution!");
           try {
             const localCode = `
-                        ${sourceCode}
+                        ${finalCode}
                     `;
             const { stdout, stderr } = await execFileAsync("node", ["-e", localCode], { timeout: 3000 });
 

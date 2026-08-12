@@ -16,7 +16,7 @@ import { problemsRouter } from "./routes/problems.js";
 export const createApp = (): Express => {
   const app = express();
   app.set("trust proxy", 1);
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
   const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
   // @ts-ignore - Bypass faulty TS definition for cors in ESM

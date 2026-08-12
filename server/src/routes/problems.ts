@@ -12,5 +12,6 @@ problemsRouter.get("/custom", problemController.getMyCustomProblems);
 
 // Creating Problems
 problemsRouter.post("/create", problemController.createCustomProblem);
+problemsRouter.post("/seed", problemController.seedSystemProblems);
 
 export { problemsRouter };

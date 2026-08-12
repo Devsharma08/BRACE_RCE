@@ -3040,7 +3040,7 @@ MaxStack.prototype.popMax = function() {};`),
         return new int[0][0];
     }
 }`),
-      snippet("javascript", `var kClosest = function(points, k) {};`),
+      snippet("javascript", `var kClosest = function(points, k) {};`, `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split('\\n');\nif (input.length < 2) process.exit(0);\nconst points = JSON.parse(input[0]);\nconst k = parseInt(input[1]);\nconst res = kClosest(points, k);\nconsole.log(JSON.stringify(res).replace(/\\s/g, ''));`),
     ],
   ),
   problem(
