@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authentication } from "../middleware/authentication.js";
 import { roomController } from "../controllers/room.js";
 
-const roomsRouter = Router();
+const roomsRouter: Router = Router();
 
 roomsRouter.use(authentication);
 

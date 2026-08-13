@@ -23,7 +23,9 @@ const Home = () => {
     joinCustomRoom,
     startCustomMatch,
     leaveCustomMatch,
-    isClicked
+    pendingMatchId,
+    isClicked,
+    waitingTime
   } = useSocket();
   const [difficulty, setDifficulty] = useState("MEDIUM");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,7 +36,6 @@ const Home = () => {
   const [roomPassword, setRoomPassword] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [searchState, setSearchState] = useState<{
-    wait: number;
     levels: string[];
   } | null>(null);
 
@@ -43,7 +44,6 @@ const Home = () => {
 
     const onSearchState = (data: any) => {
       setSearchState({
-        wait: data.waitingSeconds,
         levels: data.allowedDifficulties,
       });
     };
@@ -85,6 +85,7 @@ const Home = () => {
         {/* Right Side: Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           {activeBattleRoom ? (
+            // this should be defualt no additional condition should be there
             <Link
               to={`/battle/${activeBattleRoom.roomId}?oid=${activeBattleRoom.problemId}`}
               className="group relative inline-flex items-center justify-center gap-2 border border-emerald-500/50 bg-emerald-950/40 hover:bg-emerald-900/60 py-4 px-8 font-mono text-xs font-bold tracking-[0.15em] text-emerald-400 transition-all rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-pulse w-full sm:w-auto"
@@ -122,13 +123,15 @@ const Home = () => {
                 <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
                   <button
                     onClick={() => setShowCreateModal(true)}
-                    className="group relative inline-flex items-center justify-center gap-2 border border-violet-500/35 bg-violet-950/10 hover:border-violet-400 hover:text-violet-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-violet-400 transition-all cursor-pointer rounded-xl w-full"
+                    className="group relative inline-flex items-center justify-center gap-2 border border-violet-500/35 bg-violet-950/10 hover:border-violet-400 hover:text-violet-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-violet-400 transition-all cursor-pointer rounded-xl w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={matchmakingStatus !== "IDLE"}
                   >
                     [ CREATE ROOM ]
                   </button>
                   <button
                     onClick={() => setShowJoinModal(true)}
-                    className="group relative inline-flex items-center justify-center gap-2 border border-orange-500/35 bg-orange-950/10 hover:border-orange-400 hover:text-orange-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-orange-400 transition-all cursor-pointer rounded-xl w-full"
+                    className="group relative inline-flex items-center justify-center gap-2 border border-orange-500/35 bg-orange-950/10 hover:border-orange-400 hover:text-orange-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-orange-400 transition-all cursor-pointer rounded-xl w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={matchmakingStatus !== "IDLE"}
                   >
                     [ JOIN ROOM ]
                   </button>
@@ -138,8 +141,8 @@ const Home = () => {
           )}
           {/* Existing Terminal Button */}
           <Link
-            to="/terminal"
-            className="group relative inline-flex items-center justify-center gap-2 border border-cyan-500/35 bg-cyan-950/10 hover:border-cyan-400 hover:text-cyan-400 hover:bg-cyan-950/20 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-cyan-400 transition-all duration-300 cursor-pointer select-none rounded-xl w-full sm:w-auto text-center"
+            to={matchmakingStatus === "IDLE" ? "/terminal" : "#"}
+            className={`group relative inline-flex items-center justify-center gap-2 border border-cyan-500/35 bg-cyan-950/10 hover:border-cyan-400 hover:text-cyan-400 hover:bg-cyan-950/20 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-cyan-400 transition-all duration-300 cursor-pointer select-none rounded-xl w-full sm:w-auto text-center ${matchmakingStatus !== "IDLE" ? "pointer-events-none opacity-50" : ""}`}
           >
             <span className="hidden sm:inline">[ JUMP_TO_TERMINAL ]</span>
             <span className="inline sm:hidden">[ LAUNCH_WORKSPACE ]</span>
@@ -161,7 +164,7 @@ const Home = () => {
                 Searching Difficulties:
               </p>
               <div className="flex gap-3 mb-6">
-                {searchState?.levels.map((lvl) => (
+                {searchState && searchState.levels.map((lvl) => (
                   <span
                     key={lvl}
                     className="px-3 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-xs font-bold"
@@ -171,18 +174,16 @@ const Home = () => {
                 ))}
               </div>
 
-              <div className="flex justify-between items-center text-xs font-mono text-slate-500">
-                <span>WAITING: {searchState?.wait || 0}s</span>
-                <span>
-                  {searchState && searchState.wait < 10
-                    ? "Expanding search in " + (10 - searchState.wait) + "s..."
-                    : searchState && searchState.wait < 20
-                      ? "Expanding search in " +
-                        (20 - searchState.wait) +
-                        "s..."
-                      : "Maximum Search Width"}
-                </span>
-              </div>
+                <div className="flex justify-between items-center text-xs font-mono text-slate-500">
+                  <span>WAITING: {waitingTime}s</span>
+                  <span>
+                    {waitingTime < 10
+                      ? "Expanding search in " + (10 - waitingTime) + "s..."
+                      : waitingTime < 20
+                        ? "Expanding search in " + (20 - waitingTime) + "s..."
+                        : "Search fully expanded"}
+                  </span>
+                </div>
             </div>
 
             <button
@@ -195,58 +196,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* MATCH ACCEPTANCE MODAL */}
-      {matchmakingStatus === "FOUND_PENDING" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <div className="flex flex-col items-center justify-center p-12 bg-[#0b0c0e] border border-cyan-500/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
-            {/* Radar Sweep Effect */}
-            <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,rgba(34,211,238,0)_0%,rgba(34,211,238,0.1)_100%)] animate-[spin_3s_linear_infinite]" />
-            <div className="absolute inset-0 border-[40px] border-[#0b0c0e] rounded-full scale-150" />
 
-            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400 mb-6">
-              MATCH FOUND
-            </h2>
-
-            {/* Opponent Profile */}
-            {pendingOpponent && (
-              <div className="flex flex-col items-center mb-8 animate-in fade-in zoom-in duration-500">
-                <img
-                  src={pendingOpponent.avatarUrl}
-                  alt="Opponent"
-                  className="w-20 h-20 rounded-full border-2 border-cyan-500 mb-3 shadow-[0_0_15px_rgba(34,211,238,0.4)]"
-                />
-                <span className="text-xl font-bold text-white">
-                  {pendingOpponent.username}
-                </span>
-                <span className="text-sm text-cyan-400">
-                  "{pendingOpponent.bio}"
-                </span>
-              </div>
-            )}
-
-            <p className="text-cyan-400/70 text-xs tracking-widest mb-10 relative z-10 font-mono">
-              AWAITING OPPONENT...
-            </p>
-
-            <div className="flex gap-4 w-full relative z-10">
-              <button
-                disabled={isClicked}
-                onClick={declineMatch}
-                className="w-1/2 py-4 bg-rose-950/40 hover:bg-rose-900 border border-rose-500/50 text-rose-300 font-mono font-bold tracking-widest rounded-lg transition-all"
-              >
-                [ DECLINE ]
-              </button>
-              <button
-                disabled={isClicked}
-                onClick={acceptMatch}
-                className="w-1/2 py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/80 hover:border-cyan-400 text-cyan-100 font-mono font-bold tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(34,211,238,0.4)]"
-              >
-                [ ACCEPT ]
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ----------------------------- */}
       {/* CREATE ROOM MODAL */}

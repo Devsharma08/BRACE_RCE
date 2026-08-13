@@ -4,7 +4,7 @@ import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import type { SupportedLanguage } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import { Code, Swords, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send, Play, Clock, StopCircle, Lock } from "lucide-react";
+import { Code, Swords, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send, Play, Clock, StopCircle, Lock,Terminal } from "lucide-react";
 import { api } from "../config/api";
 
 interface BattleMessage {
@@ -52,6 +52,10 @@ export const Battle = () => {
   const [newBattleMessage, setNewBattleMessage] = useState("");
   const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT">("PROBLEM");
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // terminal
+  const [isTerminal,setIsTerminal] = useState<boolean>(false);
+  const [terminalOutput,setTerminalOutput] = useState("// COMPILATION LOGS WILL BE DISPLAYED HERE");
 
   // 1. Fetch Room Data
   useEffect(() => {
@@ -175,6 +179,7 @@ export const Battle = () => {
   useEffect(() => {
     if (activeProblem && codes[activeProblem.id]) {
       setCode(codes[activeProblem.id]);
+      console.log("active problem:",activeProblem.test_cases)
     }
   }, [activeProblem, codes]);
 
@@ -200,21 +205,52 @@ export const Battle = () => {
   const handleRunCode = async () => {
     if (!activeProblem) return;
     setIsSubmitting(true);
+    setIsTerminal(true);
+    setTerminalOutput("Executing code and running test cases...");
+    
     try {
       const res = await executeCode({
-        code, 
-        language, 
+        code,
+        language,
         oid: activeProblem.github_oid || activeProblem.id,
         mode: "SUBMIT"
       });
+      
+      if (res.details) {
+        setProblems(prev => {
+          const newProblems = [...prev];
+          const currentProb = { ...newProblems[currentIndex] };
+          const newTestCases = [...(currentProb.test_cases || [])];
+          
+          res.details?.forEach(detail => {
+            const tcIndex = detail.testCaseIndex;
+            if (newTestCases[tcIndex]) {
+              newTestCases[tcIndex] = {
+                ...newTestCases[tcIndex],
+                status: detail.passed ? "PASSED" : "FAILED",
+                output: detail.output || "",
+                runtimeError: detail.runtimeError || ""
+              };
+            }
+          });
+          
+          currentProb.test_cases = newTestCases;
+          newProblems[currentIndex] = currentProb;
+          return newProblems;
+        });
+      }
+      
       if (res.status === "PASSED") {
+         setTerminalOutput("SUCCESS: All test cases passed!");
          socket?.emit("battle_action", { roomId, status: "Passed tests!", progress: 100, result: "OPPONENT_WON" });
          setBattleResult("WON");
       } else {
+         setTerminalOutput(`Execution Finished: ${res.passedCases || 0} / ${res.totalCases || 0} cases passed.`);
          socket?.emit("battle_action", { roomId, status: "Failed tests...", progress: 50 });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setTerminalOutput(`COMPILATION/RUNTIME ERROR:\n${err.message || String(err)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -346,7 +382,7 @@ export const Battle = () => {
                       PUBLIC EXAMPLES
                     </h4>
                     <div className="flex flex-col gap-4">
-                      {activeProblem.test_cases.slice(0, 2).map((tc: any, index: number) => (
+                      {activeProblem.test_cases.slice(0,2).map((tc: any, index: number) => (
                         <div key={tc.id} className="bg-black/60 border border-white/5 rounded-lg p-4 font-mono text-xs shadow-inner">
                           <p className="text-slate-500 tracking-widest mb-2 font-bold">EXAMPLE {index + 1}</p>
                           <div className="mb-3">
@@ -370,21 +406,21 @@ export const Battle = () => {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col h-full">
-                <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
-                  {battleMessages.map(msg => (
-                    <div key={msg.id} className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.socketId === socket?.id ? 'bg-cyan-900/40 border border-cyan-500/30 text-cyan-100 self-end' : 'bg-slate-800/50 border border-slate-700 text-slate-300 self-start'}`}>
-                      {msg.content}
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
+                <div className="flex flex-col h-full">
+                  <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
+                    {battleMessages.map(msg => (
+                      <div key={msg.id} className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.socketId === socket?.id ? 'bg-cyan-900/40 border border-cyan-500/30 text-cyan-100 self-end' : 'bg-slate-800/50 border border-slate-700 text-slate-300 self-start'}`}>
+                        {msg.content}
+                      </div>
+                    ))}
+                    <div ref={chatEndRef} />
+                  </div>
+                  <form onSubmit={handleBattleMessage} className="mt-auto flex gap-2 pt-2 border-t border-cyan-500/20">
+                    <input type="text" value={newBattleMessage} onChange={(e) => setNewBattleMessage(e.target.value)} placeholder="TRANSMIT..." className="flex-1 bg-black/50 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs focus:border-cyan-500 focus:outline-none" />
+                    <button type="submit" className="p-3 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg transition-all"><Send className="w-4 h-4" /></button>
+                  </form>
                 </div>
-                <form onSubmit={handleBattleMessage} className="mt-auto flex gap-2 pt-2 border-t border-cyan-500/20">
-                  <input type="text" value={newBattleMessage} onChange={(e) => setNewBattleMessage(e.target.value)} placeholder="TRANSMIT..." className="flex-1 bg-black/50 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs focus:border-cyan-500 focus:outline-none" />
-                  <button type="submit" className="p-3 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg transition-all"><Send className="w-4 h-4" /></button>
-                </form>
-              </div>
-            )}
+              )}
           </div>
 
           <div className="p-6 border-t border-cyan-500/20 bg-black/20">
@@ -421,11 +457,92 @@ export const Battle = () => {
                   <StopCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white tracking-widest mb-2 font-mono">TIME EXPIRED</h3>
                   <p className="text-slate-400 text-sm font-sans">You failed to crack this problem in time. Move to the next one.</p>
+                  <button onClick={()=>navigate("/")} className="bg-transparent border-3 border-dashed border-rose-500/30 mt-3 hover:bg-rose-500 border border-rose-500/30 trasnition-color duration-300 text-white px-2 py-1 rounded-xl font-mono font-bold">
+                    Home
+                  </button>
                 </div>
              </div>
            )}
         </div>
-        <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} isDisabled={countdown > 0 && countdown <= 10 && battleState.status === "IN_PROGRESS"} />
+        {/* monaco editor */}
+        <div className="flex-1 min-h-0">
+            <MonacoIDE code={code} language={language} oid="battle-file" fileKey="battle" onCodeChange={handleCodeChange} handleRunCode={handleRunCode as any} isDisabled={countdown > 0 && countdown <= 10 && battleState.status === "IN_PROGRESS"} />
+        </div>
+        {/* terminal output */}
+            <div className="flex flex-col border-t border-cyan-500/20 bg-[#0b0c0e]">
+              {/* terminal toggle button */}
+              <button onClick={()=>setIsTerminal(!isTerminal)}  className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-cyan-900/40 text-cyan-400 font-mono text-xs font-bold tracking-widest transition-all w-max border-r border-cyan-500/20 rounded-tr-lg">
+                  <Terminal className="w-4 h-4" /> 
+              CONSOLE {isTerminal ? '▼' : '▲'}
+              </button>
+                 
+                        {/* Terminal Body */}
+            {isTerminal && (
+              <div className="h-64 p-4 bg-black/60 overflow-y-auto font-mono text-xs text-slate-300 shadow-inner border-t border-cyan-500/10 flex flex-col gap-4">
+                {terminalOutput !== "// COMPILATION LOGS WILL BE DISPLAYED HERE" && typeof terminalOutput === "string" && (
+                  <pre className="whitespace-pre-wrap text-emerald-400 mb-4">{terminalOutput}</pre>
+                )}
+                
+                <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
+                  <h3 className="font-mono text-cyan-400 font-bold tracking-widest text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4" /> TEST RESULTS
+                  </h3>
+                  <span className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 px-3 py-1 rounded text-xs font-mono font-bold">
+                    TOTAL: {activeProblem?.test_cases?.length || 0}
+                  </span>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
+                  {activeProblem?.test_cases?.map((prob: any, index: number) => {
+                    const isPassed = prob.status === "PASSED";
+                    const isFailed = prob.status === "FAILED";
+                    
+                    return (
+                      <div 
+                        key={prob.id || index} 
+                        className={`transition-all duration-300 rounded-lg p-4 font-mono text-xs shadow-inner relative group border ${
+                          isPassed ? 'bg-emerald-950/20 border-emerald-500/50 hover:border-emerald-400' :
+                          isFailed ? 'bg-rose-950/20 border-rose-500/50 hover:border-rose-400' :
+                          'bg-black/60 border-white/5 hover:border-cyan-500/30'
+                        }`}
+                      >
+                        <div className={`absolute top-0 right-0 px-2 py-1 rounded-bl-lg rounded-tr-lg text-[10px] font-bold tracking-widest transition-colors ${
+                          isPassed ? 'bg-emerald-500/20 text-emerald-400' :
+                          isFailed ? 'bg-rose-500/20 text-rose-400' :
+                          'bg-white/5 text-slate-500 group-hover:text-cyan-500'
+                        }`}>
+                          CASE {index + 1} {isPassed ? " (PASSED)" : isFailed ? " (FAILED)" : ""}
+                        </div>
+                        <div className="mb-3 mt-1">
+                          <span className={`${isPassed ? 'text-emerald-500' : isFailed ? 'text-rose-500' : 'text-cyan-600'} block mb-1 font-bold tracking-wider transition-colors`}>INPUT:</span>
+                          <pre className="text-slate-300 bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed">{prob.input}</pre>
+                        </div>
+                        <div>
+                          <span className={`${isPassed || isFailed ? 'text-slate-400' : 'text-emerald-600'} block mb-1 font-bold tracking-wider transition-colors`}>EXPECTED OUTPUT:</span>
+                          <pre className={`${isPassed || isFailed ? 'text-slate-300' : 'text-emerald-400'} bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed`}>{prob.expectedOutput}</pre>
+                        </div>
+                        {prob.output && (!prob.runtimeError || prob.output.trim() !== prob.runtimeError.trim()) && (
+                          <div className="mt-4 pt-4 border-t border-white/10">
+                            <span className={`${isPassed ? 'text-emerald-500' : 'text-rose-500'} block mb-1 font-bold tracking-wider`}>USER OUTPUT:</span>
+                            <pre className={`${isPassed ? 'text-emerald-400' : 'text-rose-400'} bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed`}>{prob.output}</pre>
+                          </div>
+                        )}
+                        {prob.runtimeError && (
+                          <div className="mt-4 pt-4 border-t border-rose-500/30">
+                            <span className="text-rose-500 block mb-1 font-bold tracking-wider">ERROR (STDERR):</span>
+                            <pre className="text-rose-400 bg-black/40 p-3 rounded border border-rose-500/20 whitespace-pre-wrap leading-relaxed">{prob.runtimeError}</pre>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+
+
+                </div>
+              </div>
+            )}
+            </div>
       </div>
 
       {battleResult && (

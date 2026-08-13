@@ -207,31 +207,7 @@ export default function FriendsDashboard() {
 
   return (
     <div className="flex h-screen w-full pt-20 px-4 pb-4 gap-4 bg-[#030406] relative">
-      {/* INCOMING CHALLENGE OVERLAY */}
-      {incomingChallenge && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="p-8 border-2 border-rose-500/50 bg-[#0b0c0e] flex flex-col items-center rounded-2xl shadow-[0_0_50px_rgba(225,29,72,0.2)]">
-            <Swords className="w-16 h-16 text-rose-500 animate-bounce mb-4" />
-            <h2 className="text-rose-400 font-mono text-xl font-bold mb-6">
-              CHALLENGE RECEIVED
-            </h2>
-            <div className="flex gap-4">
-              <button
-                onClick={() => declineChallenge(incomingChallenge.challengerId)}
-                className="px-6 py-3 border border-slate-600 text-slate-400 font-mono text-sm hover:bg-slate-800 rounded-lg"
-              >
-                DECLINE
-              </button>
-              <button
-                onClick={() => acceptChallenge(incomingChallenge.challengerId)}
-                className="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold tracking-widest rounded-lg shadow-[0_0_20px_rgba(225,29,72,0.4)]"
-              >
-                ACCEPT BATTLE
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* LEFT COLUMN: NAVIGATION & LISTS */}
       <div className="w-1/3 max-w-sm flex flex-col bg-[#0b0c0e] border border-cyan-500/20 rounded-2xl overflow-hidden">

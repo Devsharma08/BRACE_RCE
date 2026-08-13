@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authentication } from "../middleware/authentication.js";
 import { problemController } from "../controllers/problems.js";
 
-const problemsRouter = Router();
+const problemsRouter: Router = Router();
 
 problemsRouter.use(authentication);
 

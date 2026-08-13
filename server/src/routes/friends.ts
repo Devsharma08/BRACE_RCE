@@ -3,7 +3,7 @@ import { prisma } from "../Lib/prisma.js";
 import { authentication } from "../middleware/authentication.js";
 import { FriendController } from "../controllers/friends.js"; 
 
-export const friendsRouter = Router();
+export const friendsRouter: Router = Router();
 
 // GET current user's friends list
 friendsRouter.get("/", authentication,FriendController.getFriends);

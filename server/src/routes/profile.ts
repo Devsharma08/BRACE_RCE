@@ -1,5 +1,5 @@
 import { Router } from "express";
-const profileRouter = Router();
+const profileRouter: Router = Router();
 import { profileController } from "../controllers/profile";
 import { authentication } from "../middleware/authentication";
 

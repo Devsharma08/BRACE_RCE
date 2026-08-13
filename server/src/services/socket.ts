@@ -186,8 +186,14 @@ export const initSocketServer = (io: Server) => {
 
 
         // PVP matching events
-        socket.on("join_matchmaking", async (difficulty: Level) => {
+        socket.on("join_matchmaking", async (payload: { difficulty: Level, waitingSeconds?: number } | Level) => {
             try {
+                console.log("JOIN MATCHMAKING RAW PAYLOAD:", JSON.stringify(payload));
+                // Compatibility for both old format and new format with waitingSeconds
+                const difficulty = typeof payload === "string" ? payload : payload.difficulty;
+                console.log("PARSED DIFFICULTY:", JSON.stringify(difficulty));
+                const initialWaitingSeconds = typeof payload === "object" && payload.waitingSeconds ? payload.waitingSeconds : 0;
+                
                 // Create the Queue Entry
                 const queueEntry = await prisma.matchmakingQueue.create({
                     data: {
@@ -197,14 +203,22 @@ export const initSocketServer = (io: Server) => {
                     }
                 });
                 // Start a polling interval to dynamically check for opponents every 3 seconds
-                let waitingSeconds = 0;
+                let currentWaitingSeconds = initialWaitingSeconds;
                 const searchInterval = setInterval(async () => {
-                    waitingSeconds += 3;
+                    try {
+                        currentWaitingSeconds += 3;
+                        
+                        // Prevent race condition: stop polling if we got passively matched
+                        const selfQueue = await prisma.matchmakingQueue.findUnique({ where: { id: queueEntry.id } });
+                        if (!selfQueue || selfQueue.status !== "WAITING") {
+                            clearInterval(searchInterval);
+                            return;
+                        }
 
-                    const allowedDifficulties = getAllowedDifficulties(difficulty, waitingSeconds);
+                        const allowedDifficulties = getAllowedDifficulties(difficulty, currentWaitingSeconds);
 
-                    // Notify frontend of expanding search state
-                    socket.emit("matchmaking_search_state", { waitingSeconds, allowedDifficulties });
+                        // Notify frontend of expanding search state
+                        socket.emit("matchmaking_search_state", { waitingSeconds: currentWaitingSeconds, allowedDifficulties });
                     // Find compatible opponent
                     const opponentQueue = await prisma.matchmakingQueue.findFirst({
                         where: {
@@ -301,6 +315,9 @@ export const initSocketServer = (io: Server) => {
                             }
                         }, 15000);
 
+                    }
+                    } catch (e) {
+                        console.error("Matchmaking interval error:", e);
                     }
                 }, 3000);
 
