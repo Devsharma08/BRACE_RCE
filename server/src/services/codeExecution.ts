@@ -623,7 +623,17 @@ export const executeCode = async (req: Request, res: Response) => {
     const avgRuntimeMs = runCount > 0 ? Math.round(totalRuntimeMs / runCount) : 0;
     const avgMemoryKb = runCount > 0 ? Math.round(totalMemoryKb / runCount) : 0;
 
-    const userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId : "";
+    let userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId : "";
+    const userId = (req as any).userId;
+    if (!userPerfId && userId) {
+      const activePerf = await prisma.userPersonalPerformance.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" }
+      });
+      if (activePerf) {
+        userPerfId = activePerf.id;
+      }
+    }
     
     if (executionMode === "SUBMIT" && userPerfId) {
       const problemId = casesToRun[0]?.problemId || githubOid;
