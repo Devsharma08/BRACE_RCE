@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../Lib/prisma.js";
-import { execFile } from "child_process";
+import { execFile, execFileSync } from "child_process";
 import { promisify } from "util";
 const execFileAsync = promisify(execFile);
 
@@ -96,9 +96,9 @@ function prepareFinalCode(
         const argsStr = (match[2] || match[4] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
 
-        wrapperCode = `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split('\\n');\nif (input.length < ${argCount}) { throw new Error("TEST CASE ERROR: The input provided does not have enough lines to supply the required function arguments."); }\n`;
+        wrapperCode = `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);\nif (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }\n`;
         for (let i = 0; i < argCount; i++) {
-          wrapperCode += `const arg${i} = JSON.parse(input[${i}]);\n`;
+          wrapperCode += `const arg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;\n`;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
         wrapperCode += `let res;\nif (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n  res = (new Solution())['${funcName}'](${callArgs});\n} else {\n  res = ${funcName}(${callArgs});\n}\n`;
@@ -107,6 +107,12 @@ function prepareFinalCode(
     }
 
     if (wrapperCode) {
+      // Robustly replace legacy split('\n') with split(/\r?\n/)
+      wrapperCode = wrapperCode.replace(
+        /const input = fs\.readFileSync\(0, ['"]utf-8['"]\)\.trim\(\)\.split\(['"]\\n['"]\);/g,
+        `const input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);`
+      );
+
       const resMatch = wrapperCode.match(/const\s+res\s*=\s*\w+\((.*?)\);/);
       if (resMatch && resMatch[1]) {
         const firstArg = resMatch[1].split(',')[0]?.trim() || "arg0";
@@ -116,8 +122,8 @@ function prepareFinalCode(
         );
 
         wrapperCode = wrapperCode.replace(
-          /if\s*\(input\.length\s*<\s*\d+\)\s*process\.exit\(0\);/g,
-          `if (input.length < ${(resMatch[1] || "").split(',').length}) { throw new Error("TEST CASE ERROR: The input provided does not have enough lines to supply the required function arguments."); }`
+          /if\s*\(input\.length\s*<\s*\d+\)\s*(?:process\.exit\(0\);|throw\s+new\s+Error\(.*?\);)/g,
+          `if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }`
         );
       }
     }
@@ -405,33 +411,48 @@ export const executeCode = async (req: Request, res: Response) => {
         }
         data = await pistonResponse?.json();
 
+        if (data.message && data.message.includes("runtime is unknown")) {
+          throw new Error("Piston runtime unknown: " + data.message);
+        }
+        if (!data.run) {
+          throw new Error("Piston invalid output format: " + JSON.stringify(data));
+        }
+
       } catch (apiError) {
         console.error("Fetch threw:", apiError);
         // 2. FALLBACK: Local execution if Piston fails
         if (executionLanguage === "javascript") {
           try {
-            const { stdout, stderr } = await execFileAsync("node", ["-e", finalCode], { timeout: 3000 });
+            const stdout = execFileSync("node", ["-e", finalCode], {
+              input: testCaseInput,
+              encoding: "utf-8",
+              timeout: 3000
+            });
             data = {
               compile: { code: 0 },
-              run: { output: stdout || stderr, stdout, stderr }
+              run: { output: stdout, stdout, stderr: "" }
             };
           } catch (localErr: any) {
             data = {
               compile: { code: 0 },
-              run: { output: localErr.message || "Local Execution Error", stderr: localErr.message }
+              run: { output: localErr.stdout || localErr.message || "Local Execution Error", stderr: localErr.stderr || localErr.message }
             };
           }
         } else if (executionLanguage === "python") {
           try {
-            const { stdout, stderr } = await execFileAsync("python3", ["-c", finalCode], { timeout: 3000 });
+            const stdout = execFileSync("python3", ["-c", finalCode], {
+              input: testCaseInput,
+              encoding: "utf-8",
+              timeout: 3000
+            });
             data = {
               compile: { code: 0 },
-              run: { output: stdout || stderr, stdout, stderr }
+              run: { output: stdout, stdout, stderr: "" }
             };
           } catch (localErr: any) {
             data = {
               compile: { code: 0 },
-              run: { output: localErr.message || "Local Execution Error", stderr: localErr.message }
+              run: { output: localErr.stdout || localErr.message || "Local Execution Error", stderr: localErr.stderr || localErr.message }
             };
           }
         } else {
