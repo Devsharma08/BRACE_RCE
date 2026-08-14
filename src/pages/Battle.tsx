@@ -6,6 +6,7 @@ import type { SupportedLanguage } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
 import { Code, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send, Play, Clock, StopCircle, Lock, Terminal } from "lucide-react";
 import { api } from "../config/api";
+import { CodeComparisonModal } from "../components/CodeComparisionModel";
 
 interface BattleMessage {
   id: string;
@@ -28,6 +29,9 @@ export const Battle = () => {
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
   const [isBattleMenuOpen,setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
+  const [myUserId, setMyUserId] = useState<string>("");
+  const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
+  const [finishedPerformances, setFinishedPerformances] = useState<any[]>([]);
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -69,13 +73,14 @@ export const Battle = () => {
         
         const roomData = roomRes.data.room;
         setRoom(roomData);
-        setIsHost(profileRes.data.data.id === roomData.hostId);
+        const myId = profileRes.data.data.id;
+        setMyUserId(myId);
+        setIsHost(myId === roomData.hostId);
 
         let targetProblems = [];
         if (roomData.type === 'ONE_VS_ONE') {
           targetProblems = [roomData.commonProblem];
           setProblems(targetProblems);
-          const myId = profileRes.data.data.id;
           const oppPerf = roomData.performances?.find((p:any) => p.user.id !== myId);
           setOpponent(oppPerf?.user || null);
         } else {
@@ -132,10 +137,18 @@ export const Battle = () => {
       }
     });
 
+    socket.on("battle_finished", (data) => {
+      if (data?.performances) {
+        setFinishedPerformances(data.performances);
+        setShowComparisonModal(true);
+      }
+    });
+
     return () => {
       socket.off("battle_state");
       socket.off("receive_battle_message");
       socket.off("battle_update");
+      socket.off("battle_finished");
     };
   }, [socket, roomId]);
 
@@ -590,6 +603,15 @@ export const Battle = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showComparisonModal && (
+        <CodeComparisonModal
+          currentUserId={myUserId}
+          performances={finishedPerformances}
+          onClose={() => setShowComparisonModal(false)}
+          onReturnHome={() => navigate("/")}
+        />
       )}
     </div>
   );

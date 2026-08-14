@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { prisma } from "../Lib/prisma.js";
+import { saveSubmisssion } from "./submissionEvaluator.js";
 import { execFile, execFileSync } from "child_process";
 import { promisify } from "util";
 const execFileAsync = promisify(execFile);
@@ -13,6 +14,7 @@ type ExecuteBody = {
   oid?: unknown;
   mode?: unknown;
   customInput?: unknown;
+  performanceId?: unknown;
 };
 
 type TestCaseRecord = {
@@ -528,6 +530,25 @@ export const executeCode = async (req: Request, res: Response) => {
         if (executionMode === "SUBMIT" && !passed && !isCustomInputRun) {
           break;
         }
+      }
+    }
+
+    const userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId : "";
+    
+    if (executionMode === "SUBMIT" && userPerfId) {
+      const problemId = casesToRun[0]?.problemId || githubOid;
+      if (problemId) {
+        await saveSubmisssion({
+          performanceId: userPerfId,
+          problemId,
+          submittedCode: sourceCode,
+          language: executionLanguage,
+          status: totalPassed === casesToRun.length ? "PASSED" : "FAILED",
+          runtimeMs: 0,
+          memoryKb: 0,
+          passedCase: totalPassed,
+          totalCases: casesToRun.length,
+        }).catch(e => console.error("Failed to save submission:", e));
       }
     }
 
