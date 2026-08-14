@@ -83,7 +83,7 @@ model Problem {
   code_snippets      CodeSnippet[]
   
   commonEvents       Event[]
-  performances       UserPersonalPerformance[]
+  codeSubmissions    CodeSubmission[]
 
   timeLimitMs Int? @default(600000)
 
@@ -174,18 +174,45 @@ model UserPersonalPerformance {
   eventId      String
   event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
-  problemId    String?
-  problem      Problem? @relation(fields: [problemId], references: [id])
-  
   // Metrics
   questionsSolved Int     @default(0)
-  timeTakenMs     Int?    // Time taken to solve
-  status          String  @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT , SURRENDER
+  timeTakenMs     Int?
+  status          String  @default("PENDING") // PENDING, COMPLETED, PASSED, FAILED, TIMEOUT, SURRENDER
   score           Int     @default(0)
   
+  submissions CodeSubmission[]
   createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventId])
 }
 
+model CodeSubmission{
+  id String @id @default(uuid())
+  UserPersonalPerformanceId String
+  userPersonalPerformance UserPersonalPerformance @relation(references:[id],fields:[UserPersonalPerformanceId],onDelete: Cascade)
+  
+  problemId String
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  submittedCode String @db.Text
+  language String @default("javascript")
+  status String @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT , SURRENDER
+
+  runtimeMs Int?
+  memoryKb Int?
+  passedCase Int
+  totalCases Int
+
+  isBestSubmission Boolean @default(false)
+  attemptNumber Int @default(1)
+
+  createdAt DateTime @default(now())
+
+  @@index([UserPersonalPerformanceId])
+  @@index([problemId])
+  
+}
 model Message {
   id String @id @default(uuid())
   content String @db.Text
