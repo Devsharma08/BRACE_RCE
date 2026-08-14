@@ -75,8 +75,18 @@ class Profile {
             const performances = await prisma.userPersonalPerformance.findMany({
                 where: { userId },
                 include: {
-                    event: true,
-                    problem: { select: { name: true, difficulty_level: true } }
+                    event: {
+                        include: {
+                            commonProblem: { select: { name: true, difficulty_level: true } },
+                            performances: {
+                                include: {
+                                    user: { select: { id: true, username: true, avatarUrl: true } },
+                                    submissions: { orderBy: { attemptNumber: 'asc' } }
+                                }
+                            }
+                        }
+                    },
+                    submissions: { orderBy: { attemptNumber: 'asc' } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
