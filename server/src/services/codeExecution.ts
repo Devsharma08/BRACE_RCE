@@ -177,6 +177,14 @@ function isTreeNode(obj) {
         `const input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);`
       );
 
+      const isTreeProb = sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode") || sourceCode.includes("root");
+      if (isTreeProb) {
+        wrapperCode = wrapperCode.replace(
+          /(const|let|var)\s+(\w+)\s*=\s*JSON\.parse\((input\[\d+\])\);/g,
+          `let $2 = JSON.parse($3); if (Array.isArray($2) && typeof arrayToTree === 'function') { $2 = arrayToTree($2); }`
+        );
+      }
+
       const resMatch = wrapperCode.match(/const\s+res\s*=\s*(\w+)\((.*?)\);/);
       if (resMatch) {
         const funcName = resMatch[1];
@@ -189,8 +197,8 @@ function isTreeNode(obj) {
         );
 
         wrapperCode = wrapperCode.replace(
-          /console\.log\(JSON\.stringify\(res\)\.replace\(\/\\s\/g,\s*''\)\);/g,
-          `const outVal = isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(${firstArg}) ? treeToArray(${firstArg}) : ${firstArg}));\nconsole.log(JSON.stringify(outVal).replace(/\\s/g, ''));`
+          /console\.log\(JSON\.stringify\((.*?)\)\.replace\(\/\\s\/g,\s*''\)\);/g,
+          `const outVal = isTreeNode($1) ? treeToArray($1) : ($1 !== undefined ? $1 : (isTreeNode(${firstArg}) ? treeToArray(${firstArg}) : ${firstArg}));\nconsole.log(JSON.stringify(outVal).replace(/\\s/g, ''));`
         );
       }
     }
