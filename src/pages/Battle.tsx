@@ -229,6 +229,20 @@ export const Battle = () => {
     setIsSubmitting(true);
     setIsTerminal(true);
     setTerminalOutput("Executing code and running test cases...");
+
+    // Reset test case statuses for active problem before running
+    setProblems(prev => {
+      const newProblems = [...prev];
+      const currentProb = { ...newProblems[currentIndex] };
+      currentProb.test_cases = (currentProb.test_cases || []).map((tc: any) => ({
+        ...tc,
+        status: undefined,
+        output: undefined,
+        runtimeError: undefined
+      }));
+      newProblems[currentIndex] = currentProb;
+      return newProblems;
+    });
     
     try {
       const res = await executeCode({
@@ -539,12 +553,12 @@ export const Battle = () => {
                           CASE {index + 1} {isPassed ? " (PASSED)" : isFailed ? " (FAILED)" : ""}
                         </div>
                         <div className="mb-3 mt-1">
-                          <span className={`${isPassed ? 'text-emerald-500' : isFailed ? 'text-rose-500' : 'text-cyan-600'} block mb-1 font-bold tracking-wider transition-colors`}>INPUT:</span>
+                          <span className={`${isPassed ? 'text-emerald-500' : isFailed ? 'text-rose-500' : 'text-slate-400'} block mb-1 font-bold tracking-wider transition-colors`}>INPUT:</span>
                           <pre className="text-slate-300 bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed">{prob.input}</pre>
                         </div>
                         <div>
-                          <span className={`${isPassed || isFailed ? 'text-slate-400' : 'text-emerald-600'} block mb-1 font-bold tracking-wider transition-colors`}>EXPECTED OUTPUT:</span>
-                          <pre className={`${isPassed || isFailed ? 'text-slate-300' : 'text-emerald-400'} bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed`}>{prob.expectedOutput}</pre>
+                          <span className="text-slate-400 block mb-1 font-bold tracking-wider transition-colors">EXPECTED OUTPUT:</span>
+                          <pre className="text-slate-300 bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed">{prob.expectedOutput}</pre>
                         </div>
                         {prob.output && (!prob.runtimeError || prob.output.trim() !== prob.runtimeError.trim()) && (
                           <div className="mt-4 pt-4 border-t border-white/10">
