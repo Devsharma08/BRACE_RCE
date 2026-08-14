@@ -89,6 +89,13 @@ function prepareFinalCode(
 
   // ------------------- 1. JAVASCRIPT -------------------
   if (executionLanguage === "javascript") {
+    const userFuncMatch = sourceCode.match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)/);
+    const userFuncName = userFuncMatch ? (userFuncMatch[1] || userFuncMatch[3]) : null;
+
+    if (wrapperCode && userFuncName && !wrapperCode.includes(userFuncName)) {
+      wrapperCode = "";
+    }
+
     if (!wrapperCode || wrapperCode.trim() === "// Wrapper" || wrapperCode.includes("module.exports")) {
       const match = (snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)/);
       if (match) {
