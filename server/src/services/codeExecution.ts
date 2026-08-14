@@ -101,20 +101,73 @@ function prepareFinalCode(
       wrapperCode = "";
     }
 
+    const treeHelpers = `
+function TreeNode(val, left, right) {
+  this.val = (val===undefined ? 0 : val);
+  this.left = (left===undefined ? null : left);
+  this.right = (right===undefined ? null : right);
+}
+function arrayToTree(arr) {
+  if (!Array.isArray(arr) || arr.length === 0 || arr[0] === null || arr[0] === undefined) return null;
+  const root = new TreeNode(arr[0]);
+  const queue = [root];
+  let i = 1;
+  while (queue.length > 0 && i < arr.length) {
+    const curr = queue.shift();
+    if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+      curr.left = new TreeNode(arr[i]);
+      queue.push(curr.left);
+    }
+    i++;
+    if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+      curr.right = new TreeNode(arr[i]);
+      queue.push(curr.right);
+    }
+    i++;
+  }
+  return root;
+}
+function treeToArray(root) {
+  if (!root) return [];
+  const result = [];
+  const queue = [root];
+  while (queue.length > 0) {
+    const node = queue.shift();
+    if (node) {
+      result.push(node.val);
+      queue.push(node.left);
+      queue.push(node.right);
+    } else {
+      result.push(null);
+    }
+  }
+  while (result.length > 0 && result[result.length - 1] === null) {
+    result.pop();
+  }
+  return result;
+}
+function isTreeNode(obj) {
+  return obj && typeof obj === 'object' && ('val' in obj && ('left' in obj || 'right' in obj));
+}
+`;
+
     if (!wrapperCode || wrapperCode.trim() === "// Wrapper" || wrapperCode.includes("module.exports")) {
       const match = (snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
       if (match) {
         const funcName = match[1] || match[3] || match[5];
         const argsStr = (match[2] || match[4] || match[6] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
+        const isTreeProblem = sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode") || argsStr.includes("root") || argsStr.includes("node");
 
-        wrapperCode = `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);\nif (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }\n`;
+        wrapperCode = `const fs = require('fs');\n${treeHelpers}\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);\nif (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }\n`;
         for (let i = 0; i < argCount; i++) {
-          wrapperCode += `const arg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;\n`;
+          wrapperCode += `const rawArg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;\n`;
+          wrapperCode += `const arg${i} = (${isTreeProblem} && Array.isArray(rawArg${i})) ? arrayToTree(rawArg${i}) : rawArg${i};\n`;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
         wrapperCode += `let res;\ntry {\n  if (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n    res = (new Solution())['${funcName}'](${callArgs});\n  } else if (typeof ${funcName} === 'function') {\n    res = ${funcName}(${callArgs});\n  }\n} catch (e) {\n  console.error("EXECUTION ERROR:", e.message || e);\n  process.exit(1);\n}\n`;
-        wrapperCode += `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : (typeof arg0 !== 'undefined' ? JSON.stringify(arg0).replace(/\\s/g, '') : "null"));`;
+        wrapperCode += `const outVal = isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : arg0));\n`;
+        wrapperCode += `console.log(JSON.stringify(outVal).replace(/\\s/g, ''));`;
       }
     }
 
@@ -137,12 +190,12 @@ function prepareFinalCode(
 
         wrapperCode = wrapperCode.replace(
           /console\.log\(JSON\.stringify\(res\)\.replace\(\/\\s\/g,\s*''\)\);/g,
-          `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : JSON.stringify(${firstArg}).replace(/\\s/g, ''));`
+          `const outVal = isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(${firstArg}) ? treeToArray(${firstArg}) : ${firstArg}));\nconsole.log(JSON.stringify(outVal).replace(/\\s/g, ''));`
         );
       }
     }
 
-    return `${sourceCode}\n${wrapperCode}`;
+    return `${treeHelpers}\n${sourceCode}\n${wrapperCode}`;
   }
 
   // ------------------- 2. PYTHON -------------------
