@@ -166,7 +166,7 @@ function isTreeNode(obj) {
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
         wrapperCode += `let res;\ntry {\n  if (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n    res = (new Solution())['${funcName}'](${callArgs});\n  } else if (typeof ${funcName} === 'function') {\n    res = ${funcName}(${callArgs});\n  }\n} catch (e) {\n  console.error("EXECUTION ERROR:", e.message || e);\n  process.exit(1);\n}\n`;
-        wrapperCode += `const outVal = isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : arg0));\n`;
+        wrapperCode += `const outVal = (res === null && ${isTreeProblem}) ? [] : (isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : arg0)));\n`;
         wrapperCode += `console.log(JSON.stringify(outVal).replace(/\\s/g, ''));`;
       }
     }
@@ -198,7 +198,7 @@ function isTreeNode(obj) {
 
         wrapperCode = wrapperCode.replace(
           /console\.log\(JSON\.stringify\((.*?)\)\.replace\(\/\\s\/g,\s*''\)\);/g,
-          `const outVal = isTreeNode($1) ? treeToArray($1) : ($1 !== undefined ? $1 : (isTreeNode(${firstArg}) ? treeToArray(${firstArg}) : ${firstArg}));\nconsole.log(JSON.stringify(outVal).replace(/\\s/g, ''));`
+          `const outVal = (res === null && ${isTreeProb}) ? [] : (isTreeNode($1) ? treeToArray($1) : ($1 !== undefined ? $1 : (isTreeNode(${firstArg}) ? treeToArray(${firstArg}) : ${firstArg})));\nconsole.log(JSON.stringify(outVal).replace(/\\s/g, ''));`
         );
       }
     }
