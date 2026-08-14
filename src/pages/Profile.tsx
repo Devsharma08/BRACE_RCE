@@ -224,14 +224,23 @@ const Profile = () => {
                             </p>
                           </div>
 
-                          {record.event?.performances && record.event.performances.length > 0 && (
-                            <button
-                              onClick={() => setSelectedPerformances(record.event?.performances || null)}
-                              className="px-3 py-2 bg-cyan-950/40 hover:bg-cyan-600 border border-cyan-500/40 text-cyan-200 hover:text-white rounded-lg font-mono text-xs font-bold tracking-widest transition-all flex items-center gap-1.5"
-                            >
-                              <Code className="w-3.5 h-3.5" /> [ REVIEW CODE ]
-                            </button>
-                          )}
+                          <button
+                            onClick={() => {
+                              const perfsToPass = (record.event?.performances && record.event.performances.length > 0)
+                                ? record.event.performances
+                                : [{
+                                    userId: profile?.id || "",
+                                    user: { id: profile?.id || "", username: profile?.username || "YOU", avatarUrl: profile?.avatarUrl || "" },
+                                    submissions: record.submissions || [],
+                                    score: record.score || 0,
+                                    timeTakenMs: record.timeTakenMs
+                                  }];
+                              setSelectedPerformances(perfsToPass);
+                            }}
+                            className="px-3 py-2 bg-cyan-950/40 hover:bg-cyan-600 border border-cyan-500/40 text-cyan-200 hover:text-white rounded-lg font-mono text-xs font-bold tracking-widest transition-all flex items-center gap-1.5"
+                          >
+                            <Code className="w-3.5 h-3.5" /> [ REVIEW CODE ]
+                          </button>
                         </div>
                       </div>
                     );

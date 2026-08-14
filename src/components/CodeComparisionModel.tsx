@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Trophy, Copy, Check } from "lucide-react";
 
 interface Submission {
@@ -29,22 +29,49 @@ interface CodeComparisonModalProps {
   onReturnHome: () => void;
 }
 
+const getEffectiveSubmissions = (perf: PerformanceData | undefined): Submission[] => {
+  if (!perf) return [];
+  if (perf.submissions && perf.submissions.length > 0) {
+    return perf.submissions;
+  }
+  const code = (perf as any).submittedCode || (perf as any).code || (perf as any).sourceCode;
+  return [{
+    id: perf.userId || "sub-1",
+    attemptNumber: 1,
+    submittedCode: code || "// Code submission recorded",
+    language: (perf as any).language || "javascript",
+    status: (perf as any).status || "COMPLETED",
+    runtimeMs: perf.timeTakenMs || null,
+    memoryKb: null,
+    passedCase: (perf as any).status === "WON" || (perf as any).status === "PASSED" ? 1 : 0,
+    totalCases: 1,
+    isBestSubmission: true
+  }];
+};
+
 export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
   currentUserId,
-  performances,
+  performances = [],
   onClose,
   onReturnHome
 }) => {
   const myPerf = performances.find(p => p.userId === currentUserId) || performances[0];
-  const oppPerf = performances.find(p => p.userId !== currentUserId) || performances[1];
+  const oppPerf = performances.find(p => p.userId !== currentUserId) || (performances.length > 1 ? performances[1] : undefined);
 
-  // Selected submission states (defaults to best submission)
-  const myBestSub = myPerf?.submissions.find(s => s.isBestSubmission) || myPerf?.submissions[0];
-  const oppBestSub = oppPerf?.submissions.find(s => s.isBestSubmission) || oppPerf?.submissions[0];
+  const mySubmissions = getEffectiveSubmissions(myPerf);
+  const oppSubmissions = getEffectiveSubmissions(oppPerf);
+
+  const myBestSub = mySubmissions.find(s => s.isBestSubmission) || mySubmissions[0];
+  const oppBestSub = oppSubmissions.find(s => s.isBestSubmission) || oppSubmissions[0];
 
   const [selectedMySub, setSelectedMySub] = useState<Submission | undefined>(myBestSub);
   const [selectedOppSub, setSelectedOppSub] = useState<Submission | undefined>(oppBestSub);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setSelectedMySub(myBestSub);
+    setSelectedOppSub(oppBestSub);
+  }, [performances, currentUserId]);
 
   const handleCopyOpponentCode = () => {
     if (!selectedOppSub?.submittedCode) return;
@@ -94,10 +121,10 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
               {/* Attempt Selector */}
               <select
                 value={selectedMySub?.id}
-                onChange={(e) => setSelectedMySub(myPerf.submissions.find(s => s.id === e.target.value))}
+                onChange={(e) => setSelectedMySub(mySubmissions.find(s => s.id === e.target.value))}
                 className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 font-mono"
               >
-                {myPerf?.submissions.map(s => (
+                {mySubmissions.map(s => (
                   <option key={s.id} value={s.id}>
                     Attempt #{s.attemptNumber} {s.isBestSubmission ? "(Best)" : ""} - {s.passedCase}/{s.totalCases}
                   </option>
@@ -124,15 +151,15 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
           <div className="bg-black/50 border border-rose-500/20 rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-sm font-bold text-rose-400 flex items-center gap-2">
-                OPPONENT ({oppPerf?.user.username || "OPPONENT"}) {selectedOppSub?.isBestSubmission && <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded">BEST</span>}
+                OPPONENT ({oppPerf?.user?.username || "OPPONENT"}) {selectedOppSub?.isBestSubmission && <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded">BEST</span>}
               </span>
               {/* Attempt Selector */}
               <select
                 value={selectedOppSub?.id}
-                onChange={(e) => setSelectedOppSub(oppPerf.submissions.find(s => s.id === e.target.value))}
+                onChange={(e) => setSelectedOppSub(oppSubmissions.find(s => s.id === e.target.value))}
                 className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 font-mono"
               >
-                {oppPerf?.submissions.map(s => (
+                {oppSubmissions.map(s => (
                   <option key={s.id} value={s.id}>
                     Attempt #{s.attemptNumber} {s.isBestSubmission ? "(Best)" : ""} - {s.passedCase}/{s.totalCases}
                   </option>
