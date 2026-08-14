@@ -4,7 +4,7 @@ import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import type { SupportedLanguage } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import { Code, Swords, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send, Play, Clock, StopCircle, Lock,Terminal } from "lucide-react";
+import { Code, Activity, Trophy, Skull, ChevronLeft, ChevronRight, MessageSquare, Send, Play, Clock, StopCircle, Lock, Terminal } from "lucide-react";
 import { api } from "../config/api";
 
 interface BattleMessage {
@@ -17,7 +17,7 @@ interface BattleMessage {
 export const Battle = () => {
   const { roomId } = useParams<{ roomId: string }>(); // roomId is actually roomCode for custom rooms
   const navigate = useNavigate();
-  const { socket, isConnected } = useSocket();
+  const { socket } = useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   // --- ROOM / EVENT STATE ---
@@ -26,6 +26,7 @@ export const Battle = () => {
   const [battleState, setBattleState] = useState<any>({ status: "WAITING" });
   const [isHost, setIsHost] = useState(false);
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
+  const [isBattleMenuOpen,setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
 
   // --- PROBLEM STATE ---
@@ -112,6 +113,7 @@ export const Battle = () => {
       setBattleState(data);
       if (data.status === "FINISHED") {
         setBattleResult("LOST"); // Default to lost if time's up
+        setIsBattleMenuOpen(true);
       }
     });
 
@@ -120,8 +122,14 @@ export const Battle = () => {
     });
     
     socket.on("battle_update", (data) => {
-      if (data.result === "OPPONENT_WON") setBattleResult("LOST");
-      if (data.result === "OPPONENT_SURRENDERED") setBattleResult("WON");
+      if (data.result === "OPPONENT_WON") {
+        setBattleResult("LOST");
+        setIsBattleMenuOpen(true);
+      }
+      if (data.result === "OPPONENT_SURRENDERED") {
+        setBattleResult("WON");
+        setIsBattleMenuOpen(true);
+      }
     });
 
     return () => {
@@ -154,6 +162,7 @@ export const Battle = () => {
         setGlobalTimeRemaining(remaining);
         if (remaining === 0) {
           setBattleResult("LOST");
+          setIsBattleMenuOpen(true);
         }
       }
 
@@ -242,6 +251,9 @@ export const Battle = () => {
       
       if (res.status === "PASSED") {
          setTerminalOutput("SUCCESS: All test cases passed!");
+         setTimeout(() => {
+           setIsBattleMenuOpen(true);
+         }, 1000);
          socket?.emit("battle_action", { roomId, status: "Passed tests!", progress: 100, result: "OPPONENT_WON" });
          setBattleResult("WON");
       } else {
@@ -545,7 +557,16 @@ export const Battle = () => {
             </div>
       </div>
 
-      {battleResult && (
+      {battleResult && !isBattleMenuOpen && (
+        <button
+          onClick={() => setIsBattleMenuOpen(true)}
+          className="fixed bottom-6 right-6 z-40 px-4 py-3 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-200 rounded-xl font-mono text-xs font-bold tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.2)] backdrop-blur-md transition-all flex items-center gap-2"
+        >
+          <Trophy className="w-4 h-4 text-cyan-400" /> [ BATTLE MENU ]
+        </button>
+      )}
+
+      {isBattleMenuOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="flex flex-col items-center justify-center p-12 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
             <div className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-cyan-400 to-emerald-500" : "from-rose-500 to-orange-500"}`} />
@@ -559,9 +580,14 @@ export const Battle = () => {
             <p className="text-slate-400 text-sm mb-8 font-sans">
               {battleResult === "WON" ? "You completed the operation." : "Time expired or opponent optimized faster."}
             </p>
-            <button onClick={() => navigate("/")} className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-cyan-500/50 bg-cyan-900/40 text-cyan-100 hover:bg-cyan-600">
-              [ RETURN TO MAINFRAME ]
-            </button>
+            <div className="flex-1 flex justify-between gap-4 w-full">
+              <button onClick={() => navigate("/")} className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-cyan-500/50 bg-cyan-900/40 text-cyan-100 hover:bg-cyan-600">
+                [ RETURN TO MAINFRAME ]
+              </button>
+              <button onClick={() => setIsBattleMenuOpen(false)} className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700">
+                [ CLOSE MENU ]
+              </button>
+            </div>
           </div>
         </div>
       )}
