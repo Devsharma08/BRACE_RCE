@@ -106,12 +106,12 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
             </div>
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
               <div className="bg-white/5 p-2 rounded">
-                <span className="text-slate-500 block text-[10px]">RUNTIME</span>
-                <span className="text-cyan-300 font-bold">{selectedMySub?.runtimeMs ? `${selectedMySub.runtimeMs} ms` : "N/A"}</span>
+                <span className="text-slate-500 block text-[10px]">AVG RUNTIME</span>
+                <span className="text-cyan-300 font-bold">{selectedMySub?.runtimeMs !== undefined && selectedMySub?.runtimeMs !== null ? `${selectedMySub.runtimeMs} ms` : "N/A"}</span>
               </div>
               <div className="bg-white/5 p-2 rounded">
-                <span className="text-slate-500 block text-[10px]">MEMORY</span>
-                <span className="text-cyan-300 font-bold">{selectedMySub?.memoryKb ? `${(selectedMySub.memoryKb / 1024).toFixed(1)} MB` : "N/A"}</span>
+                <span className="text-slate-500 block text-[10px]">AVG MEMORY</span>
+                <span className="text-cyan-300 font-bold">{selectedMySub?.memoryKb ? (selectedMySub.memoryKb >= 1024 ? `${(selectedMySub.memoryKb / 1024).toFixed(1)} MB` : `${selectedMySub.memoryKb} KB`) : "N/A"}</span>
               </div>
               <div className="bg-white/5 p-2 rounded">
                 <span className="text-slate-500 block text-[10px]">TEST CASES</span>
@@ -141,12 +141,12 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
             </div>
             <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
               <div className="bg-white/5 p-2 rounded">
-                <span className="text-slate-500 block text-[10px]">RUNTIME</span>
-                <span className="text-rose-300 font-bold">{selectedOppSub?.runtimeMs ? `${selectedOppSub.runtimeMs} ms` : "N/A"}</span>
+                <span className="text-slate-500 block text-[10px]">AVG RUNTIME</span>
+                <span className="text-rose-300 font-bold">{selectedOppSub?.runtimeMs !== undefined && selectedOppSub?.runtimeMs !== null ? `${selectedOppSub.runtimeMs} ms` : "N/A"}</span>
               </div>
               <div className="bg-white/5 p-2 rounded">
-                <span className="text-slate-500 block text-[10px]">MEMORY</span>
-                <span className="text-rose-300 font-bold">{selectedOppSub?.memoryKb ? `${(selectedOppSub.memoryKb / 1024).toFixed(1)} MB` : "N/A"}</span>
+                <span className="text-slate-500 block text-[10px]">AVG MEMORY</span>
+                <span className="text-rose-300 font-bold">{selectedOppSub?.memoryKb ? (selectedOppSub.memoryKb >= 1024 ? `${(selectedOppSub.memoryKb / 1024).toFixed(1)} MB` : `${selectedOppSub.memoryKb} KB`) : "N/A"}</span>
               </div>
               <div className="bg-white/5 p-2 rounded">
                 <span className="text-slate-500 block text-[10px]">TEST CASES</span>

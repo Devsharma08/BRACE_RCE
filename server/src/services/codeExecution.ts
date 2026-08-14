@@ -401,9 +401,13 @@ export const executeCode = async (req: Request, res: Response) => {
 
     const results: ExecutionDetail[] = [];
     let totalPassed = 0;
+    let totalRuntimeMs = 0;
+    let totalMemoryKb = 0;
+    let runCount = 0;
 
     for (const [index, currentCase] of casesToRun.entries()) {
       const testCaseInput = currentCase.input || "";
+      const startTime = performance.now();
 
       const payload = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
@@ -496,6 +500,28 @@ export const executeCode = async (req: Request, res: Response) => {
       }
 
       if (data) {
+        const endTime = performance.now();
+        let caseRuntimeMs = Math.round(endTime - startTime);
+        let caseMemoryKb = 0;
+
+        if (data.run) {
+          if (typeof data.run.time === "number") {
+            caseRuntimeMs = Math.round(data.run.time * 1000);
+          } else if (typeof data.run.time === "string") {
+            caseRuntimeMs = Math.round(parseFloat(data.run.time) * 1000);
+          }
+
+          if (typeof data.run.memory === "number") {
+            caseMemoryKb = Math.round(data.run.memory / 1024);
+          } else if (typeof data.run.memory === "string") {
+            caseMemoryKb = Math.round(parseFloat(data.run.memory) / 1024);
+          }
+        }
+
+        totalRuntimeMs += caseRuntimeMs;
+        if (caseMemoryKb > 0) totalMemoryKb += caseMemoryKb;
+        runCount++;
+
         const runOutput = data.run?.output || "";
         const compileOutput = data.compile?.output || "";
 
@@ -533,6 +559,9 @@ export const executeCode = async (req: Request, res: Response) => {
       }
     }
 
+    const avgRuntimeMs = runCount > 0 ? Math.round(totalRuntimeMs / runCount) : 0;
+    const avgMemoryKb = runCount > 0 ? Math.round(totalMemoryKb / runCount) : 0;
+
     const userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId : "";
     
     if (executionMode === "SUBMIT" && userPerfId) {
@@ -544,8 +573,8 @@ export const executeCode = async (req: Request, res: Response) => {
           submittedCode: sourceCode,
           language: executionLanguage,
           status: totalPassed === casesToRun.length ? "PASSED" : "FAILED",
-          runtimeMs: 0,
-          memoryKb: 0,
+          runtimeMs: avgRuntimeMs,
+          memoryKb: avgMemoryKb,
           passedCase: totalPassed,
           totalCases: casesToRun.length,
         }).catch(e => console.error("Failed to save submission:", e));
@@ -558,6 +587,8 @@ export const executeCode = async (req: Request, res: Response) => {
       passedCases: totalPassed,
       status: totalPassed === casesToRun.length ? "PASSED" : "FAILED",
       problemId: casesToRun[0]?.problemId || "",
+      runtimeMs: avgRuntimeMs,
+      memoryKb: avgMemoryKb,
       details: results,
     });
   } catch (error) {
