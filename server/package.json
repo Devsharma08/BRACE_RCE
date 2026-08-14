@@ -5,11 +5,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "cross-env NODE_MODE='production' tsc",
+    "build": "prisma generate && cross-env NODE_MODE='production' tsc",
     "test": "cross-env NODE_OPTIONS=\"--experimental-vm-modules\" jest",
-    "dev": "cross-env NODE_MODE='development' tsx watch src/index.ts",
+    "dev": "prisma generate && cross-env NODE_MODE='development' tsx watch src/index.ts",
     "start": "cross-env NODE_MODE='production' node dist/index.js",
-    "seed": "dotenv -e .env.development -- tsx prisma/seed.ts"
+    "seed": "dotenv -e .env.development -- tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
