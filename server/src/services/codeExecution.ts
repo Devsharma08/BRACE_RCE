@@ -120,9 +120,17 @@ function prepareFinalCode(
         `const input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);`
       );
 
-      const resMatch = wrapperCode.match(/const\s+res\s*=\s*\w+\((.*?)\);/);
-      if (resMatch && resMatch[1]) {
-        const firstArg = resMatch[1].split(',')[0]?.trim() || "arg0";
+      const resMatch = wrapperCode.match(/const\s+res\s*=\s*(\w+)\((.*?)\);/);
+      if (resMatch) {
+        const funcName = resMatch[1];
+        const callArgsStr = resMatch[2];
+        const firstArg = callArgsStr.split(',')[0]?.trim() || "arg0";
+
+        wrapperCode = wrapperCode.replace(
+          new RegExp(`const\\s+res\\s*=\\s*${funcName}\\((.*?)\\);`, 'g'),
+          `let res;\nif (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n  res = (new Solution())['${funcName}']($1);\n} else if (typeof ${funcName} === 'function') {\n  res = ${funcName}($1);\n}`
+        );
+
         wrapperCode = wrapperCode.replace(
           /console\.log\(JSON\.stringify\(res\)\.replace\(\/\\s\/g,\s*''\)\);/g,
           `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : JSON.stringify(${firstArg}).replace(/\\s/g, ''));`
