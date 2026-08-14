@@ -47,9 +47,12 @@ const getExecutionMode = (mode: unknown): ExecutionMode => {
 
 const getLanguage = (language: unknown): SupportedLanguage => {
   switch (language) {
-    case 'cpp': return 'cpp';
-    case 'py': return 'python';
-    case 'javascript': return 'javascript';
+    case 'cpp':
+    case 'c++': return 'cpp';
+    case 'py':
+    case 'python': return 'python';
+    case 'javascript':
+    case 'js': return 'javascript';
     case 'java': return 'java';
     case 'c': return 'c';
     default: return 'javascript';
@@ -89,18 +92,18 @@ function prepareFinalCode(
 
   // ------------------- 1. JAVASCRIPT -------------------
   if (executionLanguage === "javascript") {
-    const userFuncMatch = sourceCode.match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)/);
-    const userFuncName = userFuncMatch ? (userFuncMatch[1] || userFuncMatch[3]) : null;
+    const userFuncMatch = sourceCode.match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
+    const userFuncName = userFuncMatch ? (userFuncMatch[1] || userFuncMatch[3] || userFuncMatch[5]) : null;
 
     if (wrapperCode && userFuncName && !wrapperCode.includes(userFuncName)) {
       wrapperCode = "";
     }
 
     if (!wrapperCode || wrapperCode.trim() === "// Wrapper" || wrapperCode.includes("module.exports")) {
-      const match = (snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)/);
+      const match = (snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
       if (match) {
-        const funcName = match[1] || match[3];
-        const argsStr = (match[2] || match[4] || "").trim();
+        const funcName = match[1] || match[3] || match[5];
+        const argsStr = (match[2] || match[4] || match[6] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
 
         wrapperCode = `const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);\nif (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }\n`;
@@ -108,13 +111,12 @@ function prepareFinalCode(
           wrapperCode += `const arg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;\n`;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
-        wrapperCode += `let res;\nif (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n  res = (new Solution())['${funcName}'](${callArgs});\n} else {\n  res = ${funcName}(${callArgs});\n}\n`;
-        wrapperCode += `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : JSON.stringify(arg0).replace(/\\s/g, ''));`;
+        wrapperCode += `let res;\ntry {\n  if (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n    res = (new Solution())['${funcName}'](${callArgs});\n  } else if (typeof ${funcName} === 'function') {\n    res = ${funcName}(${callArgs});\n  }\n} catch (e) {\n  console.error("EXECUTION ERROR:", e.message || e);\n  process.exit(1);\n}\n`;
+        wrapperCode += `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : (typeof arg0 !== 'undefined' ? JSON.stringify(arg0).replace(/\\s/g, '') : "null"));`;
       }
     }
 
     if (wrapperCode) {
-      // Robustly replace legacy split('\n') with split(/\r?\n/)
       wrapperCode = wrapperCode.replace(
         /const input = fs\.readFileSync\(0, ['"]utf-8['"]\)\.trim\(\)\.split\(['"]\\n['"]\);/g,
         `const input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);`
@@ -124,21 +126,16 @@ function prepareFinalCode(
       if (resMatch) {
         const funcName = resMatch[1];
         const callArgsStr = resMatch[2];
-        const firstArg = callArgsStr.split(',')[0]?.trim() || "arg0";
+        const firstArg = callArgsStr?.split(',')[0]?.trim() || "arg0";
 
         wrapperCode = wrapperCode.replace(
           new RegExp(`const\\s+res\\s*=\\s*${funcName}\\((.*?)\\);`, 'g'),
-          `let res;\nif (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n  res = (new Solution())['${funcName}']($1);\n} else if (typeof ${funcName} === 'function') {\n  res = ${funcName}($1);\n}`
+          `let res;\ntry {\n  if (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n    res = (new Solution())['${funcName}']($1);\n  } else if (typeof ${funcName} === 'function') {\n    res = ${funcName}($1);\n  }\n} catch (e) {\n  console.error("EXECUTION ERROR:", e.message || e);\n  process.exit(1);\n}`
         );
 
         wrapperCode = wrapperCode.replace(
           /console\.log\(JSON\.stringify\(res\)\.replace\(\/\\s\/g,\s*''\)\);/g,
           `console.log(res !== undefined ? JSON.stringify(res).replace(/\\s/g, '') : JSON.stringify(${firstArg}).replace(/\\s/g, ''));`
-        );
-
-        wrapperCode = wrapperCode.replace(
-          /if\s*\(input\.length\s*<\s*\d+\)\s*(?:process\.exit\(0\);|throw\s+new\s+Error\(.*?\);)/g,
-          `if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }`
         );
       }
     }
@@ -148,10 +145,44 @@ function prepareFinalCode(
 
   // ------------------- 2. PYTHON -------------------
   if (executionLanguage === "python") {
-    if (wrapperCode && !wrapperCode.includes("TODO")) {
+    const userPyFunc = sourceCode.match(/def\s+(\w+)\s*\(/);
+    const pyFuncName = userPyFunc ? userPyFunc[1] : null;
+
+    if (wrapperCode && pyFuncName && !wrapperCode.includes(pyFuncName)) {
+      wrapperCode = "";
+    }
+
+    if (!wrapperCode || wrapperCode.trim() === "" || wrapperCode.includes("TODO")) {
+      const funcMatch = (snippet?.code || sourceCode).match(/def\s+(\w+)\s*\((.*?)\):/);
+      if (funcMatch && funcMatch[1] && funcMatch[2] !== undefined) {
+        const funcName = funcMatch[1];
+        const rawParams = funcMatch[2].split(',').map(p => p.trim()).filter(p => p && p !== 'self');
+        const argCount = rawParams.length;
+
+        let pyWrapper = `\nimport sys, json, math, collections, heapq, itertools, functools, bisect\ninput_lines = [line.strip() for line in sys.stdin.read().strip().splitlines() if line.strip() != '']\n`;
+        pyWrapper += `if len(input_lines) == 0: raise Exception("TEST CASE ERROR: Input is empty.")\n`;
+        for (let i = 0; i < argCount; i++) {
+          pyWrapper += `arg${i} = json.loads(input_lines[${i}]) if ${i} < len(input_lines) else None\n`;
+        }
+        const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
+        pyWrapper += `res = None\n`;
+        pyWrapper += `if 'Solution' in globals():\n`;
+        pyWrapper += `    sol = Solution()\n`;
+        pyWrapper += `    if hasattr(sol, '${funcName}'):\n`;
+        pyWrapper += `        res = getattr(sol, '${funcName}')(${callArgs})\n`;
+        pyWrapper += `    elif '${funcName}' in globals():\n`;
+        pyWrapper += `        res = globals()['${funcName}'](${callArgs})\n`;
+        pyWrapper += `elif '${funcName}' in globals():\n`;
+        pyWrapper += `    res = globals()['${funcName}'](${callArgs})\n`;
+        pyWrapper += `out_val = res if res is not None else (arg0 if 'arg0' in locals() else None)\n`;
+        pyWrapper += `print(json.dumps(out_val, separators=(',', ':')))\n`;
+
+        return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${sourceCode}\n${pyWrapper}`;
+      }
+    } else {
       wrapperCode = wrapperCode.replace(
         /if len\(input_lines\) < \d+: sys\.exit\(0\)/g,
-        `if len(input_lines) < 1: raise Exception("TEST CASE ERROR: The input provided does not have enough lines.")`
+        `if len(input_lines) < 1: raise Exception("TEST CASE ERROR: Input is empty.")`
       );
 
       const callMatch = wrapperCode.match(/res = (\w+)\((.*?)\)/);
@@ -174,37 +205,17 @@ function prepareFinalCode(
         }
       }
 
-      return `from typing import *\n${sourceCode}\n${wrapperCode}`;
+      return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${sourceCode}\n${wrapperCode}`;
     }
-
-    const funcMatch = (snippet?.code || sourceCode).match(/def\s+(\w+)\s*\((.*?)\):/);
-    if (funcMatch && funcMatch[1] && funcMatch[2] !== undefined) {
-      const funcName = funcMatch[1];
-      const rawParams = funcMatch[2].split(',').map(p => p.trim()).filter(p => p && p !== 'self');
-      const argCount = rawParams.length;
-
-      let pyWrapper = `\nimport sys, json\ninput_lines = [line.strip() for line in sys.stdin.read().strip().splitlines() if line.strip() != '']\n`;
-      pyWrapper += `if len(input_lines) < ${argCount}: raise Exception("TEST CASE ERROR: Not enough input lines.")\n`;
-      for (let i = 0; i < argCount; i++) {
-        pyWrapper += `arg${i} = json.loads(input_lines[${i}])\n`;
-      }
-      const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
-      pyWrapper += `if 'Solution' in globals():\n`;
-      pyWrapper += `    res = getattr(Solution(), '${funcName}')(${callArgs})\n`;
-      pyWrapper += `else:\n`;
-      pyWrapper += `    res = ${funcName}(${callArgs})\n`;
-      pyWrapper += `print(json.dumps(res if res is not None else arg0, separators=(',', ':')))\n`;
-
-      return `from typing import *\n${sourceCode}\n${pyWrapper}`;
-    }
-
-    return `from typing import *\n${sourceCode}\n${wrapperCode}`;
   }
 
   // ------------------- 3. JAVA -------------------
   if (executionLanguage === "java") {
+    let sanitizedSource = sourceCode.replace(/^package\s+[\w.]+;\s*/gm, "");
+    sanitizedSource = sanitizedSource.replace(/public\s+class\s+Solution/g, "class Solution");
+
     if (wrapperCode && !wrapperCode.includes("TODO")) {
-      return `${sourceCode}\n${wrapperCode}`;
+      return `${sanitizedSource}\n${wrapperCode}`;
     }
 
     const methodMatch = (snippet?.code || sourceCode).match(/(?:public|private|protected)?\s+([\w<>\[\]]+)\s+(\w+)\s*\((.*?)\)/);
@@ -272,7 +283,6 @@ function prepareFinalCode(
     javaMain += `    }\n`;
     javaMain += `}\n\n`;
 
-    const sanitizedSource = sourceCode.replace(/public\s+class\s+Solution/g, "class Solution");
     return `${javaMain}${sanitizedSource}`;
   }
 
@@ -287,7 +297,7 @@ function prepareFinalCode(
     const rawArgs = methodMatch && methodMatch[3] ? methodMatch[3].split(',').map(a => a.trim()).filter(Boolean) : [];
     const argCount = rawArgs.length;
 
-    let cppMain = `\n#include <iostream>\n#include <vector>\n#include <string>\n#include <sstream>\n#include <algorithm>\nusing namespace std;\n\n`;
+    let cppMain = `\n#include <iostream>\n#include <vector>\n#include <string>\n#include <sstream>\n#include <algorithm>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <cmath>\n#include <climits>\nusing namespace std;\n\n`;
     cppMain += `int main() {\n`;
     cppMain += `    vector<string> lines;\n`;
     cppMain += `    string line;\n`;
@@ -326,7 +336,7 @@ function prepareFinalCode(
       return `${sourceCode}\n${wrapperCode}`;
     }
 
-    let cMain = `\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdbool.h>\n\n`;
+    let cMain = `\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdbool.h>\n#include <math.h>\n#include <limits.h>\n\n`;
     cMain += `int main() {\n`;
     cMain += `    return 0;\n`;
     cMain += `}\n`;
