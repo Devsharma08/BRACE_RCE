@@ -2,6 +2,12 @@ packages:
   - "."
   - "server"
 
+allowBuilds:
+  '@prisma/engines': false
+  bcrypt: false
+  esbuild: false
+  prisma: false
+
 onlyBuiltDependencies:
   - "@prisma/engines"
   - "bcrypt"
