@@ -26,6 +26,11 @@ const Header = () => {
                <House className='w-3.5 h-3.5' />
                <span>[ HOME ]</span>
             </Link>
+            {isAuthenticated && (
+               <Link to="/dashboard" className='text-cyan-400 font-bold hover:text-cyan-300 transition-colors duration-200 uppercase tracking-wider'>
+                  [ DASHBOARD ]
+               </Link>
+            )}
             <Link to="/terminal" className='text-slate-400 hover:text-cyan-400 transition-colors duration-200 uppercase tracking-wider'>[ TERMINAL ]</Link>
             <Link to="/about" className='text-slate-400 hover:text-cyan-400 transition-colors duration-200 uppercase tracking-wider'>[ ABOUT ]</Link>
             

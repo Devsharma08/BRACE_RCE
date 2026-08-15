@@ -14,32 +14,27 @@ import { AuthProvider } from './context/authContext.tsx'
 import { SocketProvider } from './context/socketContext.tsx'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Login } from './features/auth/Login.tsx'
-import {Signup} from './features/auth/Signup.tsx'
+import { Signup } from './features/auth/Signup.tsx'
 import type { SupportedLanguage, ExecutionResult } from './features/terminal/types'
-import {Battle} from './pages/Battle.tsx'
+import { Battle } from './pages/Battle.tsx'
 import FriendsDashboard from './components/FriendDashboard.tsx'
 import Profile from './pages/Profile.tsx'
 import CreateRoom from './pages/CreateRoom.tsx'
+import { Dashboard } from './pages/Dashboard.tsx'
 import Lobby from './pages/Lobby.tsx'
-
-
-
-
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-const Root = () => {
+export const Root = () => {
+  // initial states for context
   const [filesData, setFilesData] = useState<FileEntry[]>([])
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState<string>('')
+  const [language, setLanguage] = useState<SupportedLanguage>('javascript')
   const [testCases, setTestCases] = useState<TestCase[]>([])
-  const [activeFile, setActiveFile] = useState('')
+  const [activeFile, setActiveFile] = useState<string>('')
   const [customInput, setCustomInput] = useState<string>('')
   const [customInputActive, setCustomInputActive] = useState<boolean>(false)
-    const [language, setLanguage] = useState<SupportedLanguage>('javascript')
-  // ...
   const [output, setOutput] = useState<ExecutionResult | null>(null)
-
-
 
   // response context states
   const [responseContent, setResponseContent] = useState('')
@@ -56,6 +51,7 @@ const Root = () => {
 
             <Route path="/" element={<App />}>
               <Route index element={<Home />} />
+              <Route path="dashboard" element={<Dashboard />} />
               <Route path="about" element={<About />} />
               <Route path='/signin' element={<Login/>}/>
               <Route path='/signup' element={<Signup/>}/>
