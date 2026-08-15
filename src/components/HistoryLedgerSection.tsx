@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Shield, Code, Activity, Trophy } from "lucide-react";
-import { CodeComparisonModal } from "../../../components/CodeComparisionModel";
+import { CodeComparisonModal } from "./CodeComparisionModel";
 
 interface HistoryLedgerSectionProps {
   history: any[];

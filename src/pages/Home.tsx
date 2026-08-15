@@ -22,13 +22,15 @@ const Home = () => {
     cancelMatch,
     createCustomRoom,
     joinCustomRoom,
-    waitingTime
+    waitingTime,
+
   } = useSocket();
 
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [problems, setProblems] = useState<any[]>([]);
+  const [difficulty,setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -81,8 +83,11 @@ const Home = () => {
             onFindMatch={(diff) => findMatch(diff)}
             matchmakingStatus={matchmakingStatus}
             onCancelMatch={cancelMatch}
-            onCreateCustomRoom={() => createCustomRoom({ name: "CUSTOM LOBBY", maxUsers: 2 })}
-            onJoinCustomRoom={(code) => joinCustomRoom(code)}
+            onCreateCustomRoom={() => setShowCreateModal(true)}
+            onJoinCustomRoom={(code) => {
+              setJoinCode(code);
+              setShowJoinModal(true);
+            }}
             waitingTime={waitingTime}
           />
         </div>

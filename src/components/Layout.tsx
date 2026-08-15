@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Header from './header'
-import Footer from './Footer'
+import {Footer} from './Footer'
 import { useAuth } from '../context/authContext'
 
 
