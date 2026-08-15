@@ -7,6 +7,7 @@ import { QuickNavHub } from "../components/QuickNavHub";
 import { HistoryLedgerSection } from "../components/HistoryLedgerSection";
 import { ProblemTableSection } from "../components/ProblemTableSection";
 import { PlaygroundShowcase } from "../components/PlaygroundShowcase";
+import { UpcomingServicesSection } from "../components/UpcomingServicesSection";
 import { api } from "../config/api";
 
 export const Dashboard: React.FC = () => {
@@ -124,8 +125,11 @@ export const Dashboard: React.FC = () => {
       {/* 3. MIDDLE LOWER SECTION: PROBLEM'S TABLE WITH PAGINATION */}
       <ProblemTableSection problems={problems} />
 
-      {/* 4. LOWER SECTION: UPCOMING FEATURES / PLAYGROUND */}
+      {/* 4. LOWER SECTION: ONLINE PLAYGROUND */}
       <PlaygroundShowcase />
+
+      {/* 5. IN-PROGRESS & UPCOMING SERVICES */}
+      <UpcomingServicesSection />
 
       {/* ----------------------------- */}
       {/* MATCHMAKING SEARCH MODAL */}
