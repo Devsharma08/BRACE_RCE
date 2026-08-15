@@ -1,18 +1,21 @@
+import { useAuth } from "../context/authContext";
 import { Link } from "react-router-dom";
 import BentoGrid from "../features/home/components/BentoGrid";
 import HeroSection from "../features/home/components/HeroSection";
-import FriendsDashboard from "../components/FriendDashboard";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
 import { ProfileScoreCard } from "../components/profileScoreCard";
 import { QuickNavHub } from "../components/QuickNavHub";
 import { HistoryLedgerSection } from "../components/HistoryLedgerSection";
 import { ProblemTableSection } from "../components/ProblemTableSection";
+import { PlaygroundShowcase } from "../features/home/components/PlaygroundShowcase";
 import { Footer } from "../components/Footer";
 import { useSocket } from "../context/socketContext";
 import { useState, useEffect } from "react";
 import { api } from "../config/api";
+import { Activity } from "lucide-react";
 
 const Home = () => {
+  const { user, isAuthenticated } = useAuth();
   const {
     findMatch,
     socket,
@@ -32,15 +35,26 @@ const Home = () => {
   const [stats, setStats] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [problems, setProblems] = useState<any[]>([]);
-  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
-  
+
   // Custom Room Form & Modal States
+  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
   const [roomMaxUsers, setRoomMaxUsers] = useState<number>(2);
   const [roomPassword, setRoomPassword] = useState<string>("");
   const [joinCode, setJoinCode] = useState<string>("");
   const [searchState, setSearchState] = useState<{ levels: string[] } | null>(null);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onSearchState = (data: any) => {
+      setSearchState({ levels: data.allowedDifficulties || [] });
+    };
+    socket.on("matchmaking_search_state", onSearchState);
+    return () => {
+      socket.off("matchmaking_search_state", onSearchState);
+    };
+  }, [socket]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -72,139 +86,53 @@ const Home = () => {
     };
 
     loadDashboardData();
-  }, []);
+  }, [isAuthenticated]);
 
   return (
-    <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6 max-w-7xl mx-auto">
-      {/* 1. HERO BANNER */}
-      <HeroSection />
+    <section className="flex h-full w-full flex-col gap-8 items-center px-4 pt-24 sm:px-6 max-w-7xl mx-auto">
+      {isAuthenticated || profile || user ? (
+        <>
+          {/* ============================================================ */}
+          {/* LOGGED IN USER: WIREFRAME COMMAND CENTER DASHBOARD           */}
+          {/* ============================================================ */}
 
-      {/* 2. TOP GRID: PROFILE WITH SCORE (LEFT) & QUICK NAV'S (RIGHT) */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <ProfileScoreCard
-            profile={profile}
-            stats={stats}
-            activeBattleRoom={activeBattleRoom}
-          />
-        </div>
-        <div className="md:col-span-2">
-          <QuickNavHub
-            onFindMatch={(diff) => findMatch(diff)}
-            matchmakingStatus={matchmakingStatus}
-            onCancelMatch={cancelMatch}
-            onCreateCustomRoom={() => setShowCreateModal(true)}
-            onJoinCustomRoom={(code) => {
-              setJoinCode(code);
-              setShowJoinModal(true);
-            }}
-            waitingTime={waitingTime}
-          />
-        </div>
-      </div>
-
-      {/* 3. MIDDLE SECTION: HISTORY LEDGER */}
-      <HistoryLedgerSection
-        history={history}
-        currentUserId={profile?.id || ""}
-      />
-
-      {/* 4. LOWER SECTION: PROBLEM'S TABLE WITH PAGINATION */}
-      <ProblemTableSection problems={problems} />
-
-      {/* 5. SHOWCASE & BENTO */}
-      <FriendsDashboard />
-      <StickyFeatureShowcase />
-      <BentoGrid />
-
-      {/* Futuristic Launcher Callout Grid Card */}
-      <div
-        className="z-10 mx-auto mb-20 w-full max-w-6xl overflow-hidden border border-white/5 bg-[#060709] p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6"
-        style={{ borderRadius: "2rem" }}
-      >
-        {/* Left Side: Launch context */}
-        <div className="flex flex-col gap-1.5 text-center md:text-left">
-          <div className="text-[10px] text-cyan-500/50 tracking-[0.25em] uppercase font-bold select-none">
-            // SYS // COMPILER_ONLINE
-          </div>
-          <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white uppercase">
-            Ready to compile solutions?
-          </h3>
-          <p className="text-textdimwhite text-xs sm:text-sm font-medium leading-relaxed max-w-lg">
-            Launch the high-performance remote execution workspace to compile,
-            run, and solve Data Structures challenges with custom sandboxed
-            diagnostics.
-          </p>
-        </div>
-
-        {/* Right Side: Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          {activeBattleRoom ? (
-            // this should be defualt no additional condition should be there
-            <Link
-              to={`/battle/${activeBattleRoom.roomId}?oid=${activeBattleRoom.problemId}`}
-              className="group relative inline-flex items-center justify-center gap-2 border border-emerald-500/50 bg-emerald-950/40 hover:bg-emerald-900/60 py-4 px-8 font-mono text-xs font-bold tracking-[0.15em] text-emerald-400 transition-all rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-pulse w-full sm:w-auto"
-            >
-              [ REJOIN ACTIVE BATTLE ]
-            </Link>
-          ) : (
-            <div className="flex gap-2 w-full sm:w-auto">
-              <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                disabled={matchmakingStatus !== "IDLE"}
-                className="bg-black/40 border border-slate-700/50 text-slate-300 font-mono text-xs font-bold tracking-widest px-4 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors disabled:opacity-50"
-              >
-                <option value="EASY">EASY</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HARD">HARD</option>
-              </select>
-              <button
-                onClick={() => findMatch(difficulty)}
-                disabled={!isConnected || matchmakingStatus !== "IDLE"}
-                className="group relative inline-flex items-center justify-center gap-2 border border-rose-500/35 bg-rose-950/10 hover:border-rose-400 hover:text-rose-400 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-rose-400 transition-all cursor-pointer rounded-xl w-full sm:w-auto text-center disabled:opacity-50"
-              >
-                {matchmakingStatus === "SEARCHING" && (
-                  <Activity className="w-4 h-4 animate-pulse text-rose-400" />
-                )}
-                <span>
-                  {matchmakingStatus === "IDLE" && "[ PvP: FIND MATCH ]"}
-                  {matchmakingStatus === "SEARCHING" && "[ SEARCHING... ]"}
-                  {matchmakingStatus === "FOUND_PENDING" && "[ MATCH FOUND! ]"}
-                </span>
-              </button>
-
-              {!activeBattleRoom && (
-                <div className="flex flex-col sm:flex-row gap-2 w-full mt-4">
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="group relative inline-flex items-center justify-center gap-2 border border-violet-500/35 bg-violet-950/10 hover:border-violet-400 hover:text-violet-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-violet-400 transition-all cursor-pointer rounded-xl w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={matchmakingStatus !== "IDLE"}
-                  >
-                    [ CREATE ROOM ]
-                  </button>
-                  <button
-                    onClick={() => setShowJoinModal(true)}
-                    className="group relative inline-flex items-center justify-center gap-2 border border-orange-500/35 bg-orange-950/10 hover:border-orange-400 hover:text-orange-400 py-3 px-6 font-mono text-xs font-bold tracking-[0.15em] text-orange-400 transition-all cursor-pointer rounded-xl w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={matchmakingStatus !== "IDLE"}
-                  >
-                    [ JOIN ROOM ]
-                  </button>
-                </div>
-              )}
+          {/* 1. TOP GRID: PROFILE WITH SCORE (LEFT) & QUICK NAV'S (RIGHT) */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1">
+              <ProfileScoreCard
+                profile={profile || user}
+                stats={stats}
+                activeBattleRoom={activeBattleRoom}
+              />
             </div>
-          )}
-          {/* Existing Terminal Button */}
-          <Link
-            to={matchmakingStatus === "IDLE" ? "/terminal" : "#"}
-            className={`group relative inline-flex items-center justify-center gap-2 border border-cyan-500/35 bg-cyan-950/10 hover:border-cyan-400 hover:text-cyan-400 hover:bg-cyan-950/20 py-4 px-6 sm:px-8 font-mono text-xs font-bold tracking-[0.15em] text-cyan-400 transition-all duration-300 cursor-pointer select-none rounded-xl w-full sm:w-auto text-center ${matchmakingStatus !== "IDLE" ? "pointer-events-none opacity-50" : ""}`}
-          >
-            <span className="hidden sm:inline">[ JUMP_TO_TERMINAL ]</span>
-            <span className="inline sm:hidden">[ LAUNCH_WORKSPACE ]</span>
-            <span className="w-2 h-3.5 bg-cyan-400 animate-pulse group-hover:bg-cyan-300 shrink-0"></span>
-          </Link>
-        </div>
-      </div>
+            <div className="md:col-span-2">
+              <QuickNavHub
+                onFindMatch={(diff) => findMatch(diff)}
+                matchmakingStatus={matchmakingStatus}
+                onCancelMatch={cancelMatch}
+                onCreateCustomRoom={() => setShowCreateModal(true)}
+                onJoinCustomRoom={(code) => {
+                  setJoinCode(code);
+                  setShowJoinModal(true);
+                }}
+                waitingTime={waitingTime}
+              />
+            </div>
+          </div>
+
+          {/* 2. MIDDLE SECTION: HISTORY LEDGER */}
+          <HistoryLedgerSection
+            history={history}
+            currentUserId={profile?.id || user?.id || ""}
+          />
+
+          {/* 3. MIDDLE LOWER SECTION: PROBLEM'S TABLE WITH PAGINATION */}
+          <ProblemTableSection problems={problems} />
+
+          {/* 4. LOWER SECTION: UPCOMING FEATURES / PLAYGROUND */}
+          <PlaygroundShowcase />
+        </>
+      )}
       {/* CANCEL SEARCH BUTTON */}
       {/* MATCHMAKING SEARCH MODAL */}
       {matchmakingStatus === "SEARCHING" && (
