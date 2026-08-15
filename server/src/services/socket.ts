@@ -498,45 +498,44 @@ export const initSocketServer = (io: Server) => {
                 let event;
                 if (roomId.startsWith('room-')) {
                     const eventId = roomId.replace('room-', '');
-                    event = await prisma.event.findUnique({ where: { id: eventId } });
+                    event = await prisma.event.findUnique({
+                        where: { id: eventId }, include: {
+                            problems: { select: { timeLimitMs: true } }
+                        }
+                    });
                 } else {
-                    event = await prisma.event.findFirst({ where: { roomCode: roomId } });
+                    event = await prisma.event.findFirst({
+                        where: { roomCode: roomId }, include: {
+                            problems: { select: { timeLimitMs: true } }
+                        }
+                    });
                 }
 
                 if (!event) return;
 
                 if (event && event.startedAt && event.status === 'IN_PROGRESS') {
+                    const totalDurationMs = event.totalTimeLimitMs || event.problems?.[0]?.timeLimitMs || 600000;
+                    const elapsedMs = Date.now() - new Date(event.startedAt).getTime();
+                    const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
+                    const remainingSeconds = Math.floor(remainingMs / 1000);
                     // Expiration Check
-                    const finishedAt = event.finishedAt?.getTime();
-                    if (finishedAt && Date.now() >= finishedAt) {
+                    if (remainingSeconds <= 0) {
                         await prisma.event.update({
                             where: { id: event.id },
                             data: {
                                 status: 'FINISHED',
+                                finishedAt:new Date(),
                                 performances: { updateMany: { where: { eventId: event.id }, data: { status: 'TIMEOUT' } } }
                             }
                         }).catch(e => console.error(e));
 
-                        socket.emit("battle_state", { status: 'FINISHED' });
+                        socket.emit("battle_state", { status: 'FINISHED',remainingSeconds:0 });
                         return;
-                    } else if (!finishedAt) {
-                        // Fallback for old matchmaking rooms
-                        const timePassed = Date.now() - new Date(event.startedAt).getTime();
-                        if (timePassed >= 600 * 1000) {
-                            await prisma.event.update({
-                                where: { id: event.id },
-                                data: {
-                                    status: 'FINISHED',
-                                    finishedAt: new Date(),
-                                    performances: { updateMany: { where: { eventId: event.id }, data: { status: 'TIMEOUT' } } }
-                                }
-                            }).catch(e => console.error(e));
-                            return;
-                        }
                     }
-
                     socket.emit("battle_state", {
                         startedAt: event.startedAt,
+                        totalDurationMs,
+                        remainingSeconds,
                         status: event.status,
                         finishedAt: event.finishedAt
                     })

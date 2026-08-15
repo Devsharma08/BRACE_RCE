@@ -7,9 +7,9 @@ class Rooms {
     async getLobbyRooms(req: AuthRequest, res: Response) {
         try {
             const rooms = await prisma.event.findMany({
-                where: { 
-                    isPublic: true, 
-                    isTemplate: false, 
+                where: {
+                    isPublic: true,
+                    isTemplate: false,
                     status: "WAITING",
                     type: "PUBLIC"
                 },
@@ -68,9 +68,9 @@ class Rooms {
     async createRoom(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const { 
-                name, description, isPublic, password, maxUsers,totalTimeLimitMs,
-                isTemplate, problemIds 
+            const {
+                name, description, isPublic, password, maxUsers, totalTimeLimitMs,
+                isTemplate, problemIds
             } = req.body;
 
             // Generate a random 6-character room code
@@ -97,10 +97,10 @@ class Rooms {
                 }
             });
 
-            return res.json({ 
-                status: "success", 
-                message: isTemplate ? "Template Saved!" : "Room Created!", 
-                room: newRoom 
+            return res.json({
+                status: "success",
+                message: isTemplate ? "Template Saved!" : "Room Created!",
+                room: newRoom
             });
         } catch (error) {
             console.error("Create room error:", error);
@@ -127,8 +127,8 @@ class Rooms {
             // Register the Subscription (Locks them into this version)
             // Using upsert in case they already subscribed before, we just update the version
             await prisma.templateSubscription.upsert({
-                where: { 
-                    userId_templateEventId: { userId, templateEventId: template.id } 
+                where: {
+                    userId_templateEventId: { userId, templateEventId: template.id }
                 },
                 create: {
                     userId,
@@ -149,7 +149,7 @@ class Rooms {
                     isPublic: template.isPublic,
                     maxUsers: template.maxUsers,
                     isTemplate: false, // This is a live room, not a template!
-                    totalTimeLimitMs:template.totalTimeLimitMs,
+                    totalTimeLimitMs: template.totalTimeLimitMs,
                     hostId: userId,
                     roomCode,
                     type: "PUBLIC",
@@ -161,10 +161,10 @@ class Rooms {
                 }
             });
 
-            return res.json({ 
-                status: "success", 
+            return res.json({
+                status: "success",
                 message: "Template cloned successfully! Ready to play.",
-                room: liveRoom 
+                room: liveRoom
             });
         } catch (error) {
             console.error("Clone template error:", error);
@@ -256,10 +256,10 @@ class Rooms {
                 data: { isPublic }
             });
 
-            return res.json({ 
-                status: "success", 
-                message: `Event is now ${isPublic ? 'Public' : 'Private'}!`, 
-                event: updatedEvent 
+            return res.json({
+                status: "success",
+                message: `Event is now ${isPublic ? 'Public' : 'Private'}!`,
+                event: updatedEvent
             });
         } catch (error) {
             console.error("Toggle visibility error:", error);
@@ -310,6 +310,64 @@ class Rooms {
         } catch (error) {
             console.error("Get live room error:", error);
             return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // GET BATTLE REMAINING TIME
+    async getBattleTimeLeft(req: AuthRequest, res: Response) {
+        try {
+            const roomId = (req.query.roomId || req.params.roomId) as string;
+            if (!roomId) return res.status(400).json({ message: "Room ID is required" });
+
+            const eventId = roomId.startsWith('room-') ? roomId.replace('room-', '') : roomId;
+
+            const event = await prisma.event.findFirst({
+                where: {
+                    OR: [
+                        { id: eventId },
+                        { roomCode: roomId }
+                    ]
+                },
+                include: {
+                    problems: {
+                        select: {
+                            timeLimitMs: true
+                        }
+                    }
+                }
+            });
+
+            if (!event)
+                return res.status(404).json({ message: "Event not found" });
+
+            if (!event.startedAt || event.status !== "IN_PROGRESS") {
+                return res.status(200).json({
+                    status: "success",
+                    eventStatus: event.status,
+                    remainingSeconds: 0,
+                    elapsedMs: 0
+                });
+            }
+
+            const totalDurationMs = event.totalTimeLimitMs || event.problems[0]?.timeLimitMs || 600000;
+            const elapsedMs = Date.now() - new Date(event.startedAt).getTime();
+            const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
+            const remainingSeconds = Math.floor(remainingMs / 1000);
+
+            return res.status(200).json({
+                status: "success",
+                roomId: event.roomCode || roomId,
+                eventStatus: event.status,
+                startedAt: event.startedAt,
+                remainingSeconds,
+                totalDurationMs,
+                elapsedMs,
+                isExpired: remainingSeconds <= 0
+            });
+
+        } catch (error) {
+            console.error("Get battle time error:", error);
+            return res.status(500).json({ status: "error", message: "Internal server error" });
         }
     }
 

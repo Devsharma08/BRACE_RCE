@@ -9,7 +9,8 @@ roomsRouter.use(authentication);
 roomsRouter.get("/my-events", roomController.getMyEvents);
 
 
-// Get available rooms and templates
+// Get available rooms, templates and battle remaining time
+roomsRouter.get("/time-left", roomController.getBattleTimeLeft);
 roomsRouter.get("/lobby", roomController.getLobbyRooms);
 roomsRouter.get("/templates", roomController.getTemplates);
 roomsRouter.get("/live/:roomId", roomController.getLiveRoom);
