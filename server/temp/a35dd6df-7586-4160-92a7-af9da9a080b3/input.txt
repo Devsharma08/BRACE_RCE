@@ -1,1 +1,0 @@
-postTweet(1,1),getNewsFeed(1),follow(1,2),postTweet(2,2),getNewsFeed(1)
