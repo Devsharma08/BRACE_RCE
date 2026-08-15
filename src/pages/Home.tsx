@@ -3,9 +3,14 @@ import BentoGrid from "../features/home/components/BentoGrid";
 import HeroSection from "../features/home/components/HeroSection";
 import FriendsDashboard from "../components/FriendDashboard";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
+import { ProfileScoreCard } from "../components/profileScoreCard";
+import { QuickNavHub } from "../components/QuickNavHub";
+import { HistoryLedgerSection } from "../components/HistoryLedgerSection";
+import { ProblemTableSection } from "../components/ProblemTableSection";
+import { Footer } from "../components/Footer";
 import { useSocket } from "../context/socketContext";
 import { useState, useEffect } from "react";
-import { Activity } from "lucide-react";
+import { api } from "../config/api";
 
 const Home = () => {
   const {
@@ -14,50 +19,85 @@ const Home = () => {
     matchmakingStatus,
     activeBattleRoom,
     isConnected,
-    acceptMatch,
-    declineMatch,
     cancelMatch,
-    customLobby,
-    pendingOpponent,
     createCustomRoom,
     joinCustomRoom,
-    startCustomMatch,
-    leaveCustomMatch,
-    pendingMatchId,
-    isClicked,
     waitingTime
   } = useSocket();
-  const [difficulty, setDifficulty] = useState("MEDIUM");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
 
-  // Custom Room Form States
-  const [roomMaxUsers, setRoomMaxUsers] = useState(2);
-  const [roomPassword, setRoomPassword] = useState("");
-  const [joinCode, setJoinCode] = useState("");
-  const [searchState, setSearchState] = useState<{
-    levels: string[];
-  } | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [problems, setProblems] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!socket) return;
+    const loadDashboardData = async () => {
+      try {
+        const [profRes, probRes] = await Promise.all([
+          api.get("/profile").catch(() => null),
+          api.get("/problem/all").catch(() => null)
+        ]);
 
-    const onSearchState = (data: any) => {
-      setSearchState({
-        levels: data.allowedDifficulties,
-      });
+        if (profRes?.data?.data) {
+          const u = profRes.data.data;
+          setProfile(u);
+          setStats({
+            totalScore: u.score || 1000,
+            winRate: u.winRate || 0,
+            totalMatches: u.totalMatches || 0,
+            wins: u.wins || 0,
+            losses: u.losses || 0
+          });
+          setHistory(u.performances || u.history || []);
+        }
+
+        if (probRes?.data?.problems) {
+          setProblems(probRes.data.problems);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard telemetry:", err);
+      }
     };
 
-    socket.on("matchmaking_search_state", onSearchState);
-
-    return () => {
-      socket.off("matchmaking_search_state", onSearchState);
-    };
-  }, [socket]);
+    loadDashboardData();
+  }, []);
 
   return (
-    <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6">
+    <section className="flex h-full w-full flex-col gap-10 items-center px-4 pt-24 sm:px-6 max-w-7xl mx-auto">
+      {/* 1. HERO BANNER */}
       <HeroSection />
+
+      {/* 2. TOP GRID: PROFILE WITH SCORE (LEFT) & QUICK NAV'S (RIGHT) */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-1">
+          <ProfileScoreCard
+            profile={profile}
+            stats={stats}
+            activeBattleRoom={activeBattleRoom}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <QuickNavHub
+            onFindMatch={(diff) => findMatch(diff)}
+            matchmakingStatus={matchmakingStatus}
+            onCancelMatch={cancelMatch}
+            onCreateCustomRoom={() => createCustomRoom({ name: "CUSTOM LOBBY", maxUsers: 2 })}
+            onJoinCustomRoom={(code) => joinCustomRoom(code)}
+            waitingTime={waitingTime}
+          />
+        </div>
+      </div>
+
+      {/* 3. MIDDLE SECTION: HISTORY LEDGER */}
+      <HistoryLedgerSection
+        history={history}
+        currentUserId={profile?.id || ""}
+      />
+
+      {/* 4. LOWER SECTION: PROBLEM'S TABLE WITH PAGINATION */}
+      <ProblemTableSection problems={problems} />
+
+      {/* 5. SHOWCASE & BENTO */}
       <FriendsDashboard />
       <StickyFeatureShowcase />
       <BentoGrid />
