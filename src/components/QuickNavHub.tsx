@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Swords, Users, Play, Activity, Lock } from "lucide-react";
+import { Swords, Play, Activity } from "lucide-react";
 
 interface QuickNavHubProps {
   onFindMatch: (difficulty: string) => void;
@@ -10,142 +10,117 @@ interface QuickNavHubProps {
   waitingTime: number;
 }
 
+const DIFFICULTIES = ["ANY", "EASY", "MEDIUM", "HARD"] as const;
+
+const diffColors: Record<string, { text: string; border: string; badge: string }> = {
+  ANY:    { text: "text-slate-300",  border: "border-slate-500/30",  badge: "border-slate-500/25 text-slate-400" },
+  EASY:   { text: "text-emerald-400", border: "border-emerald-500/30", badge: "border-emerald-500/25 text-emerald-400" },
+  MEDIUM: { text: "text-amber-400",  border: "border-amber-500/30",  badge: "border-amber-500/25 text-amber-400" },
+  HARD:   { text: "text-rose-400",   border: "border-rose-500/30",   badge: "border-rose-500/25 text-rose-400" },
+};
+
 export const QuickNavHub: React.FC<QuickNavHubProps> = ({
   onFindMatch,
   matchmakingStatus,
   onCancelMatch,
-  onCreateCustomRoom,
-  onJoinCustomRoom,
   waitingTime,
 }) => {
-  const [difficulty, setDifficulty] = useState("MEDIUM");
-  const [joinCode, setJoinCode] = useState("");
-
-  const difficultyColors: Record<string, string> = {
-    ANY: "text-slate-300",
-    EASY: "text-emerald-400",
-    MEDIUM: "text-amber-400",
-    HARD: "text-rose-400",
-  };
+  const [difficulty, setDifficulty] = useState<"ANY" | "EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  const dc = diffColors[difficulty];
+  const isSearching = matchmakingStatus === "SEARCHING";
 
   return (
-    <div className="relative bg-[#080a0d] border border-white/[0.06] rounded-2xl overflow-hidden flex flex-col h-full shadow-2xl">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-rose-500/60 to-transparent" />
-      <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-rose-950/10 to-transparent pointer-events-none" />
+    <div className="relative border border-white/5 bg-black/40 flex flex-col h-full">
+      {/* L-bracket corners */}
+      <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-rose-500/25" />
+      <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-rose-500/25" />
+      <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-rose-500/25" />
+      <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-rose-500/25" />
 
-      <div className="p-5 flex flex-col gap-4 flex-1">
+      <div className="p-6 flex flex-col gap-6 flex-1">
         {/* HEADER */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-[10px] font-mono text-rose-500/70 font-bold tracking-[0.25em] uppercase">
-            <Swords className="w-3.5 h-3.5" />
-            Combat Operations Hub
-          </div>
-          <span className="text-[9px] font-mono text-slate-600 tracking-wider">SELECT MODE</span>
+          <span className="flex items-center gap-1.5 text-[9px] text-rose-400/80 font-bold tracking-[0.25em] uppercase">
+            <Swords className="w-3 h-3" /> PVP ARENA
+          </span>
+          {isSearching && (
+            <span className="text-[9px] text-amber-400 border border-amber-500/30 bg-amber-950/10 px-2 py-0.5 font-bold tracking-widest animate-pulse">
+              SEARCHING
+            </span>
+          )}
         </div>
 
-        {/* ── ACTIVE CARDS ────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* HEADLINE */}
+        <div>
+          <h2 className="text-xl font-black text-white uppercase tracking-tight leading-none">
+            1V1 BATTLE QUEUE
+          </h2>
+          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed uppercase tracking-wide">
+            Ranked real-time match against a live opponent. Fastest accepted solution wins the round.
+          </p>
+        </div>
 
-          {/* 1V1 PVP ARENA — ACTIVE */}
-          <div className="relative bg-gradient-to-br from-rose-950/40 to-black/60 border border-rose-500/25 hover:border-rose-500/50 rounded-xl p-4 flex flex-col justify-between transition-all group">
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl bg-gradient-to-br from-rose-500/5 to-transparent pointer-events-none" />
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-sm font-black text-rose-400 flex items-center gap-2">
-                  <Swords className="w-4 h-4" /> 1V1 PVP ARENA
-                </span>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value)}
-                  disabled={matchmakingStatus !== "IDLE"}
-                  className={`bg-black/60 border border-white/10 text-xs rounded-lg px-2 py-1 font-mono font-bold focus:border-rose-500 focus:outline-none disabled:opacity-50 transition-colors ${difficultyColors[difficulty]}`}
-                >
-                  {["ANY", "EASY", "MEDIUM", "HARD"].map((d) => (
-                    <option key={d} value={d} className="text-slate-300 bg-black">{d}</option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-sans mb-4">
-                Real-time ranked match against a live opponent. Fastest correct solution wins.
-              </p>
-            </div>
-
-            {matchmakingStatus === "SEARCHING" ? (
-              <button
-                onClick={onCancelMatch}
-                className="w-full py-2.5 bg-rose-950/80 hover:bg-rose-900/80 border border-rose-500/50 text-rose-300 font-mono text-xs font-black rounded-lg transition-all flex items-center justify-center gap-2 animate-pulse"
-              >
-                <Activity className="w-3.5 h-3.5" /> SEARCHING... ({waitingTime}s) · ABORT
-              </button>
-            ) : (
-              <button
-                onClick={() => onFindMatch(difficulty)}
-                disabled={matchmakingStatus !== "IDLE"}
-                className="w-full py-2.5 bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 hover:border-rose-400 text-rose-300 hover:text-rose-100 font-mono text-xs font-black rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(239,68,68,0.1)] hover:shadow-[0_0_25px_rgba(239,68,68,0.25)]"
-              >
-                <Play className="w-3.5 h-3.5 fill-rose-400" /> QUEUE FOR BATTLE
-              </button>
-            )}
-          </div>
-
-          {/* CUSTOM ROOM HUB — ACTIVE */}
-          <div className="relative bg-gradient-to-br from-amber-950/30 to-black/60 border border-amber-500/20 hover:border-amber-500/40 rounded-xl p-4 flex flex-col justify-between transition-all group">
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl bg-gradient-to-br from-amber-500/5 to-transparent pointer-events-none" />
-            <div>
-              <span className="font-mono text-sm font-black text-amber-400 flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4" /> CUSTOM ROOM HUB
-              </span>
-              <p className="text-[11px] text-slate-500 leading-relaxed font-sans mb-4">
-                Host a private lobby or enter a room code to join an existing session.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={onCreateCustomRoom}
-                className="flex-1 py-2 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 hover:border-amber-400 text-amber-300 font-mono text-[11px] font-black rounded-lg transition-all"
-              >
-                + HOST
-              </button>
-              <div className="flex gap-1 flex-1">
-                <input
-                  type="text"
-                  placeholder="CODE"
-                  maxLength={6}
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  className="flex-1 min-w-0 bg-black/60 border border-white/10 text-slate-200 text-xs px-2 py-1 font-mono rounded-lg text-center uppercase focus:border-amber-500 focus:outline-none tracking-widest"
-                />
+        {/* DIFFICULTY SELECTOR */}
+        <div>
+          <p className="text-[9px] text-slate-600 tracking-[0.2em] uppercase mb-2 font-bold">SELECT DIFFICULTY</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {DIFFICULTIES.map((d) => {
+              const active = difficulty === d;
+              const c = diffColors[d];
+              return (
                 <button
-                  onClick={() => joinCode && onJoinCustomRoom(joinCode)}
-                  className="px-3 py-1 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-mono text-[11px] font-black rounded-lg transition-all"
+                  key={d}
+                  onClick={() => setDifficulty(d)}
+                  disabled={isSearching}
+                  className={`py-2 text-[10px] font-black tracking-widest uppercase border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                    active
+                      ? `${c.text} ${c.border} bg-black/60`
+                      : "text-slate-600 border-white/5 hover:border-white/15 hover:text-slate-400"
+                  }`}
                 >
-                  JOIN
+                  {d}
                 </button>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── LOCKED / COMING SOON ROW ─────────────────── */}
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: "SQUAD CHALLENGE", desc: "Challenge active friends directly in real-time.", color: "emerald" },
-            { label: "SOLO PLAYGROUND", desc: "Offline algorithm sandbox practice mode.", color: "purple" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="relative bg-black/40 border border-white/[0.04] rounded-xl p-4 overflow-hidden"
-            >
-              {/* LOCK OVERLAY */}
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex flex-col items-center justify-center z-10 rounded-xl">
-                <Lock className="w-5 h-5 text-slate-600 mb-1" />
-                <span className="text-[9px] font-mono text-slate-600 font-bold tracking-widest">IN PROGRESS</span>
-              </div>
-              <span className="font-mono text-xs font-black text-slate-600">{item.label}</span>
-              <p className="text-[10px] text-slate-700 mt-1 font-sans">{item.desc}</p>
+        {/* SELECTED DIFF INFO */}
+        <div className="border border-white/5 bg-black/20 p-4 flex items-center justify-between">
+          <div>
+            <p className="text-[9px] text-slate-600 uppercase tracking-widest">SELECTED MODE</p>
+            <p className={`text-sm font-black uppercase tracking-widest mt-0.5 ${dc.text}`}>{difficulty}</p>
+          </div>
+          {!isSearching ? (
+            <span className="text-[9px] text-slate-600 border border-white/5 px-2 py-1 uppercase tracking-widest">IDLE</span>
+          ) : (
+            <div className="text-right">
+              <p className="text-[9px] text-amber-400 uppercase tracking-widest">IN QUEUE</p>
+              <p className="text-sm font-black text-white">{waitingTime}s</p>
             </div>
-          ))}
+          )}
         </div>
+
+        {/* SPACER */}
+        <div className="flex-1" />
+
+        {/* ACTION */}
+        {isSearching ? (
+          <button
+            onClick={onCancelMatch}
+            className="w-full py-3 border border-rose-500/40 bg-rose-950/10 hover:bg-rose-950/30 text-rose-400 font-mono text-[11px] font-black tracking-widest uppercase transition-all flex items-center justify-center gap-2"
+          >
+            <Activity className="w-3.5 h-3.5 animate-pulse" /> CANCEL SEARCH ({waitingTime}s)
+          </button>
+        ) : (
+          <button
+            onClick={() => onFindMatch(difficulty)}
+            disabled={matchmakingStatus !== "IDLE"}
+            className="w-full py-3 border border-rose-500/30 bg-rose-950/10 hover:bg-rose-950/30 hover:border-rose-500/60 text-rose-400 hover:text-rose-300 font-mono text-[11px] font-black tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Play className="w-3.5 h-3.5 fill-rose-400" /> QUEUE FOR BATTLE
+          </button>
+        )}
       </div>
     </div>
   );
