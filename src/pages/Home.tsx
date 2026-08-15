@@ -22,15 +22,25 @@ const Home = () => {
     cancelMatch,
     createCustomRoom,
     joinCustomRoom,
-    waitingTime,
-
+    startCustomMatch,
+    leaveCustomMatch,
+    customLobby,
+    waitingTime
   } = useSocket();
 
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [problems, setProblems] = useState<any[]>([]);
-  const [difficulty,setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
+  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("EASY");
+  
+  // Custom Room Form & Modal States
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+  const [roomMaxUsers, setRoomMaxUsers] = useState<number>(2);
+  const [roomPassword, setRoomPassword] = useState<string>("");
+  const [joinCode, setJoinCode] = useState<string>("");
+  const [searchState, setSearchState] = useState<{ levels: string[] } | null>(null);
 
   useEffect(() => {
     const loadDashboardData = async () => {
