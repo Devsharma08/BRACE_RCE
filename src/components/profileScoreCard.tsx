@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, Hexagon, Trophy, Target, Clock, Activity, Zap } from "lucide-react";
+import { Shield, Trophy, Activity, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface ProfileScoreCardProps {

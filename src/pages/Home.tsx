@@ -1,5 +1,4 @@
 import { useAuth } from "../context/authContext";
-import { Link } from "react-router-dom";
 import BentoGrid from "../features/home/components/BentoGrid";
 import HeroSection from "../features/home/components/HeroSection";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
@@ -7,12 +6,11 @@ import { ProfileScoreCard } from "../components/profileScoreCard";
 import { QuickNavHub } from "../components/QuickNavHub";
 import { HistoryLedgerSection } from "../components/HistoryLedgerSection";
 import { ProblemTableSection } from "../components/ProblemTableSection";
-import { PlaygroundShowcase } from "../features/home/components/PlaygroundShowcase";
+import { PlaygroundShowcase } from "../components/PlaygroundShowcase";
 import { Footer } from "../components/Footer";
 import { useSocket } from "../context/socketContext";
 import { useState, useEffect } from "react";
 import { api } from "../config/api";
-import { Activity } from "lucide-react";
 
 const Home = () => {
   const { user, isAuthenticated } = useAuth();
@@ -131,6 +129,12 @@ const Home = () => {
 
           {/* 4. LOWER SECTION: UPCOMING FEATURES / PLAYGROUND */}
           <PlaygroundShowcase />
+        </>
+      ) : (
+        <>
+          <HeroSection />
+          <StickyFeatureShowcase />
+          <BentoGrid />
         </>
       )}
       {/* CANCEL SEARCH BUTTON */}
