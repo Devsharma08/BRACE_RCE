@@ -25,7 +25,9 @@ export const Dashboard: React.FC = () => {
       setSearchState({ levels: data.allowedDifficulties || [] });
     };
     socket.on("matchmaking_search_state", onSearchState);
-    return () => { socket.off("matchmaking_search_state", onSearchState); };
+    return () => {
+      socket.off("matchmaking_search_state", onSearchState);
+    };
   }, [socket]);
 
   useEffect(() => {
@@ -39,7 +41,13 @@ export const Dashboard: React.FC = () => {
         if (profRes?.data?.data) {
           const u = profRes.data.data;
           setProfile(u);
-          setStats({ totalScore: u.score || 0, winRate: u.winRate || 0, totalMatches: u.totalMatches || 0, wins: u.wins || 0, losses: u.losses || 0 });
+          setStats({
+            totalScore: u.score || 0,
+            winRate: u.winRate || 0,
+            totalMatches: u.totalMatches || 0,
+            wins: u.wins || 0,
+            losses: u.losses || 0,
+          });
           setHistory(u.performances || u.history || []);
         }
         if (probRes?.data?.problems) setProblems(probRes.data.problems);
@@ -53,63 +61,102 @@ export const Dashboard: React.FC = () => {
   if (!isLoading && !isAuthenticated && !user) return <Navigate to="/signin" replace />;
 
   return (
-    <section className="relative flex flex-col items-center px-4 pt-24 pb-20 sm:px-6 max-w-7xl mx-auto w-full gap-6">
-      {/* Blueprint dot grid background */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.02] bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:14px_14px] -z-10" />
+    <section className="relative flex flex-col items-center px-4 pt-24 pb-20 sm:px-6 max-w-7xl mx-auto w-full gap-10">
+      {/* Background Grid Accent */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#00f0ff_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
 
-      {/* ── ROW 1: PROFILE + PVP HUB ── */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <ProfileScoreCard profile={profile || user} stats={stats} activeBattleRoom={activeBattleRoom} />
+      {/* ── SECTION 01: PROFILE & MATCHMAKING HUB ── */}
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em]">
+          <span className="text-cyan-400 font-bold">01 //</span> OPERATIVE DOSSIER & PVP MATCHMAKING
         </div>
-        <div className="md:col-span-2">
-          <QuickNavHub
-            onFindMatch={findMatch}
-            matchmakingStatus={matchmakingStatus}
-            onCancelMatch={cancelMatch}
-            onCreateCustomRoom={() => {}}
-            onJoinCustomRoom={() => {}}
-            waitingTime={waitingTime}
-          />
+        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+          <div className="absolute -top-10 -left-10 w-72 h-72 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+          <div className="absolute -top-10 -right-10 w-72 h-72 bg-rose-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+          
+          <div className="md:col-span-1">
+            <ProfileScoreCard profile={profile || user} stats={stats} activeBattleRoom={activeBattleRoom} />
+          </div>
+          <div className="md:col-span-2">
+            <QuickNavHub
+              onFindMatch={findMatch}
+              matchmakingStatus={matchmakingStatus}
+              onCancelMatch={cancelMatch}
+              onCreateCustomRoom={() => {}}
+              onJoinCustomRoom={() => {}}
+              waitingTime={waitingTime}
+            />
+          </div>
         </div>
       </div>
 
-      {/* ── ROW 2: BATTLE LEDGER ── */}
-      <HistoryLedgerSection history={history} currentUserId={profile?.id || user?.id || ""} />
+      {/* ── SECTION 02: BATTLE LEDGER ── */}
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em]">
+          <span className="text-emerald-400 font-bold">02 //</span> ENGAGEMENT HISTORY & REVIEWS
+        </div>
+        <div className="relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+          <HistoryLedgerSection history={history} currentUserId={profile?.id || user?.id || ""} />
+        </div>
+      </div>
 
-      {/* ── ROW 3: PROBLEM TABLE ── */}
-      <ProblemTableSection problems={problems} />
+      {/* ── SECTION 03: PROBLEM TABLE ── */}
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em]">
+          <span className="text-purple-400 font-bold">03 //</span> ALGORITHM REPOSITORY & DATABANK
+        </div>
+        <div className="relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-48 bg-purple-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+          <ProblemTableSection problems={problems} />
+        </div>
+      </div>
 
-      {/* ── ROW 4: CODE PLAYGROUND ── */}
-      <PlaygroundShowcase />
+      {/* ── SECTION 04: CODE PLAYGROUND ── */}
+      <div className="w-full flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em]">
+          <span className="text-amber-400 font-bold">04 //</span> ISOLATED CODE SANDBOX
+        </div>
+        <div className="relative">
+          <div className="absolute top-1/2 right-10 w-80 h-40 bg-amber-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
+          <PlaygroundShowcase />
+        </div>
+      </div>
 
-      {/* ── MATCHMAKING SEARCH OVERLAY ── */}
+      {/* ── MATCHMAKING SEARCH OVERLAY MODAL ── */}
       {matchmakingStatus === "SEARCHING" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md font-mono">
-          <div className="relative border border-white/10 bg-black/80 p-10 max-w-sm w-full mx-4">
+          <div className="relative border border-rose-500/40 bg-slate-950/90 p-8 max-w-sm w-full mx-4 shadow-2xl shadow-rose-950/50">
             {/* L-bracket corners */}
-            <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-rose-500/50" />
-            <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-rose-500/50" />
-            <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-rose-500/50" />
-            <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-rose-500/50" />
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-rose-500" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-rose-500" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-rose-500" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-rose-500" />
 
-            <div className="text-[9px] text-rose-500/70 tracking-[0.3em] uppercase mb-4">SYS // MATCHMAKING</div>
+            <div className="text-[10px] text-rose-400 font-bold tracking-[0.3em] uppercase mb-4 flex items-center justify-between">
+              <span>SYS // MATCHMAKING QUEUE</span>
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            </div>
+
             <h2 className="text-lg font-black text-white uppercase tracking-widest mb-2 animate-pulse">
-              FINDING OPPONENT...
+              SEARCHING OPPONENT...
             </h2>
-            <p className="text-[11px] text-slate-600 uppercase tracking-wide mb-6">
-              Searching across all skill brackets. Queue expands every 10 seconds.
+            <p className="text-[11px] text-slate-400 leading-relaxed uppercase tracking-wide mb-6">
+              Scanning active player pools. Skill bracket window expands every 10 seconds.
             </p>
 
-            <div className="border border-white/5 bg-black/40 p-4 mb-6">
+            <div className="border border-rose-500/20 bg-black/60 p-4 mb-6">
               <div className="flex justify-between text-[10px] uppercase tracking-widest mb-3">
-                <span className="text-slate-600">WAIT TIME</span>
-                <span className="text-white font-black">{waitingTime}s</span>
+                <span className="text-slate-400">SEARCH TIME</span>
+                <span className="text-rose-400 font-black">{waitingTime}s</span>
               </div>
               {searchState?.levels?.length ? (
                 <div className="flex gap-2 flex-wrap">
                   {searchState.levels.map((lvl) => (
-                    <span key={lvl} className="text-[9px] border border-cyan-500/25 text-cyan-400 px-2 py-0.5 font-bold uppercase">
+                    <span
+                      key={lvl}
+                      className="text-[9px] border border-cyan-500/30 bg-cyan-950/30 text-cyan-400 px-2 py-0.5 font-bold uppercase"
+                    >
                       {lvl}
                     </span>
                   ))}
@@ -119,9 +166,9 @@ export const Dashboard: React.FC = () => {
 
             <button
               onClick={cancelMatch}
-              className="w-full py-2.5 border border-rose-500/40 text-rose-400 hover:bg-rose-950/20 text-[11px] font-black tracking-widest uppercase transition-all"
+              className="w-full py-3 border border-rose-500/50 bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 text-[11px] font-black tracking-widest uppercase transition-all shadow-lg hover:shadow-rose-900/40"
             >
-              [ ABORT SEARCH ]
+              [ ABORT MATCHMAKING ]
             </button>
           </div>
         </div>

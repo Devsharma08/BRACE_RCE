@@ -9,9 +9,9 @@ interface ProblemTableSectionProps {
 const DIFF_TABS = ["ALL", "EASY", "MEDIUM", "HARD"] as const;
 
 const diffCls = (d: string) =>
-  d === "HARD"   ? "text-rose-400 border-rose-500/25"
-  : d === "MEDIUM" ? "text-amber-400 border-amber-500/25"
-  : "text-emerald-400 border-emerald-500/25";
+  d === "HARD"   ? "text-rose-400 border-rose-500/30 bg-rose-950/30"
+  : d === "MEDIUM" ? "text-amber-400 border-amber-500/30 bg-amber-950/30"
+  : "text-emerald-400 border-emerald-500/30 bg-emerald-950/30";
 
 export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ problems }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,36 +28,36 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
   const paged = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
   return (
-    <div className="relative w-full border border-white/5 bg-black/40">
+    <div className="relative w-full border border-purple-500/20 bg-gradient-to-b from-purple-950/10 via-slate-950/70 to-black font-mono shadow-xl shadow-purple-950/5">
       {/* L-bracket corners */}
-      <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-purple-500/25" />
-      <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-purple-500/25" />
-      <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-purple-500/25" />
-      <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-purple-500/25" />
+      <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-purple-500" />
+      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-purple-500" />
+      <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-purple-500" />
+      <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-purple-500" />
 
       {/* HEADER */}
-      <div className="px-6 py-4 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h3 className="flex items-center gap-2 font-mono text-sm font-black text-white uppercase tracking-wider">
+      <div className="px-6 py-4 border-b border-white/10 bg-black/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h3 className="flex items-center gap-2 text-sm font-black text-white uppercase tracking-wider">
           <Database className="w-4 h-4 text-purple-400" />
           Algorithm Repository
-          <span className="text-[10px] text-purple-500/50 font-normal tracking-widest">// PROBLEM DATABANK</span>
+          <span className="text-[10px] text-purple-400/60 font-normal tracking-widest">// DATABANK</span>
         </h3>
 
         <div className="flex items-center gap-3">
-          {/* SEARCH */}
+          {/* SEARCH INPUT */}
           <div className="relative">
-            <Search className="w-3 h-3 text-slate-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-purple-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="SEARCH..."
+              placeholder="SEARCH PROBLEM..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="bg-black/50 border border-white/[0.07] hover:border-white/15 text-slate-400 text-[11px] pl-8 pr-4 py-2 font-mono focus:border-purple-500/50 focus:outline-none transition-colors w-44 placeholder:text-slate-700 uppercase"
+              className="bg-black/60 border border-purple-500/30 hover:border-purple-400 text-slate-200 text-[11px] pl-9 pr-4 py-2 focus:border-purple-400 focus:outline-none transition-colors w-48 placeholder:text-slate-600 uppercase font-bold"
             />
           </div>
 
-          {/* DIFF TABS */}
-          <div className="flex border border-white/[0.06] divide-x divide-white/[0.06]">
+          {/* DIFFICULTY TABS */}
+          <div className="flex border border-purple-500/30 bg-black/60 divide-x divide-purple-500/20">
             {DIFF_TABS.map((d) => {
               const active = selectedDiff === d;
               return (
@@ -65,7 +65,7 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
                   key={d}
                   onClick={() => { setSelectedDiff(d); setCurrentPage(1); }}
                   className={`px-3 py-2 text-[10px] font-black tracking-widest uppercase transition-all ${
-                    active ? "bg-white/8 text-white" : "text-slate-600 hover:text-slate-400"
+                    active ? "bg-purple-950/60 text-purple-300" : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   {d}
@@ -78,13 +78,15 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
 
       {/* TABLE */}
       <div className="overflow-x-auto">
-        <table className="w-full font-mono text-xs">
+        <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-white/[0.04]">
-              {["#", "STATUS", "PROBLEM NAME", "DIFFICULTY", "TIME LIMIT", ""].map((h, i) => (
+            <tr className="border-b border-white/10 bg-white/5">
+              {["#", "STATUS", "PROBLEM NAME", "DIFFICULTY", "TIME LIMIT", "ACTION"].map((h, i) => (
                 <th
                   key={i}
-                  className={`py-3 px-4 text-[9px] text-slate-600 font-bold tracking-[0.2em] uppercase text-left whitespace-nowrap ${i === 5 ? "text-right pr-6" : ""}`}
+                  className={`py-3.5 px-4 text-[9px] text-slate-400 font-bold tracking-[0.2em] uppercase text-left whitespace-nowrap ${
+                    i === 5 ? "text-right pr-6" : ""
+                  }`}
                 >
                   {h}
                 </th>
@@ -94,8 +96,8 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
           <tbody>
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-slate-700 text-xs tracking-widest uppercase">
-                  No Matching Problems In Databank
+                <td colSpan={6} className="text-center py-12 text-slate-500 text-xs tracking-widest uppercase font-bold">
+                  No Matching Algorithm Problems Found
                 </td>
               </tr>
             ) : (
@@ -103,30 +105,30 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
                 const globalIdx = (currentPage - 1) * PER_PAGE + idx + 1;
                 const diff = prob.difficulty_level as string;
                 return (
-                  <tr key={prob.id} className="group border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                    <td className="py-4 px-4 text-[10px] text-slate-700">{String(globalIdx).padStart(2, "0")}</td>
+                  <tr key={prob.id} className="group border-b border-white/5 hover:bg-purple-950/20 transition-colors">
+                    <td className="py-4 px-4 text-[10px] text-slate-400 font-bold">{String(globalIdx).padStart(2, "0")}</td>
                     <td className="py-4 px-4">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50 group-hover:text-emerald-400 transition-colors" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400/60 group-hover:text-emerald-400 transition-colors" />
                     </td>
                     <td className="py-4 px-4">
-                      <span className="font-black text-white/90 tracking-wide group-hover:text-white transition-colors">
+                      <span className="font-black text-white tracking-wide group-hover:text-purple-300 transition-colors">
                         {prob.name}
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`text-[9px] border px-1.5 py-0.5 font-black uppercase ${diffCls(diff)}`}>
+                      <span className={`text-[9px] border px-2 py-0.5 font-black uppercase ${diffCls(diff)}`}>
                         {diff}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-slate-600 text-[11px]">
+                    <td className="py-4 px-4 text-slate-400 text-[11px] font-bold">
                       {prob.timeLimitMs ? `${prob.timeLimitMs / 1000}s` : "10m"}
                     </td>
                     <td className="py-4 px-6 text-right">
                       <Link
                         to={`/battle/practice?oid=${prob.github_oid || prob.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-white/10 hover:border-purple-500/40 text-slate-500 hover:text-purple-400 text-[10px] font-black tracking-widest uppercase transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-purple-500/30 hover:border-purple-400 bg-purple-950/20 text-purple-300 hover:text-white text-[10px] font-black tracking-widest uppercase transition-all shadow-sm"
                       >
-                        <Play className="w-2.5 h-2.5 fill-current" /> SOLVE
+                        <Play className="w-3 h-3 fill-current" /> SOLVE
                       </Link>
                     </td>
                   </tr>
@@ -138,40 +140,40 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
       </div>
 
       {/* PAGINATION */}
-      <div className="px-6 py-3 border-t border-white/[0.04] flex items-center justify-between font-mono">
-        <span className="text-[9px] text-slate-700 tracking-widest uppercase">
-          Page {currentPage} / {totalPages} · {filtered.length} problems
+      <div className="px-6 py-3.5 border-t border-white/10 bg-slate-950/80 flex items-center justify-between font-mono">
+        <span className="text-xs text-slate-300 font-bold tracking-widest uppercase">
+          PAGE {currentPage} OF {totalPages} · <span className="text-purple-400">{filtered.length} PROBLEMS LOGGED</span>
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="p-1.5 border border-white/[0.06] hover:border-white/20 text-slate-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="p-2 border border-purple-500/40 bg-purple-950/20 hover:border-purple-400 text-purple-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((p) => (
             <button
               key={p}
               onClick={() => setCurrentPage(p)}
-              className={`w-7 h-7 text-[10px] font-black transition-all border ${
+              className={`w-8 h-8 text-xs font-black transition-all border flex items-center justify-center ${
                 currentPage === p
-                  ? "border-purple-500/40 text-purple-400 bg-purple-950/20"
-                  : "border-white/[0.05] text-slate-600 hover:text-white hover:border-white/20"
+                  ? "border-purple-400 text-purple-200 bg-purple-950/80 shadow-md shadow-purple-950/50"
+                  : "border-purple-500/30 text-slate-300 bg-black/40 hover:text-white hover:border-purple-400"
               }`}
             >
               {p}
             </button>
           ))}
-          {totalPages > 5 && <span className="text-slate-700 text-xs px-1">...</span>}
+          {totalPages > 5 && <span className="text-slate-400 text-xs px-1 font-bold">...</span>}
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="p-1.5 border border-white/[0.06] hover:border-white/20 text-slate-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            className="p-2 border border-purple-500/40 bg-purple-950/20 hover:border-purple-400 text-purple-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>

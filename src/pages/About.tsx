@@ -1,287 +1,372 @@
-import React from 'react';
 import {
-  Info, User, Heart, Smartphone, Timer, BookOpen, Cpu,
-  Database, Languages, GitBranch, ArrowRight, CheckCircle2,
+  User, Heart, BookOpen,
+  Database, GitBranch, ArrowRight, CheckCircle2,
   Swords, Users, Terminal, Shield, Zap, Bot, Trophy,
-  FlaskConical, Globe, UserPlus, Radio, LayoutDashboard, Clock
+  FlaskConical, Globe, UserPlus, LayoutDashboard, Clock, Code2, Cpu
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
-// DATA
+// COMPLETED SYSTEMS (BENTO DATA)
 // ─────────────────────────────────────────────
 
-const completedFeatures = [
-  { icon: Terminal,        label: "Remote Code Execution Engine",  desc: "Sandboxed Docker runners for JavaScript, Python, C++, Java with live output streaming." },
-  { icon: Swords,          label: "1v1 PvP Battle System",         desc: "Real-time ranked matchmaking. Fastest accepted runtime wins. Score and ELO updates on result." },
-  { icon: Users,           label: "Custom Room Lobbies",            desc: "Create or join password-protected custom rooms with configurable player limits." },
-  { icon: Shield,          label: "Operative Profile & Scores",    desc: "User profiles with ELO scores, match history, performance tracking, and rank derivation." },
-  { icon: BookOpen,        label: "Battle Code Review",             desc: "Side-by-side code comparison modal with runtime/memory analysis after every match." },
-  { icon: Database,        label: "Algorithm Problem Databank",     desc: "Searchable, filterable, paginated table of challenges seeded from GitHub DSA repositories." },
-  { icon: LayoutDashboard, label: "Command Center Dashboard",       desc: "Authenticated user dashboard with profile, quick-nav hub, history ledger, and problem explorer." },
-  { icon: Zap,             label: "Battle Time Persistence",        desc: "Remaining battle time persisted across page refreshes via backend socket sync." },
-  { icon: CheckCircle2,    label: "Google OAuth Integration",       desc: "Sign in with Google alongside email/password auth, with JWT session management." },
-];
-
-type RoadmapStatus = "BUILDING" | "DESIGNING" | "PROTOTYPING" | "EXPLORING" | "PLANNED" | "IN_RESEARCH";
-
-interface RoadmapItem {
-  icon: React.ElementType;
-  label: string;
-  desc: string;
-  version: string;
-  status: RoadmapStatus;
-  progress: number;
-  accentCls: string;
-  badgeCls: string;
-}
-
-const roadmapItems: RoadmapItem[] = [
+const completedSystems = [
   {
-    icon: UserPlus,    label: "Squad Direct Challenge",      progress: 70,
-    desc:    "Invite an online friend from the friends panel into a live 1v1 duel with real-time invite notifications.",
-    version: "V2.1", status: "BUILDING",
-    accentCls: "text-emerald-400 border-emerald-500/20",
-    badgeCls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30",
+    icon: Terminal,
+    title: "Sandboxed RCE Engine",
+    desc: "Isolated Docker runners for JS, Py, C++, Java & C with streaming telemetry.",
+    colSpan: "md:col-span-2",
+    theme: "border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 via-slate-950/80 to-black hover:border-emerald-400 shadow-emerald-950/20",
+    badge: "text-emerald-300 bg-emerald-950/70 border-emerald-500/40",
+    accentIcon: Cpu,
   },
   {
-    icon: Globe,       label: "Solo Practice Sandbox",       progress: 55,
-    desc:    "Offline algorithm sandbox with pre-loaded problems, zero time pressure, and optional step-through hints.",
-    version: "V2.1", status: "DESIGNING",
-    accentCls: "text-purple-400 border-purple-500/20",
-    badgeCls: "text-purple-400 bg-purple-500/10 border-purple-500/30",
+    icon: Swords,
+    title: "1v1 PvP Battles",
+    desc: "Real-time 1v1 matchmaking with instant winner validation.",
+    colSpan: "md:col-span-1",
+    theme: "border-rose-500/30 bg-gradient-to-br from-rose-950/30 via-slate-950/80 to-black hover:border-rose-400 shadow-rose-950/20",
+    badge: "text-rose-300 bg-rose-950/70 border-rose-500/40",
+    accentIcon: Zap,
   },
   {
-    icon: Bot,         label: "AI Code Coach & Diagnostics", progress: 85,
-    desc:    "Big-O complexity breakdown, edge-case detection, and alternative approach suggestions after each submission.",
-    version: "V2.2", status: "BUILDING",
-    accentCls: "text-cyan-400 border-cyan-500/20",
-    badgeCls: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30",
+    icon: Users,
+    title: "Custom Room Lobbies",
+    desc: "Private/public rooms with password protection and custom timers.",
+    colSpan: "md:col-span-1",
+    theme: "border-purple-500/30 bg-gradient-to-br from-purple-950/30 via-slate-950/80 to-black hover:border-purple-400 shadow-purple-950/20",
+    badge: "text-purple-300 bg-purple-950/70 border-purple-500/40",
+    accentIcon: Shield,
   },
   {
-    icon: Trophy,      label: "Global Ranked Leagues",       progress: 40,
-    desc:    "Season 1 MMR ladder with 6 tiers, weekly division resets, leaderboard rankings, and exclusive cosmetics.",
-    version: "V2.3", status: "DESIGNING",
-    accentCls: "text-amber-400 border-amber-500/20",
-    badgeCls: "text-amber-400 bg-amber-500/10 border-amber-500/30",
+    icon: BookOpen,
+    title: "Battle Code Reviewer",
+    desc: "Post-match side-by-side code diff analysis drawer.",
+    colSpan: "md:col-span-1",
+    theme: "border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-slate-950/80 to-black hover:border-amber-400 shadow-amber-950/20",
+    badge: "text-amber-300 bg-amber-950/70 border-amber-500/40",
+    accentIcon: Code2,
   },
   {
-    icon: Swords,      label: "4-Player FFA Battle Royale",  progress: 25,
-    desc:    "Simultaneous 4-way elimination. The operative with the slowest accepted runtime is purged each round.",
-    version: "V2.4", status: "PROTOTYPING",
-    accentCls: "text-rose-400 border-rose-500/20",
-    badgeCls: "text-rose-400 bg-rose-500/10 border-rose-500/30",
+    icon: Database,
+    title: "Algorithm Databank",
+    desc: "Searchable problem repository with hidden test cases.",
+    colSpan: "md:col-span-1",
+    theme: "border-indigo-500/30 bg-gradient-to-br from-indigo-950/30 via-slate-950/80 to-black hover:border-indigo-400 shadow-indigo-950/20",
+    badge: "text-indigo-300 bg-indigo-950/70 border-indigo-500/40",
+    accentIcon: Database,
   },
   {
-    icon: FlaskConical, label: "Custom Problem Studio",      progress: 30,
-    desc:    "Community problem builder with auto testcase generators, memory constraints, and shareable problem links.",
-    version: "V2.5", status: "EXPLORING",
-    accentCls: "text-sky-400 border-sky-500/20",
-    badgeCls: "text-sky-400 bg-sky-500/10 border-sky-500/30",
-  },
-  {
-    icon: Smartphone,  label: "Mobile-Responsive Workspace", progress: 20,
-    desc:    "Monaco editor scopes, collapsible split panels, and output console sheets for phone and tablet viewports.",
-    version: "V2.6", status: "PLANNED",
-    accentCls: "text-slate-400 border-slate-500/20",
-    badgeCls: "text-slate-400 bg-slate-500/10 border-slate-500/30",
-  },
-  {
-    icon: Languages,   label: "Polyglot Runtime Expansion",  progress: 15,
-    desc:    "Expand compiler infrastructure to support Go, Rust, PHP, and Swift with live telemetry badges per language.",
-    version: "V2.7", status: "IN_RESEARCH",
-    accentCls: "text-orange-400 border-orange-500/20",
-    badgeCls: "text-orange-400 bg-orange-500/10 border-orange-500/30",
-  },
-  {
-    icon: Timer,       label: "Interview Practice Timer",    progress: 10,
-    desc:    "Built-in diagnostic stopwatch in the workspace toolbar to simulate strict tech interview time limits.",
-    version: "V2.7", status: "PLANNED",
-    accentCls: "text-slate-400 border-slate-500/20",
-    badgeCls: "text-slate-400 bg-slate-500/10 border-slate-500/30",
+    icon: LayoutDashboard,
+    title: "Command Center & Time Sync",
+    desc: "Centralized dossier with socket-persisted match timers across page refreshes.",
+    colSpan: "md:col-span-2",
+    theme: "border-cyan-500/30 bg-gradient-to-br from-cyan-950/30 via-slate-950/80 to-black hover:border-cyan-400 shadow-cyan-950/20",
+    badge: "text-cyan-300 bg-cyan-950/70 border-cyan-500/40",
+    accentIcon: Clock,
   },
 ];
 
-const statusLabel: Record<RoadmapStatus, string> = {
-  BUILDING:    "BUILDING",
-  DESIGNING:   "DESIGNING",
-  PROTOTYPING: "PROTOTYPING",
-  EXPLORING:   "EXPLORING",
-  PLANNED:     "PLANNED",
-  IN_RESEARCH: "IN RESEARCH",
-};
+// ─────────────────────────────────────────────
+// ROADMAP PIPELINE (BENTO DATA)
+// ─────────────────────────────────────────────
+
+const roadmapItems = [
+  {
+    icon: Bot,
+    title: "AI Code Diagnostics",
+    desc: "Big-O complexity breakdown & vulnerability detection post-match.",
+    colSpan: "md:col-span-2",
+    version: "V2.2",
+    status: "BUILDING",
+    progress: 85,
+    theme: "border-cyan-500/30 bg-gradient-to-br from-cyan-950/30 via-slate-950/80 to-black hover:border-cyan-400",
+    badge: "text-cyan-300 bg-cyan-950/80 border-cyan-500/40",
+    barColor: "from-cyan-600 to-cyan-400",
+  },
+  {
+    icon: UserPlus,
+    title: "Squad Direct Duel",
+    desc: "Direct friend invites into 1v1 duels with live notifications.",
+    colSpan: "md:col-span-1",
+    version: "V2.1",
+    status: "BUILDING",
+    progress: 75,
+    theme: "border-emerald-500/30 bg-gradient-to-br from-emerald-950/30 via-slate-950/80 to-black hover:border-emerald-400",
+    badge: "text-emerald-300 bg-emerald-950/80 border-emerald-500/40",
+    barColor: "from-emerald-600 to-emerald-400",
+  },
+  {
+    icon: Trophy,
+    title: "Ranked Leagues",
+    desc: "Season 1 MMR ladder with 6 tiers & weekly resets.",
+    colSpan: "md:col-span-1",
+    version: "V2.3",
+    status: "DESIGNING",
+    progress: 40,
+    theme: "border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-slate-950/80 to-black hover:border-amber-400",
+    badge: "text-amber-300 bg-amber-950/80 border-amber-500/40",
+    barColor: "from-amber-600 to-amber-400",
+  },
+  {
+    icon: Globe,
+    title: "Practice Sandbox",
+    desc: "Offline practice playground with solution hints.",
+    colSpan: "md:col-span-1",
+    version: "V2.1",
+    status: "DESIGNING",
+    progress: 55,
+    theme: "border-purple-500/30 bg-gradient-to-br from-purple-950/30 via-slate-950/80 to-black hover:border-purple-400",
+    badge: "text-purple-300 bg-purple-950/80 border-purple-500/40",
+    barColor: "from-purple-600 to-purple-400",
+  },
+  {
+    icon: Swords,
+    title: "4-Player FFA",
+    desc: "4-way elimination battle royale format.",
+    colSpan: "md:col-span-1",
+    version: "V2.4",
+    status: "PROTOTYPE",
+    progress: 30,
+    theme: "border-rose-500/30 bg-gradient-to-br from-rose-950/30 via-slate-950/80 to-black hover:border-rose-400",
+    badge: "text-rose-300 bg-rose-950/80 border-rose-500/40",
+    barColor: "from-rose-600 to-rose-400",
+  },
+  {
+    icon: FlaskConical,
+    title: "Problem Studio",
+    desc: "Community challenge builder & auto testcase generator.",
+    colSpan: "md:col-span-1",
+    version: "V2.5",
+    status: "EXPLORING",
+    progress: 25,
+    theme: "border-sky-500/30 bg-gradient-to-br from-sky-950/30 via-slate-950/80 to-black hover:border-sky-400",
+    badge: "text-sky-300 bg-sky-950/80 border-sky-500/40",
+    barColor: "from-sky-600 to-sky-400",
+  },
+];
 
 // ─────────────────────────────────────────────
-// COMPONENT
+// MAIN COMPONENT
 // ─────────────────────────────────────────────
 
 const About = () => {
   return (
-    <section className="relative flex h-full flex-col items-center overflow-hidden px-4 pt-24 pb-28 sm:px-6 font-mono text-slate-300">
-      {/* Blueprint Grid Canvas Background */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.025] bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:14px_14px]" />
+    <section className="relative flex h-full flex-col items-center overflow-hidden px-4 pt-24 pb-28 sm:px-6 font-mono text-slate-200">
+      {/* Dynamic Background Glow Canvas */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#00f0ff_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-      {/* ── HERO ─────────────────────────────────── */}
-      <div className="relative z-10 mb-14 flex w-full max-w-4xl flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 border border-cyan-500/20 bg-cyan-950/10 text-[10px] text-cyan-400 uppercase tracking-[0.2em] mb-6">
-          <Info className="w-3.5 h-3.5" /> SYS // ABOUT & ROADMAP
+      {/* ── BENTO HEADER ─────────────────────────── */}
+      <div className="relative z-10 mb-12 flex w-full max-w-6xl flex-col items-center text-center">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-cyan-500/40 bg-cyan-950/40 text-xs text-cyan-300 font-bold uppercase tracking-[0.25em] mb-4 shadow-lg shadow-cyan-950/50">
+          <Terminal className="w-4 h-4 text-cyan-400" /> SYS // ARCHITECTURE BENTO MATRIX
         </div>
-        <h1 className="mb-5 text-3xl font-black tracking-tight text-white sm:text-4xl md:text-5xl uppercase leading-tight">
-          BRIDGING THE GAP BETWEEN<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400">
-            LEARNING & DOING
+        <h1 className="mb-4 text-3xl font-black tracking-tight text-white sm:text-4xl md:text-5xl uppercase leading-tight">
+          HIGH PERFORMANCE<br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400">
+            COMPUTATIONAL ARENA
           </span>
         </h1>
-        <p className="max-w-2xl text-xs leading-relaxed text-slate-500 sm:text-sm uppercase tracking-wide">
-          BraceRCE is an open-source competitive programming platform that connects directly
-          to GitHub for challenges and runs code inside isolated remote containers with real-time telemetry.
+        <p className="max-w-2xl text-xs sm:text-sm text-slate-300 uppercase tracking-wide font-medium">
+          Isolated RCE execution • Real-time 1v1 WebSocket battles • Open-source pipeline
         </p>
-      </div>
 
-      {/* ── CREATOR CARDS ───────────────────────── */}
-      <div className="relative z-10 w-full max-w-4xl border border-white/5 bg-black/40 p-8 backdrop-blur-md mb-16">
-        <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyan-500/25" />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-cyan-500/25" />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyan-500/25" />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyan-500/25" />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="flex flex-col gap-4">
-            <div className="w-11 h-11 flex items-center justify-center border border-cyan-500/30 bg-cyan-950/15 text-cyan-400">
-              <User className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-black text-white uppercase tracking-wider">// THE CREATOR</h3>
-            <p className="text-slate-500 text-xs leading-relaxed uppercase tracking-wide">
-              Built by Dev Sharma as a way to share coding solutions and experiment with modern
-              web technologies, combining the power of GitHub APIs and sandboxed code execution.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="w-11 h-11 flex items-center justify-center border border-rose-500/30 bg-rose-950/15 text-rose-400">
-              <Heart className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-black text-white uppercase tracking-wider">// OPEN SOURCE</h3>
-            <p className="text-slate-500 text-xs leading-relaxed uppercase tracking-wide">
-              Everything here is open-source. The core compiler engine runs in one repository and
-              challenge templates populate from a separate GitHub DSA repository.
-            </p>
-            <div className="flex flex-wrap gap-4 mt-1">
-              {[
-                { label: "SOURCE CODE", href: "https://github.com/Devsharma08/ONLINE_IDE" },
-                { label: "CHALLENGES", href: "https://github.com/Devsharma08/DSA-LEETCODE" },
-              ].map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-cyan-400 hover:text-cyan-300 transition-colors font-black text-[10px] uppercase tracking-widest"
-                >
-                  [ {label} ]
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── COMPLETED FEATURES ──────────────────── */}
-      <div className="relative z-10 w-full max-w-4xl mb-16">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 text-emerald-400 text-[10px] font-bold tracking-[0.2em] uppercase mb-1">
-            <CheckCircle2 className="w-3.5 h-3.5" /> LIVE SYSTEMS
-          </div>
-          <h2 className="text-lg font-black text-white uppercase tracking-wider">// COMPLETED & DEPLOYED</h2>
-          <p className="text-[11px] text-slate-600 uppercase tracking-wider mt-1">
-            Features currently live and operational on the platform.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {completedFeatures.map(({ icon: Icon, label, desc }) => (
-            <div
-              key={label}
-              className="group flex flex-col gap-3 border border-emerald-500/10 hover:border-emerald-500/30 bg-black/30 hover:bg-emerald-950/10 p-4 transition-all"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 flex items-center justify-center border border-emerald-500/20 bg-emerald-950/20 text-emerald-400 shrink-0">
-                  <Icon className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="font-black text-[10px] text-emerald-400 tracking-wider uppercase">{label}</span>
-                </div>
-              </div>
-              <p className="text-[10px] text-slate-600 leading-relaxed uppercase tracking-wide">
-                {desc}
-              </p>
+        {/* STATS BENTO ROW */}
+        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl">
+          {[
+            { label: "LIVE SYSTEMS", val: "9 OPERATIONAL", color: "text-emerald-400 border-emerald-500/30 bg-emerald-950/20" },
+            { label: "PIPELINE",     val: "6 UPCOMING",    color: "text-amber-400 border-amber-500/30 bg-amber-950/20" },
+            { label: "RUNTIMES",     val: "5 LANGUAGES",   color: "text-cyan-400 border-cyan-500/30 bg-cyan-950/20" },
+            { label: "ECOSYSTEM",    val: "100% OPEN",     color: "text-purple-400 border-purple-500/30 bg-purple-950/20" },
+          ].map((s) => (
+            <div key={s.label} className={`border px-3 py-2.5 rounded-sm ${s.color}`}>
+              <span className="block text-[10px] text-slate-400 tracking-widest font-bold uppercase">{s.label}</span>
+              <span className="block text-xs font-black tracking-wider mt-0.5">{s.val}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── ROADMAP ─────────────────────────────── */}
-      <div className="relative z-10 w-full max-w-4xl mb-16">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 text-amber-400 text-[10px] font-bold tracking-[0.2em] uppercase mb-1">
-            <Clock className="w-3.5 h-3.5" /> IN PIPELINE
-          </div>
-          <h2 className="text-lg font-black text-white uppercase tracking-wider">// SERVICES IN PROGRESS & PLANNED</h2>
-          <p className="text-[11px] text-slate-600 uppercase tracking-wider mt-1">
-            Features actively being designed, built, or researched for upcoming releases.
-          </p>
+      {/* ── BENTO GRID 1: CORE ECOSYSTEM & CREATOR ── */}
+      <div className="relative z-10 w-full max-w-6xl mb-12">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-xs font-bold text-cyan-400 tracking-[0.2em] uppercase flex items-center gap-2">
+            <Shield className="w-4 h-4" /> 01 // FOUNDATION & REPOSITORIES
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* BENTO HERO CARD: CREATOR */}
+          <div className="md:col-span-2 relative border border-cyan-500/30 bg-gradient-to-br from-cyan-950/25 via-slate-950/80 to-black p-6 shadow-xl shadow-cyan-950/10 flex flex-col justify-between gap-4">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
+            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
+            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400" />
+
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-300">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white uppercase tracking-wider">// CREATOR & ARCHITECTURE</h3>
+                  <span className="text-xs text-cyan-400 font-bold tracking-widest uppercase">BY DEV SHARMA</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-cyan-300 border border-cyan-500/40 bg-cyan-950/60 px-2.5 py-1 tracking-widest uppercase">
+                PROD DEPLOYED
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed uppercase tracking-wide font-medium">
+              Designed to merge isolated execution environments with real-time socket multiplayer battles, offering instant feedback and post-match code reviews.
+            </p>
+
+            <div className="pt-3 border-t border-cyan-500/20 flex items-center justify-between text-xs text-slate-400 font-bold">
+              <span>STACK: REACT 19 • EXPRESS 5 • PRISMA • SOCKET.IO</span>
+              <span className="text-cyan-400">v2.4.0 ONLINE</span>
+            </div>
+          </div>
+
+          {/* BENTO CARD: OPEN SOURCE */}
+          <div className="md:col-span-1 relative border border-rose-500/30 bg-gradient-to-br from-rose-950/25 via-slate-950/80 to-black p-6 shadow-xl shadow-rose-950/10 flex flex-col justify-between gap-4">
+            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-rose-400" />
+            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-rose-400" />
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 border border-rose-500/40 bg-rose-950/40 flex items-center justify-center text-rose-300">
+                <Heart className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-wider">// OPEN SOURCE</h3>
+                <span className="text-[10px] text-rose-400 font-bold tracking-widest uppercase">GITHUB REPOSITORIES</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed uppercase tracking-wide font-medium">
+              100% open-source compiler engine & DSA problem databank repositories.
+            </p>
+
+            <div className="flex flex-col gap-2 pt-2 border-t border-rose-500/20">
+              <a
+                href="https://github.com/Devsharma08/ONLINE_IDE"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 border border-rose-500/40 hover:border-rose-300 bg-rose-950/40 text-rose-300 hover:text-white font-black text-xs uppercase tracking-widest transition-all text-center"
+              >
+                [ ENGINE REPOSITORY ]
+              </a>
+              <a
+                href="https://github.com/Devsharma08/DSA-LEETCODE"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1.5 border border-rose-500/40 hover:border-rose-300 bg-rose-950/40 text-rose-300 hover:text-white font-black text-xs uppercase tracking-widest transition-all text-center"
+              >
+                [ DSA DATA REPOSITORY ]
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── BENTO GRID 2: LIVE DEPLOYED SYSTEMS ───── */}
+      <div className="relative z-10 w-full max-w-6xl mb-12">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-xs font-bold text-emerald-400 tracking-[0.2em] uppercase flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> 02 // OPERATIONAL PLATFORM SYSTEMS
+          </span>
+          <span className="text-xs font-bold text-emerald-300 border border-emerald-500/40 bg-emerald-950/40 px-3 py-1 uppercase tracking-widest">
+            {completedSystems.length} DEPLOYED
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {completedSystems.map((sys) => {
+            const Icon = sys.icon;
+            const Accent = sys.accentIcon;
+            return (
+              <div
+                key={sys.title}
+                className={`group relative border p-5 flex flex-col justify-between gap-4 transition-all shadow-lg ${sys.colSpan} ${sys.theme}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 border border-white/10 bg-black/60 flex items-center justify-center text-white shrink-0">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-white uppercase tracking-wide">{sys.title}</h4>
+                    </div>
+                  </div>
+                  <span className={`text-[9px] px-2.5 py-1 border font-black tracking-widest uppercase shrink-0 ${sys.badge}`}>
+                    ACTIVE
+                  </span>
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed uppercase tracking-wide font-medium">
+                  {sys.desc}
+                </p>
+
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-400 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Accent className="w-3.5 h-3.5 opacity-60" /> FEATURE DEPLOYED
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── BENTO GRID 3: ROADMAP PIPELINE ───────── */}
+      <div className="relative z-10 w-full max-w-6xl mb-12">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="text-xs font-bold text-amber-400 tracking-[0.2em] uppercase flex items-center gap-2">
+            <Clock className="w-4 h-4" /> 03 // DEVELOPMENT ROADMAP
+          </span>
+          <span className="text-xs font-bold text-amber-300 border border-amber-500/40 bg-amber-950/40 px-3 py-1 uppercase tracking-widest">
+            {roadmapItems.length} IN PIPELINE
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {roadmapItems.map((item) => {
             const Icon = item.icon;
             return (
               <div
-                key={item.label}
-                className={`group relative flex flex-col gap-4 border ${item.accentCls} bg-black/30 hover:bg-black/60 p-5 transition-all overflow-hidden`}
+                key={item.title}
+                className={`group relative border p-5 flex flex-col justify-between gap-4 transition-all shadow-lg overflow-hidden ${item.colSpan} ${item.theme}`}
               >
-                {/* VERSION TAG */}
-                <div className="absolute top-3 right-3 text-[8px] text-slate-700 tracking-widest font-bold">
-                  {item.version}
-                </div>
-
-                {/* ICON + TITLE */}
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 flex items-center justify-center border ${item.accentCls} bg-black/40`}>
-                    <Icon className={`w-4 h-4 ${item.accentCls.split(' ')[0]}`} />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 border border-white/10 bg-black/60 flex items-center justify-center text-white shrink-0">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-white uppercase tracking-wide">{item.title}</h4>
+                    </div>
                   </div>
-                  <span className={`font-black text-[10px] tracking-wider uppercase ${item.accentCls.split(' ')[0]}`}>
-                    {item.label}
+                  <span className="text-xs font-bold text-slate-400 tracking-widest font-mono border border-white/10 bg-black/40 px-2 py-0.5">
+                    {item.version}
                   </span>
                 </div>
 
-                {/* DESC */}
-                <p className="text-[10px] text-slate-600 leading-relaxed uppercase tracking-wide flex-1">
+                <p className="text-xs text-slate-300 leading-relaxed uppercase tracking-wide font-medium">
                   {item.desc}
                 </p>
 
-                {/* PROGRESS + STATUS */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[9px] font-bold">
-                    <span className={`px-2 py-0.5 border tracking-widest ${item.badgeCls}`}>
-                      {statusLabel[item.status]}
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className={`px-2.5 py-0.5 border text-[10px] tracking-widest ${item.badge}`}>
+                      {item.status}
                     </span>
-                    <span className="text-slate-600">{item.progress}%</span>
+                    <span className="text-slate-300 font-mono">{item.progress}%</span>
                   </div>
-                  <div className="h-1 bg-white/5 overflow-hidden">
+                  <div className="h-1.5 bg-black/60 border border-white/10 overflow-hidden">
                     <div
-                      className="h-full transition-all duration-1000"
-                      style={{
-                        width: `${item.progress}%`,
-                        background: item.accentCls.includes("emerald") ? "#10b981"
-                          : item.accentCls.includes("purple") ? "#8b5cf6"
-                          : item.accentCls.includes("cyan") ? "#06b6d4"
-                          : item.accentCls.includes("amber") ? "#f59e0b"
-                          : item.accentCls.includes("rose") ? "#f43f5e"
-                          : item.accentCls.includes("sky") ? "#38bdf8"
-                          : item.accentCls.includes("orange") ? "#fb923c"
-                          : "#64748b",
-                      }}
+                      className={`h-full bg-gradient-to-r ${item.barColor} transition-all duration-1000 shadow-sm`}
+                      style={{ width: `${item.progress}%` }}
                     />
                   </div>
                 </div>
@@ -291,24 +376,23 @@ const About = () => {
         </div>
       </div>
 
-      {/* ── CONTRIBUTION BLOCK ──────────────────── */}
-      <div className="relative z-10 w-full max-w-4xl border border-white/5 bg-black/40 p-8 backdrop-blur-sm">
-        <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-cyan-500/25" />
-        <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-cyan-500/25" />
-        <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-cyan-500/25" />
-        <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-cyan-500/25" />
+      {/* ── BENTO FOOTER CTA ────────────────────── */}
+      <div className="relative z-10 w-full max-w-6xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 via-slate-950/80 to-black p-8 shadow-xl shadow-cyan-950/20">
+        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
+        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400" />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-11 h-11 flex items-center justify-center border border-cyan-500/25 bg-cyan-950/15 text-cyan-400 shrink-0">
-              <GitBranch className="w-5 h-5" />
+            <div className="w-12 h-12 flex items-center justify-center border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 shrink-0 shadow-md">
+              <GitBranch className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[9px] text-cyan-400 font-bold tracking-[0.2em] uppercase block">SYS // OPEN SOURCE</span>
-              <h3 className="text-base font-black text-white uppercase tracking-wider">// CONTRIBUTIONS WELCOME</h3>
-              <p className="text-xs text-slate-500 leading-relaxed uppercase tracking-wide mt-2 max-w-lg">
-                BRACE RCE is fully open-source. Whether you're passionate about sandboxed systems,
-                compiler engineering, or visual dashboards — your contribution scales our boundaries.
+              <span className="text-xs text-cyan-400 font-bold tracking-[0.25em] uppercase block">SYS // OPEN SOURCE COMMUNITY</span>
+              <h3 className="text-lg font-black text-white uppercase tracking-wider mt-0.5">// CONTRIBUTE TO BRACE_RCE</h3>
+              <p className="text-xs text-slate-300 leading-relaxed uppercase tracking-wide mt-1 max-w-xl font-medium">
+                Contribute container runtimes, new languages, algorithm test cases, and UI features on GitHub.
               </p>
             </div>
           </div>
@@ -316,10 +400,10 @@ const About = () => {
             href="https://github.com/Devsharma08/ONLINE_IDE"
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center justify-center gap-2 border border-white/10 bg-black/60 hover:border-cyan-500/40 hover:text-cyan-400 hover:bg-cyan-950/20 py-3 px-6 text-xs uppercase tracking-widest text-slate-300 font-black transition-all shrink-0"
+            className="group inline-flex items-center justify-center gap-2.5 border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-950/70 hover:border-cyan-400 py-3.5 px-6 text-xs uppercase tracking-widest text-cyan-200 hover:text-white font-black transition-all shrink-0 shadow-lg shadow-cyan-950/40"
           >
             JOIN CONTRIBUTION NETWORK
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </a>
         </div>
       </div>
@@ -328,3 +412,4 @@ const About = () => {
 };
 
 export default About;
+
