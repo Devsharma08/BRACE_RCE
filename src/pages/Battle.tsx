@@ -189,6 +189,7 @@ export const Battle = () => {
     });
 
     return () => {
+      socket.emit("leave_room", roomId);
       socket.off("battle_state");
       socket.off("receive_battle_message");
       socket.off("battle_update");

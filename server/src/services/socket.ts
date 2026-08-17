@@ -185,11 +185,22 @@ export const initSocketServer = (io: Server) => {
         // PVP matching events
         socket.on("join_matchmaking", async (payload: { difficulty: Level, waitingSeconds?: number } | Level) => {
             try {
-                console.log("JOIN MATCHMAKING RAW PAYLOAD:", JSON.stringify(payload));
+                // console.log("JOIN MATCHMAKING RAW PAYLOAD:", JSON.stringify(payload));
                 // Compatibility for both old format and new format with waitingSeconds
                 const difficulty = typeof payload === "string" ? payload : payload.difficulty;
                 console.log("PARSED DIFFICULTY:", JSON.stringify(difficulty));
                 const initialWaitingSeconds = typeof payload === "object" && payload.waitingSeconds ? payload.waitingSeconds : 0;
+
+                // cancel any existing waiting queue enteries for this user before queueing 
+                await prisma.matchmakingQueue.updateMany({
+                    where: {
+                        userId,
+                        status: "WAITING"
+                    },
+                    data: {
+                        status: "CANCELLED"
+                    }
+                }); 
 
                 // Create the Queue Entry
                 const queueEntry = await prisma.matchmakingQueue.create({
@@ -199,6 +210,7 @@ export const initSocketServer = (io: Server) => {
                         status: "WAITING"
                     }
                 });
+
                 // Start a polling interval to dynamically check for opponents every 3 seconds
                 let currentWaitingSeconds = initialWaitingSeconds;
                 const searchInterval = setInterval(async () => {
@@ -212,10 +224,24 @@ export const initSocketServer = (io: Server) => {
                             return;
                         }
 
+                        // auto-cancel after 90 seconds timeout
+                        if(currentWaitingSeconds >= 90){
+                            clearInterval(searchInterval);
+                            await prisma.matchmakingQueue.update({
+                                where: { id: queueEntry.id },
+                                data: { status: "CANCELLED" }
+                            })
+                            socket.emit("matchmaking_timeout",{
+                                message:"No match found in queue limit. Please try again. "
+                            });
+                            return;
+                        }
+
                         const allowedDifficulties = getAllowedDifficulties(difficulty, currentWaitingSeconds);
 
                         // Notify frontend of expanding search state
                         socket.emit("matchmaking_search_state", { waitingSeconds: currentWaitingSeconds, allowedDifficulties });
+
                         // Find compatible opponent
                         const opponentQueue = await prisma.matchmakingQueue.findFirst({
                             where: {
@@ -282,61 +308,95 @@ export const initSocketServer = (io: Server) => {
                                 oppSocket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user1 });
                             }
 
-                            // 15-SECOND ACCEPTANCE TIMEOUT
-                            setTimeout(async () => {
-                                try {
-                                    const currentEvent = await prisma.event.findUnique({
-                                        where: { id: event.id },
-                                        include: { performances: true }
-                                    });
-
-                                    // If the event is still WAITING after 15s, someone didn't accept in time
-                                    if (currentEvent && currentEvent.status === 'WAITING') {
-                                        await prisma.event.update({ where: { id: event.id }, data: { status: 'CANCELLED' } });
-
-                                        currentEvent.performances.forEach(p => {
-                                            const playerSocketId = onlineUsers.get(p.userId);
-                                            if (playerSocketId) {
-                                                if (p.status === 'ACCEPTED') {
-                                                    // They accepted, but opponent timed out. Auto-requeue!
-                                                    io.to(playerSocketId).emit("match_opponent_declined");
-                                                } else {
-                                                    // They timed out, kick them back to lobby
-                                                    io.to(playerSocketId).emit("match_declined");
-                                                }
-                                            }
-                                        });
-                                    }
-                                } catch (e) {
-                                    console.error("Match timeout check error", e);
-                                }
-                            }, 15000);
-
                         }
                     } catch (e) {
                         console.error("Matchmaking interval error:", e);
                     }
                 }, 3000);
 
-                // Handle disconnect/cancel
-                const cleanupQueue = async () => {
-                    clearInterval(searchInterval);
-                    try {
-                        await prisma.matchmakingQueue.update({
-                            where: { id: queueEntry.id },
-                            data: { status: "CANCELLED" }
-                        });
-                    } catch (e) {
-                        console.error("Failed to cancel queue", e);
-                    }
-                };
-
-                socket.on("disconnect", cleanupQueue);
-                socket.on("cancel_matchmaking", cleanupQueue);
             } catch (error) {
                 console.error("Matchmaking error:", error);
             }
         });
+
+        socket.on("battle_action",async(data:{roomId:string,userId:string,status:string,progress:number,result?:string}) => {
+            const {roomId,progress,status,result} = data ;
+
+            if(!roomId) return ;
+
+            const currentUserId = socket.data.userId || data.userId;
+
+            socket.to(roomId).emit("battle_update",{
+                userId:currentUserId,
+                status,
+                progress,
+                result
+            })
+
+            if(result === "OPPONENT_WON" || result === "OPPONENT_COMPLETED" || status === "Passed tests!"){
+                const eventId = roomId.replace("room-","");
+
+                const updatedEvent = await prisma.event.updateMany({
+                    where:{id:eventId,status:"IN_PROGRESS"},
+                    data:{status:"FINISHED",finishedAt:new Date()}
+                }).catch(()=>({count:0}));
+
+                if(updatedEvent.count > 0 ){
+                    await prisma.userPersonalPerformance.updateMany({
+                        where:{eventId,userId:currentUserId},
+                        data:{status:"PASSED"}
+                    })
+
+                    await prisma.userPersonalPerformance.updateMany({
+                        where:{eventId,userId:{not:currentUserId}},
+                        data:{status:"FAILED"}
+                    })
+
+                    const performances = await prisma.userPersonalPerformance.findMany({
+                        where:{eventId},
+                        include:{
+                            user:{
+                                select:{id:true,username:true,avatarUrl:true}
+                            }
+                        }
+                    });
+
+                    io.to(roomId).emit("match_completed",{
+                        status:"FINISHED",
+                        winnerId:currentUserId,
+                        performances
+                    })
+                }
+            }
+
+        })
+
+        socket.on("leave_room",(roomId:string)=>{
+            if(roomId){
+                socket.leave(roomId);
+                console.log(`user ${userId} left the room ${roomId}`);
+            }
+        })
+
+        socket.on("disconnect",async()=>{
+            onlineUsers.delete(userId);
+
+            await prisma.matchmakingQueue.updateMany({
+                where:{userId,status:"WAITING"},
+                data:{
+                    status:"CANCELLED",
+                    
+                }
+            }).catch(()=>{
+                console.log(`User ${userId} was not in waiting queue`);
+            })
+            
+            io.emit("user_online_status",{
+                userId,status:"OFFLINE"
+            });
+
+            console.log("❌❌ User disconnected : ",userId)
+        })
 
         // ------------------------------------
         // CUSTOM MULTIPLAYER LOOBIES
