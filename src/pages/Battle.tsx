@@ -18,6 +18,7 @@ import {
   StopCircle,
   Lock,
   Terminal,
+  Flag,
 } from "lucide-react";
 import { api } from "../config/api";
 
@@ -238,6 +239,21 @@ export const Battle = () => {
     if (!newBattleMessage.trim()) return;
     socket?.emit("send_battle_message", { roomId, content: newBattleMessage });
     setNewBattleMessage("");
+  };
+
+  const isBattleActive =
+    battleState.status === "IN_PROGRESS" &&
+    battleResult === null &&
+    (localTimeRemaining === null || localTimeRemaining > 0);
+
+  const handleSurrender = () => {
+    if (!socket || !roomId) return;
+    if (window.confirm("ARE YOU SURE YOU WANT TO SURRENDER THIS MATCH?")) {
+      socket.emit("surrender_match", { roomId });
+      socket.emit("surrender_battle", roomId);
+      setBattleResult("LOST");
+      setIsBattleMenuOpen(true);
+    }
   };
 
   const handleRunCode = async () => {
@@ -781,14 +797,55 @@ export const Battle = () => {
         </div>
       </div>
 
-      {battleResult && !isBattleMenuOpen && (
+      {/* ── PERSISTENT BOTTOM-RIGHT ACTION BAR ── */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 font-mono">
+        {/* SURRENDER BUTTON (Active during active battle) */}
+        {isBattleActive && (
+          <button
+            onClick={handleSurrender}
+            title="Surrender battle match"
+            className="px-4 py-3 border border-rose-500/40 bg-rose-950/80 hover:bg-rose-900/90 text-rose-300 hover:text-white text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_20px_rgba(244,63,94,0.2)] backdrop-blur-md flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <Flag className="w-4 h-4 text-rose-400" />
+            <span>[ SURRENDER ]</span>
+          </button>
+        )}
+
+        {/* SUBMIT / COMPILE BUTTON */}
         <button
-          onClick={() => setIsBattleMenuOpen(true)}
-          className="fixed bottom-6 right-6 z-40 px-4 py-3 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-200 rounded-xl font-mono text-xs font-bold tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.2)] backdrop-blur-md transition-all flex items-center gap-2"
+          onClick={handleRunCode}
+          disabled={isSubmitting}
+          className="px-5 py-3 border border-cyan-500/50 bg-gradient-to-r from-cyan-950/90 via-slate-950/90 to-cyan-950/90 hover:from-cyan-900 hover:to-cyan-800 text-cyan-200 hover:text-white text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_25px_rgba(34,211,238,0.25)] backdrop-blur-md flex items-center gap-2.5 cursor-pointer active:scale-95 disabled:opacity-50"
         >
-          <Trophy className="w-4 h-4 text-cyan-400" /> [ BATTLE MENU ]
+          {isSubmitting ? (
+            <>
+              <Activity className="w-4 h-4 animate-pulse text-cyan-400" />
+              <span>[ EXECUTING... ]</span>
+            </>
+          ) : isBattleActive ? (
+            <>
+              <Play className="w-4 h-4 fill-cyan-400 text-cyan-400" />
+              <span>[ SUBMIT CODE ]</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4 fill-emerald-400 text-emerald-400" />
+              <span>[ COMPILE & TEST ]</span>
+            </>
+          )}
         </button>
-      )}
+
+        {/* BATTLE MENU BUTTON (Shown when battle ended) */}
+        {battleResult && !isBattleMenuOpen && (
+          <button
+            onClick={() => setIsBattleMenuOpen(true)}
+            className="px-4 py-3 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-200 font-mono text-xs font-bold tracking-widest shadow-[0_0_20px_rgba(245,158,11,0.2)] backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <span>[ RESULTS MENU ]</span>
+          </button>
+        )}
+      </div>
 
       {isBattleMenuOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
