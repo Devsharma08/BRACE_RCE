@@ -381,14 +381,19 @@ export const Battle = () => {
     battleResult === null &&
     (localTimeRemaining === null || localTimeRemaining > 0);
 
-  const handleSurrender = () => {
+  const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
+
+  const handleSurrenderClick = () => {
+    setIsSurrenderModalOpen(true);
+  };
+
+  const handleConfirmSurrender = () => {
     if (!socket || !roomId) return;
-    if (window.confirm("ARE YOU SURE YOU WANT TO SURRENDER THIS MATCH?")) {
-      socket.emit("surrender_match", { roomId });
-      socket.emit("surrender_battle", roomId);
-      setBattleResult("LOST");
-      setIsBattleMenuOpen(true);
-    }
+    socket.emit("surrender_match", { roomId });
+    socket.emit("surrender_battle", roomId);
+    setBattleResult("LOST");
+    setIsSurrenderModalOpen(false);
+    setIsBattleMenuOpen(true);
   };
 
   const handleRunCode = async () => {
@@ -884,7 +889,7 @@ export const Battle = () => {
         {/* SURRENDER BUTTON (Active during active battle) */}
         {isBattleActive && (
           <button
-            onClick={handleSurrender}
+            onClick={handleSurrenderClick}
             title="Surrender battle match"
             className="px-4 py-3 border border-rose-500/40 bg-rose-950/80 hover:bg-rose-900/90 text-rose-300 hover:text-white text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_20px_rgba(244,63,94,0.2)] backdrop-blur-md flex items-center gap-2 cursor-pointer active:scale-95"
           >
@@ -969,6 +974,36 @@ export const Battle = () => {
                 className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
               >
                 [ CLOSE MENU ]
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SURRENDER CONFIRMATION MODAL */}
+      {isSurrenderModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-rose-500/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-rose-500 to-amber-500" />
+            <Flag className="w-12 h-12 text-rose-400 mb-4" />
+            <h3 className="font-mono text-xl font-bold tracking-widest text-white mb-2 uppercase">
+              CONFIRM SURRENDER
+            </h3>
+            <p className="text-slate-400 text-xs font-sans mb-6 leading-relaxed">
+              Are you sure you want to forfeit this battle? Your opponent will be declared the victor.
+            </p>
+            <div className="flex items-center gap-3 w-full font-mono text-xs">
+              <button
+                onClick={handleConfirmSurrender}
+                className="flex-1 py-3 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+              >
+                [ SURRENDER ]
+              </button>
+              <button
+                onClick={() => setIsSurrenderModalOpen(false)}
+                className="flex-1 py-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+              >
+                [ CANCEL ]
               </button>
             </div>
           </div>

@@ -133,15 +133,24 @@ const EditorToolbar = ({
           </button>
         )}
         <select
-          className="min-w-0 rounded-none border border-white/10 bg-black/40 px-1 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap"
+          className="min-w-0 rounded-none border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
         >
-          <option value="javascript" className="whitespace-nowrap">
-            JS
+          <option value="javascript" className="bg-[#0b0c0e] text-cyan-400">
+            JavaScript
           </option>
-          <option value="java" className="whitespace-nowrap">
-            JV
+          <option value="python" className="bg-[#0b0c0e] text-cyan-400">
+            Python
+          </option>
+          <option value="c++" className="bg-[#0b0c0e] text-cyan-400">
+            C++
+          </option>
+          <option value="java" className="bg-[#0b0c0e] text-cyan-400">
+            Java
+          </option>
+          <option value="c" className="bg-[#0b0c0e] text-cyan-400">
+            C
           </option>
         </select>
         <button

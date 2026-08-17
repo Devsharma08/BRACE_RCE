@@ -165,6 +165,39 @@ function treeToArray(root) {
 function isTreeNode(obj) {
   return obj && typeof obj === 'object' && ('val' in obj && ('left' in obj || 'right' in obj));
 }
+function arrayToRandomList(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const nodes = arr.map(item => {
+    const val = Array.isArray(item) ? item[0] : (item && typeof item === 'object' ? item.val : item);
+    return new _Node(val);
+  });
+  for (let i = 0; i < arr.length; i++) {
+    if (i < arr.length - 1) nodes[i].next = nodes[i + 1];
+    const randIdx = Array.isArray(arr[i]) ? arr[i][1] : null;
+    if (randIdx !== null && randIdx !== undefined && nodes[randIdx]) {
+      nodes[i].random = nodes[randIdx];
+    }
+  }
+  return nodes[0];
+}
+function randomListToArray(head) {
+  if (!head) return [];
+  const nodes = [];
+  const map = new Map();
+  let curr = head;
+  while (curr) {
+    map.set(curr, nodes.length);
+    nodes.push(curr);
+    curr = curr.next;
+  }
+  return nodes.map(node => [
+    node.val,
+    node.random && map.has(node.random) ? map.get(node.random) : null
+  ]);
+}
+function isRandomNode(obj) {
+  return obj && typeof obj === 'object' && ('val' in obj && ('random' in obj || ('next' in obj && 'val' in obj)));
+}
 `;
 
     if (!wrapperCode || wrapperCode.trim() === "// Wrapper" || wrapperCode.includes("module.exports")) {
@@ -173,16 +206,17 @@ function isTreeNode(obj) {
         const funcName = match[1] || match[3] || match[5];
         const argsStr = (match[2] || match[4] || match[6] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
-        const isTreeProblem = sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode") || argsStr.includes("root") || argsStr.includes("node");
+        const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random") || sourceCode.includes("_Node");
+        const isTreeProblem = !isRandomProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode") || argsStr.includes("root") || argsStr.includes("node"));
 
         wrapperCode = `const fs = require('fs');\n${treeHelpers}\nconst input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.trim()).filter(x => x.length > 0);\nif (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }\n`;
         for (let i = 0; i < argCount; i++) {
           wrapperCode += `const rawArg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;\n`;
-          wrapperCode += `const arg${i} = (${isTreeProblem} && Array.isArray(rawArg${i})) ? arrayToTree(rawArg${i}) : rawArg${i};\n`;
+          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : (${isTreeProblem} && Array.isArray(rawArg${i})) ? arrayToTree(rawArg${i}) : rawArg${i};\n`;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
         wrapperCode += `let res;\ntry {\n  if (typeof Solution !== 'undefined' && typeof (new Solution())['${funcName}'] === 'function') {\n    res = (new Solution())['${funcName}'](${callArgs});\n  } else if (typeof ${funcName} === 'function') {\n    res = ${funcName}(${callArgs});\n  }\n} catch (e) {\n  console.error("EXECUTION ERROR:", e.message || e);\n  process.exit(1);\n}\n`;
-        wrapperCode += `const outVal = (res === null && ${isTreeProblem}) ? [] : (isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : arg0)));\n`;
+        wrapperCode += `const outVal = isRandomNode(res) ? randomListToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && ${isTreeProblem}) ? [] : (isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : arg0)));\n`;
         wrapperCode += `console.log(JSON.stringify(outVal).replace(/\\s/g, ''));`;
       }
     }
