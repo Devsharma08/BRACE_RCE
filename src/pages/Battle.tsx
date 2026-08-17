@@ -1,8 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
-import type { SupportedLanguage } from "../features/terminal/types";
+import EditorToolbar from "../features/terminal/components/EditorToolbar";
+import OutputPanel from "../features/terminal/components/OutputPanel";
+import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
+import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
 import {
   Code,
@@ -29,6 +32,78 @@ interface BattleMessage {
   content: string;
   createdAt: string;
 }
+
+const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
+  const [unlockedCount, setUnlockedCount] = useState<number>(0);
+
+  const parsedHints = useMemo(() => {
+    if (Array.isArray(hints) && hints.length > 0) return hints;
+    if (typeof hints === "string" && hints.trim().length > 0) return [hints];
+    return [
+      "Analyze input data constraints and identify potential edge cases (e.g. empty inputs, zero values, or single element arrays).",
+      "Consider using an efficient data structure (such as a Hash Map, Two-Pointers, or Sliding Window) to reduce time complexity.",
+      "Optimal Strategy: Aim for O(N) time complexity and O(1) auxiliary space where feasible."
+    ];
+  }, [hints]);
+
+  return (
+    <div className="rounded-lg border border-amber-500/20 bg-amber-950/5 p-4 font-mono text-xs mt-6">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1">
+          ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
+        </span>
+        {unlockedCount < parsedHints.length && (
+          <button
+            type="button"
+            onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
+            className="text-[9px] font-bold text-amber-300 border border-amber-500/30 bg-amber-950/20 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/50 transition-all cursor-pointer"
+          >
+            [ REVEAL HINT #{unlockedCount + 1} ]
+          </button>
+        )}
+      </div>
+
+      {unlockedCount === 0 ? (
+        <div className="text-[10px] text-slate-500 italic">
+          Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
+        </div>
+      ) : (
+        <div className="space-y-2 mt-2">
+          {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
+            <div key={`hint-${idx}`} className="border-l-2 border-amber-400 bg-black/40 p-2.5 text-[10px] text-amber-200/90 leading-relaxed">
+              <span className="font-bold text-amber-400 block mb-0.5">// HINT #{idx + 1}</span>
+              {hintText}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) => {
+  switch (lang) {
+    case "python":
+      return `# Write your Python solution for ${problemName || "problem"}\ndef solution():\n    pass\n`;
+    case "c++":
+      return `// Write your C++ solution for ${problemName || "problem"}\n#include <iostream>\nusing namespace std;\n\nint main() {\n    return 0;\n}\n`;
+    case "java":
+      return `// Write your Java solution for ${problemName || "problem"}\npublic class Solution {\n    public static void main(String[] args) {\n        \n    }\n}\n`;
+    case "c":
+      return `// Write your C solution for ${problemName || "problem"}\n#include <stdio.h>\n\nint main() {\n    return 0;\n}\n`;
+    case "javascript":
+    default:
+      return `// Write your JavaScript solution for ${problemName || "problem"}\nfunction solution() {\n  \n}\n`;
+  }
+};
+
+const getProblemSnippet = (problem: any, lang: SupportedLanguage) => {
+  if (!problem) return getLanguageStarterCode(lang);
+  const snippet = problem.code_snippets?.find(
+    (s: any) => s.language?.toLowerCase() === lang.toLowerCase() || (lang === "c++" && s.language?.toLowerCase() === "cpp")
+  );
+  return snippet?.code || getLanguageStarterCode(lang, problem.name);
+};
 
 export const Battle = () => {
   const { roomId } = useParams<{ roomId: string }>(); // roomId is actually roomCode for custom rooms
@@ -80,10 +155,53 @@ export const Battle = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // terminal
-  const [isTerminal, setIsTerminal] = useState<boolean>(false);
+  const [isTerminal, setIsTerminal] = useState<boolean>(true);
   const [terminalOutput, setTerminalOutput] = useState(
     "// COMPILATION LOGS WILL BE DISPLAYED HERE",
   );
+  const [executionOutput, setExecutionOutput] = useState<ExecutionResult | null>(null);
+  const [isOutputActive, setIsOutputActive] = useState<boolean>(true);
+  const [customInput, setCustomInput] = useState<string>("");
+  const [customInputActive, setCustomInputActive] = useState<boolean>(false);
+  const [isCustomInputRun, setIsCustomInputRun] = useState<boolean>(false);
+
+  const formatEditorRef = useRef<(() => void) | null>(null);
+
+  const {
+    outputHeight,
+    setOutputHeight,
+    startOutputDragging,
+  } = useTerminalLayout();
+
+  const handleRunSingleTestCase = async (index: number) => {
+    if (!activeProblem?.test_cases?.[index]) return;
+    const targetCase = activeProblem.test_cases[index];
+    const inputString = targetCase.input || "";
+
+    setIsSubmitting(true);
+    setIsCustomInputRun(true);
+
+    try {
+      const res = await executeCode({
+        code,
+        language,
+        oid: activeProblem.github_oid || "local-battle",
+        fileName: activeProblem.name,
+        mode: "RUN",
+        customInput: inputString,
+      });
+      setExecutionOutput(res);
+      setTerminalOutput(
+        res.status === "PASSED"
+          ? "Single test case execution passed."
+          : "Single test case execution returned errors or output mismatch."
+      );
+    } catch (err: any) {
+      setTerminalOutput(`ERROR: ${err.message || String(err)}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Fetch remaining time of the match and event / page refresh
   useEffect(() => {
@@ -227,6 +345,23 @@ export const Battle = () => {
     socket?.emit("start_event", roomId);
   };
 
+  const handleLanguageChange = (newLang: SupportedLanguage) => {
+    setLanguage(newLang);
+    const snippet = getProblemSnippet(activeProblem, newLang);
+    setCode(snippet);
+    if (activeProblem) {
+      setCodes((prev) => ({ ...prev, [activeProblem.id]: snippet }));
+    }
+  };
+
+  const handleResetCode = () => {
+    const snippet = getProblemSnippet(activeProblem, language);
+    setCode(snippet);
+    if (activeProblem) {
+      setCodes((prev) => ({ ...prev, [activeProblem.id]: snippet }));
+    }
+  };
+
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
     if (activeProblem) {
@@ -285,6 +420,8 @@ export const Battle = () => {
         oid: activeProblem.github_oid || activeProblem.id,
         mode: "SUBMIT",
       });
+
+      setExecutionOutput(res);
 
       if (res.details) {
         setProblems((prev) => {
@@ -351,9 +488,9 @@ export const Battle = () => {
     }
   };
 
-  const formatTime = (ms: number | null) => {
-    if (ms === null) return "--:--";
-    const totalSecs = Math.floor(ms / 1000);
+  const formatTime = (seconds: number | null) => {
+    if (seconds === null || seconds === undefined) return "10:00";
+    const totalSecs = Math.max(0, Math.floor(seconds));
     const m = Math.floor(totalSecs / 60)
       .toString()
       .padStart(2, "0");
@@ -388,17 +525,17 @@ export const Battle = () => {
       >
         <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden">
           <div className="flex flex-col h-full w-[450px]">
-            {/* HOST / TIMERS HEADER */}
+            {/* HOST HEADER */}
             <div className="p-4 border-b border-cyan-500/20 bg-black/40">
-              {battleState.status === "WAITING" ? (
-                <div className="text-center py-4">
-                  <p className="text-amber-400 font-mono text-sm tracking-widest mb-4">
+              {battleState.status === "WAITING" && (
+                <div className="text-center py-2">
+                  <p className="text-amber-400 font-mono text-xs tracking-widest mb-3">
                     WAITING FOR OPERATIVES
                   </p>
                   {isHost ? (
                     <button
                       onClick={handleStartOperation}
-                      className="w-full bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500 text-cyan-400 hover:text-black font-bold tracking-widest py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500 text-cyan-400 hover:text-black font-bold tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
                     >
                       <Play className="w-4 h-4" /> START OPERATION
                     </button>
@@ -407,29 +544,6 @@ export const Battle = () => {
                       Waiting for host to begin...
                     </p>
                   )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-black/50 border border-cyan-500/30 rounded p-3 text-center">
-                    <p className="text-[10px] text-cyan-500/60 tracking-widest mb-1 flex items-center justify-center gap-1">
-                      <Clock className="w-3 h-3" /> GLOBAL LIMIT
-                    </p>
-                    <p
-                      className={`font-mono text-xl font-bold ${globalTimeRemaining && globalTimeRemaining < 60000 ? "text-rose-500 animate-pulse" : "text-cyan-400"}`}
-                    >
-                      {formatTime(globalTimeRemaining)}
-                    </p>
-                  </div>
-                  <div className="bg-black/50 border border-emerald-500/30 rounded p-3 text-center">
-                    <p className="text-[10px] text-emerald-500/60 tracking-widest mb-1 flex items-center justify-center gap-1">
-                      <Clock className="w-3 h-3" /> PROBLEM LIMIT
-                    </p>
-                    <p
-                      className={`font-mono text-xl font-bold ${localTimeRemaining && localTimeRemaining < 60000 ? "text-rose-500 animate-pulse" : "text-emerald-400"}`}
-                    >
-                      {formatTime(localTimeRemaining)}
-                    </p>
-                  </div>
                 </div>
               )}
             </div>
@@ -515,6 +629,9 @@ export const Battle = () => {
                         activeProblem?.problem_definition || "No definition.",
                     }}
                   />
+
+                  {/* PROGRESSIVE HINTS & BLUEPRINT */}
+                  <ProblemHintsAccordion hints={activeProblem?.problem_hints} />
 
                   {/* TEST CASES SECTION */}
                   {activeProblem?.test_cases &&
@@ -631,7 +748,44 @@ export const Battle = () => {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
+      <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0 pb-24">
+        {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
+        <div className="flex items-center justify-between px-6 py-2.5 border-b border-cyan-500/20 bg-[#0b0c0e] font-mono text-xs z-30 shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-2">
+              <Code className="w-4 h-4 text-cyan-400" />
+              {activeProblem?.name || "BATTLE ARENA"}
+            </span>
+            {problems.length > 1 && (
+              <span className="text-[10px] text-slate-500 border border-white/10 bg-black/40 px-2 py-0.5">
+                PROBLEM {currentIndex + 1} OF {problems.length}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {problems.length > 1 && globalTimeRemaining !== null && (
+              <div className="flex items-center gap-1.5 border border-cyan-500/30 bg-cyan-950/30 px-3 py-1 text-[11px] font-bold text-cyan-300">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[9px] text-slate-400 uppercase tracking-widest">GLOBAL:</span>
+                <span className={globalTimeRemaining < 60 ? "text-rose-400 animate-pulse" : "text-cyan-300"}>
+                  {formatTime(globalTimeRemaining)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-1.5 border border-emerald-500/30 bg-emerald-950/30 px-3 py-1 text-[11px] font-bold text-emerald-300">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[9px] text-slate-400 uppercase tracking-widest">
+                {problems.length > 1 ? "PROBLEM:" : "TIME LEFT:"}
+              </span>
+              <span className={localTimeRemaining !== null && localTimeRemaining < 60 ? "text-rose-400 animate-pulse" : "text-emerald-300"}>
+                {formatTime(localTimeRemaining)}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
           {battleState.status === "WAITING" && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
@@ -669,6 +823,23 @@ export const Battle = () => {
               </div>
             )}
         </div>
+        {/* ── EDITOR TOOLBAR ── */}
+        <EditorToolbar
+          activeFile={activeProblem?.id || "battle-file"}
+          fileName={activeProblem?.name || "BATTLE_SOLUTION"}
+          disabled={isSubmitting}
+          executingMode={isSubmitting ? "RUN" : null}
+          language={language}
+          setLanguage={handleLanguageChange}
+          sidebarWidth={450}
+          setSidebarWidth={() => {}}
+          setCode={setCode}
+          onRun={handleRunCode}
+          onSubmit={handleRunCode}
+          onFormat={() => formatEditorRef.current?.()}
+          onReset={handleResetCode}
+        />
+
         {/* monaco editor */}
         <div className="flex-1 min-h-0">
           <MonacoIDE
@@ -678,6 +849,9 @@ export const Battle = () => {
             fileKey="battle"
             onCodeChange={handleCodeChange}
             handleRunCode={handleRunCode as any}
+            onFormatMount={(formatAction) => {
+              formatEditorRef.current = formatAction;
+            }}
             isDisabled={
               countdown > 0 &&
               countdown <= 10 &&
@@ -685,116 +859,24 @@ export const Battle = () => {
             }
           />
         </div>
-        {/* terminal output */}
-        <div className="flex flex-col border-t border-cyan-500/20 bg-[#0b0c0e]">
-          {/* terminal toggle button */}
-          <button
-            onClick={() => setIsTerminal(!isTerminal)}
-            className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-cyan-900/40 text-cyan-400 font-mono text-xs font-bold tracking-widest transition-all w-max border-r border-cyan-500/20 rounded-tr-lg"
-          >
-            <Terminal className="w-4 h-4" />
-            CONSOLE {isTerminal ? "▼" : "▲"}
-          </button>
-
-          {/* Terminal Body */}
-          {isTerminal && (
-            <div className="h-64 p-4 bg-black/60 overflow-y-auto font-mono text-xs text-slate-300 shadow-inner border-t border-cyan-500/10 flex flex-col gap-4">
-              {terminalOutput !==
-                "// COMPILATION LOGS WILL BE DISPLAYED HERE" &&
-                typeof terminalOutput === "string" && (
-                  <pre className="whitespace-pre-wrap text-emerald-400 mb-4">
-                    {terminalOutput}
-                  </pre>
-                )}
-
-              <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
-                <h3 className="font-mono text-cyan-400 font-bold tracking-widest text-sm flex items-center gap-2">
-                  <Activity className="w-4 h-4" /> TEST RESULTS
-                </h3>
-                <span className="bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 px-3 py-1 rounded text-xs font-mono font-bold">
-                  TOTAL: {activeProblem?.test_cases?.length || 0}
-                </span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
-                {activeProblem?.test_cases?.map((prob: any, index: number) => {
-                  const isPassed = prob.status === "PASSED";
-                  const isFailed = prob.status === "FAILED";
-
-                  return (
-                    <div
-                      key={prob.id || index}
-                      className={`transition-all duration-300 rounded-lg p-4 font-mono text-xs shadow-inner relative group border ${
-                        isPassed
-                          ? "bg-emerald-950/20 border-emerald-500/50 hover:border-emerald-400"
-                          : isFailed
-                            ? "bg-rose-950/20 border-rose-500/50 hover:border-rose-400"
-                            : "bg-black/60 border-white/5 hover:border-cyan-500/30"
-                      }`}
-                    >
-                      <div
-                        className={`absolute top-0 right-0 px-2 py-1 rounded-bl-lg rounded-tr-lg text-[10px] font-bold tracking-widest transition-colors ${
-                          isPassed
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : isFailed
-                              ? "bg-rose-500/20 text-rose-400"
-                              : "bg-white/5 text-slate-500 group-hover:text-cyan-500"
-                        }`}
-                      >
-                        CASE {index + 1}{" "}
-                        {isPassed ? " (PASSED)" : isFailed ? " (FAILED)" : ""}
-                      </div>
-                      <div className="mb-3 mt-1">
-                        <span
-                          className={`${isPassed ? "text-emerald-500" : isFailed ? "text-rose-500" : "text-slate-400"} block mb-1 font-bold tracking-wider transition-colors`}
-                        >
-                          INPUT:
-                        </span>
-                        <pre className="text-slate-300 bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed">
-                          {prob.input}
-                        </pre>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block mb-1 font-bold tracking-wider transition-colors">
-                          EXPECTED OUTPUT:
-                        </span>
-                        <pre className="text-slate-300 bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed">
-                          {prob.expectedOutput}
-                        </pre>
-                      </div>
-                      {prob.output &&
-                        (!prob.runtimeError ||
-                          prob.output.trim() !== prob.runtimeError.trim()) && (
-                          <div className="mt-4 pt-4 border-t border-white/10">
-                            <span
-                              className={`${isPassed ? "text-emerald-500" : "text-rose-500"} block mb-1 font-bold tracking-wider`}
-                            >
-                              USER OUTPUT:
-                            </span>
-                            <pre
-                              className={`${isPassed ? "text-emerald-400" : "text-rose-400"} bg-black/40 p-3 rounded border border-white/5 whitespace-pre-wrap leading-relaxed`}
-                            >
-                              {prob.output}
-                            </pre>
-                          </div>
-                        )}
-                      {prob.runtimeError && (
-                        <div className="mt-4 pt-4 border-t border-rose-500/30">
-                          <span className="text-rose-500 block mb-1 font-bold tracking-wider">
-                            ERROR (STDERR):
-                          </span>
-                          <pre className="text-rose-400 bg-black/40 p-3 rounded border border-rose-500/20 whitespace-pre-wrap leading-relaxed">
-                            {prob.runtimeError}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* terminal output panel */}
+        <OutputPanel
+          isExecuting={isSubmitting}
+          isOutputActive={isOutputActive}
+          isCustomInputRun={isCustomInputRun}
+          output={executionOutput}
+          outputHeight={outputHeight}
+          outputText={terminalOutput}
+          testCases={activeProblem?.test_cases || []}
+          customInput={customInput}
+          customInputActive={customInputActive}
+          onResizeStart={startOutputDragging}
+          setOutputHeight={setOutputHeight}
+          setCustomInput={setCustomInput}
+          setCustomInputActive={setCustomInputActive}
+          setIsOutputActive={setIsOutputActive}
+          onRunSingleTestCase={handleRunSingleTestCase}
+        />
       </div>
 
       {/* ── PERSISTENT BOTTOM-RIGHT ACTION BAR ── */}
@@ -848,8 +930,8 @@ export const Battle = () => {
       </div>
 
       {isBattleMenuOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center justify-center p-12 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">
+          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto">
             <div
               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-cyan-400 to-emerald-500" : "from-rose-500 to-orange-500"}`}
             />
