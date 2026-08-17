@@ -20,7 +20,7 @@ import {
   Terminal,
 } from "lucide-react";
 import { api } from "../config/api";
-import { CodeComparisonModal } from "../components/CodeComparisionModel";
+
 
 interface BattleMessage {
   id: string;
@@ -43,10 +43,7 @@ export const Battle = () => {
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
-  const [myUserId, setMyUserId] = useState<string>("");
-  const [showComparisonModal, setShowComparisonModal] =
-    useState<boolean>(false);
-  const [finishedPerformances, setFinishedPerformances] = useState<any[]>([]);
+  const [, setMyUserId] = useState<string>("");
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -191,18 +188,10 @@ export const Battle = () => {
       }
     });
 
-    socket.on("battle_finished", (data) => {
-      if (data?.performances) {
-        setFinishedPerformances(data.performances);
-        setShowComparisonModal(true);
-      }
-    });
-
     return () => {
       socket.off("battle_state");
       socket.off("receive_battle_message");
       socket.off("battle_update");
-      socket.off("battle_finished");
     };
   }, [socket, roomId]);
 
@@ -304,27 +293,36 @@ export const Battle = () => {
         });
       }
 
+      const isBattleActive =
+        battleState.status === "IN_PROGRESS" &&
+        battleResult === null &&
+        (localTimeRemaining === null || localTimeRemaining > 0);
+
       if (res.status === "PASSED") {
         setTerminalOutput("SUCCESS: All test cases passed!");
-        setTimeout(() => {
-          setIsBattleMenuOpen(true);
-        }, 1000);
-        socket?.emit("battle_action", {
-          roomId,
-          status: "Passed tests!",
-          progress: 100,
-          result: "OPPONENT_WON",
-        });
-        setBattleResult("WON");
+        if (isBattleActive) {
+          setTimeout(() => {
+            setIsBattleMenuOpen(true);
+          }, 1000);
+          socket?.emit("battle_action", {
+            roomId,
+            status: "Passed tests!",
+            progress: 100,
+            result: "OPPONENT_WON",
+          });
+          setBattleResult("WON");
+        }
       } else {
         setTerminalOutput(
           `Execution Finished: ${res.passedCases || 0} / ${res.totalCases || 0} cases passed.`,
         );
-        socket?.emit("battle_action", {
-          roomId,
-          status: "Failed tests...",
-          progress: 50,
-        });
+        if (isBattleActive) {
+          socket?.emit("battle_action", {
+            roomId,
+            status: "Failed tests...",
+            progress: 50,
+          });
+        }
       }
     } catch (err: any) {
       console.error(err);
@@ -586,20 +584,18 @@ export const Battle = () => {
             <div className="p-6 border-t border-cyan-500/20 bg-black/20">
               <button
                 onClick={handleRunCode}
-                disabled={
-                  isSubmitting ||
-                  battleState.status !== "IN_PROGRESS" ||
-                  localTimeRemaining === 0
-                }
-                className="flex items-center justify-center w-full py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/50 hover:border-cyan-400 text-cyan-100 font-mono text-sm font-bold tracking-[0.2em] rounded-lg transition-all disabled:opacity-50"
+                disabled={isSubmitting}
+                className="flex items-center justify-center w-full py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/50 hover:border-cyan-400 text-cyan-100 font-mono text-sm font-bold tracking-[0.2em] rounded-lg transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <Activity className="w-5 h-5 animate-pulse mr-2" /> [
                     EXECUTING... ]
                   </>
-                ) : (
+                ) : battleState.status === "IN_PROGRESS" && (localTimeRemaining === null || localTimeRemaining > 0) ? (
                   "[ SUBMIT CODE ]"
+                ) : (
+                  "[ COMPILE & TEST CODE ]"
                 )}
               </button>
             </div>
@@ -839,14 +835,6 @@ export const Battle = () => {
         </div>
       )}
 
-      {showComparisonModal && (
-        <CodeComparisonModal
-          currentUserId={myUserId}
-          performances={finishedPerformances}
-          onClose={() => setShowComparisonModal(false)}
-          onReturnHome={() => navigate("/")}
-        />
-      )}
     </div>
   );
 };

@@ -48,13 +48,17 @@ export const Signup = () => {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
+      setLoading(true);
+      setError('');
       await api.post(`/auth/google`, {
         credential: credentialResponse.credential
       });
       await checkAuth();
       navigate('/');
-    } catch (err) {
-      setError("Google Signup failed");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Google Signup failed");
+    } finally {
+      setLoading(false);
     }
   };
 

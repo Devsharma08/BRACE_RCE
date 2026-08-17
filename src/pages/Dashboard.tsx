@@ -34,23 +34,38 @@ export const Dashboard: React.FC = () => {
     if (!isAuthenticated && !user) return;
     const load = async () => {
       try {
-        const [profRes, probRes] = await Promise.all([
+        const [profRes, statsRes, probRes] = await Promise.all([
           api.get("/profile").catch(() => null),
+          api.get("/profile/stats").catch(() => null),
           api.get("/problem/all").catch(() => null),
         ]);
+
         if (profRes?.data?.data) {
-          const u = profRes.data.data;
-          setProfile(u);
-          setStats({
-            totalScore: u.score || 0,
-            winRate: u.winRate || 0,
-            totalMatches: u.totalMatches || 0,
-            wins: u.wins || 0,
-            losses: u.losses || 0,
-          });
-          setHistory(u.performances || u.history || []);
+          setProfile(profRes.data.data);
         }
-        if (probRes?.data?.problems) setProblems(probRes.data.problems);
+
+        if (statsRes?.data?.stats) {
+          const st = statsRes.data.stats;
+          const calculatedScore = (st.wins * 100) - (st.losses * 20);
+          setStats({
+            totalScore: Math.max(0, calculatedScore),
+            winRate: st.winRate || 0,
+            totalMatches: st.totalMatches || 0,
+            wins: st.wins || 0,
+            losses: st.losses || 0,
+            totalTimeMs: st.totalTimeMs || 0,
+          });
+        }
+
+        if (statsRes?.data?.recentMatches) {
+          setHistory(statsRes.data.recentMatches);
+        } else if (profRes?.data?.data?.performances) {
+          setHistory(profRes.data.data.performances);
+        }
+
+        if (probRes?.data?.problems) {
+          setProblems(probRes.data.problems);
+        }
       } catch (e) {
         console.error("Dashboard load error:", e);
       }

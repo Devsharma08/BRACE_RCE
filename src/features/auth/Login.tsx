@@ -4,15 +4,15 @@ import { Turnstile } from '@marsidev/react-turnstile';
 import { GoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/authContext';
-import axios from 'axios';
+import {api} from "../../config/api";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 
-import { backendURL } from '../../config/api';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -30,11 +30,11 @@ export const Login = () => {
       setLoading(true);
       setError('');
       // Using withCredentials to ensure the cookie is saved
-      await axios.post(`${backendURL}/auth/signin`, {
+      await api.post(`/auth/signin`, {
         email,
         password,
         captchaToken
-      }, { withCredentials: true });
+      });
       
       await checkAuth(); // Update global auth state
       navigate('/');
@@ -47,13 +47,13 @@ export const Login = () => {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
-      await axios.post(`${import.meta.env.VITE_BASE_URL}/auth/google`, {
+      await api.post(`/auth/google`, {
         credential: credentialResponse.credential
-      }, { withCredentials: true });
+      });
       await checkAuth();
       navigate('/');
-    } catch (err) {
-      setError("Google Login failed");
+    } catch (err:any) {
+      setError(err.response?.data?.message || "Google Login failed");
     }
   };
 

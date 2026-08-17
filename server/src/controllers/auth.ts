@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken'
 import type { AuthRequest } from "../middleware/authentication.js";
-
+import { OAuth2Client } from "google-auth-library";
 
 
 export class AuthController {
@@ -42,7 +42,7 @@ export class AuthController {
                     updatedAt: new Date()
                 }
             })
-            this.setTokenCookie(res, newUser.id);
+            await this.setTokenCookie(res, newUser.id);
             res.status(201).json({ message: "Registered successfully", user: { id: newUser.id, username: newUser.username, avatarUrl: newUser.avatarUrl, email: newUser.email } });
         } catch (error) {
             return res.status(500).json({ message: "Something went wrong" })
@@ -62,7 +62,7 @@ export class AuthController {
                 return res.status(401).json({ message: "Invalid password" })
             }
             this.setTokenCookie(res, user.id);
-            
+
             res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
         } catch (error) {
             return res.status(500).json({ message: "Something went wrong" })
@@ -77,9 +77,7 @@ export class AuthController {
     me = async (req: AuthRequest, res: Response) => {
         try {
             const userId = req.userId;
-            console.log("user id:" ,userId);
             const user = await prisma.user.findUnique({ where: { id: userId as string }, select: { id: true, username: true, avatarUrl: true, email: true } })
-            console.log("user : ",user)
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }
@@ -90,10 +88,83 @@ export class AuthController {
     }
 
     googleAuth = async (req: Request, res: Response) => {
+        const google_client_id = process.env.GOOGLE_CLIENT_ID;
+        if (!google_client_id?.trim()) {
+            return res.status(500).json({
+                message: "Server is not configured with GOOGLE_CLIENT_ID"
+            });
+        }
         const { credential } = req.body;
-        // TODO: We will implement Google Auth Library verification here in the next step!
-        res.status(501).json({ error: "Not implemented yet" });
+        if (!credential) {
+            return res.status(400).json({
+                message: "Missing Google credential token"
+            });
+        }
+
+        try {
+            const client = new OAuth2Client(google_client_id);
+
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: google_client_id
+            });
+
+            const payload = ticket.getPayload();
+            if (!payload || !payload.email) {
+                return res.status(400).json({ message: "Invalid google token payload" });
+            }
+
+            const { email, picture, name } = payload;
+
+            let user = await prisma.user.findFirst({
+                where: { email }
+            });
+
+            if (!user) {
+                let emailPrefix = email ? email.split('@')[0] : 'user';
+                let baseUsername = (name || emailPrefix || 'user').replace(/[^a-zA-Z0-9_]/g, '');
+                if (!baseUsername) baseUsername = "user";
+                let count = 0;
+                let uniqueUsername = baseUsername;
+                while (await prisma.user.findFirst({
+                    where: { username: uniqueUsername }
+                })) {
+                    uniqueUsername = `${baseUsername}${count}`;
+                    count++;
+                }
+
+                user = await prisma.user.create({
+                    data: {
+                        id: uuidv4(),
+                        email,
+                        avatarUrl: picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uniqueUsername}`,
+                        username: uniqueUsername,
+                        updatedAt: new Date()
+                    }
+                });
+            }
+
+            await this.setTokenCookie(res, user.id);
+
+            return res.status(200).json({
+                message: "Google auth successful",
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    avatarUrl: user.avatarUrl
+                }
+            });
+        }
+        catch(error) {
+        console.error("error in google auth", error);
+        return res.status(500).json({
+            message: "Unable to process google auth"
+        });
     }
+}
+
+
 }
 
 const authcontroller = new AuthController();
