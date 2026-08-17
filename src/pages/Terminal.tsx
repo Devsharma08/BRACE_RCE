@@ -230,7 +230,7 @@ const Terminal = () => {
      }, [setSearchParams, setOutput, setActiveFile, setFileData, setTestCases, setCode, setLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setStatus]);
 
 
-   // function to run the code 
+    // function to run the code 
     const handleRunCode = useCallback(async (nextCode: string, nextLanguage: SupportedLanguage, oid: string, mode: ExecutionMode = "RUN") => {
        const customInputValue = customInputActive ? customInput.trim() : "";
        const isCustomExecution = customInputValue.length > 0;
@@ -261,6 +261,41 @@ const Terminal = () => {
           }
        }
     }, [customInput, customInputActive, selectedFileName, setOutput, setCustomInput, setIsCustomInputRun, setStatus]);
+
+    const handleRunSingleTestCase = useCallback(async (testCaseIndex: number) => {
+       if (!testCases || !testCases[testCaseIndex]) return;
+       const targetCase = testCases[testCaseIndex];
+       const inputString = targetCase.input || "";
+
+       setResponseLoading(true);
+       setIsExecuting(true);
+       setExecutingMode("RUN");
+       setStatus("LOADING");
+       setIsCustomInputRun(true);
+
+       try {
+          const data = await executeCode({
+             code,
+             language,
+             oid: activeFile,
+             mode: "RUN",
+             customInput: inputString,
+             fileName: selectedFileName || undefined,
+          });
+          setOutput(data);
+          setStatus("SUCCESS");
+          setOutputText(formatExecutionOutput(data, "RUN"));
+       } catch (error) {
+          const message = error instanceof Error ? error.message : "something went wrong";
+          setOutputText(`ERROR: ${message}`);
+          setOutput(null);
+          setStatus("ERROR");
+       } finally {
+          setIsExecuting(false);
+          setExecutingMode(null);
+          setResponseLoading(false);
+       }
+    }, [testCases, code, language, activeFile, selectedFileName, setOutput, setStatus]);
 
    // console.log("fileData", fileNamesData);
 
@@ -559,6 +594,7 @@ const Terminal = () => {
                               setCustomInputActive={setCustomInputActive}
                               onResizeStart={startOutputDragging}
                               setIsOutputActive={setIsOutputActive}
+                              onRunSingleTestCase={handleRunSingleTestCase}
                            />
                         </div>
                      </>

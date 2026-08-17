@@ -49,6 +49,54 @@ type SidebarFilesModeProps = {
   activeFileEntry?: FileEntry;
 };
 
+const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
+  const [unlockedCount, setUnlockedCount] = useState<number>(0);
+
+  const parsedHints = useMemo(() => {
+    if (Array.isArray(hints) && hints.length > 0) return hints;
+    if (typeof hints === "string" && hints.trim().length > 0) return [hints];
+    return [
+      "Analyze input data constraints and identify potential edge cases (e.g. empty inputs, zero values, or single element arrays).",
+      "Consider using an efficient data structure (such as a Hash Map, Two-Pointers, or Sliding Window) to reduce time complexity.",
+      "Optimal Strategy: Aim for O(N) time complexity and O(1) auxiliary space where feasible."
+    ];
+  }, [hints]);
+
+  return (
+    <div className="rounded-none border border-amber-500/20 bg-amber-950/5 p-3 text-xs font-mono">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[9px] uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1">
+          ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
+        </span>
+        {unlockedCount < parsedHints.length && (
+          <button
+            type="button"
+            onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
+            className="text-[9px] font-bold text-amber-300 border border-amber-500/30 bg-amber-950/20 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/50 transition-all cursor-pointer"
+          >
+            [ REVEAL HINT #{unlockedCount + 1} ]
+          </button>
+        )}
+      </div>
+
+      {unlockedCount === 0 ? (
+        <div className="text-[10px] text-slate-500 italic">
+          Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
+        </div>
+      ) : (
+        <div className="space-y-2 mt-2">
+          {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
+            <div key={`hint-${idx}`} className="border-l-2 border-amber-400 bg-black/40 p-2.5 text-[10px] text-amber-200/90 leading-relaxed">
+              <span className="font-bold text-amber-400 block mb-0.5">// HINT #{idx + 1}</span>
+              {hintText}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const SidebarFilesMode = React.memo(({
   searchInput,
   setSearchInput,
@@ -249,6 +297,9 @@ const SidebarFilesMode = React.memo(({
                   {fileData?.problem_definition || "No definition constraints seeded for this solution template."}
                 </div>
               </div>
+
+              {/* PROGRESSIVE PROBLEM HINTS & BLUEPRINT */}
+              <ProblemHintsAccordion hints={fileData?.problem_hints} />
 
               <div className="rounded-none border border-white/5 bg-black/20 p-3 text-xs text-slate-300">
                 <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-2 font-bold">// TEST_CASES</div>

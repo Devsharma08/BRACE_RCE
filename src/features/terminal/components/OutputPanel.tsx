@@ -18,6 +18,7 @@ type OutputPanelProps = {
   setCustomInput: (value: string) => void;
   setCustomInputActive: (active: boolean) => void;
   setIsOutputActive: (active: boolean) => void;
+  onRunSingleTestCase?: (index: number) => void;
 };
 
 const getTabClassName = (isActive: boolean) =>
@@ -42,6 +43,7 @@ const OutputPanel = ({
   setCustomInput,
   setCustomInputActive,
   setIsOutputActive,
+  onRunSingleTestCase,
 }: OutputPanelProps) => {
   const getResultForCase = (index: number) => {
     if (isCustomInputRun) {
@@ -339,15 +341,27 @@ const OutputPanel = ({
                       <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
                         // CASE_{index + 1}
                       </span>
-                      {match && (
-                        <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border ${
-                          match.passed
-                            ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/15"
-                            : "text-rose-400 border-rose-500/20 bg-rose-950/15"
-                        }`}>
-                          {match.passed ? "[ PASSED ]" : "[ FAILED ]"}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {onRunSingleTestCase && (
+                          <button
+                            type="button"
+                            onClick={() => onRunSingleTestCase(index)}
+                            disabled={isExecuting}
+                            className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border border-cyan-500/30 bg-cyan-950/20 hover:border-cyan-400 hover:bg-cyan-950/40 text-cyan-300 transition-all duration-150 active:scale-95 disabled:opacity-40 cursor-pointer"
+                          >
+                            [ RUN TEST #{index + 1} ONLY ]
+                          </button>
+                        )}
+                        {match && (
+                          <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border ${
+                            match.passed
+                              ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/15"
+                              : "text-rose-400 border-rose-500/20 bg-rose-950/15"
+                          }`}>
+                            {match.passed ? "[ PASSED ]" : "[ FAILED ]"}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
