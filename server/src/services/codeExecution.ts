@@ -102,10 +102,26 @@ function prepareFinalCode(
     }
 
     const treeHelpers = `
+function ListNode(val, next) {
+  this.val = (val===undefined ? 0 : val);
+  this.next = (next===undefined ? null : next);
+}
 function TreeNode(val, left, right) {
   this.val = (val===undefined ? 0 : val);
   this.left = (left===undefined ? null : left);
   this.right = (right===undefined ? null : right);
+}
+function _Node(val, next, random) {
+  this.val = (val===undefined ? 0 : val);
+  this.next = (next===undefined ? null : next);
+  this.random = (random===undefined ? null : random);
+}
+function Node(val, left, right, next, random) {
+  this.val = (val===undefined ? 0 : val);
+  this.left = (left===undefined ? null : left);
+  this.right = (right===undefined ? null : right);
+  this.next = (next===undefined ? null : next);
+  this.random = (random===undefined ? null : random);
 }
 function arrayToTree(arr) {
   if (!Array.isArray(arr) || arr.length === 0 || arr[0] === null || arr[0] === undefined) return null;
@@ -211,6 +227,29 @@ function isTreeNode(obj) {
     const userPyFunc = sourceCode.match(/def\s+(\w+)\s*\(/);
     const pyFuncName = userPyFunc ? userPyFunc[1] : null;
 
+    const pyNodeHelpers = `
+class ListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+class Node:
+    def __init__(self, val=0, left=None, right=None, next=None, random=None):
+        self.val = val
+        self.left = left
+        self.right = right
+        self.next = next
+        self.random = random
+
+_Node = Node
+`;
+
     if (wrapperCode && pyFuncName && !wrapperCode.includes(pyFuncName)) {
       wrapperCode = "";
     }
@@ -240,7 +279,7 @@ function isTreeNode(obj) {
         pyWrapper += `out_val = res if res is not None else (arg0 if 'arg0' in locals() else None)\n`;
         pyWrapper += `print(json.dumps(out_val, separators=(',', ':')))\n`;
 
-        return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${sourceCode}\n${pyWrapper}`;
+        return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${pyNodeHelpers}\n${sourceCode}\n${pyWrapper}`;
       }
     } else {
       wrapperCode = wrapperCode.replace(
@@ -268,7 +307,7 @@ function isTreeNode(obj) {
         }
       }
 
-      return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${sourceCode}\n${wrapperCode}`;
+      return `from typing import *\nimport sys, json, math, collections, heapq, itertools, functools, bisect\n${pyNodeHelpers}\n${sourceCode}\n${wrapperCode}`;
     }
   }
 
