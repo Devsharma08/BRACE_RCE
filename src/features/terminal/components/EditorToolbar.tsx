@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FileCode,
   Loader2,
@@ -6,13 +7,13 @@ import {
   Send,
   RotateCcw,
   Maximize,
-} from "lucide-react";
-import type { ExecutionMode, SupportedLanguage } from "../types";
-import { CodeContext } from "../../../context/codeContext.tsx";
-import {
+  StickyNote,
+  Home,
   BrushCleaning as Clear,
   Indent as IndentationIcon,
 } from "lucide-react";
+import type { ExecutionMode, SupportedLanguage } from "../types";
+import { CodeContext } from "../../../context/codeContext.tsx";
 
 type EditorToolbarProps = {
   disabled: boolean;
@@ -28,6 +29,9 @@ type EditorToolbarProps = {
   onReset: () => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
+  onToggleNotes?: () => void;
+  isNotesOpen?: boolean;
+  onExit?: () => void;
 };
 
 const EditorToolbar = ({
@@ -44,7 +48,11 @@ const EditorToolbar = ({
   setCode,
   sidebarWidth,
   setSidebarWidth,
+  onToggleNotes,
+  isNotesOpen = false,
+  onExit,
 }: EditorToolbarProps) => {
+  const navigate = useNavigate();
   const context = useContext(CodeContext);
   if (!context) {
     throw new Error("EditorToolbar must be used inside a CodeContext.Provider");
@@ -74,6 +82,14 @@ const EditorToolbar = ({
     setContextCustomInput("");
   };
 
+  const handleExitClick = () => {
+    if (onExit) {
+      onExit();
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
   return (
     <div className="editor-toolbar flex flex-col gap-2 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <div className="flex min-w-0 items-center gap-2">
@@ -88,8 +104,38 @@ const EditorToolbar = ({
         />
       </div>
 
-      <div className="grid w-full grid-cols-5 items-center gap-1 sm:flex sm:w-auto">
-        {/* maximize monaco panel */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:w-auto">
+        {/* NOTES BUTTON */}
+        <button
+          type="button"
+          onClick={onToggleNotes}
+          title="Toggle Global Scratchpad Notes"
+          className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+            isNotesOpen
+              ? "border-amber-500/60 bg-amber-950/30 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+              : "border-amber-500/25 bg-amber-950/10 text-amber-400/90 hover:border-amber-500/50 hover:bg-amber-950/20 hover:text-amber-300"
+          }`}
+        >
+          <span className="text-amber-500/40 select-none mr-1">[</span>
+          <StickyNote className="w-3.5 h-3.5 text-amber-400" />
+          <span className="ml-1 hidden xs:inline">NOTES</span>
+          <span className="text-amber-500/40 select-none ml-1">]</span>
+        </button>
+
+        {/* EXIT TO DASHBOARD / HOME BUTTON */}
+        <button
+          type="button"
+          onClick={handleExitClick}
+          title="Exit to Dashboard / Home"
+          className="flex items-center justify-center rounded-none border border-rose-500/30 bg-rose-950/10 hover:border-rose-500/50 hover:bg-rose-950/20 text-rose-400 hover:text-rose-300 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+        >
+          <span className="text-rose-500/40 select-none mr-1">[</span>
+          <Home className="w-3.5 h-3.5 text-rose-400" />
+          <span className="ml-1 hidden xs:inline">EXIT</span>
+          <span className="text-rose-500/40 select-none ml-1">]</span>
+        </button>
+
+        {/* MAXIMIZE MONACO PANEL */}
         <button
           type="button"
           onClick={handleMaximize}
@@ -100,6 +146,8 @@ const EditorToolbar = ({
           <Maximize className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
+
+        {/* FORMAT CODE */}
         <button
           type="button"
           onClick={onFormat}
@@ -110,6 +158,8 @@ const EditorToolbar = ({
           <IndentationIcon className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
+
+        {/* CLEAR DRAFT */}
         <button
           type="button"
           onClick={() => ClearChanges()}
@@ -120,6 +170,8 @@ const EditorToolbar = ({
           <Clear className="w-3.5 h-3.5 text-cyan-400" />
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
+
+        {/* RESET TEMPLATE */}
         {!isLocal && (
           <button
             type="button"
@@ -132,6 +184,8 @@ const EditorToolbar = ({
             <span className="text-rose-500/40 select-none ml-1">]</span>
           </button>
         )}
+
+        {/* LANGUAGE SELECTOR */}
         <select
           className="min-w-0 rounded-none border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
           value={language}
@@ -153,6 +207,8 @@ const EditorToolbar = ({
             C
           </option>
         </select>
+
+        {/* RUN CODE BUTTON */}
         <button
           onClick={onRun}
           disabled={disabled}
@@ -168,9 +224,11 @@ const EditorToolbar = ({
           ) : (
             <Play className="w-3.5 h-3.5 text-cyan-400" />
           )}
+          <span className="ml-1 text-[10px]">RUN</span>
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
+        {/* SUBMIT CODE BUTTON */}
         <button
           onClick={onSubmit}
           disabled={disabled}
@@ -186,6 +244,7 @@ const EditorToolbar = ({
           ) : (
             <Send className="w-3.5 h-3.5 text-emerald-400" />
           )}
+          <span className="ml-1 text-[10px]">SUBMIT</span>
           <span className="text-emerald-500/40 select-none ml-1">]</span>
         </button>
       </div>

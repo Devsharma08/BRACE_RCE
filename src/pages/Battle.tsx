@@ -24,6 +24,7 @@ import {
   Flag,
 } from "lucide-react";
 import { api } from "../config/api";
+import { NotesPanel } from "../components/ui/NotesPanel";
 
 
 interface BattleMessage {
@@ -382,6 +383,7 @@ export const Battle = () => {
     (localTimeRemaining === null || localTimeRemaining > 0);
 
   const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
+  const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
 
   const handleSurrenderClick = () => {
     setIsSurrenderModalOpen(true);
@@ -719,25 +721,6 @@ export const Battle = () => {
                 </div>
               )}
             </div>
-
-            <div className="p-6 border-t border-cyan-500/20 bg-black/20">
-              <button
-                onClick={handleRunCode}
-                disabled={isSubmitting}
-                className="flex items-center justify-center w-full py-4 bg-cyan-900/40 hover:bg-cyan-600 border border-cyan-500/50 hover:border-cyan-400 text-cyan-100 font-mono text-sm font-bold tracking-[0.2em] rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Activity className="w-5 h-5 animate-pulse mr-2" /> [
-                    EXECUTING... ]
-                  </>
-                ) : battleState.status === "IN_PROGRESS" && (localTimeRemaining === null || localTimeRemaining > 0) ? (
-                  "[ SUBMIT CODE ]"
-                ) : (
-                  "[ COMPILE & TEST CODE ]"
-                )}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -843,6 +826,15 @@ export const Battle = () => {
           onSubmit={handleRunCode}
           onFormat={() => formatEditorRef.current?.()}
           onReset={handleResetCode}
+          onToggleNotes={() => setIsNotesOpen((prev) => !prev)}
+          isNotesOpen={isNotesOpen}
+          onExit={() => {
+            if (isBattleActive) {
+              handleSurrenderClick();
+            } else {
+              navigate("/dashboard");
+            }
+          }}
         />
 
         {/* monaco editor */}
@@ -884,55 +876,8 @@ export const Battle = () => {
         />
       </div>
 
-      {/* ── PERSISTENT BOTTOM-RIGHT ACTION BAR ── */}
-      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3 font-mono">
-        {/* SURRENDER BUTTON (Active during active battle) */}
-        {isBattleActive && (
-          <button
-            onClick={handleSurrenderClick}
-            title="Surrender battle match"
-            className="px-4 py-3 border border-rose-500/40 bg-rose-950/80 hover:bg-rose-900/90 text-rose-300 hover:text-white text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_20px_rgba(244,63,94,0.2)] backdrop-blur-md flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <Flag className="w-4 h-4 text-rose-400" />
-            <span>[ SURRENDER ]</span>
-          </button>
-        )}
-
-        {/* SUBMIT / COMPILE BUTTON */}
-        <button
-          onClick={handleRunCode}
-          disabled={isSubmitting}
-          className="px-5 py-3 border border-cyan-500/50 bg-gradient-to-r from-cyan-950/90 via-slate-950/90 to-cyan-950/90 hover:from-cyan-900 hover:to-cyan-800 text-cyan-200 hover:text-white text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_25px_rgba(34,211,238,0.25)] backdrop-blur-md flex items-center gap-2.5 cursor-pointer active:scale-95 disabled:opacity-50"
-        >
-          {isSubmitting ? (
-            <>
-              <Activity className="w-4 h-4 animate-pulse text-cyan-400" />
-              <span>[ EXECUTING... ]</span>
-            </>
-          ) : isBattleActive ? (
-            <>
-              <Play className="w-4 h-4 fill-cyan-400 text-cyan-400" />
-              <span>[ SUBMIT CODE ]</span>
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 fill-emerald-400 text-emerald-400" />
-              <span>[ COMPILE & TEST ]</span>
-            </>
-          )}
-        </button>
-
-        {/* BATTLE MENU BUTTON (Shown when battle ended) */}
-        {battleResult && !isBattleMenuOpen && (
-          <button
-            onClick={() => setIsBattleMenuOpen(true)}
-            className="px-4 py-3 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-200 font-mono text-xs font-bold tracking-widest shadow-[0_0_20px_rgba(245,158,11,0.2)] backdrop-blur-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span>[ RESULTS MENU ]</span>
-          </button>
-        )}
-      </div>
+      {/* GLOBAL SCRATCHPAD NOTES PANEL */}
+      <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
 
       {isBattleMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">

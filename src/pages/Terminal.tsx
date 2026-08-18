@@ -49,6 +49,7 @@ const Terminal = () => {
    const [resLoading, setResponseLoading] = useState<boolean>(false);
    const [isCustomInputRun, setIsCustomInputRun] = useState<boolean>(false);
    const [selectedFileName, setSelectedFileName] = useState<string>("");
+   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
    
    // context states
    const {
@@ -538,7 +539,6 @@ const Terminal = () => {
                   <span className="truncate">SYS // TERMINAL_WORKSPACE</span>
                </div>
                <span className="truncate text-slate-500 uppercase">{filesLoading ? "SYNCING..." : activeFileName}</span>
-               <NotesPanel storageKey={`battle-${roomId}`} />
             </div>
 
             <div className='flex-1 min-h-0 relative'>
@@ -561,6 +561,8 @@ const Terminal = () => {
                            onSubmit={() => void handleRunCode(code, language, activeFile, "SUBMIT")}
                            onFormat={handleFormatCode}
                            onReset={handleResetCode}
+                           onToggleNotes={() => setIsNotesOpen((prev) => !prev)}
+                           isNotesOpen={isNotesOpen}
                         />
 
                         <div className='flex-1 min-h-0 grid' style={{ gridTemplateRows: "minmax(0, 1fr) auto" }}>
@@ -675,9 +677,12 @@ const Terminal = () => {
                   </button>
                </div>
             </div>
-         )}
-      </div>
-   );
+          )}
+
+          {/* GLOBAL SCRATCHPAD NOTES PANEL */}
+          <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
+       </div>
+    );
 
 }
 
