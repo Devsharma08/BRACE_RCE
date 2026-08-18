@@ -284,8 +284,9 @@ function isRandomNode(obj) { return obj && typeof obj === 'object' && ('val' in 
         const argsStr = (match[2] || match[4] || match[6] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
         const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random") || sourceCode.includes("_Node");
-        const isTreeProblem = !isRandomProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode") || argsStr.includes("root"));
-        const isListProblem = !isRandomProblem && !isTreeProblem && (sourceCode.includes("ListNode") || sourceCode.includes("head") || argsStr.includes("head") || sourceCode.includes("partition") || sourceCode.includes("reverseList") || sourceCode.includes("mergeTwoLists") || sourceCode.includes("deleteNode"));
+        const isTreeProblem = !isRandomProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode"));
+        const isListProblem = !isRandomProblem && (sourceCode.includes("ListNode") || sourceCode.includes("partition") || sourceCode.includes("reverseList") || sourceCode.includes("mergeTwoLists") || sourceCode.includes("deleteNode"));
+        const paramNames = argsStr.split(',').map(s => s.trim().toLowerCase());
 
         wrapperCode = `const fs = require('fs');
 ${treeHelpers}
@@ -293,9 +294,14 @@ const input = fs.readFileSync(0, 'utf-8').trim().split(/\\r?\\n/).map(s => s.tri
 if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided is empty."); }
 `;
         for (let i = 0; i < argCount; i++) {
+          const pNameStr = JSON.stringify(paramNames[i] || '');
           wrapperCode += `const rawArg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;
 `;
-          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : (${isTreeProblem} && Array.isArray(rawArg${i})) ? arrayToTree(rawArg${i}) : (${isListProblem} && Array.isArray(rawArg${i})) ? arrayToListNode(rawArg${i}) : rawArg${i};
+          wrapperCode += `const isArgTree${i} = ${isTreeProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('root') || ${pNameStr}.includes('tree') || ${pNameStr}.includes('node') || ${pNameStr} === 'p' || ${pNameStr} === 'q' || ${pNameStr} === 't1' || ${pNameStr} === 't2');
+`;
+          wrapperCode += `const isArgList${i} = ${isListProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('head') || ${pNameStr}.includes('l1') || ${pNameStr}.includes('l2') || ${pNameStr}.includes('list'));
+`;
+          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : isArgTree${i} ? arrayToTree(rawArg${i}) : isArgList${i} ? arrayToListNode(rawArg${i}) : rawArg${i};
 `;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
@@ -431,15 +437,15 @@ import sys, json, math, collections, heapq, itertools, functools, bisect
     for (let i = 0; i < argCount; i++) {
       pyWrapper += `raw_arg${i} = json.loads(input_lines[${i}]) if ${i} < len(input_lines) else None
 `;
-      if (i === 0 && isListProblem) {
-        pyWrapper += `arg${i} = _to_list_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}
-`;
-      } else if (i === 0 && isTreeProblem) {
-        pyWrapper += `arg${i} = _to_tree_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}
-`;
+      const pName = sig?.params[i]?.name.toLowerCase() || '';
+      const isArgTree = isTreeProblem && (pName.includes('root') || pName.includes('tree') || pName.includes('node') || pName === 'p' || pName === 'q' || pName === 't1' || pName === 't2');
+      const isArgList = isListProblem && (pName.includes('head') || pName.includes('l1') || pName.includes('l2') || pName.includes('list'));
+      if (isArgList) {
+        pyWrapper += `arg${i} = _to_list_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
+      } else if (isArgTree) {
+        pyWrapper += `arg${i} = _to_tree_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
       } else {
-        pyWrapper += `arg${i} = raw_arg${i}
-`;
+        pyWrapper += `arg${i} = raw_arg${i}\n`;
       }
     }
     const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
@@ -746,11 +752,11 @@ public class Main {
   }
   private static boolean looksLikeArray(String s){s=s==null?"":s.trim();return s.startsWith("[")&&s.endsWith("]");}
   private static boolean isNull(String s){return s==null||s.trim().equalsIgnoreCase("null")||s.trim().isEmpty();}
-  private static boolean isQuoted(String s){if(s.length()<2)return false;char f=s.charAt(0),l=s.charAt(s.length()-1);return(f=='"'&&l=='"')||(f=='\\'&&l=='\\');}
+  private static boolean isQuoted(String s){if(s.length()<2)return false;char f=s.charAt(0),l=s.charAt(s.length()-1);return(f=='"'&&l=='"')||(f=='\\''&&l=='\'');}
   private static String unquote(String s){s=s==null?"":s.trim();return isQuoted(s)?s.substring(1,s.length()-1):s;}
   private static int parseInt(String s){String c=unquote(s).trim();if(c.equalsIgnoreCase("INF")||c.equalsIgnoreCase("INTEGER.MAX_VALUE"))return Integer.MAX_VALUE;if(c.equalsIgnoreCase("-INF")||c.equalsIgnoreCase("INTEGER.MIN_VALUE"))return Integer.MIN_VALUE;return Integer.parseInt(c);}
   private static List<String> getArrayItems(String raw){String t=raw==null?"":raw.trim();if(!looksLikeArray(t))throw new IllegalArgumentException("Expected array, got: "+raw);if(t.equals("[]"))return new ArrayList<>();return splitTopLevel(t.substring(1,t.length()-1));}
-  private static List<String> splitTopLevel(String raw){List<String>result=new ArrayList<>();int depth=0;boolean inStr=false;char q='\0';StringBuilder sb=new StringBuilder();for(int i=0;i<raw.length();i++){char c=raw.charAt(i);if(inStr){if(c==q)inStr=false;sb.append(c);continue;}if(c=='\''||c=='"'){inStr=true;q=c;sb.append(c);continue;}if(c=='['||c=='{'||c=='(')depth++;else if(c==']'||c=='}'||c==')')depth--;else if(c==','&&depth==0){result.add(sb.toString().trim());sb.setLength(0);continue;}sb.append(c);}if(sb.length()>0)result.add(sb.toString().trim());return result;}
+  private static List<String> splitTopLevel(String raw){List<String>result=new ArrayList<>();int depth=0;boolean inStr=false;char q='\0';StringBuilder sb=new StringBuilder();for(int i=0;i<raw.length();i++){char c=raw.charAt(i);if(inStr){if(c==q)inStr=false;sb.append(c);continue;}if(c=='\\'||c=='"'){inStr=true;q=c;sb.append(c);continue;}if(c=='['||c=='{'||c=='(')depth++;else if(c==']'||c=='}'||c==')')depth--;else if(c==','&&depth==0){result.add(sb.toString().trim());sb.setLength(0);continue;}sb.append(c);}if(sb.length()>0)result.add(sb.toString().trim());return result;}
   private static List<String> parseOperationNames(String raw){List<String>items=getArrayItems(raw);List<String>ops=new ArrayList<>();for(String item:items){String t=item.trim();if(!isQuoted(t))return Collections.emptyList();ops.add(unquote(t));}return ops;}
   private static Object constructInstance(Class<?>clazz,String rawArgs)throws Exception{for(Constructor<?>ctor:clazz.getDeclaredConstructors()){try{ctor.setAccessible(true);return ctor.newInstance(parseArgumentGroup(ctor.getGenericParameterTypes(),rawArgs));}catch(Exception ignored){}}throw new IllegalArgumentException("Cannot construct "+clazz.getSimpleName()+" from: "+rawArgs);}
   private static Method findMethod(Class<?>clazz,String name,String rawArgs)throws Exception{for(Method m:clazz.getDeclaredMethods()){if(!Modifier.isPublic(m.getModifiers())||!m.getName().equals(name))continue;try{parseArgumentGroup(m.getGenericParameterTypes(),rawArgs);return m;}catch(Exception ignored){}}throw new IllegalArgumentException("No matching method: "+name+"("+rawArgs+")");}
@@ -869,7 +875,8 @@ vector<string> parseStringVec(const string& s){vector<string>r;if(s.size()<2)ret
 vector<vector<int>> parseInt2DVec(const string& s){vector<vector<int>>r;int d=0,st=0;for(int i=0;i<(int)s.size();i++){if(s[i]=='['){if(d==0)st=i;d++;}else if(s[i]==']'){d--;if(d==0)r.push_back(parseIntVec(s.substr(st,i-st+1)));}}return r;}
 ListNode* parseListNode(const string& s){vector<int>v=parseIntVec(s);if(v.empty())return nullptr;ListNode* d=new ListNode(0);ListNode* c=d;for(int x:v){c->next=new ListNode(x);c=c->next;}return d->next;}
 void printListNode(ListNode* head){cout<<"[";ListNode* c=head;while(c){cout<<c->val;if(c->next)cout<<",";c=c->next;}cout<<"]"<<endl;}
-TreeNode* parseTreeNode(const string& s){vector<int>v=parseIntVec(s);if(v.empty())return nullptr;TreeNode* root=new TreeNode(v[0]);queue<TreeNode*>q;q.push(root);size_t i=1;while(!q.empty()&&i<v.size()){TreeNode* c=q.front();q.pop();if(i<v.size()){c->left=new TreeNode(v[i]);q.push(c->left);}i++;if(i<v.size()){c->right=new TreeNode(v[i]);q.push(c->right);}i++;}return root;}
+vector<string> parseRawTokens(const string& s){vector<string>r;if(s.size()<2)return r;string inner=s.substr(1,s.size()-2);stringstream ss(inner);string tok;while(getline(ss,tok,',')){while(!tok.empty()&&(tok.front()==' '||tok.front()=='\t'))tok.erase(0,1);while(!tok.empty()&&(tok.back()==' '||tok.back()=='\t'))tok.pop_back();if(!tok.empty())r.push_back(tok);}return r;}
+TreeNode* parseTreeNode(const string& s){vector<string>v=parseRawTokens(s);if(v.empty()||v[0]=="null"||v[0]=="None"||v[0]=="[]")return nullptr;TreeNode* root=new TreeNode(stoi(v[0]));queue<TreeNode*>q;q.push(root);size_t i=1;while(!q.empty()&&i<v.size()){TreeNode* c=q.front();q.pop();if(i<v.size()){if(v[i]!="null"&&v[i]!="None"){c->left=new TreeNode(stoi(v[i]));q.push(c->left);}}i++;if(i<v.size()){if(v[i]!="null"&&v[i]!="None"){c->right=new TreeNode(stoi(v[i]));q.push(c->right);}}i++;}return root;}
 void printTreeNode(TreeNode* root){if(!root){cout<<"[]"<<endl;return;}cout<<"[";queue<TreeNode*>q;q.push(root);vector<string>r;while(!q.empty()){TreeNode* c=q.front();q.pop();if(c){r.push_back(to_string(c->val));q.push(c->left);q.push(c->right);}else{r.push_back("null");}}while(!r.empty()&&r.back()=="null")r.pop_back();for(size_t i=0;i<r.size();i++){cout<<r[i];if(i+1<r.size())cout<<",";}cout<<"]"<<endl;}
 `;
 
