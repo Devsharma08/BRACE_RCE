@@ -1,4 +1,6 @@
+import { describe, it, test, expect } from "@jest/globals";
 import { prepareFinalCode } from "./codeExecution.js";
+
 
 describe("codeExecution - prepareFinalCode wrapper generation across languages", () => {
 
@@ -180,5 +182,37 @@ public:
       expect(finalCode).toContain("parseListNode");
       expect(finalCode).toContain("printListNode");
     });
+  });
+});
+
+
+
+
+describe("Polyglot Code Execution Service", () => {
+  test("should inject JavaScript TreeNode helper when processing tree problems", () => {
+    const sourceCode = `var invertTree = function(root) { return root; };`;
+    const finalCode = prepareFinalCode("javascript", sourceCode);
+
+    expect(finalCode).toContain("function TreeNode(val, left, right)");
+    expect(finalCode).toContain("var invertTree = function(root)");
+  });
+
+  test("should inject Python ListNode deserialization helper", () => {
+    const sourceCode = `def reverseList(head):\n    return head`;
+    const finalCode = prepareFinalCode("python", sourceCode);
+
+    expect(finalCode).toContain("class ListNode:");
+    expect(finalCode).toContain("def reverseList(head):");
+  });
+
+  test("should preserve custom wrapper code if provided in problem snippet", () => {
+    const sourceCode = `function solve(arr) { return arr; }`;
+    const customSnippet = {
+      code: sourceCode,
+      wrapperCode: `const res = solve([1,2,3]); console.log(res);`,
+    };
+    const finalCode = prepareFinalCode("javascript", sourceCode, customSnippet);
+
+    expect(finalCode).toContain("const res = solve([1,2,3]);");
   });
 });
