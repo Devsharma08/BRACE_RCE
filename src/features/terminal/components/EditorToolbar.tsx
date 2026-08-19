@@ -11,6 +11,7 @@ import {
   Home,
   BrushCleaning as Clear,
   Indent as IndentationIcon,
+  FolderTree,
 } from "lucide-react";
 import type { ExecutionMode, SupportedLanguage } from "../types";
 import { CodeContext } from "../../../context/codeContext.tsx";
@@ -32,6 +33,11 @@ type EditorToolbarProps = {
   onToggleNotes?: () => void;
   isNotesOpen?: boolean;
   onExit?: () => void;
+  showSubmit?: boolean;
+  mode?: "terminal" | "problem" | "battle";
+  showFileExplorerToggle?: boolean;
+  onToggleFileExplorer?: () => void;
+  isFileExplorerOpen?: boolean;
 };
 
 const EditorToolbar = ({
@@ -51,6 +57,11 @@ const EditorToolbar = ({
   onToggleNotes,
   isNotesOpen = false,
   onExit,
+  showSubmit = true,
+  mode = "problem",
+  showFileExplorerToggle = false,
+  onToggleFileExplorer,
+  isFileExplorerOpen = false,
 }: EditorToolbarProps) => {
   const navigate = useNavigate();
   const context = useContext(CodeContext);
@@ -93,6 +104,22 @@ const EditorToolbar = ({
   return (
     <div className="editor-toolbar flex flex-col gap-2 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <div className="flex min-w-0 items-center gap-2">
+        {/* FILE EXPLORER TOGGLE BUTTON (FOR TERMINAL / PROBLEM MODES) */}
+        {showFileExplorerToggle && onToggleFileExplorer && (
+          <button
+            type="button"
+            onClick={onToggleFileExplorer}
+            title={isFileExplorerOpen ? "Hide File Explorer" : "Show File Explorer"}
+            className={`flex items-center justify-center border px-2 py-1 text-xs font-mono transition-all cursor-pointer ${
+              isFileExplorerOpen
+                ? "border-cyan-500/60 bg-cyan-950/40 text-cyan-300"
+                : "border-white/10 bg-black/40 text-slate-400 hover:border-cyan-500/40 hover:text-cyan-400"
+            }`}
+          >
+            <FolderTree className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         <FileCode className="w-4 h-4 text-cyan-400" />
         <input
           type="text"
@@ -228,6 +255,27 @@ const EditorToolbar = ({
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
+        {/* SUBMIT CODE BUTTON (CONDITIONALLY RENDERED FOR BATTLE / FULL MODES) */}
+        {showSubmit && onSubmit && (
+          <button
+            onClick={onSubmit}
+            disabled={disabled}
+            aria-busy={executingMode === "SUBMIT"}
+            title="Submit solution for full tests validation"
+            className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-950/20 hover:border-emerald-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+              disabled ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            <span className="text-emerald-500/40 select-none mr-1">[</span>
+            {executingMode === "SUBMIT" ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            ) : (
+              <Send className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            <span className="ml-1 text-[10px]">SUBMIT</span>
+            <span className="text-emerald-500/40 select-none ml-1">]</span>
+          </button>
+        )}
       </div>
     </div>
   );
