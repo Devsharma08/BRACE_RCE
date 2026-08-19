@@ -48,6 +48,7 @@ export const getFileContent = async (req: Request, res: Response) => {
         },
         select: {
           test_cases: true,
+          code_snippets: true,
           id: true,
           problem_definition: true,
           problem_hints: true,
@@ -59,6 +60,7 @@ export const getFileContent = async (req: Request, res: Response) => {
     const content = {
       content: data.data?.repository?.object?.text,
       test_cases: testcases?.test_cases || [],
+      code_snippets: testcases?.code_snippets || [],
       problem_definition: testcases?.problem_definition,
       problem_hints: testcases?.problem_hints,
       difficulty_level: testcases?.difficulty_level,

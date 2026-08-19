@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { House, Code2 } from "lucide-react";
+import { House } from "lucide-react";
 import { FileNamesContext, type FileEntry } from "../context/fileNamesContext";
 import { CodeContext } from "../context/codeContext";
 import { UserResponseContext } from "../context/responseContent";
@@ -34,6 +34,47 @@ const readLocalFile = (oid: string) => {
   } catch {
     return null;
   }
+};
+
+// Boilerplate template generator for each supported language
+const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) => {
+  switch (lang) {
+    case "python":
+      return `# Solution for ${problemName || "problem"}\ndef solution(*args):\n    pass\n`;
+    case "c++":
+      return `// Solution for ${problemName || "problem"}\n#include <iostream>\n#include <vector>\n#include <string>\nusing namespace std;\n\nclass Solution {\npublic:\n    void solve() {\n        \n    }\n};\n`;
+    case "java":
+      return `// Solution for ${problemName || "problem"}\nimport java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        \n    }\n}\n`;
+    case "c":
+      return `// Solution for ${problemName || "problem"}\n#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    return 0;\n}\n`;
+    case "javascript":
+    default:
+      return `/**\n * Solution for ${problemName || "problem"}\n */\nvar solution = function() {\n    \n};\n`;
+  }
+};
+
+// Find matching code snippet from problem data or generate language boilerplate
+const getProblemSnippet = (fileData: any, lang: SupportedLanguage, defaultContent?: string) => {
+  if (!fileData) return getLanguageStarterCode(lang);
+
+  // Check code_snippets array from backend
+  if (fileData.code_snippets && Array.isArray(fileData.code_snippets)) {
+    const matched = fileData.code_snippets.find(
+      (s: any) =>
+        s.language?.toLowerCase() === lang.toLowerCase() ||
+        (lang === "c++" && s.language?.toLowerCase() === "cpp")
+    );
+    if (matched && matched.code) {
+      return matched.code;
+    }
+  }
+
+  // If initial language matches default file content, return default content
+  if (lang === "javascript" && defaultContent) {
+    return defaultContent;
+  }
+
+  return getLanguageStarterCode(lang, fileData.name);
 };
 
 const Terminal = () => {
@@ -117,6 +158,16 @@ const Terminal = () => {
     );
   }, []);
 
+  // Handle language change with automatic boilerplate template loading
+  const handleLanguageChange = useCallback(
+    (newLang: SupportedLanguage) => {
+      setLanguage(newLang);
+      const snippet = getProblemSnippet(fileData, newLang, fileData?.content);
+      setCode(snippet);
+    },
+    [fileData, setLanguage, setCode]
+  );
+
   const handleResetCode = useCallback(async () => {
     if (!activeFile) return;
     if (isLocalFile(activeFile)) {
@@ -133,14 +184,15 @@ const Terminal = () => {
       setLoading(true);
       try {
         const fileContent = await fetchFileContent(activeFile, selectedFileName || undefined);
-        setCode(fileContent.content || "");
+        const snippet = getProblemSnippet(fileContent, language, fileContent.content);
+        setCode(snippet);
       } catch (error) {
         console.error("Failed to reset template:", error);
       } finally {
         setLoading(false);
       }
     }
-  }, [activeFile, selectedFileName, setCode]);
+  }, [activeFile, selectedFileName, language, setCode]);
 
   // Click file handler in file explorer
   const handleFileClick = useCallback(
@@ -192,12 +244,12 @@ const Terminal = () => {
 
         const nextTestCases = buildProblemTestCases(fileContent);
         const nextLanguage = detectLanguageFromFileName(name);
-        const nextCode = fileContent.content || "";
+        const snippet = getProblemSnippet(fileContent, nextLanguage, fileContent.content);
 
         setFileData(fileContent);
         setTestCases(nextTestCases);
         setLanguage(nextLanguage);
-        setCode(nextCode);
+        setCode(snippet);
         setCustomInput("");
         setCustomInputActive(false);
         setIsCustomInputRun(false);
@@ -359,7 +411,7 @@ const Terminal = () => {
 
   return (
     <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#08090a] text-white font-mono select-none md:flex-row">
-      {/* FILE EXPLORER (CONDITIONALLY RENDERED FOR NORMAL TERMINAL & TOGGLEABLE FOR PROBLEMS) */}
+      {/* FILE EXPLORER */}
       {isFileExplorerOpen && (
         <FileExplorer
           activeFile={activeFile}
@@ -413,13 +465,13 @@ const Terminal = () => {
           <div className="absolute inset-0 flex flex-col min-h-0">
             {activeFile ? (
               <>
-                {/* EDITOR TOOLBAR WITH CONDITIONAL SUBMIT & FILE EXPLORER TOGGLE */}
+                {/* EDITOR TOOLBAR WITH AUTOMATIC BOILERPLATE LOADING ON LANGUAGE CHANGE */}
                 <EditorToolbar
                   activeFile={activeFile}
                   disabled={resLoading || loading}
                   executingMode={executingMode}
                   language={language}
-                  setLanguage={setLanguage}
+                  setLanguage={handleLanguageChange}
                   sidebarWidth={sidebarWidth}
                   setSidebarWidth={setSidebarWidth}
                   setCode={setCode}
