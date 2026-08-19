@@ -24,7 +24,7 @@ type EditorToolbarProps = {
   setLanguage: (language: SupportedLanguage) => void;
   setCode: (code: string) => void;
   onRun: () => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   onFormat: () => void;
   onReset: () => void;
   sidebarWidth: number;
@@ -228,25 +228,6 @@ const EditorToolbar = ({
           <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
-        {/* SUBMIT CODE BUTTON */}
-        <button
-          onClick={onSubmit}
-          disabled={disabled}
-          aria-busy={executingMode === "SUBMIT"}
-          title="Submit solution for full tests validation"
-          className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-950/20 hover:border-emerald-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
-            disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          <span className="text-emerald-500/40 select-none mr-1">[</span>
-          {executingMode === "SUBMIT" ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-          ) : (
-            <Send className="w-3.5 h-3.5 text-emerald-400" />
-          )}
-          <span className="ml-1 text-[10px]">SUBMIT</span>
-          <span className="text-emerald-500/40 select-none ml-1">]</span>
-        </button>
       </div>
     </div>
   );
