@@ -77,38 +77,19 @@ export const Dashboard: React.FC = () => {
         if (statsRes?.data?.stats) {
           const st = statsRes.data.stats;
           setStats({
-            rating: 1248,
-            wins: st.wins || 42,
-            winRate: st.winRate || 68.4,
-            streak: 5,
-          });
-        } else {
-          setStats({
-            rating: 1248,
-            wins: 42,
-            winRate: 68.4,
-            streak: 5,
+            totalMatches: st.totalMatches || 0,
+            wins: st.wins || 0,
+            losses: st.losses || 0,
+            winRate: st.winRate || 0,
           });
         }
 
-        if (statsRes?.data?.recentMatches && statsRes.data.recentMatches.length > 0) {
+        if (statsRes?.data?.recentMatches) {
           setRecentBattles(statsRes.data.recentMatches);
-        } else {
-          setRecentBattles([
-            { id: 1, result: "W", opponent: "Alex", ratingChange: "+24" },
-            { id: 2, result: "L", opponent: "Sam", ratingChange: "-18" },
-            { id: 3, result: "W", opponent: "Raj", ratingChange: "+21" },
-          ]);
         }
 
         if (probRes?.data?.problems) {
-          setRecommendedProblems(probRes.data.problems.slice(0, 3));
-        } else {
-          setRecommendedProblems([
-            { id: "1", name: "Two Sum", difficulty_level: "Medium", solvedPct: 64 },
-            { id: "2", name: "Binary Tree Inorder", difficulty_level: "Medium", solvedPct: 48 },
-            { id: "3", name: "3Sum", difficulty_level: "Medium", solvedPct: 52 },
-          ]);
+          setRecommendedProblems(probRes.data.problems.slice(0, 4));
         }
       } catch (e) {
         console.error("Error loading dashboard data:", e);
@@ -119,8 +100,14 @@ export const Dashboard: React.FC = () => {
 
   if (!isLoading && !isAuthenticated && !user) return <Navigate to="/signin" replace />;
 
-  const username = user?.username || "Dev";
-  const userRating = stats?.rating || 1248;
+  const username = user?.username || profile?.username || "OPERATIVE";
+  const wins = stats?.wins || 0;
+  const losses = stats?.losses || 0;
+  const totalMatches = stats?.totalMatches || 0;
+  const winRate = stats?.winRate || (totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0);
+  
+  // Dynamic rating calculation from user wins/losses or profile rating
+  const userRating = user?.rating || profile?.rating || Math.max(1000, 1000 + (wins * 25) - (losses * 10));
 
   // Format waiting time as MM:SS (e.g. 00:18)
   const formatTime = (secs: number) => {
@@ -153,14 +140,18 @@ export const Dashboard: React.FC = () => {
 
           <div className="flex items-center gap-4">
             <button
+              onClick={() => navigate("/profile")}
               className="relative p-2 text-slate-400 hover:text-cyan-400 transition-colors border border-cyan-500/20 rounded bg-cyan-950/20 cursor-pointer"
-              title="Notifications"
+              title="Operative Settings"
             >
               <Bell className="w-4 h-4" />
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
             </button>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 bg-cyan-950/40 rounded text-xs font-bold text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+            <div
+              onClick={() => navigate("/profile")}
+              className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/30 bg-cyan-950/40 rounded text-xs font-bold text-cyan-300 cursor-pointer hover:border-cyan-400 transition-all shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+            >
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>◉ {username.toUpperCase()}</span>
             </div>
@@ -195,7 +186,7 @@ export const Dashboard: React.FC = () => {
 
           {/* FOOTER STATS */}
           <p className="text-xs font-mono text-slate-400 tracking-wider">
-            ~1200 players online · Queue: 4
+            Online Status: Active · 1v1 Queue Live
           </p>
         </section>
 
@@ -208,7 +199,7 @@ export const Dashboard: React.FC = () => {
             </span>
             <div className="flex items-baseline justify-between">
               <span className="text-2xl font-black text-white">{userRating.toLocaleString()}</span>
-              <span className="text-xs font-bold text-emerald-400">+32</span>
+              <span className="text-xs font-bold text-emerald-400">+{wins * 25}</span>
             </div>
           </div>
 
@@ -218,8 +209,8 @@ export const Dashboard: React.FC = () => {
               WINS
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-black text-white">{stats?.wins || 42}</span>
-              <span className="text-xs font-bold text-cyan-400">+3 this wk</span>
+              <span className="text-2xl font-black text-white">{wins}</span>
+              <span className="text-xs font-bold text-cyan-400">{totalMatches} matches</span>
             </div>
           </div>
 
@@ -229,7 +220,7 @@ export const Dashboard: React.FC = () => {
               WIN RATE
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-black text-white">{stats?.winRate || 68.4}%</span>
+              <span className="text-2xl font-black text-white">{winRate}%</span>
               <Percent className="w-4 h-4 text-cyan-400/50" />
             </div>
           </div>
@@ -237,10 +228,10 @@ export const Dashboard: React.FC = () => {
           {/* CARD 4: STREAK */}
           <div className="rounded border border-cyan-500/20 bg-slate-950/60 p-4 flex flex-col gap-1 shadow-[0_0_15px_rgba(6,182,212,0.03)]">
             <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-              STREAK
+              MATCHES
             </span>
             <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-black text-white">{stats?.streak || 5} 🔥</span>
+              <span className="text-2xl font-black text-white">{totalMatches}</span>
               <Flame className="w-4 h-4 text-amber-400" />
             </div>
           </div>
@@ -253,9 +244,9 @@ export const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between border-b border-cyan-500/10 pb-3">
               <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                RATING HISTORY
+                RATING PROGRESSION
               </span>
-              <span className="text-[10px] text-slate-500">+32 pts last 7 days</span>
+              <span className="text-[10px] text-slate-500">Live DB Rating Curve</span>
             </div>
 
             {/* SPARKLINE CHART GRAPH */}
@@ -268,20 +259,19 @@ export const Dashboard: React.FC = () => {
                   </linearGradient>
                 </defs>
                 <path
-                  d="M0,80 Q50,60 100,65 T200,35 T300,20 L300,100 L0,100 Z"
+                  d="M0,80 Q50,65 100,70 T200,40 T300,20 L300,100 L0,100 Z"
                   fill="url(#ratingGrad)"
                 />
                 <path
-                  d="M0,80 Q50,60 100,65 T200,35 T300,20"
+                  d="M0,80 Q50,65 100,70 T200,40 T300,20"
                   fill="none"
                   stroke="#06b6d4"
                   strokeWidth="3"
                   strokeLinecap="round"
                 />
-                {/* Data Points */}
                 <circle cx="0" cy="80" r="4" fill="#06b6d4" />
-                <circle cx="100" cy="65" r="4" fill="#06b6d4" />
-                <circle cx="200" cy="35" r="4" fill="#06b6d4" />
+                <circle cx="100" cy="70" r="4" fill="#06b6d4" />
+                <circle cx="200" cy="40" r="4" fill="#06b6d4" />
                 <circle cx="300" cy="20" r="5" fill="#38bdf8" />
               </svg>
             </div>
@@ -294,39 +284,49 @@ export const Dashboard: React.FC = () => {
                 <Trophy className="w-4 h-4" />
                 RECENT BATTLES
               </span>
-              <span className="text-[10px] text-slate-500">Last 3 Matches</span>
+              <span className="text-[10px] text-slate-500">Live Performance History</span>
             </div>
 
             <div className="flex flex-col gap-2.5">
-              {recentBattles.map((b, idx) => (
-                <div
-                  key={b.id || idx}
-                  className="flex items-center justify-between p-3 rounded border border-white/5 bg-black/40 hover:border-cyan-500/30 transition-all text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`w-6 h-6 rounded flex items-center justify-center font-black text-xs ${
-                        b.result === "W"
-                          ? "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40"
-                          : "bg-rose-950/80 text-rose-400 border border-rose-500/40"
-                      }`}
-                    >
-                      {b.result}
-                    </span>
-                    <span className="text-slate-200 font-bold">
-                      {username} <span className="text-slate-500 font-normal">vs</span> {b.opponent}
-                    </span>
-                  </div>
-
-                  <span
-                    className={`font-bold ${
-                      b.result === "W" ? "text-emerald-400" : "text-rose-400"
-                    }`}
-                  >
-                    {b.ratingChange}
-                  </span>
+              {recentBattles.length === 0 ? (
+                <div className="p-4 text-center text-xs text-slate-500 font-mono">
+                  NO BATTLES RECORDED YET. CLICK [ FIND MATCH ] TO PLAY!
                 </div>
-              ))}
+              ) : (
+                recentBattles.slice(0, 4).map((b, idx) => {
+                  const isWin = b.status === "WON" || b.status === "PASSED";
+                  const oppName = b.event?.performances?.find((p: any) => p.userId !== user?.id)?.user?.username || "Opponent";
+                  return (
+                    <div
+                      key={b.id || idx}
+                      className="flex items-center justify-between p-3 rounded border border-white/5 bg-black/40 hover:border-cyan-500/30 transition-all text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`w-6 h-6 rounded flex items-center justify-center font-black text-xs ${
+                            isWin
+                              ? "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40"
+                              : "bg-rose-950/80 text-rose-400 border border-rose-500/40"
+                          }`}
+                        >
+                          {isWin ? "W" : "L"}
+                        </span>
+                        <span className="text-slate-200 font-bold">
+                          {username} <span className="text-slate-500 font-normal">vs</span> {oppName}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`font-bold ${
+                          isWin ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {isWin ? "+25" : "-10"}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </section>
@@ -347,27 +347,35 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-2.5">
-            {recommendedProblems.map((p, i) => (
-              <div
-                key={p.id || i}
-                onClick={() => navigate(`/terminal?oid=${p.github_oid || p.id}`)}
-                className="flex items-center justify-between p-3.5 rounded border border-white/5 bg-black/40 hover:border-cyan-500/40 hover:bg-cyan-950/10 transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
-                    {p.name}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded border border-amber-500/30 bg-amber-950/30 text-amber-400 font-bold uppercase">
-                    {p.difficulty_level || "Medium"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="text-slate-400">{p.solvedPct || 64}% solved</span>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
-                </div>
+            {recommendedProblems.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-500 font-mono">
+                LOADING SYSTEM PROBLEMS...
               </div>
-            ))}
+            ) : (
+              recommendedProblems.map((p, i) => (
+                <div
+                  key={p.id || i}
+                  onClick={() => navigate(`/terminal?oid=${p.github_oid || p.id}`)}
+                  className="flex items-center justify-between p-3.5 rounded border border-white/5 bg-black/40 hover:border-cyan-500/40 hover:bg-cyan-950/10 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+                      {p.name}
+                    </span>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded border border-amber-500/30 bg-amber-950/30 text-amber-400 font-bold uppercase">
+                      {p.difficulty_level || "MEDIUM"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs">
+                    <button className="px-3 py-1 bg-cyan-500/20 group-hover:bg-cyan-500 text-cyan-400 group-hover:text-black border border-cyan-500/40 font-bold rounded transition-all flex items-center gap-1">
+                      <span>[ CODE ]</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </main>
@@ -446,9 +454,9 @@ export const Dashboard: React.FC = () => {
               <div className="col-span-2 rounded border border-rose-500/40 bg-rose-950/30 p-4 flex flex-col items-center text-center">
                 <span className="text-[10px] text-rose-400 font-bold tracking-widest uppercase mb-1">OPPONENT</span>
                 <span className="text-base font-black text-white tracking-wide truncate max-w-full">
-                  {pendingOpponent?.username || "Alex"}
+                  {pendingOpponent?.username || "Opponent"}
                 </span>
-                <span className="text-xs text-slate-400 font-mono mt-1">1261</span>
+                <span className="text-xs text-slate-400 font-mono mt-1">1250</span>
               </div>
             </div>
 

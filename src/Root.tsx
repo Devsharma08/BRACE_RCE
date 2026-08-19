@@ -22,6 +22,9 @@ import Profile from './pages/Profile.tsx'
 import CreateRoom from './pages/CreateRoom.tsx'
 import { Dashboard } from './pages/Dashboard.tsx'
 import Lobby from './pages/Lobby.tsx'
+import { Problems } from './pages/Problems.tsx'
+import { Analytics } from './pages/Analytics.tsx'
+import { Settings } from './pages/Settings.tsx'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
@@ -58,9 +61,13 @@ export const Root = () => {
               <Route path="/ds/:slug" element={<DataStructureDetail />} />
               <Route path="/friends" element={<FriendsDashboard/>} />
               <Route path="/profile" element={<Profile/>} />
+              <Route path="/settings" element={<Settings/>} />
               <Route path="/battle/:roomId" element={<Battle />} />
               <Route path="/rooms/create" element={<CreateRoom/>} />
               <Route path="/lobby" element={<Lobby/>} />
+              <Route path="/problems" element={<Problems/>} />
+              <Route path="/analytics" element={<Analytics/>} />
+              <Route path="/leaderboard" element={<Analytics/>} />
 
               <Route
                 path="terminal"
