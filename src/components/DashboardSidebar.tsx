@@ -3,9 +3,7 @@ import {
   LayoutDashboard,
   Swords,
   Code2,
-  Trophy,
   User,
-  Settings,
   Zap,
 } from "lucide-react";
 import { SidebarLink } from "./SpanbarLink";
@@ -38,8 +36,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
           </div>
         </div>
 
-        {/* PRIMARY NAVIGATION */}
-        <nav className="flex flex-col gap-1">
+        {/* NAVIGATION LINKS */}
+        <nav className="flex flex-col gap-1.5">
           <SidebarLink
             icon={<LayoutDashboard className="w-4 h-4" />}
             to="/dashboard"
@@ -56,26 +54,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
             label="Problems"
           />
           <SidebarLink
-            icon={<Trophy className="w-4 h-4" />}
-            to="/analytics"
-            label="Leaderboard"
-          />
-        </nav>
-
-        {/* DIVIDER */}
-        <div className="h-[1px] w-full bg-cyan-500/10 my-1" />
-
-        {/* SECONDARY NAVIGATION */}
-        <nav className="flex flex-col gap-1">
-          <SidebarLink
             icon={<User className="w-4 h-4" />}
             to="/profile"
             label="Profile"
-          />
-          <SidebarLink
-            icon={<Settings className="w-4 h-4" />}
-            to="/profile"
-            label="Settings"
           />
         </nav>
       </div>
