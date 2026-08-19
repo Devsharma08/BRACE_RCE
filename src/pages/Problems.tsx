@@ -29,8 +29,10 @@ export const Problems: React.FC = () => {
   useEffect(() => {
     const fetchProblems = async () => {
       try {
-        const res = await api.get("/problem/all");
-        if (res.data?.problems) {
+        const res = await api.get("/problems/system")
+          .catch(() => api.get("/problems/all"))
+          .catch(() => api.get("/problem/all"));
+        if (res?.data?.problems) {
           setProblems(res.data.problems);
         }
       } catch (err) {

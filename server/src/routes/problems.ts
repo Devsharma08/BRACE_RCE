@@ -8,6 +8,7 @@ problemsRouter.use(authentication);
 
 // Fetching Problems
 problemsRouter.get("/system", problemController.getSystemProblems);
+problemsRouter.get("/all", problemController.getSystemProblems);
 problemsRouter.get("/custom", problemController.getMyCustomProblems);
 
 // Creating Problems

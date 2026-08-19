@@ -37,6 +37,7 @@ export const createApp = (): Express => {
   app.use("/api/profile", profileRouter);
   app.use("/api/rooms", roomsRouter);
   app.use("/api/problems", problemsRouter);
+  app.use("/api/problem", problemsRouter);
 
   
   app.get("/health", (_req: Request, res: Response) => {
