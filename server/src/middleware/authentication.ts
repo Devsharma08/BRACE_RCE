@@ -1,7 +1,12 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
-const JWT_SECRET = process.env.JWT_SECRET || "very-strong-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET as string;
+if(!JWT_SECRET && process.env.NODE_ENV==="production"){
+    throw new Error("JWT_SECRET is not defined in production mode");
+}
+
+const SECRET_KEY = JWT_SECRET || "development-only-secret-key";
 
 // Extend Express Request
 export interface AuthRequest extends Request {

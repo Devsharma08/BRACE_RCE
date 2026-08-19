@@ -1,6 +1,6 @@
-import type {AuthRequest} from "../middleware/authentication";
-import type {Response} from "express";
-import {prisma} from "../Lib/prisma.js";
+import type { AuthRequest } from "../middleware/authentication";
+import type { Response } from "express";
+import { prisma } from "../Lib/prisma.js";
 
 class Profile {
 
@@ -22,55 +22,31 @@ class Profile {
             }
 
             return res.status(200).json({ status: "success", data: user });
-        }catch(err){
+        } catch (err) {
             return res.status(500).json({ status: "error", message: "Internal server error" });
         }
-    }
-
-    // POST UPDATE PROFILE
-    async updateProfile(req:AuthRequest,res:Response){
-        const {username,bio,avatarUrl} = req.body;
-        try {
-            const user = await prisma.user.update({
-                where:{
-                    id:req.userId as string
-                },
-                data:{
-                    username:username,
-                    // bio:bio, // Note: 'bio' does not exist in schema.prisma yet!
-                    avatarUrl:avatarUrl
-                }
-            });
-
-            return res.status(200).json({ status: "success user profile updated", user });
-
-        } catch (error) {
-            console.log("Auth error: ",error);
-            return res.status(500).json({ status: "error", message: "Internal server error" });
-        }
-        
     }
 
     // DELETE PROFILE
-    async deleteProfile(req:AuthRequest,res:Response){
+    async deleteProfile(req: AuthRequest, res: Response) {
         try {
             await prisma.user.delete({
-                where:{
-                    id:req.userId as string
+                where: {
+                    id: req.userId as string
                 }
             })
             return res.status(200).json({ status: "success user profile deleted", });
         } catch (error) {
-            console.log("Auth error: ",error);
+            console.log("Auth error: ", error);
             return res.status(500).json({ status: "error", message: "Internal server error" });
         }
     }
 
     // GET PROFILE STATISTICS
-    async getProfileStatistics(req:AuthRequest,res:Response){
+    async getProfileStatistics(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            
+
             // Get all performance records for this user
             const performances = await prisma.userPersonalPerformance.findMany({
                 where: { userId },
@@ -96,7 +72,7 @@ class Profile {
             const wins = performances.filter(p => p.status === 'WON' || p.status === 'PASSED').length;
             const losses = performances.filter(p => p.status === 'LOST' || p.status === 'FAILED' || p.status === 'SURRENDER').length;
             const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
-            
+
             // Calculate total time spent (in seconds/minutes) based on timeTakenMs
             const totalTimeMs = performances.reduce((acc, curr) => acc + (curr.timeTakenMs || 0), 0);
 
@@ -121,13 +97,13 @@ class Profile {
     async createCustomProblem(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const { 
-                name, 
-                problem_definition, 
-                problem_hints, 
+            const {
+                name,
+                problem_definition,
+                problem_hints,
                 difficulty_level,
-                test_cases,     
-                code_snippets   
+                test_cases,
+                code_snippets
             } = req.body;
 
             // Map the difficulty to specific time limits (in milliseconds)
@@ -150,7 +126,7 @@ class Profile {
                     timeLimitMs, // <-- Saving the calculated time limit here
                     isCustom: true,
                     creatorId: userId,
-                    
+
                     test_cases: {
                         create: test_cases.map((tc: any) => ({
                             input: tc.input,
@@ -176,6 +152,29 @@ class Profile {
             return res.status(500).json({ message: "Server error" });
         }
     }
+
+    // POST UPDATE PROFILE
+    async updateProfile(req: AuthRequest, res: Response) {
+        const { username, bio, avatarUrl } = req.body;
+        try {
+            const user = await prisma.user.update({
+                where: {
+                    id: req.userId as string
+                },
+                data: {
+                    username: username,
+                    bio: bio ?? null,
+                    avatarUrl: avatarUrl
+                }
+            });
+
+            return res.status(200).json({ status: "success", message: "User profile updated", user });
+        } catch (error) {
+            console.error("Auth error: ", error);
+            return res.status(500).json({ status: "error", message: "Internal server error" });
+        }
+    }
+
 
 }
 

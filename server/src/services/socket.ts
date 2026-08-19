@@ -19,6 +19,7 @@ const LOBBY_TTL_MS = 15 * 60 * 1000; // 15 min constraint
 
 const activeLobbies = new Map<string, CustomLobby>();
 const onlineUsers = new Map<string, string>();
+const activeSearchIntervals = new Map<string,NodeJS.Timeout>();
 
 
 // quick helper function to generate a 6-digit code
@@ -185,6 +186,11 @@ export const initSocketServer = (io: Server) => {
         // PVP matching events
         socket.on("join_matchmaking", async (payload: { difficulty: Level | string, waitingSeconds?: number } | Level | string) => {
             try {
+
+                if(activeSearchIntervals.has(socket.id)){
+                    clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
+                    activeSearchIntervals.delete(socket.id);
+                }
                 // Compatibility for both old format and new format with waitingSeconds
                 const rawDifficulty = typeof payload === "string" ? payload : (payload?.difficulty || "MEDIUM");
                 const difficulty: Level = (rawDifficulty === "ANY" || !["EASY", "MEDIUM", "HARD"].includes(rawDifficulty))
@@ -224,16 +230,19 @@ export const initSocketServer = (io: Server) => {
                         const selfQueue = await prisma.matchmakingQueue.findUnique({ where: { id: queueEntry.id } });
                         if (!selfQueue || selfQueue.status !== "WAITING") {
                             clearInterval(searchInterval);
+                            activeSearchIntervals.delete(socket.id);
                             return;
                         }
 
                         // auto-cancel after 90 seconds timeout
                         if(currentWaitingSeconds >= 90){
                             clearInterval(searchInterval);
+                            activeSearchIntervals.delete(socket.id);
                             await prisma.matchmakingQueue.update({
                                 where: { id: queueEntry.id },
                                 data: { status: "CANCELLED" }
                             })
+
                             socket.emit("matchmaking_timeout",{
                                 message:"No match found in queue limit. Please try again. "
                             });
@@ -316,6 +325,8 @@ export const initSocketServer = (io: Server) => {
                         console.error("Matchmaking interval error:", e);
                     }
                 }, 3000);
+
+                activeSearchIntervals.set(socket.id,searchInterval);
 
             } catch (error) {
                 console.error("Matchmaking error:", error);
@@ -847,6 +858,10 @@ export const initSocketServer = (io: Server) => {
 
             socket.on("disconnect", () => {
                 onlineUsers.delete(userId);
+                if(activeSearchIntervals.has(socket.id)){
+                    clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
+                    activeSearchIntervals.delete(socket.id);
+                }
                 io.emit("user_online_status", {
                     userId, status: "OFFLINE"
                 })

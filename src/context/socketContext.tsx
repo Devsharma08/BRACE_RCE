@@ -87,7 +87,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000", { withCredentials: true });
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const newSocket = io(socketUrl, { withCredentials: true });
     setSocket(newSocket);
 
     newSocket.on("custom_room_created", (data: CustomLobbyState) => {
