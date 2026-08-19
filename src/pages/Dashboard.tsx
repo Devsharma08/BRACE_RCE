@@ -67,10 +67,7 @@ export const Dashboard: React.FC = () => {
         const [profRes, statsRes, probRes] = await Promise.all([
           api.get("/profile").catch(() => null),
           api.get("/profile/stats").catch(() => null),
-          api.get("/problems/system")
-            .catch(() => api.get("/problems/all"))
-            .catch(() => api.get("/problem/all"))
-            .catch(() => null),
+          api.get("/problems/system").catch(() => null),
         ]);
 
         if (profRes?.data?.data) {
