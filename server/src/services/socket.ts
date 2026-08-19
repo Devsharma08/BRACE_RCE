@@ -183,15 +183,18 @@ export const initSocketServer = (io: Server) => {
 
 
         // PVP matching events
-        socket.on("join_matchmaking", async (payload: { difficulty: Level, waitingSeconds?: number } | Level) => {
+        socket.on("join_matchmaking", async (payload: { difficulty: Level | string, waitingSeconds?: number } | Level | string) => {
             try {
-                // console.log("JOIN MATCHMAKING RAW PAYLOAD:", JSON.stringify(payload));
                 // Compatibility for both old format and new format with waitingSeconds
-                const difficulty = typeof payload === "string" ? payload : payload.difficulty;
-                console.log("PARSED DIFFICULTY:", JSON.stringify(difficulty));
+                const rawDifficulty = typeof payload === "string" ? payload : (payload?.difficulty || "MEDIUM");
+                const difficulty: Level = (rawDifficulty === "ANY" || !["EASY", "MEDIUM", "HARD"].includes(rawDifficulty))
+                    ? "MEDIUM"
+                    : (rawDifficulty as Level);
+
+                console.log("MATCHMAKING JOINED - USER:", userId, "DIFFICULTY:", difficulty);
                 const initialWaitingSeconds = typeof payload === "object" && payload.waitingSeconds ? payload.waitingSeconds : 0;
 
-                // cancel any existing waiting queue enteries for this user before queueing 
+                // cancel any existing waiting queue entries for this user before queueing 
                 await prisma.matchmakingQueue.updateMany({
                     where: {
                         userId,
