@@ -123,7 +123,7 @@ const OutputPanel = ({
                 <button className="hover:bg-white/5 border border-white/5 p-1.5 rounded-none text-slate-400 hover:text-slate-200 transition-colors cursor-pointer" title="Maximize output panel" onClick={handleMaximizeOutput}>
                   <Maximize2 className="h-3.5 w-3.5" />
                 </button>
-                <label className={`flex w-fit cursor-pointer items-center gap-2 rounded-none border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 ${
+                {/* <label className={`flex w-fit cursor-pointer items-center gap-2 rounded-none border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 ${
                   customInputActive 
                     ? "border-cyan-500/30 bg-cyan-950/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.05)]" 
                     : "border-white/5 bg-transparent text-slate-500 hover:text-slate-300 hover:border-white/10"
@@ -136,14 +136,14 @@ const OutputPanel = ({
                     checked={customInputActive}
                     onChange={() => setCustomInputActive(!customInputActive)}
                   />
-                </label>
+                </label> */}
               </div>
             ) : null}
           </div>
         </div>
 
         {/* Custom Input Textarea */}
-        {isOutputActive && customInputActive ? (
+        {/* {isOutputActive && customInputActive ? (
           <div className="mb-4 flex flex-col gap-2">
             <textarea
               value={customInput}
@@ -157,7 +157,7 @@ const OutputPanel = ({
               rows={4}
             />
           </div>
-        ) : null}
+        ) : null} */}
 
         {/* Execution Output Panel */}
         {isExecuting ? (
