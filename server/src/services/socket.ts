@@ -540,6 +540,8 @@ export const initSocketServer = (io: Server) => {
                     data: { status: 'IN_PROGRESS', startedAt, finishedAt }
                 });
 
+                io.to(roomCode).emit('battle_starting', { countdownSeconds: 3 });
+
                 io.to(roomCode).emit('battle_state', {
                     startedAt,
                     status: 'IN_PROGRESS',

@@ -279,8 +279,17 @@ export const Battle = () => {
 
     socket.emit("join_battle", roomId);
 
+    socket.on("battle_starting", (data: { countdownSeconds?: number }) => {
+      setCountDown(data?.countdownSeconds || 3);
+    });
+
     socket.on("battle_state", (data) => {
-      setBattleState(data);
+      setBattleState((prev) => {
+        if (prev.status === "WAITING" && data.status === "IN_PROGRESS") {
+          setCountDown(3);
+        }
+        return data;
+      });
       if (data.remainingSeconds !== undefined) {
         setLocalTimeRemaining(data.remainingSeconds);
       }
@@ -310,11 +319,27 @@ export const Battle = () => {
 
     return () => {
       socket.emit("leave_room", roomId);
+      socket.off("battle_starting");
       socket.off("battle_state");
       socket.off("receive_battle_message");
       socket.off("battle_update");
     };
   }, [socket, roomId]);
+
+  // Handle 3-second Get Ready Countdown before event begins
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountDown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   // Handle Timers
   useEffect(() => {
@@ -343,6 +368,7 @@ export const Battle = () => {
 
   // Handlers
   const handleStartOperation = () => {
+    setCountDown(3);
     socket?.emit("start_event", roomId);
   };
 
@@ -516,13 +542,26 @@ export const Battle = () => {
   return (
     <div className="flex w-full h-screen bg-[#050505] overflow-hidden relative">
       {countdown > 0 && (
-        <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md">
-          <h2 className="text-2xl font-bold text-cyan-400 mb-4 tracking-[0.5em]">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-fade-in select-none">
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/40 text-cyan-400 font-mono text-xs tracking-[0.3em] uppercase mb-6 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            OPERATIVE ALERT // BATTLE COMMENCING
+          </div>
+          <h2 className="text-3xl font-black text-white font-mono mb-6 tracking-[0.4em] uppercase">
             GET READY
           </h2>
-          <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-cyan-500 animate-pulse drop-shadow-[0_0_30px_rgba(34,211,238,0.8)]">
-            {countdown}
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
+            <div
+              key={countdown}
+              className="text-9xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white via-cyan-300 to-cyan-500 animate-bounce drop-shadow-[0_0_50px_rgba(34,211,238,0.9)]"
+            >
+              {countdown}
+            </div>
           </div>
+          <p className="mt-8 font-mono text-xs text-cyan-400/70 tracking-widest uppercase">
+            PREPARE YOUR EDITOR // INITIALIZING WORKSPACE
+          </p>
         </div>
       )}
 
