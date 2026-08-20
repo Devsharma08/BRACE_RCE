@@ -1,6 +1,15 @@
-import { describe, it, test, expect } from "@jest/globals";
-import { prepareFinalCode } from "./codeExecution.js";
+import { describe, it, test, expect, jest } from "@jest/globals";
 
+// Mock Prisma client to avoid ESM import.meta issues during test execution
+jest.mock("../Lib/prisma.js", () => ({
+  prisma: {
+    problem: {
+      findUnique: jest.fn(),
+    },
+  },
+}));
+
+import { prepareFinalCode } from "./codeExecution.js";
 
 describe("codeExecution - prepareFinalCode wrapper generation across languages", () => {
 
@@ -167,7 +176,7 @@ public:
     while (head) {
         if (head->val < x) { less->next = head; less = less->next; }
         else { greater->next = head; greater = greater->next; }
-        head = head->next;
+        head = head.next;
     }
     greater->next = NULL;
     less->next = greaterHead.next;
@@ -184,9 +193,6 @@ public:
     });
   });
 });
-
-
-
 
 describe("Polyglot Code Execution Service", () => {
   test("should inject JavaScript TreeNode helper when processing tree problems", () => {

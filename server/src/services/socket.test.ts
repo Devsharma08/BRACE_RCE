@@ -1,4 +1,6 @@
-import { Level } from "../generated/prisma/client.js";
+import { describe, test, expect } from "@jest/globals";
+
+type Level = "EASY" | "MEDIUM" | "HARD";
 
 // Progressive difficulty expansion logic mirroring socket server
 function getAllowedDifficulties(preferred: Level, waitingSeconds: number): Level[] {

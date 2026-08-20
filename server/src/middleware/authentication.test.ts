@@ -49,4 +49,17 @@ describe("Authentication Middleware", () => {
       message: "Token has expired",
     });
   });
+
+  test("should return 403 if token signature is invalid", () => {
+    const invalidToken = jwt.sign({ userId: "user-123" }, "wrong-secret-key");
+    mockRequest.cookies = { token: invalidToken };
+
+    authentication(mockRequest as any, mockResponse, nextFunction);
+    expect(mockResponse.status).toHaveBeenCalledWith(403);
+    expect(mockResponse.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "error",
+      })
+    );
+  });
 });
