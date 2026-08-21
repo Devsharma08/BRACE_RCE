@@ -18,7 +18,7 @@ export const createApp = (): Express => {
   app.set("trust proxy", 1);
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
-  const allowedOrigins = ["http://localhost:5173", "http://localhost:3000"];
+  const allowedOrigins = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"];
   // @ts-ignore - Bypass faulty TS definition for cors in ESM
   app.use((cors as any)({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {

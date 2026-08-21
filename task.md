@@ -7,10 +7,10 @@
 - `[x]` **Matchmaking Filters:** Add options to filter by difficulty or topic/tags.
 - `[x]` **Battle Timer:** Add a countdown timer to the Battle Arena.
 
-## Phase 1.5: UI Polish & Layout Refining (CURRENT)
-- `[ ]` **Collapsible Problem Panel:** Redesign the Problem Description panel into a sleek, minimizable/maximizable side-drawer (with slide animations) or a fully resizable pane. This panel will house the problem text and the [ SUBMIT ] / [ SURRENDER ] buttons.
-- `[ ]` **Battle HUD Redesign:** Clean up the header to beautifully display the Timer and the Opponent's live progress/status without cluttering the screen.
-- `[ ]` **Global UI Glitch Fixes:** Fix flexbox overflows, ensure proper overlay z-indexes, and guarantee a pristine fullscreen coding environment.
+## Phase 1.5: UI Polish & Layout Refining
+- `[x]` **Collapsible Problem Panel:** Redesign the Problem Description panel into a sleek, minimizable/maximizable side-drawer (with slide animations) or a fully resizable pane. This panel will house the problem text and the [ SUBMIT ] / [ SURRENDER ] buttons.
+- `[x]` **Battle HUD Redesign:** Clean up the header to beautifully display the Timer and the Opponent's live progress/status without cluttering the screen.
+- `[x]` **Global UI Glitch Fixes:** Fix flexbox overflows, ensure proper overlay z-indexes, and guarantee a pristine fullscreen coding environment.
 
 ## Phase 2: Custom Games & Friends
 - `[ ]` **Friends System:** Allow users to add/remove friends.

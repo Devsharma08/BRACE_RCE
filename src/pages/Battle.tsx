@@ -170,8 +170,11 @@ export const Battle = () => {
 
   const {
     outputHeight,
+    sidebarWidth,
     setOutputHeight,
+    setSidebarWidth,
     startOutputDragging,
+    startSidebarDragging,
   } = useTerminalLayout();
 
   const handleRunSingleTestCase = async (index: number) => {
@@ -567,10 +570,11 @@ export const Battle = () => {
 
       {/* LEFT PANEL */}
       <div
-        className={`relative z-20 h-full transition-all duration-300 shrink-0 ${isPanelOpen ? "w-[450px]" : "w-0"}`}
+        style={{ width: isPanelOpen ? `${sidebarWidth}px` : "0px" }}
+        className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
-        <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden">
-          <div className="flex flex-col h-full w-[450px]">
+        <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+          <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             {/* HOST HEADER */}
             <div className="p-4 border-b border-cyan-500/20 bg-black/40">
               {battleState.status === "WAITING" && (
@@ -669,7 +673,7 @@ export const Battle = () => {
                     </span>
                   </div>
                   <div
-                    className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none"
+                    className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none break-words"
                     dangerouslySetInnerHTML={{
                       __html:
                         activeProblem?.problem_definition || "No definition.",
@@ -701,7 +705,7 @@ export const Battle = () => {
                                   <span className="text-cyan-600 block mb-1">
                                     Input:
                                   </span>
-                                  <pre className="text-slate-300 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap">
+                                  <pre className="text-slate-300 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">
                                     {tc.input}
                                   </pre>
                                 </div>
@@ -709,7 +713,7 @@ export const Battle = () => {
                                   <span className="text-emerald-600 block mb-1">
                                     Expected Output:
                                   </span>
-                                  <pre className="text-emerald-400 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap">
+                                  <pre className="text-emerald-400 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">
                                     {tc.expectedOutput}
                                   </pre>
                                 </div>
@@ -761,6 +765,17 @@ export const Battle = () => {
               )}
             </div>
           </div>
+
+          {/* MOUSE DRAG RESIZE HANDLE */}
+          {isPanelOpen && (
+            <div
+              onMouseDown={startSidebarDragging}
+              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-cyan-400/50 active:bg-cyan-400 z-40 transition-colors group flex items-center justify-center"
+              title="Drag to resize panel"
+            >
+              <div className="w-0.5 h-12 bg-cyan-500/40 group-hover:bg-cyan-300 rounded" />
+            </div>
+          )}
         </div>
 
         <button
@@ -858,8 +873,8 @@ export const Battle = () => {
           executingMode={isSubmitting ? "RUN" : null}
           language={language}
           setLanguage={handleLanguageChange}
-          sidebarWidth={450}
-          setSidebarWidth={() => {}}
+          sidebarWidth={sidebarWidth}
+          setSidebarWidth={setSidebarWidth}
           setCode={setCode}
           onRun={handleRunCode}
           onSubmit={handleRunCode}
