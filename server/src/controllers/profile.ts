@@ -108,7 +108,7 @@ class Profile {
 
             // Map the difficulty to specific time limits (in milliseconds)
             // EASY: 15 mins, MEDIUM: 20 mins, HARD: 30 mins
-            const diffLevel = difficulty_level || Level.MEDIUM;
+            const diffLevel = difficulty_level || "MEDIUM";
             const timeLimitMap: Record<string, number> = {
                 "EASY": 15 * 60 * 1000,
                 "MEDIUM": 20 * 60 * 1000,

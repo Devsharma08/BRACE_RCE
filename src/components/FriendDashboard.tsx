@@ -178,7 +178,7 @@ export default function FriendsDashboard() {
     try {
       await api.post("/friends/request", { targetUserId });
       alert("Request Sent!");
-    } catch (e) {
+    } catch (e: any) {
       alert(e.response?.data?.message || "Failed to send request");
     }
   };
@@ -428,7 +428,7 @@ export default function FriendsDashboard() {
                 {activeTab?.username}
               </h3>
               <button
-                onClick={() => sendChallenge(activeTab.id)}
+                onClick={() => activeTab && sendChallenge(activeTab.id)}
                 className="group flex items-center gap-2 px-6 py-3 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tracking-widest rounded-xl transition-all shadow-[0_0_15px_rgba(244,63,94,0.1)] hover:shadow-[0_0_25px_rgba(244,63,94,0.3)]"
               >
                 <Swords className="w-4 h-4" /> [ INITIATE BATTLE ]
@@ -438,10 +438,10 @@ export default function FriendsDashboard() {
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col ${msg.senderId === "ME" || msg.senderId !== activeTab.id ? "items-end" : "items-start"}`}
+                  className={`flex flex-col ${msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id) ? "items-end" : "items-start"}`}
                 >
                   <div
-                    className={`px-4 py-2 rounded-2xl max-w-[70%] font-mono text-sm ${msg.senderId === "ME" || msg.senderId !== activeTab.id ? "bg-cyan-900/40 border border-cyan-500/30 text-cyan-100" : "bg-slate-800/50 border border-slate-700 text-slate-300"}`}
+                    className={`px-4 py-2 rounded-2xl max-w-[70%] font-mono text-sm ${msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id) ? "bg-cyan-900/40 border border-cyan-500/30 text-cyan-100" : "bg-slate-800/50 border border-slate-700 text-slate-300"}`}
                   >
                     {msg.content}
                   </div>

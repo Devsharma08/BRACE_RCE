@@ -107,7 +107,7 @@ export const Dashboard: React.FC = () => {
   const winRate = stats?.winRate || (totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0);
   
   // Dynamic rating calculation from user wins/losses or profile rating
-  const userRating = user?.rating || profile?.rating || Math.max(1000, 1000 + (wins * 25) - (losses * 10));
+  const userRating = (user as any)?.rating || profile?.rating || Math.max(1000, 1000 + (wins * 25) - (losses * 10));
 
   // Format waiting time as MM:SS (e.g. 00:18)
   const formatTime = (secs: number) => {

@@ -133,10 +133,10 @@ class Rooms {
                 create: {
                     userId,
                     templateEventId: template.id,
-                    subscribedVersion: template.version
+                    subscribedVersion: template.version ?? 1
                 },
                 update: {
-                    subscribedVersion: template.version
+                    subscribedVersion: template.version ?? 1
                 }
             });
 
@@ -224,7 +224,7 @@ class Rooms {
     async deleteEvent(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const { eventId } = req.params; // Grabbing ID from URL parameter
+            const eventId = req.params.eventId as string; // Grabbing ID from URL parameter
 
             const event = await prisma.event.findUnique({ where: { id: eventId } });
             if (!event || event.hostId !== userId) {
@@ -270,7 +270,7 @@ class Rooms {
     // GET LIVE ROOM BY CODE OR ID
     async getLiveRoom(req: AuthRequest, res: Response) {
         try {
-            const { roomId } = req.params;
+            const roomId = req.params.roomId as string;
             let event;
 
             if (roomId.startsWith("room-")) {

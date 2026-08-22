@@ -255,7 +255,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const leaveCustomMatch = () => {
-    if (!customLobby?.isHost)
+    if (customLobby && !customLobby.isHost)
       socket?.emit("leave_custom_room", customLobby.roomCode);
     else if (customLobby?.isHost)
       socket?.emit("delete_custom_room", customLobby.roomCode);

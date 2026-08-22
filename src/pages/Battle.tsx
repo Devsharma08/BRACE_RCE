@@ -287,7 +287,7 @@ export const Battle = () => {
     });
 
     socket.on("battle_state", (data) => {
-      setBattleState((prev) => {
+      setBattleState((prev: any) => {
         if (prev.status === "WAITING" && data.status === "IN_PROGRESS") {
           setCountDown(3);
         }
@@ -346,10 +346,10 @@ export const Battle = () => {
 
   // Handle Timers
   useEffect(() => {
-    if (localTimeRemaining <= 0) return;
+    if (localTimeRemaining === null || localTimeRemaining <= 0) return;
     const timer = setInterval(() => {
       setLocalTimeRemaining((prev) => {
-        if (prev <= 1) {
+        if (prev === null || prev <= 1) {
           clearInterval(timer);
           setBattleResult("LOST");
           setIsBattleMenuOpen(true);

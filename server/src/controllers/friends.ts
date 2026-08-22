@@ -22,7 +22,7 @@ class Friends {
     async getMessages(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
-            const friendId = req.params.friendId;
+            const friendId = req.params.friendId as string;
 
             const messages = await prisma.message.findMany({
                 where: {
@@ -216,7 +216,7 @@ class Friends {
     async deleteFriend(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
-            const targetId = req.params.id; 
+            const targetId = req.params.id as string; 
             
             // Wipe out their entire chat history
             await prisma.message.deleteMany({

@@ -403,7 +403,7 @@ const Terminal = () => {
 
   const handleDeleteLocalFile = useCallback((oid: string) => {
     localStorage.removeItem(getLocalStorageKey(oid));
-    setFilesData((prev) => prev.filter((f) => f.oid !== oid));
+    setFilesData(filesData.filter((f) => f.oid !== oid));
   }, [setFilesData]);
 
   const activeFileName = selectedFileName || fileData?.name || "Problem Workspace";

@@ -1,4 +1,4 @@
-import {useContext,createContext,useEffect,useState,ReactNode} from 'react'
+import {useContext,createContext,useEffect,useState, type ReactNode} from 'react'
 import { api } from '../config/api'
 
 interface User{
