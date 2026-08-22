@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "../context/socketContext";
 import {
   Swords,
@@ -52,7 +52,6 @@ export default function FriendsDashboard() {
     "FRIENDS" | "SEARCH" | "REQUESTS" | "BLOCK"
   >("FRIENDS");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Friend[]>([]);
 
   const { data: friends = [], refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
@@ -129,10 +128,21 @@ export default function FriendsDashboard() {
     }
   };
 
+  const queryClient = useQueryClient();
+
+  const { data: searchResults = [] } = useQuery<Friend[]>({
+    queryKey: ["friend-search", searchQuery],
+    enabled: Boolean(searchQuery.trim()),
+    queryFn: async () => {
+      const res = await api.get(`/friends/search?q=${searchQuery}`);
+      return res.data.user || [];
+    },
+  });
+
   const handleRejectRequest = async (requestId: string) => {
     try {
       await api.post("/friends/reject", { requestId });
-      fetchRequests();
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
     } catch (error) {
       console.error(error);
     }
@@ -141,8 +151,9 @@ export default function FriendsDashboard() {
   const handleBlockRequest = async (targetUserId: string) => {
     try {
       await api.post("/friends/block", { targetUserId });
-      fetchRequests();
-      getBlockedUsers();
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
+      queryClient.invalidateQueries({ queryKey: ["friends-list"] });
       alert("User has been blocked.");
     } catch (e) {
       console.error(e);
@@ -152,8 +163,8 @@ export default function FriendsDashboard() {
   const unblockUser = async (targetUserId: string) => {
     try {
       await api.post("/friends/unblock", { targetUserId });
-      fetchRequests(); // Refresh requests list
-      getBlockedUsers(); // Refresh the blocked users list so they disappear from UI
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
       alert("User has been unblocked.");
     } catch (e) {
       console.error(e);
@@ -161,20 +172,14 @@ export default function FriendsDashboard() {
   };
 
   // --- NEW ACTIONS ---
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    try {
-      const res = await api.get(`/friends/search?q=${searchQuery}`);
-      setSearchResults(res.data.user);
-    } catch (e) {
-      console.error(e);
-    }
   };
 
   const sendRequest = async (targetUserId: string) => {
     try {
       await api.post("/friends/request", { targetUserId });
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       alert("Request Sent!");
     } catch (e: any) {
       alert(e.response?.data?.message || "Failed to send request");
@@ -184,8 +189,8 @@ export default function FriendsDashboard() {
   const handleAcceptRequest = async (requestId: string, senderId: string) => {
     try {
       await api.post("/friends/accept", { requestId, senderId });
-      fetchRequests();
-      fetchFriends();
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["friends-list"] });
       setLeftPaneMode("FRIENDS");
     } catch (e) {
       console.error(e);
@@ -197,7 +202,7 @@ export default function FriendsDashboard() {
     try {
       await api.delete(`/friends/remove/${targetId}`);
       if (activeTab?.id === targetId) setActiveTab(null);
-      fetchFriends();
+      queryClient.invalidateQueries({ queryKey: ["friends-list"] });
     } catch (e) {
       console.error(e);
     }
@@ -307,12 +312,6 @@ export default function FriendsDashboard() {
                     onClick={() => {
                       if (!user.requestSent) {
                         sendRequest(user.id);
-                        // Optimistically update UI so it changes immediately
-                        setSearchResults((prev) =>
-                          prev.map((u) =>
-                            u.id === user.id ? { ...u, requestSent: true } : u,
-                          ),
-                        );
                       }
                     }}
                     className={`transition-colors ${user.requestSent ? "text-slate-500 cursor-not-allowed" : "text-cyan-400 hover:text-cyan-300"}`}

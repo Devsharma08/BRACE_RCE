@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Activity, LayoutTemplate, Swords, Users, Shield, ArrowRight, CheckCircle2, Lock, Unlock, Globe, Trash2, Eye, EyeOff, Archive } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 interface Room {
@@ -50,10 +50,13 @@ const Lobby = () => {
     navigate(`/battle/${roomCode}`);
   };
 
+  const queryClient = useQueryClient();
+
   const handleCloneTemplate = async (templateId: string) => {
     setCloningId(templateId);
     try {
       const res = await api.post("/rooms/clone", { templateId });
+      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (error) {
       console.error(error);
@@ -68,7 +71,7 @@ const Lobby = () => {
     if (!window.confirm("Are you sure you want to permanently delete this operation?")) return;
     try {
       await api.delete(`/rooms/${eventId}`);
-      fetchLobby(); // Refresh lists
+      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
     } catch (error) {
       console.error(error);
       alert("Failed to delete event.");
@@ -79,7 +82,7 @@ const Lobby = () => {
   const handleToggleVisibility = async (eventId: string, currentVisibility: boolean) => {
     try {
       await api.put(`/rooms/visibility`, { eventId, isPublic: !currentVisibility });
-      fetchLobby(); // Refresh lists
+      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
     } catch (error) {
       console.error(error);
       alert("Failed to change visibility.");

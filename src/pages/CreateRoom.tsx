@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ShieldAlert, CheckCircle2, Lock, Unlock, Globe, EyeOff, Swords, Activity, Plus, Terminal, Code2, Lightbulb, Trash2, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 interface Problem {
@@ -38,7 +38,9 @@ const CreateRoom = () => {
   const [customTestCases, setCustomTestCases] = useState([{ input: "", expectedOutput: "", is_public: true }]);
   const [customSnippets, setCustomSnippets] = useState([{ language: "javascript", code: "// Write your code here", wrapperCode: "" }]);
 
-  const { data: availableProblems = [], refetch: refetchProblems } = useQuery({
+  const queryClient = useQueryClient();
+
+  const { data: availableProblems = [] } = useQuery({
     queryKey: ["all-available-problems"],
     queryFn: async () => {
       const [sysRes, customRes] = await Promise.all([
@@ -118,7 +120,8 @@ const CreateRoom = () => {
       const newProb = res.data.problem;
       
       // Refetch available problems query
-      refetchProblems();
+      queryClient.invalidateQueries({ queryKey: ["all-available-problems"] });
+      queryClient.invalidateQueries({ queryKey: ["system-problems"] });
       
       // Auto-select it in the queue
       setSelectedProblemIds(prev => [...prev, newProb.id]);
