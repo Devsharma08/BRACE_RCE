@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/authContext";
 import { useSocket } from "../context/socketContext";
 import DashboardSidebar from "../components/DashboardSidebar";
@@ -31,15 +32,39 @@ export const Dashboard: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [recentBattles, setRecentBattles] = useState<any[]>([]);
-  const [recommendedProblems, setRecommendedProblems] = useState<any[]>([]);
   const [acceptTimer, setAcceptTimer] = useState<number>(10);
 
   // Time of day greeting
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+
+  const { data: dashboardData } = useQuery({
+    queryKey: ["dashboard-data", user?.id],
+    enabled: Boolean(isAuthenticated || user),
+    queryFn: async () => {
+      const [profRes, statsRes, probRes] = await Promise.all([
+        api.get("/profile").catch(() => null),
+        api.get("/profile/stats").catch(() => null),
+        api.get("/problems/system").catch(() => null),
+      ]);
+      return {
+        profile: profRes?.data?.data || null,
+        stats: statsRes?.data?.stats ? {
+          totalMatches: statsRes.data.stats.totalMatches || 0,
+          wins: statsRes.data.stats.wins || 0,
+          losses: statsRes.data.stats.losses || 0,
+          winRate: statsRes.data.stats.winRate || 0,
+        } : null,
+        recentBattles: statsRes?.data?.recentMatches || [],
+        recommendedProblems: (probRes?.data?.problems || []).slice(0, 4),
+      };
+    },
+  });
+
+  const profile = dashboardData?.profile || null;
+  const stats = dashboardData?.stats || null;
+  const recentBattles: any[] = dashboardData?.recentBattles || [];
+  const recommendedProblems: any[] = dashboardData?.recommendedProblems || [];
 
   // Countdown timer for Match Found Phase 2
   useEffect(() => {
@@ -59,44 +84,6 @@ export const Dashboard: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [matchmakingStatus]);
-
-  useEffect(() => {
-    if (!isAuthenticated && !user) return;
-    const loadData = async () => {
-      try {
-        const [profRes, statsRes, probRes] = await Promise.all([
-          api.get("/profile").catch(() => null),
-          api.get("/profile/stats").catch(() => null),
-          api.get("/problems/system").catch(() => null),
-        ]);
-
-        if (profRes?.data?.data) {
-          setProfile(profRes.data.data);
-        }
-
-        if (statsRes?.data?.stats) {
-          const st = statsRes.data.stats;
-          setStats({
-            totalMatches: st.totalMatches || 0,
-            wins: st.wins || 0,
-            losses: st.losses || 0,
-            winRate: st.winRate || 0,
-          });
-        }
-
-        if (statsRes?.data?.recentMatches) {
-          setRecentBattles(statsRes.data.recentMatches);
-        }
-
-        if (probRes?.data?.problems) {
-          setRecommendedProblems(probRes.data.problems.slice(0, 4));
-        }
-      } catch (e) {
-        console.error("Error loading dashboard data:", e);
-      }
-    };
-    loadData();
-  }, [isAuthenticated, user]);
 
   if (!isLoading && !isAuthenticated && !user) return <Navigate to="/signin" replace />;
 

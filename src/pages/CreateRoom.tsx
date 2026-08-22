@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ShieldAlert, CheckCircle2, Lock, Unlock, Globe, EyeOff, Swords, Activity, Plus, Terminal, Code2, Lightbulb, Trash2, Target } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 interface Problem {
@@ -22,7 +23,7 @@ const CreateRoom = () => {
   const [isPublic, setIsPublic] = useState(true);
   const [totalTimeLimitMinutes, setTotalTimeLimitMinutes] = useState<number>(45);
   
-  const [availableProblems, setAvailableProblems] = useState<Problem[]>([]);
+
   const [selectedProblemIds, setSelectedProblemIds] = useState<string[]>([]);
 
   // --- PROBLEM TAB STATE ---
@@ -37,20 +38,16 @@ const CreateRoom = () => {
   const [customTestCases, setCustomTestCases] = useState([{ input: "", expectedOutput: "", is_public: true }]);
   const [customSnippets, setCustomSnippets] = useState([{ language: "javascript", code: "// Write your code here", wrapperCode: "" }]);
 
-  useEffect(() => {
-    const fetchProblems = async () => {
-      try {
-        const [sysRes, customRes] = await Promise.all([
-          api.get("/problems/system"),
-          api.get("/problems/custom")
-        ]);
-        setAvailableProblems([...sysRes.data.problems, ...customRes.data.problems]);
-      } catch (err) {
-        console.error("Failed to fetch problems", err);
-      }
-    };
-    fetchProblems();
-  }, []);
+  const { data: availableProblems = [], refetch: refetchProblems } = useQuery({
+    queryKey: ["all-available-problems"],
+    queryFn: async () => {
+      const [sysRes, customRes] = await Promise.all([
+        api.get("/problems/system"),
+        api.get("/problems/custom")
+      ]);
+      return [...sysRes.data.problems, ...customRes.data.problems];
+    },
+  });
 
   // Auto-calculate the Global Time Limit whenever problems are selected
   useEffect(() => {
@@ -120,8 +117,8 @@ const CreateRoom = () => {
       
       const newProb = res.data.problem;
       
-      // Add to available problems
-      setAvailableProblems(prev => [newProb, ...prev]);
+      // Refetch available problems query
+      refetchProblems();
       
       // Auto-select it in the queue
       setSelectedProblemIds(prev => [...prev, newProb.id]);

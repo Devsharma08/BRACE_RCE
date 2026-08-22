@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Activity, LayoutTemplate, Swords, Users, Shield, ArrowRight, CheckCircle2, Lock, Unlock, Globe, Trash2, Eye, EyeOff, Archive } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 interface Room {
@@ -19,33 +20,27 @@ interface Room {
 const Lobby = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"ROOMS" | "TEMPLATES" | "MY_ARCHIVES">("ROOMS");
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [templates, setTemplates] = useState<Room[]>([]);
-  const [myEvents, setMyEvents] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
   const [cloningId, setCloningId] = useState<string | null>(null);
 
-  const fetchLobby = async () => {
-    setLoading(true);
-    try {
+  const { data, isLoading: loading, refetch: fetchLobby } = useQuery({
+    queryKey: ["lobby-data"],
+    queryFn: async () => {
       const [roomsRes, templatesRes, myEventsRes] = await Promise.all([
         api.get("/rooms/lobby"),
         api.get("/rooms/templates"),
         api.get("/rooms/my-events")
       ]);
-      setRooms(roomsRes.data.rooms);
-      setTemplates(templatesRes.data.templates);
-      setMyEvents(myEventsRes.data.events);
-    } catch (error) {
-      console.error("Lobby error:", error);
-    } finally {
-      setLoading(false);
+      return {
+        rooms: roomsRes.data.rooms,
+        templates: templatesRes.data.templates,
+        myEvents: myEventsRes.data.events
+      };
     }
-  };
+  });
 
-  useEffect(() => {
-    fetchLobby();
-  }, []);
+  const rooms: Room[] = data?.rooms || [];
+  const templates: Room[] = data?.templates || [];
+  const myEvents: Room[] = data?.myEvents || [];
 
   const handleJoinRoom = (roomCode: string, hasPassword: boolean) => {
     if (hasPassword) {

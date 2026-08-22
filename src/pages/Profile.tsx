@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Hexagon, Code } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../config/api";
@@ -15,6 +16,7 @@ interface MatchStats {
   totalMatches: number;
   wins: number;
   losses: number;
+  totalScore: number;
   winRate: number;
   totalTimeMs: number;
 }
@@ -34,31 +36,26 @@ interface MatchRecord {
 }
 
 const Profile = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState<MatchStats | null>(null);
-  const [history, setHistory] = useState<MatchRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
 
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        const [profileRes, statsRes] = await Promise.all([
-          api.get("/profile"),
-          api.get("/profile/stats"),
-        ]);
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ["user-profile-data"],
+    queryFn: async () => {
+      const [profileRes, statsRes] = await Promise.all([
+        api.get("/profile"),
+        api.get("/profile/stats"),
+      ]);
+      return {
+        profile: profileRes.data.data as UserProfile,
+        stats: statsRes.data.stats as MatchStats,
+        history: (statsRes.data.recentMatches || []) as MatchRecord[],
+      };
+    },
+  });
 
-        setProfile(profileRes.data.data);
-        setStats(statsRes.data.stats);
-        setHistory(statsRes.data.recentMatches || []);
-      } catch (err) {
-        console.error("Failed to load profile", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfileData();
-  }, []);
+  const profile = data?.profile || null;
+  const stats = data?.stats || null;
+  const history = data?.history || [];
 
   if (loading) {
     return (

@@ -1,65 +1,62 @@
-import {useContext,createContext,useEffect,useState, type ReactNode} from 'react'
+import { useContext, createContext, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../config/api'
 
-interface User{
-    id:string,
-    username:string,
-    email:string,
-    avatarUrl:string | null
+interface User {
+    id: string;
+    email: string;
+    username: string;
+    avatarUrl?: string | null;
 }
 
-interface AuthContextType{
-    user:User|null ; 
-    isAuthenticated : boolean ;
-    isLoading: boolean ;
-    checkAuth : () => Promise<void>;
-    logout:() => Promise<void>
+interface AuthContextType {
+    user: User | null;
+    isAuthenticated: boolean;
+    isLoading: boolean;
+    logout: () => Promise<void>;
+    checkAuth: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType|undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({children}:{children:ReactNode}) => {
-    const [user,setUser] = useState<User|null>(null);
-    const [isLoading,setIsLoading] = useState(true);
+    const queryClient = useQueryClient();
+
+    const { data: user = null, isLoading, refetch } = useQuery<User | null>({
+        queryKey: ["auth-me"],
+        queryFn: async () => {
+            try {
+                const response: { data: { user: User } } = await api.get("/auth/me");
+                return response.data?.user || null;
+            } catch (error) {
+                console.error("Auth check failed:", error);
+                return null;
+            }
+        },
+        staleTime: 1000 * 60 * 15, // 15 mins cache for auth state
+    });
+
     const isAuthenticated = !!user;
 
-    async function checkAuth(){
-        try {
-            setIsLoading(true);
-            const response : { data : { user : User} } = await api.get("/auth/me");
-            if(response.data.user){
-                setUser(response.data.user);
-            }else{
-                setUser(null);
-            }
-        } catch (error) {
-            console.error("Auth check failed :",error);
-            setUser(null);
-        }finally{
-            setIsLoading(false);
-            return;
-        }
+    async function checkAuth() {
+        await refetch();
     }
 
-    useEffect(()=>{
-        checkAuth()
-    },[])
-
-    async function logout(){
+    async function logout() {
         try {
             await api.post("/auth/signout");
-            setUser(null);
+            queryClient.setQueryData(["auth-me"], null);
+            queryClient.invalidateQueries();
         } catch (error) {
-            console.error("Logout failed :",error);
+            console.error("Logout failed:", error);
         }
     }
 
     return (
-        <AuthContext.Provider value={{user,logout,isAuthenticated,isLoading,checkAuth}}>
+        <AuthContext.Provider value={{user, logout, isAuthenticated, isLoading, checkAuth}}>
             {children}
         </AuthContext.Provider>
     )
-    
 }
 
 export const useAuth = () => {

@@ -24,7 +24,18 @@ import { Dashboard } from './pages/Dashboard.tsx'
 import Lobby from './pages/Lobby.tsx'
 import { Problems } from './pages/Problems.tsx'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes cache
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 export const Root = () => {
   // initial states for context
@@ -43,8 +54,9 @@ export const Root = () => {
 
   return (
     <StrictMode>
-      <Suspense fallback={<div>loading</div>}>
-        <Router>
+      <QueryClientProvider client={queryClient}>
+        <Suspense fallback={<div>loading</div>}>
+          <Router>
           <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
           <AuthProvider>
             <SocketProvider>
@@ -105,8 +117,9 @@ export const Root = () => {
           </SocketProvider>
           </AuthProvider>
           </GoogleOAuthProvider>
-        </Router>
-      </Suspense>
+          </Router>
+        </Suspense>
+      </QueryClientProvider>
     </StrictMode>
   )
 }

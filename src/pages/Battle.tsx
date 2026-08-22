@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
@@ -207,26 +208,25 @@ export const Battle = () => {
     }
   };
 
-  // Fetch remaining time of the match and event / page refresh
-  useEffect(() => {
-    if (!roomId) return;
-
-    const fetchRemainingTime = async () => {
-      try {
-        const res = await api.get(`/room/time-left`, { params: { roomId } });
-        if (
-          res.data?.status === "success" &&
-          res.data?.remainingSeconds !== undefined
-        ) {
-          setLocalTimeRemaining(res.data?.remainingSeconds);
-        }
-      } catch (error) {
-        console.error("failed to fetch battle time battle", error);
+  const { data: remainingTimeData } = useQuery({
+    queryKey: ["room-time-left", roomId],
+    enabled: Boolean(roomId),
+    queryFn: async () => {
+      const res = await api.get(`/room/time-left`, { params: { roomId } });
+      if (res.data?.status === "success" && res.data?.remainingSeconds !== undefined) {
+        return res.data.remainingSeconds;
       }
-    };
+      return null;
+    },
+  });
 
-    fetchRemainingTime();
+  useEffect(() => {
+    if (remainingTimeData !== undefined && remainingTimeData !== null) {
+      setLocalTimeRemaining(remainingTimeData);
+    }
+  }, [remainingTimeData]);
 
+  useEffect(() => {
     const fetchRoom = async () => {
       try {
         const [roomRes, profileRes] = await Promise.all([

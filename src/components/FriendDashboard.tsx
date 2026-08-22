@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSocket } from "../context/socketContext";
 import {
   Swords,
@@ -42,7 +43,6 @@ export default function FriendsDashboard() {
     declineChallenge,
   } = useSocket();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
-  const [friends, setFriends] = useState<Friend[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,45 +53,43 @@ export default function FriendsDashboard() {
   >("FRIENDS");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [blockedUsers, setBlockedUsers] = useState<Friend[]>([]);
 
-  const fetchFriends = () =>
-    api
-      .get("/friends")
-      .then((res) => setFriends(res.data.friends))
-      .catch(console.error);
+  const { data: friends = [], refetch: fetchFriends } = useQuery<Friend[]>({
+    queryKey: ["friends-list"],
+    queryFn: async () => {
+      const res = await api.get("/friends");
+      return res.data.friends || [];
+    },
+  });
 
-  const fetchRequests = () =>
-    api
-      .get("/friends/requests")
-      .then((res) => setPendingRequests(res.data.requests))
-      .catch(console.error);
+  const { data: pendingRequests = [], refetch: fetchRequests } = useQuery<FriendRequest[]>({
+    queryKey: ["friend-requests"],
+    queryFn: async () => {
+      const res = await api.get("/friends/requests");
+      return res.data.requests || [];
+    },
+  });
 
-  const getBlockedUsers = async () => {
-    try {
+  const { data: blockedUsers = [], refetch: getBlockedUsers } = useQuery<Friend[]>({
+    queryKey: ["blocked-users"],
+    queryFn: async () => {
       const res = await api.get("/friends/blocked");
-      console.log("blocked users: ", res.data);
-      setBlockedUsers(res.data.users.map((req: any) => req.receiver));
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      return (res.data.users || []).map((req: any) => req.receiver);
+    },
+  });
+
+  const { data: directMessages = [] } = useQuery({
+    queryKey: ["direct-messages", activeTab?.id],
+    enabled: Boolean(activeTab?.id),
+    queryFn: async () => {
+      const res = await api.get(`/friends/messages/${activeTab?.id}`);
+      return res.data.messages || [];
+    },
+  });
 
   useEffect(() => {
-    fetchFriends();
-    fetchRequests();
-    getBlockedUsers();
-  }, []);
-
-  useEffect(() => {
-    if (activeTab) {
-      api
-        .get(`/friends/messages/${activeTab.id}`)
-        .then((res) => setMessages(res.data.messages))
-        .catch(console.error);
-    }
-  }, [activeTab]);
+    setMessages(directMessages);
+  }, [directMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

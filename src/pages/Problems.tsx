@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import DashboardSidebar from "../components/DashboardSidebar";
 import { api } from "../config/api";
 import { useAuth } from "../context/authContext";
@@ -18,29 +19,19 @@ export const Problems: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [problems, setProblems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
 
-  useEffect(() => {
-    const fetchProblems = async () => {
-      try {
-        const res = await api.get("/problems/system");
-        if (res.data?.problems) {
-          setProblems(res.data.problems);
-        }
-      } catch (err) {
-        console.error("Failed to load problems:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProblems();
-  }, []);
+  const { data: problems = [], isLoading: loading } = useQuery<any[]>({
+    queryKey: ["system-problems"],
+    queryFn: async () => {
+      const res = await api.get("/problems/system");
+      return res.data?.problems || [];
+    },
+  });
 
   // Filter problems by search, difficulty, and category
   const filteredProblems = problems.filter((p) => {
