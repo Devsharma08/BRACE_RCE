@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardSidebar from "../components/DashboardSidebar";
+import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
 import { useAuth } from "../context/authContext";
 import {
@@ -19,11 +20,26 @@ export const Problems: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
+
+  const handleSearchChange = (val: string) => {
+    startTransition(() => {
+      setSearchTerm(val);
+      setCurrentPage(1);
+    });
+  };
+
+  const handleDifficultyChange = (diff: string) => {
+    startTransition(() => {
+      setSelectedDifficulty(diff);
+      setCurrentPage(1);
+    });
+  };
 
   const { data: problems = [], isLoading: loading } = useQuery<any[]>({
     queryKey: ["system-problems"],
@@ -98,7 +114,7 @@ export const Problems: React.FC = () => {
               type="text"
               placeholder="Search by problem title or #..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full bg-black/60 border border-white/10 text-xs text-slate-200 pl-9 pr-4 py-2 rounded focus:outline-none focus:border-cyan-500/50 transition-colors"
             />
           </div>
@@ -108,38 +124,38 @@ export const Problems: React.FC = () => {
             <span className="text-xs text-slate-500 font-bold mr-1 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5" /> DIFFICULTY:
             </span>
-            {["ALL", "EASY", "MEDIUM", "HARD"].map((diff) => (
+            {["ALL", "EASY", "MEDIUM", "HARD"].map((d) => (
               <button
-                key={diff}
-                onClick={() => setSelectedDifficulty(diff)}
-                className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-all cursor-pointer ${
-                  selectedDifficulty === diff
-                    ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
-                    : "bg-black/40 text-slate-400 border border-white/5 hover:text-slate-200 hover:border-white/10"
+                key={d}
+                onClick={() => handleDifficultyChange(d)}
+                className={`px-3 py-1 text-xs font-bold tracking-wider rounded border transition-all ${
+                  selectedDifficulty === d
+                    ? "bg-cyan-950/60 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                    : "bg-black/40 border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200"
                 }`}
               >
-                {diff}
+                {d}
               </button>
             ))}
           </div>
         </div>
 
-        {/* PROBLEM TABLE GRID */}
-        <div className="rounded border border-cyan-500/20 bg-slate-950/60 overflow-hidden flex flex-col">
+        {/* PROBLEMS TABLE */}
+        <div className="border border-cyan-500/20 bg-slate-950/40 rounded overflow-hidden shadow-xl">
           {/* TABLE HEADER */}
-          <div className="grid grid-cols-12 p-3.5 border-b border-cyan-500/20 text-xs font-bold text-cyan-400 tracking-wider uppercase bg-black/40">
+          <div className="grid grid-cols-12 p-3.5 bg-black/80 border-b border-cyan-500/20 text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
             <span className="col-span-1">#</span>
-            <span className="col-span-5">TITLE</span>
+            <span className="col-span-5">PROBLEM TITLE</span>
             <span className="col-span-2">DIFFICULTY</span>
             <span className="col-span-2">LANGUAGES</span>
             <span className="col-span-2 text-right">ACTION</span>
           </div>
 
           {/* TABLE BODY */}
-          <div className="flex flex-col divide-y divide-white/5">
+          <div className={`flex flex-col divide-y divide-white/5 ${isPending ? "opacity-60 transition-opacity" : ""}`}>
             {loading ? (
-              <div className="p-12 text-center text-cyan-500 font-mono animate-pulse">
-                SYNCING PROBLEM REPOSITORY...
+              <div className="p-4">
+                <TableSkeleton rows={8} />
               </div>
             ) : currentProblems.length === 0 ? (
               <div className="p-12 text-center text-slate-500 font-mono">

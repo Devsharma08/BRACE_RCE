@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { api } from "../config/api";
 import { CodeComparisonModal } from "../components/CodeComparisionModel";
 
+import { PageSkeleton } from "../components/ui/Skeleton";
+
 interface UserProfile {
   id: string;
   username: string;
@@ -58,11 +60,7 @@ const Profile = () => {
   const history = data?.history || [];
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center font-mono text-cyan-500 tracking-widest animate-pulse">
-        RETRIEVING OPERATIVE DOSSIER...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (
