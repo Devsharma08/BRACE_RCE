@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchFileNames } from "../features/terminal/api";
 import type { FileEntry } from "../context/fileNamesContext";
 import { Loader2, ArrowLeft, Terminal, LayoutGrid, Award } from "lucide-react";
+import { TableSkeleton } from "../components/ui/Skeleton";
 
 type Complexity = {
   average: string;
@@ -278,10 +279,7 @@ const DataStructureDetail = () => {
 
         {/* Live Challenges List */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 border border-white/5 bg-black/20 space-y-3">
-            <Loader2 className="h-8 w-8 text-cyan-400 animate-spin" />
-            <span className="text-xs uppercase tracking-widest text-slate-500">Querying repository challenges...</span>
-          </div>
+          <TableSkeleton rows={4} />
         ) : error ? (
           <div className="text-center py-16 border border-white/5 bg-black/20 text-rose-400 text-xs">
             {error}

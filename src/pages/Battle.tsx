@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { PageSkeleton } from "../components/ui/Skeleton";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSocket } from "../context/socketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
@@ -535,11 +536,7 @@ export const Battle = () => {
   };
 
   if (loading || !room) {
-    return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-cyan-500 font-mono tracking-widest animate-pulse">
-        ESTABLISHING UPLINK...
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   return (

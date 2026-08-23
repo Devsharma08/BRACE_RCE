@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { TableSkeleton } from "../components/ui/Skeleton";
 import { useAuth } from "../context/authContext";
 import { useSocket } from "../context/socketContext";
 import DashboardSidebar from "../components/DashboardSidebar";
@@ -335,9 +336,7 @@ export const Dashboard: React.FC = () => {
 
           <div className="flex flex-col gap-2.5">
             {recommendedProblems.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-500 font-mono">
-                LOADING SYSTEM PROBLEMS...
-              </div>
+              <TableSkeleton rows={4} />
             ) : (
               recommendedProblems.map((p, i) => (
                 <div

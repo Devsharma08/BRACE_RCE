@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Activity, LayoutTemplate, Swords, Users, Shield, ArrowRight, CheckCircle2, Lock, Unlock, Globe, Trash2, Eye, EyeOff, Archive } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CardSkeletonGrid } from "../components/ui/Skeleton";
 import { api } from "../config/api";
 
 interface Room {
@@ -230,10 +231,7 @@ const Lobby = () => {
 
         {/* CONTENT */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-cyan-500">
-            <Activity className="w-12 h-12 animate-pulse mb-4" />
-            <p className="tracking-widest animate-pulse">SCANNING NETWORK...</p>
-          </div>
+          <CardSkeletonGrid count={6} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             
