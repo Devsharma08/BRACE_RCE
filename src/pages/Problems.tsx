@@ -176,7 +176,11 @@ export const Problems: React.FC = () => {
                 return (
                   <div
                     key={p.id || idx}
-                    onClick={() => navigate(`/terminal?oid=${p.github_oid || p.id}`)}
+                    onClick={() =>
+                      navigate(
+                        `/terminal?oid=${p.github_oid || p.id}${p.name ? `&file=${encodeURIComponent(p.name)}` : ""}`
+                      )
+                    }
                     className="grid grid-cols-12 p-3.5 text-xs items-center hover:bg-cyan-950/20 hover:border-l-2 hover:border-l-cyan-400 transition-all cursor-pointer group"
                   >
                     {/* PROBLEM NUMBER */}

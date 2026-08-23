@@ -33,6 +33,7 @@ import type {
 } from "./features/terminal/types";
 
 import { PageSkeleton } from "./components/ui/Skeleton.tsx";
+import { ScrollToTop } from "./components/ScrollToTop.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -69,6 +70,7 @@ export const Root = () => {
       <QueryClientProvider client={queryClient}>
         <Suspense fallback={<PageSkeleton />}>
           <Router>
+            <ScrollToTop />
             <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
               <AuthProvider>
                 <SocketProvider>

@@ -6,21 +6,28 @@ import type {
   SupportedLanguage,
 } from "./types";
 
-export const detectLanguageFromFileName = (fileName: string): SupportedLanguage => {
-  const ext = fileName.split('.')[1];
+export const detectLanguageFromFileName = (fileName?: string): SupportedLanguage => {
+  if (!fileName) return "javascript";
+  const ext = fileName.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case 'java':
-      return 'java';
-    case 'js':
-      return 'javascript';
-    case 'cpp':
-      return 'c++';
-    case 'py':
-      return 'python';
-    case 'c':
-      return 'c' ; 
+    case "java":
+      return "java";
+    case "js":
+    case "ts":
+    case "jsx":
+    case "tsx":
+      return "javascript";
+    case "cpp":
+    case "cc":
+    case "cxx":
+      return "c++";
+    case "py":
+    case "python":
+      return "python";
+    case "c":
+      return "c";
     default:
-      throw new Error('Unsupported language');
+      return "javascript";
   }
 };
 

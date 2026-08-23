@@ -18,7 +18,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
   const displayName = (user?.username || "DEV").toUpperCase();
 
   return (
-    <aside className="fixed top-0 left-0 h-screen w-[245px] bg-[#07080a] border-r border-cyan-500/20 font-mono flex flex-col justify-between p-4 z-40 select-none">
+    <aside className="hidden md:flex fixed top-0 left-0 h-screen w-[245px] bg-[#07080a] border-r border-cyan-500/20 font-mono flex-col justify-between p-4 z-40 select-none">
       <div className="flex flex-col gap-6">
         {/* BRAND HEADER */}
         <div className="flex items-center gap-2 px-2 pt-2">

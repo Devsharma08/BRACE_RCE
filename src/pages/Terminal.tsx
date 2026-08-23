@@ -55,10 +55,10 @@ const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) =
 
 // Find matching code snippet from problem data or generate language boilerplate
 const getProblemSnippet = (fileData: any, lang: SupportedLanguage, defaultContent?: string) => {
-  if (!fileData) return getLanguageStarterCode(lang);
+  if (!fileData) return defaultContent || getLanguageStarterCode(lang);
 
-  // Check code_snippets array from backend
-  if (fileData.code_snippets && Array.isArray(fileData.code_snippets)) {
+  // 1. Check code_snippets array from backend
+  if (fileData.code_snippets && Array.isArray(fileData.code_snippets) && fileData.code_snippets.length > 0) {
     const matched = fileData.code_snippets.find(
       (s: any) =>
         s.language?.toLowerCase() === lang.toLowerCase() ||
@@ -69,8 +69,14 @@ const getProblemSnippet = (fileData: any, lang: SupportedLanguage, defaultConten
     }
   }
 
-  // If initial language matches default file content, return default content
-  if (lang === "javascript" && defaultContent) {
+  // 2. If requested language matches native file extension language, return defaultContent
+  const nativeLang = fileData.name ? detectLanguageFromFileName(fileData.name) : "javascript";
+  if (defaultContent && (lang === nativeLang || lang === "javascript")) {
+    return defaultContent;
+  }
+
+  // 3. If defaultContent exists (e.g. raw problem file from repository/DB), use defaultContent
+  if (defaultContent && defaultContent.trim().length > 0) {
     return defaultContent;
   }
 
@@ -239,21 +245,25 @@ const Terminal = () => {
       }
 
       try {
-        const fileContent = await fetchFileContent(oid, name);
+        const fetchName = (name && name !== oid) ? name : undefined;
+        const fileContent = await fetchFileContent(oid, fetchName);
         if (fileLoadRequestRef.current !== requestId) return;
 
+        const resolvedName = fileContent.name || name;
         const nextTestCases = buildProblemTestCases(fileContent);
-        const nextLanguage = detectLanguageFromFileName(name);
+        const nextLanguage = detectLanguageFromFileName(resolvedName);
         const snippet = getProblemSnippet(fileContent, nextLanguage, fileContent.content);
 
         setFileData(fileContent);
         setTestCases(nextTestCases);
         setLanguage(nextLanguage);
         setCode(snippet);
+        if (resolvedName) setSelectedFileName(resolvedName);
         setCustomInput("");
         setCustomInputActive(false);
         setIsCustomInputRun(false);
-      } catch {
+      } catch (err) {
+        console.error("Error loading file content for OID:", oid, err);
         if (fileLoadRequestRef.current !== requestId) return;
         setFileData(null);
         setCode("// Error loading problem file");
@@ -281,14 +291,18 @@ const Terminal = () => {
         setFilesData(systemFiles);
 
         let targetOid = problemOid;
-        let targetName = "";
+        let targetName = searchParams.get("file") || searchParams.get("name") || "";
 
-        if (targetOid) {
+        if (targetOid || targetName) {
           const matched = systemFiles.find(
-            (f) => f.oid === targetOid || f.name.toLowerCase() === targetOid.toLowerCase()
+            (f: any) =>
+              (targetOid && (f.oid === targetOid || f.id === targetOid)) ||
+              (targetName && f.name.toLowerCase() === targetName.toLowerCase()) ||
+              (targetName && f.name.toLowerCase().includes(targetName.toLowerCase())) ||
+              (targetOid && f.name && f.name.toLowerCase().includes(targetOid.toLowerCase()))
           );
           if (matched) {
-            targetOid = matched.oid;
+            targetOid = matched.oid || targetOid;
             targetName = matched.name;
           }
         } else if (systemFiles.length > 0) {

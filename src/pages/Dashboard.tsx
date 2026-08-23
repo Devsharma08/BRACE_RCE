@@ -115,7 +115,7 @@ export const Dashboard: React.FC = () => {
       <DashboardSidebar rating={userRating} />
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 ml-[245px] p-6 lg:p-8 flex flex-col gap-6 max-w-[1400px] z-10 relative">
+      <main className="flex-1 ml-0 md:ml-[245px] w-full p-4 sm:p-6 lg:p-8 flex flex-col gap-6 max-w-[1400px] z-10 relative">
         {/* HEADER BAR */}
         <header className="flex items-center justify-between border-b border-cyan-500/20 pb-4">
           <div>
@@ -341,7 +341,11 @@ export const Dashboard: React.FC = () => {
               recommendedProblems.map((p, i) => (
                 <div
                   key={p.id || i}
-                  onClick={() => navigate(`/terminal?oid=${p.github_oid || p.id}`)}
+                  onClick={() =>
+                    navigate(
+                      `/terminal?oid=${p.github_oid || p.id}${p.name ? `&file=${encodeURIComponent(p.name)}` : ""}`
+                    )
+                  }
                   className="flex items-center justify-between p-3.5 rounded border border-white/5 bg-black/40 hover:border-cyan-500/40 hover:bg-cyan-950/10 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-4">
