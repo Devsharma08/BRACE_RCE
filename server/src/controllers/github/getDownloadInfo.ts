@@ -2,8 +2,8 @@ import type { Request, Response } from "express";
 import { CACHE_KEYS } from "../../config/github.js";
 import { getCacheKey } from "../../utils/cacheKey.js";
 import { getQueryValue } from "../../utils/request.js";
-import { internalCache } from "../../Lib/cache.js";
-import { postGraphQL } from "../../Lib/githubClient.js";
+import { internalCache } from "../../lib/cache.js";
+import { postGraphQL } from "../../lib/githubClient.js";
 import type { GitHubDownloadInfoResponse } from "../../types/github.js";
 
 export const getDownloadInfo = async (req: Request, res: Response) => {

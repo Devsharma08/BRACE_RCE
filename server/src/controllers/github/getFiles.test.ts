@@ -1,7 +1,7 @@
 import { jest } from "@jest/globals";
 import type { Request, Response } from "express";
 import { getFiles } from "./getFiles.js";
-import { internalCache } from "../../Lib/cache.js";
+import { internalCache } from "../../lib/cache.js";
 import { CACHE_KEYS } from "../../config/github.js";
 
 describe("getFiles controller", () => {

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { BookOpen, Code, TrendingUp, TrendingDown, Activity } from "lucide-react";
-import { CodeComparisonModal } from "./CodeComparisionModel";
+import { CodeComparisonModal } from "./CodeComparisonModal";
 
 interface HistoryLedgerSectionProps {
   history: any[];

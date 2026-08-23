@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Hexagon, Code } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../config/api";
-import { CodeComparisonModal } from "../components/CodeComparisionModel";
+import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
 
 import { PageSkeleton } from "../components/ui/Skeleton";
 

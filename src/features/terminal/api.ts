@@ -1,4 +1,4 @@
-import type { FileEntry } from "../../context/fileNamesContext";
+import type { FileEntry } from "../../context/FileNamesContext";
 import type { ExecuteCodeRequest, ExecutionResult, FileContentResponse } from "./types";
 
 const API_BASE_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/+$/, "")}/api`;

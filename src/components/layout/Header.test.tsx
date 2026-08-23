@@ -1,10 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import Header from './header';
+import Header from './Header';
 
 // Mock useAuth context hook
-vi.mock('../context/authContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
     isAuthenticated: true,
     user: { username: 'testuser', email: 'test@example.com' },

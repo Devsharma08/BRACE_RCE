@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import DashboardSidebar from "../components/DashboardSidebar";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
-import { useAuth } from "../context/authContext";
+import { useAuth } from "../context/AuthContext";
 import {
   Code2,
   Search,

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import { createApp } from "../app.js";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 
 // Assign mocks directly to Prisma delegate methods

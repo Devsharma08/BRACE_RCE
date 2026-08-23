@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import { prepareFinalCode } from "../services/codeExecution.js";
 import { execSync } from "child_process";
 import fs from "fs";

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, jest } from "@jest/globals";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 
 // Assign mocks directly to Prisma delegate methods
 (prisma.codeSubmission.findMany as any) = jest.fn();

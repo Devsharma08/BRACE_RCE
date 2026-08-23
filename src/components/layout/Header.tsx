@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UseHeadroom } from '../utils/styles/headRoom'
-import { useAuth } from '../context/authContext'
+import { UseHeadroom } from '../../utils/styles/headRoom'
+import { useAuth } from '../../context/AuthContext'
 import { House, MenuIcon, Terminal, X, LogIn, LogOut } from 'lucide-react'
 
 const Header = () => {

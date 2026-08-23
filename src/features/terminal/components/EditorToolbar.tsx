@@ -14,7 +14,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import type { ExecutionMode, SupportedLanguage } from "../types";
-import { CodeContext } from "../../../context/codeContext.tsx";
+import { CodeContext } from "../../../context/CodeContext.tsx";
 
 type EditorToolbarProps = {
   disabled: boolean;

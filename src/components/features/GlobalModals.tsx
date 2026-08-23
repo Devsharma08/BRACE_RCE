@@ -1,4 +1,4 @@
-import { useSocket } from "../context/socketContext";
+import { useSocket } from "../../context/SocketContext";
 import { Swords } from "lucide-react";
 
 export default function GlobalModals() {

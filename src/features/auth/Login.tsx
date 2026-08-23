@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { GoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
-import { useAuth } from '../../context/authContext';
+import { useAuth } from '../../context/AuthContext';
 import {api} from "../../config/api";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 

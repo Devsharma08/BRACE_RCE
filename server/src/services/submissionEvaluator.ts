@@ -1,4 +1,4 @@
-import { prisma } from '../Lib/prisma.js'
+import { prisma } from '../lib/prisma.js'
 
 interface SaveSubmisssionParams {
     performanceId: string;

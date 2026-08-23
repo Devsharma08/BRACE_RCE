@@ -1,5 +1,5 @@
 import { Socket, Server } from "socket.io";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import { Level } from "../generated/prisma/client.js";
 

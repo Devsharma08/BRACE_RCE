@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSocket } from "../context/socketContext";
+import { useSocket } from "../../context/SocketContext";
 import {
   Swords,
   Send,
@@ -13,7 +13,7 @@ import {
   X,
   Ban,
 } from "lucide-react";
-import { api } from "../config/api";
+import { api } from "../../config/api";
 
 interface Friend {
   id: string;

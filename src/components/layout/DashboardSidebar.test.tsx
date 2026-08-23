@@ -3,11 +3,12 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardSidebar from './DashboardSidebar';
 
-vi.mock('../context/authContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
     user: { username: 'ALEX_DEV', email: 'alex@example.com' },
   }),
 }));
+
 
 describe('DashboardSidebar Component', () => {
   test('renders brand header title BRACE RCE and version', () => {

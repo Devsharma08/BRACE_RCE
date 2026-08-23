@@ -1,7 +1,7 @@
 import { describe, it, test, expect, jest } from "@jest/globals";
 
 // Mock Prisma client to avoid ESM import.meta issues during test execution
-jest.mock("../Lib/prisma.js", () => ({
+jest.mock("../lib/prisma.js", () => ({
   prisma: {
     problem: {
       findUnique: jest.fn(),

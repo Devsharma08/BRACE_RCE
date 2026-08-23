@@ -13,17 +13,17 @@ const Lobby = lazy(() => import("./pages/Lobby.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
 const Problems = lazy(() => import("./pages/Problems.tsx").then((m) => ({ default: m.Problems })));
-const FriendsDashboard = lazy(() => import("./components/FriendDashboard.tsx"));
+const FriendsDashboard = lazy(() => import("./components/features/FriendDashboard.tsx"));
 const CreateRoom = lazy(() => import("./pages/CreateRoom.tsx"));
 
-import { CodeContext, type TestCase } from "./context/codeContext.tsx";
+import { CodeContext, type TestCase } from "./context/CodeContext.tsx";
 import {
   FileNamesContext,
   type FileEntry,
-} from "./context/fileNamesContext.tsx";
-import { UserResponseContext } from "./context/responseContent.tsx";
-import { AuthProvider } from "./context/authContext.tsx";
-import { SocketProvider } from "./context/socketContext.tsx";
+} from "./context/FileNamesContext.tsx";
+import { UserResponseContext } from "./context/ResponseContext.tsx";
+import { AuthProvider } from "./context/AuthContext.tsx";
+import { SocketProvider } from "./context/SocketContext.tsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { Login } from "./features/auth/Login.tsx";
 import { Signup } from "./features/auth/Signup.tsx";
@@ -33,7 +33,7 @@ import type {
 } from "./features/terminal/types";
 
 import { PageSkeleton } from "./components/ui/Skeleton.tsx";
-import { ScrollToTop } from "./components/ScrollToTop.tsx";
+import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 

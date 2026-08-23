@@ -1,7 +1,7 @@
 import { describe, test, jest, expect, beforeEach } from "@jest/globals";
 import request from "supertest";
 import { createApp } from "../app.js";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { OAuth2Client } from "google-auth-library";

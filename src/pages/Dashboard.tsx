@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
-import { useAuth } from "../context/authContext";
-import { useSocket } from "../context/socketContext";
-import DashboardSidebar from "../components/DashboardSidebar";
+import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { api } from "../config/api";
 import {
   Swords,

@@ -1,6 +1,6 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import { Level } from "../generated/prisma/client.js";
 import { WrapperGenerator } from "../utils/wrapperGenerator.js";
 class Problems {

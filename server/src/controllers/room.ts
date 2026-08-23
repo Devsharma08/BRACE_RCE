@@ -1,6 +1,6 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 
 class Rooms {
     // GET PUBLIC LOBBY ROOMS

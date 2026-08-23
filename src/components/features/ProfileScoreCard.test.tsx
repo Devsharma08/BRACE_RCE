@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ProfileScoreCard } from './profileScoreCard';
+import { ProfileScoreCard } from './ProfileScoreCard';
 
 describe('ProfileScoreCard Component', () => {
   const mockProfile = {

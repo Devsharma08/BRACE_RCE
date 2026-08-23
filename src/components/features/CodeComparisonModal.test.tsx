@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { CodeComparisonModal } from './CodeComparisionModel';
+import { CodeComparisonModal } from './CodeComparisonModal';
 
 describe('CodeComparisonModal Component', () => {
   const mockPerformances = [

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 
 async function main() {
   const problems = await prisma.problem.findMany({

@@ -2,7 +2,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EditorToolbar from './EditorToolbar';
-import { CodeContext } from '../../../context/codeContext';
+import { CodeContext } from '../../../context/CodeContext';
 
 const mockContextValue = {
   code: '// test code',

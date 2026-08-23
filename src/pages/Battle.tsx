@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSocket } from "../context/socketContext";
+import { useSocket } from "../context/SocketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import OutputPanel from "../features/terminal/components/OutputPanel";

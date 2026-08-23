@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { CACHE_KEYS, GITHUB_OWNER, GITHUB_REPO } from "../../config/github.js";
-import { internalCache } from "../../Lib/cache.js";
-import { postGraphQL } from "../../Lib/githubClient.js";
+import { internalCache } from "../../lib/cache.js";
+import { postGraphQL } from "../../lib/githubClient.js";
 import type { GitHubCommitHistoryResponse } from "../../types/github.js";
 
 export const commitHistory = async (_req: Request, res: Response) => {

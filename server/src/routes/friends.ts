@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import { authentication } from "../middleware/authentication.js";
 import { FriendController } from "../controllers/friends.js"; 
 

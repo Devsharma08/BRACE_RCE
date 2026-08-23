@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { prisma } from "../Lib/prisma.js";
+import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { execFile, execFileSync } from "child_process";
 import { promisify } from "util";

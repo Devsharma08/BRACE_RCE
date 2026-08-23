@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { House } from "lucide-react";
-import { FileNamesContext, type FileEntry } from "../context/fileNamesContext";
-import { CodeContext } from "../context/codeContext";
-import { UserResponseContext } from "../context/responseContent";
+import { FileNamesContext, type FileEntry } from "../context/FileNamesContext";
+import { CodeContext } from "../context/CodeContext";
+import { UserResponseContext } from "../context/ResponseContext";
 import { executeCode, fetchFileContent, fetchFileNames } from "../features/terminal/api";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import FileExplorer from "../features/terminal/components/FileExplorer";

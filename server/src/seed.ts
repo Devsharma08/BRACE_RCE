@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { prisma } from "./Lib/prisma.js";
+import { prisma } from "./lib/prisma.js";
 import { Level } from "./generated/prisma/client.js";
 import { WrapperGenerator } from "./utils/wrapperGenerator.js";
 

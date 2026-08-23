@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { CACHE_KEYS, GITHUB_OWNER, GITHUB_REPO } from "../../config/github.js";
-import { githubRestHeaders } from "../../Lib/githubClient.js";
-import { internalCache } from "../../Lib/cache.js";
+import { githubRestHeaders } from "../../lib/githubClient.js";
+import { internalCache } from "../../lib/cache.js";
 import type { GitHubContentItem } from "../../types/github.js";
 
 export const getFiles = async (_req: Request, res: Response) => {

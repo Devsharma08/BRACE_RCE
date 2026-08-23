@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fetchFileNames } from "../features/terminal/api";
-import type { FileEntry } from "../context/fileNamesContext";
+import type { FileEntry } from "../context/FileNamesContext";
 import { Loader2, ArrowLeft, Terminal, LayoutGrid, Award } from "lucide-react";
 import { TableSkeleton } from "../components/ui/Skeleton";
 

@@ -6,8 +6,8 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import { SidebarLink } from "./SpanbarLink";
-import { useAuth } from "../context/authContext";
+import { SidebarLink } from "../shared/SpanbarLink";
+import { useAuth } from "../../context/AuthContext";
 
 interface DashboardSidebarProps {
   rating?: number;

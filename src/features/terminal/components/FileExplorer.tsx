@@ -2,7 +2,7 @@
 import { useSearchParams } from "react-router-dom";
 import { FileCode, Loader2, X } from "lucide-react";
 import React,{ useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ChangeEvent, useCallback } from "react";
-import type { FileEntry } from "../../../context/fileNamesContext";
+import type { FileEntry } from "../../../context/FileNamesContext";
 import type { FileContentResponse } from "../types";
 
 type FileExplorerProps = {

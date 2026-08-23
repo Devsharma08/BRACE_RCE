@@ -1,5 +1,5 @@
 import { type AuthRequest } from '../middleware/authentication.js'
-import { prisma } from '../Lib/prisma.js';
+import { prisma } from '../lib/prisma.js';
 import { type Response } from 'express';
 import { request } from 'node:http';
 

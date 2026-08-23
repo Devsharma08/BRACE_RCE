@@ -1,11 +1,11 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import Header from './header'
+import Header from './Header'
 import {Footer} from './Footer'
-import { useAuth } from '../context/authContext'
+import { useAuth } from '../../context/AuthContext'
 
 
 
-import GlobalModals from './GlobalModals'
+import GlobalModals from '../features/GlobalModals'
 
 const Layout = () => {
   const { pathname } = useLocation()
