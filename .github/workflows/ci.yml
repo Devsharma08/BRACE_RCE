@@ -47,4 +47,4 @@ jobs:
       - name: Run Backend Tests
         run: |
           cd server
-          pnpm test -- --passWithNoTests
+          pnpm test --passWithNoTests
