@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UseHeadroom } from '../../utils/styles/headRoom'
 import { useAuth } from '../../context/AuthContext'
-import { House, MenuIcon, Terminal, X, LogIn, LogOut } from 'lucide-react'
+import { House, MenuIcon, Terminal, X, LogIn, LayoutDashboard, Info, User } from 'lucide-react'
 
 const Header = () => {
    const direction = UseHeadroom();
    const { pathname } = useLocation();
    const [isMenuOpen, setIsMenuOpen] = useState(false);
-   const { isAuthenticated, logout, user } = useAuth();
+   const { isAuthenticated, user } = useAuth();
 
    const isActive = (path: string) => {
       if (path === '/') return pathname === '/';
@@ -16,98 +16,141 @@ const Header = () => {
    };
 
    const desktopLinkClass = (path: string) =>
-      `transition-colors duration-200 uppercase tracking-wider py-1 ${
+      `relative flex items-center px-4 py-2 rounded-full font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-300 ${
          isActive(path)
-            ? 'text-cyan-400 font-bold border-b-2 border-cyan-400 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]'
-            : 'text-slate-400 hover:text-cyan-400'
+            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_15px_rgba(6,182,212,0.35)] backdrop-blur-md'
+            : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'
       }`;
 
    const mobileLinkClass = (path: string) =>
-      `flex items-center gap-2 px-3 py-2 transition-all uppercase font-mono ${
+      `flex items-center justify-center sm:justify-start gap-2.5 px-4 py-3 rounded-xl transition-all uppercase font-mono text-xs ${
          isActive(path)
-            ? 'bg-cyan-950/40 text-cyan-300 font-bold border border-cyan-500/40 shadow-sm shadow-cyan-950/50'
-            : 'text-slate-400 hover:bg-cyan-950/10 hover:text-cyan-400 border border-transparent'
+            ? 'bg-cyan-500/25 text-cyan-300 font-bold border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+            : 'text-slate-300 hover:bg-white/5 hover:text-cyan-300 border border-transparent'
       }`;
 
   return (
-    <nav className={`fixed top-0 right-0 left-0 z-50 backdrop-blur-md backdrop-saturate-150 py-4 px-6 w-full shadow-none bg-black/70 border-b border-white/10 font-mono text-xs transition-transform duration-100 ${direction === 'down' ? '-translate-y-full' : 'translate-y-0'}`}>
-      <div className='flex items-center max-w-7xl mx-auto justify-between'>
-         <Link to="/" onClick={() => setIsMenuOpen(false)} className='flex items-center gap-2.5 group'>
-            <div className='border border-cyan-500/40 bg-cyan-950/20 p-2 rounded-none transition-all duration-300 group-hover:border-cyan-400 group-hover:bg-cyan-950/40 shadow-sm shadow-cyan-950/50'>
-               <Terminal className='w-4 h-4 text-cyan-400' />
-            </div>
-            <span className='text-sm uppercase tracking-widest text-white font-bold'>
-               BRACE // <span className='text-cyan-400'>RCE</span>
+    <nav className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl rounded-full bg-[#0a0d14]/90 backdrop-blur-2xl backdrop-saturate-200 py-3.5 px-5 sm:px-8 border border-white/20 shadow-[0_10px_38px_0_rgba(0,0,0,0.8),0_0_1px_1px_rgba(255,255,255,0.1)] font-mono text-xs transition-all duration-300 ${direction === 'down' ? '-translate-y-28 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+      <div className='flex items-center justify-between'>
+         {/* BRAND LOGO - FAVICON SVG IMAGE & ALWAYS VISIBLE TITLE */}
+         <Link to="/" onClick={() => setIsMenuOpen(false)} className='flex items-center gap-2.5 group shrink-0'>
+            <img 
+               src="/favicon.svg" 
+               alt="BRACE RCE Logo" 
+               className='w-7 h-7 transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]'
+            />
+            <span className='text-sm sm:text-base uppercase tracking-widest text-white font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]'>
+               BRACE // <span className='text-cyan-400 font-black'>RCE</span>
             </span>
          </Link>
          
-         {/* DESKTOP NAV */}
-         <div className='hidden wmd:flex items-center space-x-6'>
-            <Link to="/" className={`flex items-center gap-1.5 ${desktopLinkClass('/')}`}>
-               <House className='w-3.5 h-3.5' />
-               <span>[ HOME ]</span>
+         {/* DESKTOP NAV (TEXT ONLY - NO ICONS ON LARGE SCREENS) */}
+         <div className='hidden md:flex items-center space-x-2 lg:space-x-3'>
+            <Link to="/" className={desktopLinkClass('/')}>
+               <span>HOME</span>
             </Link>
             {isAuthenticated && (
                <Link to="/dashboard" className={desktopLinkClass('/dashboard')}>
-                  [ DASHBOARD ]
+                  <span>DASHBOARD</span>
                </Link>
             )}
-            <Link to="/terminal" className={desktopLinkClass('/terminal')}>[ TERMINAL ]</Link>
-            <Link to="/about" className={desktopLinkClass('/about')}>[ ABOUT ]</Link>
+            <Link to="/terminal" className={desktopLinkClass('/terminal')}>
+               <span>TERMINAL</span>
+            </Link>
+            <Link to="/about" className={desktopLinkClass('/about')}>
+               <span>ABOUT</span>
+            </Link>
             
             {isAuthenticated ? (
-               <button onClick={logout} className='flex items-center gap-2 px-3 py-1.5 bg-red-950/30 border border-red-500/40 hover:border-red-400 rounded-none transition-all duration-300 text-red-400 hover:text-red-300 uppercase tracking-wider cursor-pointer font-bold shadow-sm'>
-                  <LogOut className='w-3.5 h-3.5' />
-                  <span>[ LOGOUT - {user?.username} ]</span>
-               </button>
+               <Link to="/profile" className='ml-2'>
+                  <span className={`flex items-center gap-2 px-4 py-2 bg-cyan-950/40 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-bold rounded-full transition-all shadow-[0_0_12px_rgba(6,182,212,0.2)] ${isActive('/profile') ? 'bg-cyan-600/30 border-cyan-300 text-white' : ''}`}>
+                     <User className='w-4 h-4' />
+                     <span>PROFILE ({user?.username?.toUpperCase()})</span>
+                  </span>
+               </Link>
             ) : (
-               <Link to="/signin" className={desktopLinkClass('/signin')}>
-                  <span className='flex items-center gap-1.5 px-3 py-1.5 bg-indigo-950/30 border border-indigo-500/40 hover:border-indigo-400 text-indigo-300 font-bold'>
-                     <LogIn className='w-3.5 h-3.5' />
-                     <span>[ LOGIN ]</span>
+               <Link to="/signin" className='ml-2'>
+                  <span className={`flex items-center gap-2 px-4.5 py-2 bg-indigo-950/60 border border-indigo-400/50 hover:border-indigo-300 text-indigo-200 font-bold rounded-full transition-all shadow-[0_0_15px_rgba(99,102,241,0.25)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] ${isActive('/signin') ? 'bg-indigo-600/40 border-indigo-300 text-white' : ''}`}>
+                     <LogIn className='w-4 h-4' />
+                     <span>LOGIN</span>
                   </span>
                </Link>
             )}
          </div>
 
-         {/* MOBILE MENU TOGGLE */}
-         <button
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className='wmd:hidden block p-2 rounded-none bg-black/60 border border-white/15 text-cyan-400 cursor-pointer hover:bg-cyan-950/20 transition-all'
-         >
-            {isMenuOpen ? <X className='w-4 h-4'/> : <MenuIcon className='w-4 h-4'/>}
-         </button>
+         {/* SMALL SCREEN ICON-ONLY BAR (SMALL MOBILE SCREENS < MD) */}
+         <div className='flex md:hidden items-center gap-1.5 sm:gap-2.5'>
+            <Link to="/" title="Home" className={`p-2.5 rounded-full transition-all ${isActive('/') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+               <House className='w-4.5 h-4.5' />
+            </Link>
+
+            {isAuthenticated && (
+               <Link to="/dashboard" title="Dashboard" className={`p-2.5 rounded-full transition-all ${isActive('/dashboard') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+                  <LayoutDashboard className='w-4.5 h-4.5' />
+               </Link>
+            )}
+
+            <Link to="/terminal" title="Terminal" className={`p-2.5 rounded-full transition-all ${isActive('/terminal') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+               <Terminal className='w-4.5 h-4.5' />
+            </Link>
+
+            <Link to="/about" title="About" className={`p-2.5 rounded-full transition-all ${isActive('/about') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+               <Info className='w-4.5 h-4.5' />
+            </Link>
+
+            {isAuthenticated ? (
+               <Link to="/profile" title={`Profile (${user?.username})`} className={`p-2.5 rounded-full bg-cyan-950/50 border border-cyan-500/50 text-cyan-300 hover:text-white transition-all ml-1 shadow-[0_0_12px_rgba(6,182,212,0.25)] ${isActive('/profile') ? 'bg-cyan-600/40 border-cyan-300 text-white' : ''}`}>
+                  <User className='w-4.5 h-4.5' />
+               </Link>
+            ) : (
+               <Link to="/signin" title="Login" className={`p-2.5 rounded-full bg-indigo-950/60 border border-indigo-500/50 text-indigo-200 hover:text-white transition-all ml-1 shadow-[0_0_12px_rgba(99,102,241,0.25)] ${isActive('/signin') ? 'bg-indigo-600/40 border-indigo-300 text-white' : ''}`}>
+                  <LogIn className='w-4.5 h-4.5' />
+               </Link>
+            )}
+
+            {/* MOBILE MENU DROPDOWN TOGGLE */}
+            <button
+               type="button"
+               onClick={() => setIsMenuOpen((open) => !open)}
+               aria-label="Toggle Navigation Menu"
+               className='p-2.5 rounded-full bg-[#121824] border border-white/20 text-cyan-400 cursor-pointer hover:bg-cyan-950/50 hover:border-cyan-400/40 transition-all ml-1'
+            >
+               {isMenuOpen ? <X className='w-4.5 h-4.5'/> : <MenuIcon className='w-4.5 h-4.5'/>}
+            </button>
+         </div>
       </div>
       
-      {/* MOBILE MENU */}
+      {/* MOBILE EXPANDED MENU */}
       {isMenuOpen && (
-         <div className="wmd:hidden mx-auto mt-4 grid max-w-7xl gap-1.5 border-t border-white/10 pt-4 text-xs font-mono">
+         <div className="md:hidden mx-auto mt-4 grid gap-2 border-t border-white/15 pt-4 text-xs font-mono">
             <Link to="/" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/')}>
-               <House className='w-3.5 h-3.5' />
-               <span>[ HOME ]</span>
+               <House className='w-4.5 h-4.5' />
+               <span>HOME</span>
             </Link>
             {isAuthenticated && (
                <Link to="/dashboard" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/dashboard')}>
-                  <span>[ DASHBOARD ]</span>
+                  <LayoutDashboard className='w-4.5 h-4.5' />
+                  <span>DASHBOARD</span>
                </Link>
             )}
             <Link to="/terminal" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/terminal')}>
-               <span>[ TERMINAL ]</span>
+               <Terminal className='w-4.5 h-4.5' />
+               <span>TERMINAL</span>
             </Link>
             <Link to="/about" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/about')}>
-               <span>[ ABOUT ]</span>
+               <Info className='w-4.5 h-4.5' />
+               <span>ABOUT</span>
             </Link>
             
             {isAuthenticated ? (
-               <button onClick={() => { logout(); setIsMenuOpen(false); }} className='flex items-center gap-2 rounded-none px-3 py-2 text-red-400 hover:bg-red-950/20 border border-transparent hover:border-red-500/30 transition-all uppercase w-full text-left cursor-pointer font-bold mt-1'>
-                  <LogOut className='w-3.5 h-3.5' />
-                  <span>[ LOGOUT - {user?.username} ]</span>
-               </button>
+               <Link to="/profile" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/profile')}>
+                  <User className='w-4.5 h-4.5' />
+                  <span>PROFILE ({user?.username?.toUpperCase()})</span>
+               </Link>
             ) : (
                <Link to="/signin" onClick={() => setIsMenuOpen(false)} className={mobileLinkClass('/signin')}>
-                  <LogIn className='w-3.5 h-3.5' />
-                  <span>[ LOGIN ]</span>
+                  <LogIn className='w-4.5 h-4.5' />
+                  <span>LOGIN</span>
                </Link>
             )}
          </div>

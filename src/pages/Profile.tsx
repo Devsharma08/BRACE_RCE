@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Hexagon, Code } from "lucide-react";
+import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Hexagon, Code, LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../config/api";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
+import { useAuth } from "../context/AuthContext";
 
 import { PageSkeleton } from "../components/ui/Skeleton";
 
@@ -39,6 +40,7 @@ interface MatchRecord {
 
 const Profile = () => {
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
+  const { logout } = useAuth();
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ["user-profile-data"],
@@ -98,11 +100,19 @@ const Profile = () => {
             </div>
 
             <h1 className="font-mono text-xl font-bold tracking-widest text-white mb-1 uppercase">
-              {profile?.username || "AGENT_UNKNOWN"}
+              {profile?.username}
             </h1>
-            <p className="text-xs text-slate-500 font-mono mb-6">{profile?.email}</p>
+            <p className="font-mono text-xs text-slate-400 mb-4">{profile?.email}</p>
 
-            <div className="w-full grid grid-cols-2 gap-3 font-mono text-xs">
+            <button
+              onClick={logout}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2 px-4 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/40 hover:border-rose-400 rounded-xl text-rose-300 hover:text-rose-200 text-xs font-mono font-bold tracking-wider transition-all cursor-pointer shadow-[0_0_15px_rgba(244,63,94,0.15)]"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>[ TERMINATE SESSION ]</span>
+            </button>
+
+            <div className="w-full grid grid-cols-2 gap-3 font-mono text-xs mt-6">
               <div className="bg-black/50 border border-white/5 p-3 rounded-xl">
                 <span className="text-slate-500 text-[10px] block mb-1">DESIGNATION</span>
                 <span className="text-cyan-400 font-bold">CYBER_CLASS_I</span>

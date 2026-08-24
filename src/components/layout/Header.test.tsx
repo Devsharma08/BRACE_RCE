@@ -31,9 +31,9 @@ describe('Header Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('[ HOME ]')).toBeDefined();
-    expect(screen.getByText('[ DASHBOARD ]')).toBeDefined();
-    expect(screen.getByText('[ TERMINAL ]')).toBeDefined();
-    expect(screen.getByText('[ ABOUT ]')).toBeDefined();
+    expect(screen.getByText('HOME')).toBeDefined();
+    expect(screen.getByText('DASHBOARD')).toBeDefined();
+    expect(screen.getByText('TERMINAL')).toBeDefined();
+    expect(screen.getByText('ABOUT')).toBeDefined();
   });
 });

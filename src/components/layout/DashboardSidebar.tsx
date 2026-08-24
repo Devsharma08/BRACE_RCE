@@ -5,6 +5,7 @@ import {
   Code2,
   User,
   Zap,
+  LogOut,
 } from "lucide-react";
 import { SidebarLink } from "../shared/SpanbarLink";
 import { useAuth } from "../../context/AuthContext";
@@ -14,7 +15,7 @@ interface DashboardSidebarProps {
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const displayName = (user?.username || "DEV").toUpperCase();
 
   return (
@@ -61,16 +62,19 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
         </nav>
       </div>
 
-      {/* USER CARD AT BOTTOM */}
-      <div className="rounded border border-cyan-500/30 bg-cyan-950/20 p-3.5 flex flex-col gap-1.5 shadow-[0_0_20px_rgba(6,182,212,0.05)]">
+      {/* USER CARD AT BOTTOM WITH LOGOUT BUTTON */}
+      <div className="rounded border border-cyan-500/30 bg-cyan-950/20 p-3.5 flex flex-col gap-2 shadow-[0_0_20px_rgba(6,182,212,0.05)]">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-white tracking-wide truncate">
             {displayName}
           </span>
-          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>ONLINE</span>
-          </div>
+          <button
+            onClick={logout}
+            title="Logout"
+            className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-950/50 border border-transparent hover:border-red-500/40 transition-all cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
         </div>
         <div className="flex items-center justify-between text-xs text-slate-400 border-t border-cyan-500/10 pt-1.5 mt-0.5">
           <span>Rating:</span>
