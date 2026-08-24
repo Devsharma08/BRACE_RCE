@@ -34,6 +34,7 @@ import type {
 
 import { PageSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
+import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -76,8 +77,8 @@ export const Root = () => {
                 <SocketProvider>
                   <Routes>
                     <Route path="/" element={<App />}>
+                      {/* Public Routes */}
                       <Route index element={<Home />} />
-                      <Route path="dashboard" element={<Dashboard />} />
                       <Route path="about" element={<About />} />
                       <Route path="/signin" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
@@ -85,51 +86,56 @@ export const Root = () => {
                         path="/ds/:slug"
                         element={<DataStructureDetail />}
                       />
-                      <Route path="/friends" element={<FriendsDashboard />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="/battle/:roomId" element={<Battle />} />
-                      <Route path="/rooms/create" element={<CreateRoom />} />
-                      <Route path="/lobby" element={<Lobby />} />
-                      <Route path="/problems" element={<Problems />} />
 
-                      <Route
-                        path="terminal"
-                        element={
-                          <FileNamesContext.Provider
-                            value={{ filesData, setFilesData }}
-                          >
-                            <CodeContext.Provider
-                              value={{
-                                code,
-                                language,
-                                setCode,
-                                setLanguage,
-                                testCases,
-                                setTestCases,
-                                activeFile,
-                                setActiveFile,
-                                output,
-                                setOutput,
-                                customInput,
-                                setCustomInput,
-                                customInputActive,
-                                setCustomInputActive,
-                              }}
+                      {/* Protected Routes */}
+                      <Route element={<ProtectedRoute />}>
+                        <Route path="dashboard" element={<Dashboard />} />
+                        <Route path="/friends" element={<FriendsDashboard />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/battle/:roomId" element={<Battle />} />
+                        <Route path="/rooms/create" element={<CreateRoom />} />
+                        <Route path="/lobby" element={<Lobby />} />
+                        <Route path="/problems" element={<Problems />} />
+
+                        <Route
+                          path="terminal"
+                          element={
+                            <FileNamesContext.Provider
+                              value={{ filesData, setFilesData }}
                             >
-                              <UserResponseContext.Provider
+                              <CodeContext.Provider
                                 value={{
-                                  responseContent,
-                                  setResponseContent,
-                                  status,
-                                  setStatus,
+                                  code,
+                                  language,
+                                  setCode,
+                                  setLanguage,
+                                  testCases,
+                                  setTestCases,
+                                  activeFile,
+                                  setActiveFile,
+                                  output,
+                                  setOutput,
+                                  customInput,
+                                  setCustomInput,
+                                  customInputActive,
+                                  setCustomInputActive,
                                 }}
                               >
-                                <Terminal />
-                              </UserResponseContext.Provider>
-                            </CodeContext.Provider>
-                          </FileNamesContext.Provider>
-                        }
-                      />
+                                <UserResponseContext.Provider
+                                  value={{
+                                    responseContent,
+                                    setResponseContent,
+                                    status,
+                                    setStatus,
+                                  }}
+                                >
+                                  <Terminal />
+                                </UserResponseContext.Provider>
+                              </CodeContext.Provider>
+                            </FileNamesContext.Provider>
+                          }
+                        />
+                      </Route>
                     </Route>
                   </Routes>
                 </SocketProvider>
