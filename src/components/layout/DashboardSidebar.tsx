@@ -19,11 +19,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
   const displayName = (user?.username || "DEV").toUpperCase();
 
   return (
-    <aside className="hidden md:flex fixed top-0 left-0 h-screen w-[245px] bg-[#07080a] border-r border-cyan-500/20 font-mono flex-col justify-between p-4 z-40 select-none">
-      <div className="flex flex-col gap-6">
+    <aside className="hidden md:flex fixed top-0 left-0 h-screen w-[245px] bg-[#02040a] border-r border-white/10 font-mono flex-col justify-between p-4 z-40 select-none">
+      {/* Dot-grid texture */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+
+      <div className="flex flex-col gap-6 relative z-10">
         {/* BRAND HEADER */}
-        <div className="flex items-center gap-2 px-2 pt-2">
-          <div className="w-8 h-8 rounded border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+        <div className="flex items-center gap-2 px-2 pt-2 pb-3 border-b border-white/10">
+          <div className="w-8 h-8 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
             <Zap className="w-4 h-4 fill-cyan-400" />
           </div>
           <div>
@@ -62,8 +65,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
         </nav>
       </div>
 
-      {/* USER CARD AT BOTTOM WITH LOGOUT BUTTON */}
-      <div className="rounded border border-cyan-500/30 bg-cyan-950/20 p-3.5 flex flex-col gap-2 shadow-[0_0_20px_rgba(6,182,212,0.05)]">
+      {/* USER CARD AT BOTTOM WITH 4px ACCENT EDGE */}
+      <div className="relative z-10 border border-white/20 border-l-4 border-l-cyan-500/70 bg-[#06080e] p-3.5 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-white tracking-wide truncate">
             {displayName}
@@ -71,12 +74,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
           <button
             onClick={logout}
             title="Logout"
-            className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-950/50 border border-transparent hover:border-red-500/40 transition-all cursor-pointer"
+            className="p-1 rounded-none text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 border border-transparent hover:border-rose-500/40 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
         </div>
-        <div className="flex items-center justify-between text-xs text-slate-400 border-t border-cyan-500/10 pt-1.5 mt-0.5">
+        <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-1.5 mt-0.5">
           <span>Rating:</span>
           <span className="font-bold text-cyan-400">{rating.toLocaleString()}</span>
         </div>

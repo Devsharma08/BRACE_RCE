@@ -424,7 +424,7 @@ const Terminal = () => {
   const activeFileKey = activeFile ? `${activeFile}:${activeFileName}` : "";
 
   return (
-    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#08090a] text-white font-mono select-none md:flex-row">
+    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row">
       {/* FILE EXPLORER */}
       {isFileExplorerOpen && (
         <FileExplorer
@@ -447,9 +447,9 @@ const Terminal = () => {
       )}
 
       {/* MAIN WORKSPACE CONTENT AREA */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-black/40">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] border-l border-white/10">
         {/* HEADER BAR */}
-        <div className="flex w-full items-center justify-between gap-3 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
+        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-[#06080e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <Link
               to="/dashboard"
