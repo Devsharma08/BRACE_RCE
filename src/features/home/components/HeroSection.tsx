@@ -512,7 +512,7 @@ export const BraceRcePixelArt: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="z-10 flex min-h-[65vh] w-full max-w-7xl flex-col items-center justify-center pb-8 font-mono text-slate-200 select-none px-4 sm:px-8"
+      className="z-10 flex min-h-[90vh] w-full max-w-7xl flex-col items-center justify-center py-12 font-mono text-slate-200 select-none px-4 sm:px-8 border-b border-white/10"
     >
       <style dangerouslySetInnerHTML={{ __html: styles }} />
 

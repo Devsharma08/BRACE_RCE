@@ -2,6 +2,7 @@ import React from "react";
 import HeroSection from "../features/home/components/HeroSection";
 import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
 import BentoGrid from "../features/home/components/BentoGrid";
+import CommunitySupportSection from "../features/home/components/CommunitySupportSection";
 
 const Home: React.FC = () => {
   return (
@@ -9,6 +10,7 @@ const Home: React.FC = () => {
       <HeroSection />
       <StickyFeatureShowcase />
       <BentoGrid />
+      <CommunitySupportSection />
     </section>
   );
 };
