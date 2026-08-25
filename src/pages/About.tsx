@@ -4,7 +4,7 @@ import {
   Swords, Users, Terminal, Shield, Zap, Bot, Trophy,
   FlaskConical, Globe, UserPlus, LayoutDashboard, Clock, Code2, Cpu
 } from 'lucide-react';
-// import BentoCapabilityGrid, { type BentoCapabilityItem } from '../components/shared/BentoCapabilityGrid';
+import BentoCapabilityGrid, { type BentoCapabilityItem } from '../components/shared/BentoCapabilityGrid';
 
 // ─────────────────────────────────────────────
 // ARCHITECTURE CAPABILITIES (reuses home's shared bento)

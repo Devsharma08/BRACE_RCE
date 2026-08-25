@@ -49,6 +49,7 @@ type SidebarFilesModeProps = {
   activeFileEntry?: FileEntry;
 };
 
+// ─── HINTS ACCORDION ───────────────────────────────────────────────────────
 const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
 
@@ -56,47 +57,54 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
     if (Array.isArray(hints) && hints.length > 0) return hints;
     if (typeof hints === "string" && hints.trim().length > 0) return [hints];
     return [
-      "Analyze input data constraints and identify potential edge cases (e.g. empty inputs, zero values, or single element arrays).",
-      "Consider using an efficient data structure (such as a Hash Map, Two-Pointers, or Sliding Window) to reduce time complexity.",
-      "Optimal Strategy: Aim for O(N) time complexity and O(1) auxiliary space where feasible."
+      "Analyze input constraints — check edge cases (empty, zero, single element).",
+      "Consider a Hash Map, Two-Pointers, or Sliding Window to reduce time complexity.",
+      "Aim for O(N) time and O(1) space where feasible.",
     ];
   }, [hints]);
 
   return (
-    <div className="rounded-none border border-amber-500/20 bg-amber-950/5 p-3 text-xs font-mono">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1">
-          ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
+    <div className="border-t-2 border-amber-500/30 bg-amber-950/10">
+      {/* Section header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-amber-500/20">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+          HINTS ({unlockedCount}/{parsedHints.length})
         </span>
         {unlockedCount < parsedHints.length && (
           <button
             type="button"
-            onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
-            className="text-[9px] font-bold text-amber-300 border border-amber-500/30 bg-amber-950/20 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/50 transition-all cursor-pointer"
+            onClick={() => setUnlockedCount((p) => Math.min(parsedHints.length, p + 1))}
+            className="text-[8px] font-bold text-amber-300 border border-amber-500/40 bg-amber-950/30 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/60 transition-all cursor-pointer"
           >
-            [ REVEAL HINT #{unlockedCount + 1} ]
+            UNLOCK #{unlockedCount + 1}
           </button>
         )}
       </div>
 
-      {unlockedCount === 0 ? (
-        <div className="text-[10px] text-slate-500 italic">
-          Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
-        </div>
-      ) : (
-        <div className="space-y-2 mt-2">
-          {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
-            <div key={`hint-${idx}`} className="border-l-2 border-amber-400 bg-black/40 p-2.5 text-[10px] text-amber-200/90 leading-relaxed">
-              <span className="font-bold text-amber-400 block mb-0.5">// HINT #{idx + 1}</span>
-              {hintText}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="px-3 py-2">
+        {unlockedCount === 0 ? (
+          <p className="text-[10px] text-slate-500 font-sans leading-relaxed">
+            Hints locked — click to reveal one at a time.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {parsedHints.slice(0, unlockedCount).map((hintText: string, idx: number) => (
+              <div key={idx} className="border-l-2 border-amber-400/60 pl-2.5 py-1 text-[10px] text-amber-200/80 font-sans leading-relaxed">
+                <span className="text-[8px] font-bold text-amber-400/70 block mb-0.5 uppercase tracking-widest">
+                  Hint {idx + 1}
+                </span>
+                {hintText}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
+// ─── FILES EXPLORER MODE ────────────────────────────────────────────────────
 const SidebarFilesMode = React.memo(({
   searchInput,
   setSearchInput,
@@ -121,217 +129,218 @@ const SidebarFilesMode = React.memo(({
   detailsPanelClass,
   activeFileEntry,
 }: SidebarFilesModeProps) => {
-    return(
-       <>
-            <div className="p-3 border border-white/5 bg-black/20 relative overflow-visible search-container">
-              <div className="space-y-3">
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-[10px] font-mono text-cyan-500/40 select-none">&gt;</span>
-                  <input
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    placeholder={isSmall ? "FIND..." : "FILTER_FILES // SEARCH..."}
-                    className="w-full rounded-none border border-white/10 bg-black/40 pl-7 pr-3 py-2 text-xs font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 placeholder:text-slate-600"
-                  />
-                </div>
+  return (
+    <>
+      {/* ── ZONE 1: FILTERS ──────────────────────────────────────── */}
+      <div className="search-container border-b-2 border-cyan-500/20 bg-[#06080e]">
+        {/* Search input */}
+        <div className="px-3 pt-3 pb-2 relative flex items-center">
+          <span className="absolute left-6 text-[10px] font-mono text-cyan-500/40 select-none">›</span>
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder={isSmall ? "FIND..." : "SEARCH PROBLEMS..."}
+            className="w-full border border-white/10 bg-black/50 pl-6 pr-3 py-1.5 text-[10px] font-mono text-cyan-300 outline-none focus:border-cyan-500/50 placeholder:text-slate-600 transition"
+          />
+        </div>
 
-                {/* Dynamic difficulty level pills */}
-                <div className="flex gap-1 mt-2">
-                  {(["ALL", "EASY", "MEDIUM", "HARD"] as const).map((filter) => {
-                    const isActive = difficultyFilter === filter;
-                    const activeClasses: Record<string, string> = {
-                      ALL: "border-indigo-500/30 text-indigo-400 bg-indigo-950/10",
-                      EASY: "border-green-500/30 text-green-400 bg-green-950/10",
-                      MEDIUM: "border-yellow-500/30 text-yellow-400 bg-yellow-950/10",
-                      HARD: "border-red-500/30 text-red-400 bg-red-950/10",
-                    };
-                    const inactiveClasses = "text-slate-500 border-white/5 hover:border-white/10 hover:text-slate-400 bg-transparent";
+        {/* Difficulty pills */}
+        <div className="flex gap-1 px-3 pb-2">
+          {(["ALL", "EASY", "MEDIUM", "HARD"] as const).map((f) => {
+            const isActive = difficultyFilter === f;
+            const style: Record<string, string> = {
+              ALL:    "border-slate-500/50 text-slate-300 bg-slate-900/60",
+              EASY:   "border-emerald-500/50 text-emerald-300 bg-emerald-950/60",
+              MEDIUM: "border-amber-500/50 text-amber-300 bg-amber-950/60",
+              HARD:   "border-rose-500/50 text-rose-300 bg-rose-950/60",
+            };
+            return (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setDifficultyFilter(f)}
+                className={`flex-1 py-1 text-[8px] font-bold font-mono tracking-wider border transition-all cursor-pointer ${
+                  isActive ? style[f] : "border-white/5 text-slate-600 hover:text-slate-400 hover:border-white/10"
+                }`}
+              >
+                <span className="badge-text-full">{f === "ALL" ? "ALL" : f.slice(0, 3)}</span>
+                <span className="badge-text-short">{f[0]}</span>
+              </button>
+            );
+          })}
+        </div>
 
-                    return (
-                      <button
-                        key={filter}
-                        onClick={() => setDifficultyFilter(filter)}
-                        type="button"
-                        className={`px-2 py-1 rounded-none text-[8px] font-mono border tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
-                          isActive ? activeClasses[filter] : inactiveClasses
-                        }`}
-                      >
-                        <span className="badge-text-full whitespace-nowrap">[ {filter} ]</span>
-                        <span className="badge-text-short whitespace-nowrap">[ {filter === "ALL" ? "ALL" : filter[0]} ]</span>
-                      </button>
-                    );
-                  })}
-                </div>
+        {/* Category + Language dropdowns */}
+        {!isSmall && (
+          <div className="flex gap-2 px-3 pb-3">
+            <div className="relative flex-1">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full border border-white/10 bg-black/60 px-2 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none cursor-pointer uppercase appearance-none hover:border-cyan-500/30"
+              >
+                <option value="ALL">CATEGORY</option>
+                <option value="linked list">LINKED LIST</option>
+                <option value="array">ARRAY</option>
+                <option value="string">STRING</option>
+                <option value="math">MATH</option>
+                <option value="graph">GRAPH</option>
+                <option value="queue">QUEUE</option>
+                <option value="stack">STACK</option>
+                <option value="tree">TREE</option>
+                <option value="dynamic prog">DYN PROG</option>
+                <option value="recursion">RECURSION</option>
+                <option value="backtracking">BACKTRACK</option>
+                <option value="searching">SEARCHING</option>
+                <option value="greedy">GREEDY</option>
+                <option value="interval problems">INTERVALS</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-cyan-500/40">▼</div>
+            </div>
+            <div className="relative flex-1">
+              <select
+                value={languageFilter}
+                onChange={(e) => setLanguageFilter(e.target.value)}
+                className="w-full border border-white/10 bg-black/60 px-2 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none cursor-pointer uppercase appearance-none hover:border-cyan-500/30"
+              >
+                <option value="ALL">LANGUAGE</option>
+                <option value="java">JAVA</option>
+                <option value="javascript">JS</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-cyan-500/40">▼</div>
+            </div>
+          </div>
+        )}
 
-                {/* Dynamic category and language selector dropdowns */}
-                {!isSmall && (
-                  <div className="flex gap-2 relative">
-                    <div className="relative flex-1">
-                      <select
-                        value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="w-full rounded-none border border-white/10 bg-black/60 px-2.5 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none transition focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 cursor-pointer uppercase appearance-none hover:text-cyan-400 hover:border-cyan-500/30"
-                      >
-                        <option value="ALL">SYS // CATEGORIES</option>
-                        <option value="linked list">LINKED LIST</option>
-                        <option value="array">ARRAY</option>
-                        <option value="string">STRING</option>
-                        <option value="math">MATH</option>
-                        <option value="graph">GRAPH</option>
-                        <option value="queue">QUEUE</option>
-                        <option value="stack">STACK</option>
-                        <option value="tree">TREE</option>
-                        <option value="dynamic prog">DYNAMIC PROG</option>
-                        <option value="recursion">RECURSION</option>
-                        <option value="backtracking">BACKTRACKING</option>
-                        <option value="searching">SEARCHING</option>
-                        <option value="greedy">GREEDY</option>
-                        <option value="interval problems">INTERVAL PROBLEMS</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-[8px] text-cyan-500/40 select-none">
-                        ▼
+        {/* Status line */}
+        <div className="sidebar-details px-3 pb-2 flex items-center justify-between">
+          <span className="text-[8px] font-mono text-slate-600 uppercase tracking-wider">
+            {searchActive ? `${filteredFiles.length}/${files.length} matches` : `${files.length} files`}
+          </span>
+          {searchActive && <span className="text-[8px] text-cyan-400 font-bold">FILTERED</span>}
+        </div>
+      </div>
+
+      {/* ── ZONE 2: FILE LIST ─────────────────────────────────────── */}
+      <div className="sidebar-list-container border-b-2 border-white/10">
+        {/* Zone label */}
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a]">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">PROBLEMS</span>
+          <span className="text-[8px] font-mono text-cyan-400/60">{filteredFiles.length}</span>
+        </div>
+
+        {isLoadingFiles ? (
+          <div className="px-3 py-2">{renderLoadingState("Loading files...")}</div>
+        ) : (
+          <div className="flex flex-col gap-px max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black [&::-webkit-scrollbar-thumb]:bg-slate-700">
+            {filteredFiles.length > 0 ? (
+              filteredFiles.map((file) => (
+                <button
+                  key={`${file.oid}:${file.name}`}
+                  type="button"
+                  onClick={() => onFileClick(file.oid, file.name)}
+                  className={`group file-button-compact flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-[10px] transition-all cursor-pointer border-l-2 ${
+                    activeFile === file.oid && activeFileName === file.name
+                      ? "border-l-cyan-400 bg-cyan-950/20 text-cyan-300"
+                      : "border-l-transparent bg-transparent text-slate-400 hover:bg-white/5 hover:text-slate-200 hover:border-l-white/20"
+                  }`}
+                >
+                  <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-500 group-hover:text-cyan-400" />
+                  <span className="file-name-text flex-1 truncate">{file.name}</span>
+                  <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No files match filters</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── ZONE 3: ACTIVE FILE DETAILS ──────────────────────────── */}
+      {activeFile && (
+        <div className={detailsPanelClass}>
+
+          {/* File identity row */}
+          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#06080e] border-b border-white/10">
+            <span className="text-[10px] font-bold text-white truncate font-mono">
+              {activeFileEntry?.name || "—"}
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {language && (
+                <span className="text-[8px] px-1.5 py-0.5 border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 font-mono uppercase">
+                  {language.toUpperCase()}
+                </span>
+              )}
+              {fileData?.data_structure && (
+                <span className="text-[8px] px-1.5 py-0.5 border border-slate-700 bg-black/40 text-slate-400 font-mono uppercase">
+                  {fileData.data_structure}
+                </span>
+              )}
+              <DifficultyBadge level={fileData?.difficulty_level || "E"} />
+              {testCaseCount > 0 && (
+                <span className="text-[8px] px-1.5 py-0.5 border border-indigo-500/30 bg-indigo-950/30 text-indigo-300 font-mono">
+                  {testCaseCount}T
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Problem Statement */}
+          <div className="border-t-2 border-cyan-500/25 bg-[#02040a]">
+            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-cyan-500/15">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PROBLEM STATEMENT</span>
+            </div>
+            <div className="px-3 py-2.5 text-[10px] text-slate-300 font-sans leading-relaxed whitespace-pre-wrap max-h-[260px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+              {fileData?.problem_definition || "No problem statement available for this file."}
+            </div>
+          </div>
+
+          {/* Hints */}
+          <ProblemHintsAccordion hints={fileData?.problem_hints} />
+
+          {/* Test Cases */}
+          {fileData?.test_cases?.length ? (
+            <div className="border-t-2 border-indigo-500/25 bg-[#02040a]">
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-indigo-500/15">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-400">TEST CASES</span>
+                <span className="ml-auto text-[8px] text-slate-500">{fileData.test_cases.length} cases</span>
+              </div>
+              <div className="px-3 py-2.5 space-y-3">
+                {fileData.test_cases.map((tc, i) => (
+                  <div key={i} className="border border-white/8 bg-black/50">
+                    <div className="px-2 py-1 border-b border-white/8 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                      Case {i + 1}
+                    </div>
+                    <div className="grid grid-cols-1 divide-y divide-white/5">
+                      <div className="px-2 py-1.5">
+                        <div className="text-[8px] text-emerald-400/70 font-bold uppercase mb-1">IN</div>
+                        <pre className="text-[10px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">{tc.input ?? "—"}</pre>
+                      </div>
+                      <div className="px-2 py-1.5">
+                        <div className="text-[8px] text-rose-400/70 font-bold uppercase mb-1">OUT</div>
+                        <pre className="text-[10px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">{tc.expectedOutput ?? "—"}</pre>
                       </div>
                     </div>
-
-                    <div className="relative flex-1">
-                      <select
-                        value={languageFilter}
-                        onChange={(e) => setLanguageFilter(e.target.value)}
-                        className="w-full rounded-none border border-white/10 bg-black/60 px-2.5 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none transition focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 cursor-pointer uppercase appearance-none hover:text-cyan-400 hover:border-cyan-500/30"
-                      >
-                        <option value="ALL">SYS // LANGUAGES</option>
-                        <option value="java">JAVA</option>
-                        <option value="javascript">JAVASCRIPT</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-[8px] text-cyan-500/40 select-none">
-                        ▼
-                      </div>
-                    </div>
                   </div>
-                )}
-
-                <div className="flex sidebar-details items-center justify-between gap-1 text-[9px] font-mono text-slate-500 tracking-wider">
-                  <span>
-                    {searchActive
-                      ? `MATCH // ${filteredFiles.length} OF ${files.length}`
-                      : "STATUS // LISTING_ALL"}
-                  </span>
-                  {searchActive && <span className="text-cyan-400">SEARCH_ACTIVE</span>}
-                </div>
+                ))}
               </div>
             </div>
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+});
 
-            {/* Filtered Files List */}
-            <div className="p-1 sidebar-list-container text-xs text-slate-400 flex flex-col gap-1.5 mt-2">
-              <div className="text-[9px] sidebar-details font-mono uppercase tracking-widest text-slate-500 mb-1 border-b border-white/5 pb-0.5">
-                SYS // FILTERED_EXPLORER_FILES
-              </div>
-              <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-slate-950/40 [&::-webkit-scrollbar-thumb]:bg-slate-700/60">
-                {filteredFiles.length > 0 ? (
-                  filteredFiles.map((file) => (
-                    <button
-                      key={`${file.oid}:${file.name}`}
-                      type="button"
-                      onClick={() => onFileClick(file.oid, file.name)}
-                      className={`group file-button-compact flex w-full items-center justify-between gap-3 rounded-none border px-3 py-2 text-left text-xs font-mono transition-all border-l-2 cursor-pointer ${
-                        activeFile === file.oid && activeFileName === file.name
-                          ? "border-cyan-500/40 bg-cyan-950/15 text-cyan-400 border-l-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.05)]"
-                          : "border-white/5 bg-black/30 text-cyan-400/80 hover:border-cyan-500/30 hover:bg-cyan-950/5 hover:text-cyan-400 border-l-cyan-500/10 hover:border-l-cyan-400"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileCode className="file-icon h-3.5 w-3.5 text-cyan-400/60 group-hover:text-cyan-400 flex-shrink-0" />
-                        <span className="file-name-text font-medium truncate">{file.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {file.data_structure && !isSmall && (
-                          <span className="rounded-none border border-white/10 bg-black/60 px-1 py-0.5 text-[7px] uppercase tracking-wider text-slate-500 font-mono font-normal">
-                            {file.data_structure}
-                          </span>
-                        )}
-                        <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="text-[10px] text-slate-600 font-mono p-1">// NO_FILES_MATCH_FILTERS</div>
-                )}
-              </div>
-            </div>
-
-            {isLoadingFiles ? (
-              <div className="border-b sidebar-details border-white/5 bg-black/20 p-4">
-                {renderLoadingState("Syncing repository files...")}
-              </div>
-            ) : null}
-
-            <div className={detailsPanelClass}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500">// SELECTED_FILE</div>
-                  <div className="text-xs font-mono font-bold text-white break-words mt-1">
-                    {activeFileEntry?.name || "NO_ACTIVE_FILE"}
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-none border border-white/10 bg-black/40 px-2 py-0.5 text-[9px] uppercase tracking-wider text-cyan-400/60 font-mono">
-                    {language.toUpperCase() || ""}
-                  </span>
-                  {fileData?.data_structure && (
-                    <span className="rounded-none border border-cyan-500/25 bg-cyan-950/20 px-2 py-0.5 text-[9px] uppercase tracking-wider text-cyan-400/80 font-mono select-none">
-                      {fileData.data_structure}
-                    </span>
-                  )}
-                  <DifficultyBadge level={fileData?.difficulty_level || "E"} />
-                  {testCaseCount ? (
-                    <span className="rounded-none border border-white/10 bg-black/40 px-2 py-0.5 text-[9px] uppercase tracking-wider text-cyan-400/60 font-mono">
-                      {testCaseCount} CASES
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="rounded-none border border-white/5 bg-black/20 p-3 text-xs text-slate-300">
-                <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500 mb-2 font-bold">// PROBLEM_DEFINITION</div>
-                <div className="whitespace-pre-wrap leading-relaxed text-slate-400 font-mono text-[10px]">
-                  {fileData?.problem_definition || "No definition constraints seeded for this solution template."}
-                </div>
-              </div>
-
-              {/* PROGRESSIVE PROBLEM HINTS & BLUEPRINT */}
-              <ProblemHintsAccordion hints={fileData?.problem_hints} />
-
-              <div className="rounded-none border border-white/5 bg-black/20 p-3 text-xs text-slate-300">
-                <div className="text-[9px] uppercase tracking-widest text-slate-500 mb-2 font-bold">// TEST_CASES</div>
-                {fileData?.test_cases?.length ? (
-                  <div className="space-y-3">
-                    {fileData.test_cases.map((testCase, index) => (
-                      <div key={`test-case-${index}`} className="rounded-none border border-white/5 bg-black/40 p-3 font-mono text-[10px]">
-                        <div className="text-[9px] text-slate-500 mb-2">// CASE_{index + 1}</div>
-                        <div className="mb-2">
-                          <div className="text-[8px] uppercase tracking-wider text-slate-600 mb-0.5">INPUT</div>
-                          <pre className="rounded-none bg-black/60 border border-white/5 p-2 text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed font-mono">{testCase.input ?? "-"}</pre>
-                        </div>
-                        <div>
-                          <div className="text-[8px] uppercase tracking-wider text-slate-600 mb-0.5">EXPECTED_OUTPUT</div>
-                          <pre className="rounded-none bg-black/60 border border-white/5 p-2 text-[10px] text-slate-300 whitespace-pre-wrap leading-relaxed font-mono">{testCase.expectedOutput ?? "-"}</pre>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-[10px] text-slate-600 font-mono">// NO_STRUCTURED_TESTS_AVAILABLE</div>
-                )}
-              </div>
-            </div>
-          </>
-    )
-})
+// ─── TERMINAL / SCRATCHPAD MODE ─────────────────────────────────────────────
 
 type SidebarTerminalModeProps = {
   fileName: string;
   setFileName: (val: string) => void;
-  createNewFile: (e?: KeyboardEvent<HTMLInputElement> | MouseEvent<HTMLButtonElement>) => void;
+  createNewFile: (e?: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent<HTMLButtonElement>) => void;
   localFiles: FileEntry[];
   repositoryFiles: FileEntry[];
   isLoadingFiles: boolean;
@@ -340,9 +349,10 @@ type SidebarTerminalModeProps = {
   renderLoadingState: (label: string) => React.ReactNode;
 };
 
+// ─── URL PARAM NORMALIZERS ──────────────────────────────────────────────────
+
 const normalizeCategoryParam = (value: string | null) => {
   if (!value) return "ALL";
-
   let normalized = value.trim().toLowerCase();
   if (normalized === "dynamic-programming" || normalized === "dynamic-prog") normalized = "dynamic prog";
   if (normalized === "linked-list") normalized = "linked list";
@@ -360,20 +370,15 @@ const normalizeDifficultyParam = (value: string | null): "ALL" | "EASY" | "MEDIU
   return normalized === "EASY" || normalized === "MEDIUM" || normalized === "HARD" ? normalized : "ALL";
 };
 
-const normalizeStructureValue = (value: string | null | undefined) => {
-  return (value ?? "").trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
-};
+const normalizeStructureValue = (value: string | null | undefined) =>
+  (value ?? "").trim().toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
 
 const getFileLanguage = (file: FileEntry) => {
   const explicitLanguage = file.language?.trim().toLowerCase();
-  if (explicitLanguage === "java" || explicitLanguage === "javascript") {
-    return explicitLanguage;
-  }
-
+  if (explicitLanguage === "java" || explicitLanguage === "javascript") return explicitLanguage;
   const extension = file.name.split(".").pop()?.toLowerCase();
   if (extension === "java") return "java";
   if (extension === "js" || extension === "jsx" || extension === "ts" || extension === "tsx") return "javascript";
-
   const type = file.type?.toLowerCase() ?? "";
   if (type.includes("java")) return "java";
   if (type.includes("javascript") || type.includes("typescript")) return "javascript";
@@ -385,7 +390,6 @@ const getFileDifficulty = (file: FileEntry) => {
   if (raw === "E" || raw === "EASY") return "E";
   if (raw === "M" || raw === "MEDIUM") return "M";
   if (raw === "H" || raw === "HARD") return "H";
-
   const baseName = file.name.split(".")[0] ?? "";
   const suffix = baseName.match(/([EMH])$/i)?.[1]?.toUpperCase();
   return suffix === "M" || suffix === "H" ? suffix : "E";
@@ -409,98 +413,96 @@ const SidebarTerminalMode = React.memo(({
   onDeleteLocalFile,
   renderLoadingState,
 }: SidebarTerminalModeProps) => {
+
   return (
-     <>
-            <div>
-              <div className="flex sidebar-details items-center border-b border-white/5 bg-black/20 p-3 create-file-container relative">
-                <span className="absolute left-6 text-[10px] font-mono text-cyan-500/40 select-none">&gt;</span>
-                <input
-                  type="text"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && createNewFile(e)}
-                  title="Create File"
-                  className="w-full rounded-none border border-white/10 bg-black/40 pl-7 pr-3 py-2 text-xs font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 placeholder:text-slate-600"
-                  placeholder="NEW_FILE.js // TYPE_&_ENTER..."
-                  aria-label="Create file name"
-                />
-              </div>
+    <>
+      {/* ── ZONE 1: CREATE FILE ───────────────────────────────── */}
+      <div className="create-file-container border-b-2 border-amber-500/20 bg-[#06080e]">
+        <div className="px-3 py-2 text-[8px] font-bold uppercase tracking-widest text-amber-400/70 border-b border-amber-500/10">
+          NEW SCRATCHPAD FILE
+        </div>
+        <div className="px-3 py-2.5 relative flex items-center">
+          <span className="absolute left-6 text-[10px] font-mono text-amber-500/40 select-none">›</span>
+          <input
+            type="text"
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && createNewFile(e)}
+            className="w-full border border-white/10 bg-black/50 pl-6 pr-3 py-1.5 text-[10px] font-mono text-amber-300 outline-none focus:border-amber-500/40 placeholder:text-slate-600 transition"
+            placeholder="filename.js · ENTER to create"
+          />
+        </div>
+      </div>
 
-              <div className="p-1 sidebar-list-container text-xs text-slate-400 flex flex-col gap-3 mt-2">
-                <div>
-                  <div className="text-[9px] sidebar-details font-mono uppercase tracking-widest text-slate-500 mb-1 border-b border-white/5 pb-0.5">SYS // SAVED_FILES</div>
-                  <div className="flex flex-col gap-1">
-                    {localFiles.length > 0 ? (
-                      localFiles.map((file) => (
-                        <div
-                          key={`${file.oid}:${file.name}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => onFileClick(file.oid, file.name)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              onFileClick(file.oid, file.name);
-                            }
-                          }}
-                          className="group file-button-compact flex w-full items-center justify-between gap-3 rounded-none border border-white/5 bg-black/30 px-3 py-2 text-left text-xs font-mono text-cyan-400/80 transition hover:border-cyan-500/30 hover:bg-cyan-950/5 hover:text-cyan-400 border-l-2 border-l-cyan-500/10 hover:border-l-cyan-400 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileCode className="file-icon h-3.5 w-3.5 text-cyan-400/60 group-hover:text-cyan-400 flex-shrink-0" />
-                            <span className="file-name-text font-medium truncate">{file.name}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              if (window.confirm(`Are you sure you want to delete ${file.name}? This action cannot be undone.`)) {
-                                onDeleteLocalFile(file.oid);
-                              }
-                            }}
-                            className="ml-auto sidebar-details text-rose-500 hover:text-rose-400 cursor-pointer p-0.5"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-[10px] text-slate-600 font-mono sidebar-details p-1">// NO_SAVED_FILES_FOUND</div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[9px] sidebar-details font-mono uppercase tracking-widest text-slate-500 mb-1 border-b border-white/5 pb-0.5">SYS // REPO_TEMPLATES</div>
-                  <div className="flex flex-col gap-1">
-                    {isLoadingFiles ? (
-                      renderLoadingState("Syncing templates...")
-                    ) : repositoryFiles.length > 0 ? (
-                      repositoryFiles.map((file) => (
-                        <button
-                          key={`${file.oid}:${file.name}`}
-                          type="button"
-                          onClick={() => onFileClick(file.oid, file.name)}
-                          className="group file-button-compact flex w-full items-center justify-between gap-3 rounded-none border border-white/5 bg-black/30 px-3 py-2 text-left text-xs font-mono text-cyan-400/80 transition hover:border-cyan-500/30 hover:bg-cyan-950/5 hover:text-cyan-400 border-l-2 border-l-cyan-500/10 hover:border-l-cyan-400 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileCode className="file-icon h-3.5 w-3.5 text-cyan-400/60 group-hover:text-cyan-400 flex-shrink-0" />
-                            <span className="file-name-text font-medium truncate">{file.name}</span>
-                          </div>
-                          <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
-                        </button>
-                      ))
-                    ) : (
-                      <div className="text-[10px] text-slate-600 font-mono p-1">// NO_TEMPLATES_AVAILABLE</div>
-                    )}
-                  </div>
-                </div>
+      {/* ── ZONE 2: SAVED LOCAL FILES ─────────────────────────── */}
+      <div className="border-b-2 border-white/10">
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a] border-b border-white/8">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">MY FILES</span>
+          <span className="text-[8px] font-mono text-amber-400/60">{localFiles.length}</span>
+        </div>
+        <div className="flex flex-col gap-px">
+          {localFiles.length > 0 ? (
+            localFiles.map((file) => (
+              <div
+                key={`${file.oid}:${file.name}`}
+                className="group flex items-center gap-2 px-3 py-2 text-[10px] font-mono text-slate-400 hover:bg-white/5 hover:text-slate-200 transition cursor-pointer border-l-2 border-l-transparent hover:border-l-amber-400/50"
+                role="button"
+                tabIndex={0}
+                onClick={() => onFileClick(file.oid, file.name)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onFileClick(file.oid, file.name)}
+              >
+                <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-600 group-hover:text-amber-400" />
+                <span className="file-name-text flex-1 truncate">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Delete ${file.name}?`)) onDeleteLocalFile(file.oid);
+                  }}
+                  className="sidebar-details text-rose-600 hover:text-rose-400 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
-            </div>
-          </>
-  )
-})
-  
+            ))
+          ) : (
+            <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No saved files yet</div>
+          )}
+        </div>
+      </div>
+
+      {/* ── ZONE 3: REPO TEMPLATES ────────────────────────────── */}
+      <div>
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a] border-b border-white/8">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">TEMPLATES</span>
+          <span className="text-[8px] font-mono text-slate-500">{repositoryFiles.length}</span>
+        </div>
+        {isLoadingFiles ? (
+          <div className="px-3 py-2">{renderLoadingState("Loading templates...")}</div>
+        ) : (
+          <div className="flex flex-col gap-px">
+            {repositoryFiles.length > 0 ? (
+              repositoryFiles.map((file) => (
+                <button
+                  key={`${file.oid}:${file.name}`}
+                  type="button"
+                  onClick={() => onFileClick(file.oid, file.name)}
+                  className="group file-button-compact flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-[10px] text-slate-400 hover:bg-white/5 hover:text-slate-200 transition cursor-pointer border-l-2 border-l-transparent hover:border-l-slate-500/50"
+                >
+                  <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-400" />
+                  <span className="file-name-text flex-1 truncate">{file.name}</span>
+                  <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No templates available</div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+});
 
 const DifficultyBadge = ({ level }: { level: string }) => {
   const textColors: Record<string, string> = {
@@ -713,7 +715,7 @@ const FileExplorer = ({
 
   const searchActive = Boolean(searchInput.trim()) || difficultyFilter !== "ALL" || categoryFilter !== "ALL" || languageFilter !== "ALL";
 
-  const detailsPanelClass = "p-4 sidebar-details space-y-3 border-b border-white/5 bg-[#08090a]/80 text-xs font-mono text-cyan-400/80";
+  const detailsPanelClass = "p-4 space-y-3 border-t-2 border-cyan-500/20 bg-[#02040a] text-xs font-mono text-cyan-400/80";
 
   const sidebarStyle = { "--sidebar-width": `${sidebarWidth}px` } as CSSProperties;
   
@@ -788,16 +790,15 @@ const FileExplorer = ({
     <>
       <aside
         style={sidebarStyle}
-        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-white/5 bg-[#08090a] p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-slate-950/40 [&::-webkit-scrollbar-thumb]:bg-slate-700/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r"
+        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-white/5 bg-[#02040a] p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-slate-950/40 [&::-webkit-scrollbar-thumb]:bg-slate-700/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r-2 md:border-r-white/10"
       >
         <div className="hideScrollbar">
-        {/* SELECTING FILE EXPLORER OR TERMINAL MODE */}
-                {/* SELECTING FILE EXPLORER OR TERMINAL MODE */}
-        <div className="mb-3 grid grid-cols-1 sidebar-details mode-selector gap-2 px-1 text-[9px] font-mono tracking-wider sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
-          <label htmlFor="mode-files" className={`flex items-center justify-between gap-2 px-3 py-1.5 cursor-pointer border transition-all duration-150 ${
+        {/* MODE SELECTOR: EXPLORER / TERMINAL */}
+        <div className="mb-2 grid grid-cols-1 sidebar-details mode-selector gap-1.5 px-1 text-[9px] font-mono tracking-wider sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
+          <label htmlFor="mode-files" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "files-mode" 
-              ? "border-cyan-500/30 bg-cyan-950/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.05)]" 
-              : "border-white/5 bg-transparent text-slate-500 hover:text-slate-300 hover:border-white/10"
+              ? "border-l-2 border-l-cyan-500 border-cyan-500/30 bg-cyan-950/15 text-cyan-400" 
+              : "border border-white/10 bg-[#06080e] text-slate-500 hover:text-slate-300 hover:border-white/20"
           }`}>
             <span className="mode-text-full">SYS // EXPLORER</span>
             <span className="mode-text-short">EXPLORER</span>
@@ -812,10 +813,10 @@ const FileExplorer = ({
               onChange={handleTerminalModeChange}
             />
           </label>
-          <label htmlFor="mode-terminal" className={`flex items-center justify-between gap-2 px-3 py-1.5 cursor-pointer border transition-all duration-150 ${
+          <label htmlFor="mode-terminal" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "terminal-mode" 
-              ? "border-cyan-500/30 bg-cyan-950/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.05)]" 
-              : "border-white/5 bg-transparent text-slate-500 hover:text-slate-300 hover:border-white/10"
+              ? "border-l-2 border-l-amber-500 border-amber-500/30 bg-amber-950/10 text-amber-400" 
+              : "border border-white/10 bg-[#06080e] text-slate-500 hover:text-slate-300 hover:border-white/20"
           }`}>
             <span className="mode-text-full">SYS // TERMINAL</span>
             <span className="mode-text-short">TERMINAL</span>

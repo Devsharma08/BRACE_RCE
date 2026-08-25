@@ -88,11 +88,13 @@ const Terminal = () => {
   const navigate = useNavigate();
 
   // URL parameters for problem ID / file selection
+  // NOTE: Do NOT include searchParams.get("file") here — the FileExplorer
+  // updates URL search params ("q", "category", etc.) during filtering which
+  // would mutate this value and cause the workspace-load useEffect to re-fire.
   const problemOid =
     searchParams.get("oid") ||
     searchParams.get("problemId") ||
     searchParams.get("id") ||
-    searchParams.get("file") ||
     "";
 
   // Single problem mode if explicit problem OID is provided in URL

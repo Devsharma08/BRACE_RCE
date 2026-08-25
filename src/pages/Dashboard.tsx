@@ -113,7 +113,7 @@ export const Dashboard: React.FC = () => {
       <DashboardSidebar rating={userRating} />
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 ml-0 md:ml-[245px] w-full p-4 sm:p-6 lg:p-8 flex flex-col gap-0 max-w-[1400px] z-10 relative">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full p-4 sm:p-6 lg:p-8 flex flex-col gap-0 max-w-[1400px] z-10 relative">
 
         {/* HEADER BAR */}
         <header className="flex items-center justify-between border-b-2 border-white/10 pb-6 mb-6">
