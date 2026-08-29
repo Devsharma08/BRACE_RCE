@@ -100,8 +100,13 @@ export const Problems: React.FC = () => {
               Explore and solve algorithmic challenges across all data structures
             </p>
           </div>
-          <div className="text-xs font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-500/30 px-3.5 py-1.5 rounded shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-            TOTAL PROBLEMS: <strong className="text-white">{problems.length}</strong>
+          <div className="flex items-center gap-3">
+            <div className="text-xs font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 px-3.5 py-1.5 rounded shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              SOLVED: <strong className="text-white">{problems.filter((p: any) => p.isSolved).length}</strong> / {problems.length}
+            </div>
+            <div className="text-xs font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-500/30 px-3.5 py-1.5 rounded shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              TOTAL PROBLEMS: <strong className="text-white">{problems.length}</strong>
+            </div>
           </div>
         </header>
 
@@ -178,21 +183,32 @@ export const Problems: React.FC = () => {
                     key={p.id || idx}
                     onClick={() =>
                       navigate(
-                        `/terminal?oid=${p.github_oid || p.id}${p.name ? `&file=${encodeURIComponent(p.name)}` : ""}`
+                        `/terminal?id=${p.id || p.github_oid}`
                       )
                     }
                     className="grid grid-cols-12 p-3.5 text-xs items-center hover:bg-cyan-950/20 hover:border-l-2 hover:border-l-cyan-400 transition-all cursor-pointer group"
                   >
-                    {/* PROBLEM NUMBER */}
-                    <span className="col-span-1 font-mono text-slate-500 font-bold">
-                      #{problemNumber}
-                    </span>
+                    {/* PROBLEM NUMBER & SOLVED STATUS */}
+                    <div className="col-span-1 flex items-center gap-1.5 font-mono text-slate-500 font-bold">
+                      {p.isSolved ? (
+                        <span title="Solved" className="inline-flex">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        </span>
+                      ) : (
+                        <span className="text-slate-600">#{problemNumber}</span>
+                      )}
+                    </div>
 
                     {/* PROBLEM TITLE */}
                     <div className="col-span-5 flex items-center gap-2 pr-2">
                       <span className="font-bold text-white group-hover:text-cyan-300 transition-colors truncate">
                         {p.name}
                       </span>
+                      {p.isSolved && (
+                        <span className="text-[9px] px-1.5 py-0.2 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded font-bold uppercase shrink-0">
+                          SOLVED
+                        </span>
+                      )}
                     </div>
 
                     {/* DIFFICULTY */}
@@ -221,7 +237,7 @@ export const Problems: React.FC = () => {
                     {/* ACTION BUTTON */}
                     <div className="col-span-2 text-right">
                       <button className="px-3 py-1 bg-cyan-500/20 group-hover:bg-cyan-500 text-cyan-400 group-hover:text-black border border-cyan-500/40 font-bold rounded transition-all inline-flex items-center gap-1 cursor-pointer">
-                        <span>[ SOLVE ]</span>
+                        <span>[ {p.isSolved ? "PRACTICE" : "SOLVE"} ]</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>

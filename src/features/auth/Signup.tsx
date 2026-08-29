@@ -167,19 +167,23 @@ export const Signup = () => {
           </button>
         </form>
 
-        <div className="mt-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-[#30363d] after:h-px after:flex-1 after:bg-[#30363d]">
-          <span className="text-xs font-medium text-[#8b949e] uppercase">Or continue with</span>
-        </div>
+        {Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && (
+          <>
+            <div className="mt-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-[#30363d] after:h-px after:flex-1 after:bg-[#30363d]">
+              <span className="text-xs font-medium text-[#8b949e] uppercase">Or continue with</span>
+            </div>
 
-        <div className="mt-5 flex justify-center">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError('Google Signup Failed')}
-            theme="filled_black"
-            shape="rectangular"
-            text="signup_with"
-          />
-        </div>
+            <div className="mt-5 flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Google Signup Failed')}
+                theme="filled_black"
+                shape="rectangular"
+                text="signup_with"
+              />
+            </div>
+          </>
+        )}
 
         <p className="mt-6 text-center text-sm text-[#8b949e]">
           Already have an account?{' '}

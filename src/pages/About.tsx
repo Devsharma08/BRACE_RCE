@@ -189,7 +189,7 @@ const roadmapItems = [
 
 const About = () => {
   return (
-    <div className="relative min-h-screen bg-[#02040a] font-mono text-slate-200 overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#02040a] font-mono text-slate-200 overflowx-x-hidden">
       {/* Global dot-grid background texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-cyan-500/8 blur-[140px] pointer-events-none -z-10" />
@@ -218,9 +218,9 @@ const About = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl">
             {[
               { label: "LIVE SYSTEMS", val: "9 OPERATIONAL", borderClass: "border-r-4 border-b-4 border-r-emerald-500/60 border-b-emerald-500/60", color: "text-emerald-400" },
-              { label: "PIPELINE",     val: "6 UPCOMING",    borderClass: "border-l-4 border-b-4 border-l-amber-500/60 border-b-amber-500/60",   color: "text-amber-400" },
-              { label: "RUNTIMES",     val: "5 LANGUAGES",   borderClass: "border-t-4 border-r-4 border-t-cyan-500/60 border-r-cyan-500/60",     color: "text-cyan-400" },
-              { label: "ECOSYSTEM",    val: "100% OPEN",     borderClass: "border-t-4 border-l-4 border-t-purple-500/60 border-l-purple-500/60", color: "text-purple-400" },
+              { label: "PIPELINE", val: "6 UPCOMING", borderClass: "border-l-4 border-b-4 border-l-amber-500/60 border-b-amber-500/60", color: "text-amber-400" },
+              { label: "RUNTIMES", val: "5 LANGUAGES", borderClass: "border-t-4 border-r-4 border-t-cyan-500/60 border-r-cyan-500/60", color: "text-cyan-400" },
+              { label: "ECOSYSTEM", val: "100% OPEN", borderClass: "border-t-4 border-l-4 border-t-purple-500/60 border-l-purple-500/60", color: "text-purple-400" },
             ].map((s) => (
               <div key={s.label} className={`rounded-none border border-white/20 bg-[#06080e] px-3 py-3 relative overflow-hidden ${s.borderClass}`}>
                 <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />

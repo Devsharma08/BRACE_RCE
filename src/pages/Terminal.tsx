@@ -1,43 +1,24 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { House } from "lucide-react";
-import { FileNamesContext, type FileEntry } from "../context/FileNamesContext";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
-import { executeCode, fetchFileContent, fetchFileNames } from "../features/terminal/api";
+import { executeCode, fetchSystemProblems } from "../features/terminal/api";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
-import FileExplorer from "../features/terminal/components/FileExplorer";
 import LoadingOverlay from "../features/terminal/components/LoadingOverlay";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import OutputPanel from "../features/terminal/components/OutputPanel";
-import {
-  buildProblemTestCases,
-  detectLanguageFromFileName,
-  formatExecutionOutput,
-} from "../features/terminal/executionOutput";
+import PracticeSidebar, { type PracticeProblem } from "../features/terminal/components/PracticeSidebar";
+import { buildProblemTestCases, formatExecutionOutput } from "../features/terminal/executionOutput";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
-import type { ExecutionMode, FileContentResponse, SupportedLanguage } from "../features/terminal/types";
+import type { ExecutionMode, SupportedLanguage } from "../features/terminal/types";
 import { NotesPanel } from "../components/ui/NotesPanel";
 
-const LOCAL_FILE_ID_PREFIX = "local-";
-const LOCAL_FILE_STORAGE_PREFIX = "localFile:";
+// ─────────────────────────────────────────────────────────────
+// Language / Snippet Helpers
+// ─────────────────────────────────────────────────────────────
 
-const getLocalStorageKey = (oid: string) => `${LOCAL_FILE_STORAGE_PREFIX}${oid}`;
-const isLocalFile = (oid: string | null): boolean => Boolean(oid && oid.startsWith(LOCAL_FILE_ID_PREFIX));
-
-const readLocalFile = (oid: string) => {
-  const raw = localStorage.getItem(getLocalStorageKey(oid));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as { name: string; content: string; language: SupportedLanguage; createdAt: number; updatedAt: number };
-  } catch {
-    return null;
-  }
-};
-
-// Boilerplate template generator for each supported language
-const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) => {
+const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string): string => {
   switch (lang) {
     case "python":
       return `# Solution for ${problemName || "problem"}\ndef solution(*args):\n    pass\n`;
@@ -53,69 +34,49 @@ const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) =
   }
 };
 
-// Find matching code snippet from problem data or generate language boilerplate
-const getProblemSnippet = (fileData: any, lang: SupportedLanguage, defaultContent?: string) => {
-  if (!fileData) return defaultContent || getLanguageStarterCode(lang);
-
-  // 1. Check code_snippets array from backend
-  if (fileData.code_snippets && Array.isArray(fileData.code_snippets) && fileData.code_snippets.length > 0) {
-    const matched = fileData.code_snippets.find(
-      (s: any) =>
+const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage): string => {
+  if (!problem) return getLanguageStarterCode(lang);
+  // 1. Try code_snippets from DB
+  if (problem.code_snippets && problem.code_snippets.length > 0) {
+    const match = problem.code_snippets.find(
+      (s) =>
         s.language?.toLowerCase() === lang.toLowerCase() ||
         (lang === "c++" && s.language?.toLowerCase() === "cpp")
     );
-    if (matched && matched.code) {
-      return matched.code;
-    }
+    if (match?.code) return match.code;
   }
-
-  // 2. If requested language matches native file extension language, return defaultContent
-  const nativeLang = fileData.name ? detectLanguageFromFileName(fileData.name) : "javascript";
-  if (defaultContent && (lang === nativeLang || lang === "javascript")) {
-    return defaultContent;
-  }
-
-  // 3. If defaultContent exists (e.g. raw problem file from repository/DB), use defaultContent
-  if (defaultContent && defaultContent.trim().length > 0) {
-    return defaultContent;
-  }
-
-  return getLanguageStarterCode(lang, fileData.name);
+  // 2. Fall back to generic boilerplate
+  return getLanguageStarterCode(lang, problem.name);
 };
+
+// ─────────────────────────────────────────────────────────────
+// Terminal Component
+// ─────────────────────────────────────────────────────────────
 
 const Terminal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // URL parameters for problem ID / file selection
-  // NOTE: Do NOT include searchParams.get("file") here — the FileExplorer
-  // updates URL search params ("q", "category", etc.) during filtering which
-  // would mutate this value and cause the workspace-load useEffect to re-fire.
-  const problemOid =
-    searchParams.get("oid") ||
-    searchParams.get("problemId") ||
-    searchParams.get("id") ||
-    "";
+  // URL-driven: id or oid selects the initial problem
+  const targetId = searchParams.get("id") || searchParams.get("oid") || searchParams.get("problemId") || "";
 
-  // Single problem mode if explicit problem OID is provided in URL
-  const isProblemWorkspaceMode = Boolean(searchParams.get("oid") || searchParams.get("problemId"));
-
-  const [loading, setLoading] = useState<boolean>(true);
-  const [filesLoading, setFilesLoading] = useState<boolean>(true);
+  // ── State ──────────────────────────────────────────────────
+  const [problems, setProblems] = useState<PracticeProblem[]>([]);
+  const [activeProblem, setActiveProblem] = useState<PracticeProblem | null>(null);
+  const [problemsLoading, setProblemsLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executingMode, setExecutingMode] = useState<ExecutionMode | null>(null);
-  const [outputText, setOutputText] = useState<string>("");
-  const [resLoading, setResponseLoading] = useState<boolean>(false);
-  const [isCustomInputRun, setIsCustomInputRun] = useState<boolean>(false);
-  const [selectedFileName, setSelectedFileName] = useState<string>("");
-  const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
-  const [isFileExplorerOpen, setIsFileExplorerOpen] = useState<boolean>(!isProblemWorkspaceMode);
+  const [outputText, setOutputText] = useState("");
+  const [resLoading, setResponseLoading] = useState(false);
+  const [isCustomInputRun, setIsCustomInputRun] = useState(false);
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [isOutputActive, setIsOutputActive] = useState(true);
+  const [submissionTrigger, setSubmissionTrigger] = useState(0);
 
-  const [difficultyFilter, setDifficultyFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
-  const [selectedMode, setSelectedMode] = useState<"files-mode" | "terminal-mode">("terminal-mode");
+  const timerRef = useRef<import("./components/ProblemTimer").ProblemTimerRef>(null);
 
-  // Context states
-  const { filesData, setFilesData } = useContext(FileNamesContext);
+  // ── Contexts ───────────────────────────────────────────────
   const {
     code,
     setCode,
@@ -133,9 +94,9 @@ const Terminal = () => {
     setCustomInputActive,
   } = useContext(CodeContext);
 
-  const [isOutputActive, setIsOutputActive] = useState<boolean>(true);
-  const [fileData, setFileData] = useState<FileContentResponse | null>(null);
+  const { setStatus } = useContext(UserResponseContext);
 
+  // ── Layout ─────────────────────────────────────────────────
   const {
     outputHeight,
     sidebarWidth,
@@ -145,217 +106,147 @@ const Terminal = () => {
     setSidebarWidth,
   } = useTerminalLayout();
 
-  const { setStatus } = useContext(UserResponseContext);
   const formatEditorRef = useRef<(() => void) | null>(null);
-  const fileLoadRequestRef = useRef(0);
 
-  const handleFormatCode = useCallback(() => {
-    formatEditorRef.current?.();
-  }, []);
+  // ── Load all system problems on mount ─────────────────────
+  useEffect(() => {
+    const controller = new AbortController();
+    setProblemsLoading(true);
 
-  const saveLocalFileContent = useCallback((oid: string, content: string) => {
-    const existing = readLocalFile(oid);
-    if (!existing) return;
-    localStorage.setItem(
-      getLocalStorageKey(oid),
-      JSON.stringify({
-        ...existing,
-        content,
-        updatedAt: Date.now(),
+    fetchSystemProblems(controller.signal)
+      .then((data) => {
+        setProblems(data);
+
+        // Auto-select: by URL id, or first problem
+        let initial: PracticeProblem | null = null;
+        if (targetId) {
+          initial =
+            data.find(
+              (p: PracticeProblem) =>
+                p.id === targetId ||
+                p.github_oid === targetId ||
+                String(p.problem_number) === targetId
+            ) ?? null;
+        }
+        if (!initial && data.length > 0) initial = data[0];
+        if (initial) loadProblem(initial, data);
       })
-    );
+      .catch((e) => {
+        if (e.name !== "AbortError") console.error("Failed to load problems:", e);
+      })
+      .finally(() => setProblemsLoading(false));
+
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle language change with automatic boilerplate template loading
+  // ── Load problem into editor ───────────────────────────────
+  const loadProblem = useCallback(
+    (problem: PracticeProblem, allProblems?: PracticeProblem[]) => {
+      setActiveProblem(problem);
+      setActiveFile(problem.github_oid || problem.id);
+      setOutput(null);
+      setOutputText("");
+
+      // If there's previously saved draft code — restore it
+      const draftLang = (problem.lastLanguage as SupportedLanguage) || "javascript";
+      const draftCode = problem.lastCode ?? getBoilerplate(problem, draftLang);
+
+      setLanguage(draftLang);
+      setCode(draftCode);
+
+      // Load public test cases
+      const tcs = buildProblemTestCases({
+        test_cases: problem.test_cases ?? [],
+      } as any);
+      setTestCases(tcs);
+
+      setCustomInput("");
+      setCustomInputActive(false);
+      setIsCustomInputRun(false);
+
+      // Sync solved status on problem objects (in case we come from list)
+      if (allProblems) setProblems(allProblems);
+    },
+    [setActiveFile, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
+  );
+
+  // ── Handle language switch (load boilerplate for new lang) ─
   const handleLanguageChange = useCallback(
     (newLang: SupportedLanguage) => {
       setLanguage(newLang);
-      const snippet = getProblemSnippet(fileData, newLang, fileData?.content);
-      setCode(snippet);
+      setCode(getBoilerplate(activeProblem, newLang));
     },
-    [fileData, setLanguage, setCode]
+    [activeProblem, setLanguage, setCode]
   );
 
-  const handleResetCode = useCallback(async () => {
-    if (!activeFile) return;
-    if (isLocalFile(activeFile)) {
-      const localKey = getLocalStorageKey(activeFile);
-      const existing = readLocalFile(activeFile);
-      if (existing) {
-        localStorage.setItem(
-          localKey,
-          JSON.stringify({ ...existing, content: "", updatedAt: Date.now() })
-        );
-      }
-      setCode("");
-    } else {
-      setLoading(true);
-      try {
-        const fileContent = await fetchFileContent(activeFile, selectedFileName || undefined);
-        const snippet = getProblemSnippet(fileContent, language, fileContent.content);
-        setCode(snippet);
-      } catch (error) {
-        console.error("Failed to reset template:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  }, [activeFile, selectedFileName, language, setCode]);
+  // ── Reset code to starter boilerplate ─────────────────────
+  const handleResetCode = useCallback(() => {
+    setCode(getBoilerplate(activeProblem, language));
+  }, [activeProblem, language, setCode]);
 
-  // Click file handler in file explorer
-  const handleFileClick = useCallback(
-    async (oid: string, name: string) => {
-      const requestId = fileLoadRequestRef.current + 1;
-      fileLoadRequestRef.current = requestId;
-
+  // ── Select problem from sidebar ───────────────────────────
+  const handleSelectProblem = useCallback(
+    (problem: PracticeProblem) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("file", name);
+        next.set("id", problem.id);
         return next;
       });
-
-      setOutput(null);
-      setOutputText("");
-      setActiveFile(oid);
-      setSelectedFileName(name);
-      setLoading(!isLocalFile(oid));
-
-      setFileData(null);
-      setTestCases([]);
-      setCode("");
-
-      if (isLocalFile(oid)) {
-        const localFile = readLocalFile(oid);
-        const nextLanguage = localFile?.language ?? detectLanguageFromFileName(name);
-        const nextCode = localFile?.content ?? "";
-
-        setFileData({
-          content: nextCode,
-          test_cases: [],
-          id: oid,
-          problem_definition: "",
-          difficulty_level: "",
-        });
-        setTestCases([]);
-        setLanguage(nextLanguage);
-        setCode(nextCode);
-        setCustomInput("");
-        setCustomInputActive(false);
-        setIsCustomInputRun(false);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const fetchName = (name && name !== oid) ? name : undefined;
-        const fileContent = await fetchFileContent(oid, fetchName);
-        if (fileLoadRequestRef.current !== requestId) return;
-
-        const resolvedName = fileContent.name || name;
-        const nextTestCases = buildProblemTestCases(fileContent);
-        const nextLanguage = detectLanguageFromFileName(resolvedName);
-        const snippet = getProblemSnippet(fileContent, nextLanguage, fileContent.content);
-
-        setFileData(fileContent);
-        setTestCases(nextTestCases);
-        setLanguage(nextLanguage);
-        setCode(snippet);
-        if (resolvedName) setSelectedFileName(resolvedName);
-        setCustomInput("");
-        setCustomInputActive(false);
-        setIsCustomInputRun(false);
-      } catch (err) {
-        console.error("Error loading file content for OID:", oid, err);
-        if (fileLoadRequestRef.current !== requestId) return;
-        setFileData(null);
-        setCode("// Error loading problem file");
-        setStatus("ERROR");
-      } finally {
-        if (fileLoadRequestRef.current === requestId) {
-          setLoading(false);
-        }
-      }
+      loadProblem(problem);
     },
-    [setSearchParams, setOutput, setActiveFile, setFileData, setTestCases, setCode, setLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setStatus]
+    [loadProblem, setSearchParams]
   );
 
-  // Load system problem list & target file
-  useEffect(() => {
-    let isCancelled = false;
-
-    const loadWorkspace = async () => {
-      setFilesLoading(true);
-      setLoading(true);
-
-      try {
-        const systemFiles = await fetchFileNames();
-        if (isCancelled) return;
-        setFilesData(systemFiles);
-
-        let targetOid = problemOid;
-        let targetName = searchParams.get("file") || searchParams.get("name") || "";
-
-        if (targetOid || targetName) {
-          const matched = systemFiles.find(
-            (f: any) =>
-              (targetOid && (f.oid === targetOid || f.id === targetOid)) ||
-              (targetName && f.name.toLowerCase() === targetName.toLowerCase()) ||
-              (targetName && f.name.toLowerCase().includes(targetName.toLowerCase())) ||
-              (targetOid && f.name && f.name.toLowerCase().includes(targetOid.toLowerCase()))
-          );
-          if (matched) {
-            targetOid = matched.oid || targetOid;
-            targetName = matched.name;
-          }
-        } else if (systemFiles.length > 0) {
-          targetOid = systemFiles[0].oid;
-          targetName = systemFiles[0].name;
-        }
-
-        if (targetOid) {
-          await handleFileClick(targetOid, targetName || targetOid);
-        }
-      } catch (err) {
-        console.error("Error initializing terminal workspace:", err);
-      } finally {
-        if (!isCancelled) {
-          setFilesLoading(false);
-          setLoading(false);
-        }
-      }
-    };
-
-    loadWorkspace();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [problemOid]);
-
-  // Execute Code handler
+  // ── Execute code ──────────────────────────────────────────
   const handleRunCode = useCallback(
-    async (nextCode: string, nextLanguage: SupportedLanguage, oid: string, mode: ExecutionMode = "RUN") => {
+    async (
+      nextCode: string,
+      nextLanguage: SupportedLanguage,
+      oid: string,
+      mode: ExecutionMode = "RUN"
+    ) => {
       const customInputValue = customInputActive ? customInput.trim() : "";
       const isCustomExecution = customInputValue.length > 0;
       setIsCustomInputRun(isCustomExecution);
-
       setResponseLoading(true);
       setIsExecuting(true);
       setExecutingMode(mode);
       setStatus("LOADING");
 
       try {
+        const timeTaken = mode === "SUBMIT" ? timerRef.current?.getCurrentTime() : undefined;
         const data = await executeCode({
           code: nextCode,
           language: nextLanguage,
           oid,
           mode,
           customInput: customInputValue,
-          fileName: selectedFileName || undefined,
         });
         setOutput(data);
         setStatus("SUCCESS");
         setOutputText(formatExecutionOutput(data, mode));
+
+        // Update solved status in local list if submission passed
+        if (mode === "SUBMIT" && data.status === "PASSED" && activeProblem) {
+          setProblems((prev) =>
+            prev.map((p) =>
+              p.id === activeProblem.id
+                ? { ...p, isSolved: true, solvedAt: new Date().toISOString(), attempts: (p.attempts ?? 0) + 1 }
+                : p
+            )
+          );
+          setActiveProblem((prev) =>
+            prev ? { ...prev, isSolved: true, solvedAt: new Date().toISOString() } : prev
+          );
+        } else if (mode === "SUBMIT" && activeProblem) {
+          // Still count the attempt
+          setProblems((prev) =>
+            prev.map((p) =>
+              p.id === activeProblem.id ? { ...p, attempts: (p.attempts ?? 0) + 1 } : p
+            )
+          );
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Execution failed";
         setOutputText(`ERROR: ${message}`);
@@ -366,20 +257,28 @@ const Terminal = () => {
         setExecutingMode(null);
         setResponseLoading(false);
         setCustomInput("");
-        if (!isCustomExecution) {
-          setIsCustomInputRun(false);
+        if (!isCustomExecution) setIsCustomInputRun(false);
+        if (mode === "SUBMIT") {
+          setSubmissionTrigger((prev) => prev + 1);
         }
       }
     },
-    [customInput, customInputActive, selectedFileName, setOutput, setCustomInput, setIsCustomInputRun, setStatus]
+    [
+      customInput,
+      customInputActive,
+      activeProblem,
+      setOutput,
+      setCustomInput,
+      setIsCustomInputRun,
+      setStatus,
+    ]
   );
 
-  // Single Test Case Runner
+  // ── Single test case runner ───────────────────────────────
   const handleRunSingleTestCase = useCallback(
     async (testCaseIndex: number) => {
       if (!testCases || !testCases[testCaseIndex]) return;
-      const targetCase = testCases[testCaseIndex];
-      const inputString = targetCase.input || "";
+      const inputString = testCases[testCaseIndex].input || "";
 
       setResponseLoading(true);
       setIsExecuting(true);
@@ -394,7 +293,6 @@ const Terminal = () => {
           oid: activeFile,
           mode: "RUN",
           customInput: inputString,
-          fileName: selectedFileName || undefined,
         });
         setOutput(data);
         setStatus("SUCCESS");
@@ -410,45 +308,29 @@ const Terminal = () => {
         setResponseLoading(false);
       }
     },
-    [testCases, code, language, activeFile, selectedFileName, setOutput, setStatus]
+    [testCases, code, language, activeFile, setOutput, setStatus]
   );
 
-  const handleCodeChange = useCallback((nextCode: string) => {
-    setCode(nextCode);
-  }, [setCode]);
+  const handleCodeChange = useCallback((nextCode: string) => setCode(nextCode), [setCode]);
 
-  const handleDeleteLocalFile = useCallback((oid: string) => {
-    localStorage.removeItem(getLocalStorageKey(oid));
-    setFilesData(filesData.filter((f) => f.oid !== oid));
-  }, [setFilesData]);
-
-  const activeFileName = selectedFileName || fileData?.name || "Problem Workspace";
+  // ── Derived values ────────────────────────────────────────
+  const activeFileName = activeProblem?.name || "Practice Workspace";
   const activeFileKey = activeFile ? `${activeFile}:${activeFileName}` : "";
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row">
-      {/* FILE EXPLORER */}
-      {isFileExplorerOpen && (
-        <FileExplorer
-          activeFile={activeFile}
-          activeFileName={activeFileName}
-          files={filesData}
-          difficultyFilter={difficultyFilter}
-          setDifficultyFilter={setDifficultyFilter}
-          fileData={fileData}
-          language={language}
-          testCaseCount={testCases.length}
-          onFileClick={handleFileClick}
-          onResizeStart={startSidebarDragging}
-          sidebarWidth={sidebarWidth}
-          onDeleteLocalFile={handleDeleteLocalFile}
-          isLoadingFiles={filesLoading}
-          selectedMode={selectedMode}
-          setSelectedMode={setSelectedMode}
-        />
-      )}
+      {/* ── PRACTICE SIDEBAR ──────────────────────────────── */}
+      <PracticeSidebar
+        problems={problems}
+        activeProblem={activeProblem}
+        onSelectProblem={handleSelectProblem}
+        width={sidebarWidth}
+        onResizeStart={startSidebarDragging}
+        isLoading={problemsLoading}
+      />
 
-      {/* MAIN WORKSPACE CONTENT AREA */}
+      {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] border-l border-white/10">
         {/* HEADER BAR */}
         <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-[#06080e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
@@ -461,27 +343,40 @@ const Terminal = () => {
               <House className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">[ DASHBOARD ]</span>
             </Link>
-            <span className="truncate">SYS // TERMINAL_WORKSPACE</span>
+            <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
           <div className="flex items-center gap-3">
-            {fileData?.difficulty_level && (
-              <span className="text-[10px] px-2 py-0.5 border border-amber-500/30 bg-amber-950/30 text-amber-400 font-bold uppercase">
-                {fileData.difficulty_level}
+            {activeProblem?.difficulty_level && (
+              <span
+                className={`text-[10px] px-2 py-0.5 border font-bold uppercase ${
+                  activeProblem.difficulty_level.toUpperCase() === "EASY"
+                    ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-400"
+                    : activeProblem.difficulty_level.toUpperCase() === "HARD"
+                    ? "border-rose-500/30 bg-rose-950/30 text-rose-400"
+                    : "border-amber-500/30 bg-amber-950/30 text-amber-400"
+                }`}
+              >
+                {activeProblem.difficulty_level.toUpperCase()}
+              </span>
+            )}
+            {activeProblem?.isSolved && (
+              <span className="text-[10px] px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/30 text-emerald-400 font-bold uppercase">
+                ✓ SOLVED
               </span>
             )}
             <span className="truncate text-slate-500 uppercase">
-              {filesLoading ? "SYNCING..." : activeFileName}
+              {problemsLoading ? "LOADING..." : activeFileName}
             </span>
           </div>
         </div>
 
+        {/* EDITOR + OUTPUT */}
         <div className="flex-1 min-h-0 relative">
           {loading && <LoadingOverlay label="Loading workspace..." />}
 
           <div className="absolute inset-0 flex flex-col min-h-0">
             {activeFile ? (
               <>
-                {/* EDITOR TOOLBAR WITH AUTOMATIC BOILERPLATE LOADING ON LANGUAGE CHANGE */}
                 <EditorToolbar
                   activeFile={activeFile}
                   disabled={resLoading || loading}
@@ -494,18 +389,20 @@ const Terminal = () => {
                   fileName={activeFileName}
                   onRun={() => void handleRunCode(code, language, activeFile, "RUN")}
                   onSubmit={() => void handleRunCode(code, language, activeFile, "SUBMIT")}
-                  showSubmit={!isProblemWorkspaceMode}
-                  showFileExplorerToggle={true}
-                  onToggleFileExplorer={() => setIsFileExplorerOpen((prev) => !prev)}
-                  isFileExplorerOpen={isFileExplorerOpen}
-                  onFormat={handleFormatCode}
+                  showSubmit={true}
+                  showFileExplorerToggle={false}
+                  onToggleFileExplorer={() => {}}
+                  isFileExplorerOpen={false}
+                  onFormat={() => formatEditorRef.current?.()}
                   onReset={handleResetCode}
-                  onToggleNotes={() => setIsNotesOpen((prev) => !prev)}
+                  onToggleNotes={() => setIsNotesOpen((p) => !p)}
                   isNotesOpen={isNotesOpen}
                   onExit={() => navigate("/dashboard")}
+                  submissionTrigger={submissionTrigger}
+                  timerRef={timerRef}
+                  initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
                 />
 
-                {/* MONACO IDE & OUTPUT PANEL */}
                 <div className="flex-1 min-h-0 grid" style={{ gridTemplateRows: "minmax(0, 1fr) auto" }}>
                   <div className="h-full min-h-0 overflow-hidden">
                     <MonacoIDE
@@ -541,15 +438,17 @@ const Terminal = () => {
                 </div>
               </>
             ) : (
-              <div className="p-8 text-center text-cyan-500 font-mono">
-                SELECT A FILE OR PROBLEM TO INITIALIZE WORKSPACE.
+              <div className="p-8 text-center text-cyan-500 font-mono text-sm">
+                {problemsLoading
+                  ? "LOADING PRACTICE PROBLEMS..."
+                  : "NO PROBLEMS FOUND. ADD PROBLEMS VIA SEED ENDPOINT."}
               </div>
             )}
           </div>
         </div>
       </main>
 
-      {/* GLOBAL SCRATCHPAD NOTES PANEL */}
+      {/* NOTES PANEL */}
       <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
     </div>
   );

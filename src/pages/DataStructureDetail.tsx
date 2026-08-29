@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchFileNames } from "../features/terminal/api";
-import type { FileEntry } from "../context/FileNamesContext";
+import { fetchSystemProblems } from "../features/terminal/api";
 import { Loader2, ArrowLeft, Terminal, LayoutGrid, Award } from "lucide-react";
 import { TableSkeleton } from "../components/ui/Skeleton";
 
@@ -133,7 +132,7 @@ const DS_DETAILS_MAP: Record<string, DSMetadata> = {
 
 const DataStructureDetail = () => {
   const { slug } = useParams<{ slug: string }>();
-  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -144,10 +143,10 @@ const DataStructureDetail = () => {
     const loadFiles = async () => {
       try {
         setLoading(true);
-        const data = await fetchFileNames();
-        setFiles(data);
+        const data = await fetchSystemProblems();
+        setProblems(data || []);
       } catch {
-        setError("Failed to fetch repository challenge files.");
+        setError("Failed to fetch repository problems.");
       } finally {
         setLoading(false);
       }
@@ -169,20 +168,20 @@ const DataStructureDetail = () => {
     );
   }
 
-  const matchingFiles = files.filter((file) => {
-    const ds = file.data_structure?.toLowerCase() || "";
-    return dsData.slugs.includes(ds);
+  const matchingProblems = problems.filter((problem) => {
+    const ds = (problem.category || problem.name || "").toLowerCase();
+    return dsData.slugs.some((s) => ds.includes(s));
   });
 
   const getDifficultyColor = (level?: string) => {
-    const l = level?.toUpperCase() || "E";
+    const l = level?.toUpperCase() || "EASY";
     if (l === "H" || l === "HARD") return "text-red-400 border-red-500/25 bg-red-950/10";
     if (l === "M" || l === "MEDIUM") return "text-yellow-400 border-yellow-500/25 bg-yellow-950/10";
     return "text-green-400 border-green-500/25 bg-green-950/10";
   };
 
   const getDifficultyLabel = (level?: string) => {
-    const l = level?.toUpperCase() || "E";
+    const l = level?.toUpperCase() || "EASY";
     if (l === "H" || l === "HARD") return "HARD";
     if (l === "M" || l === "MEDIUM") return "MED";
     return "EASY";
@@ -238,7 +237,7 @@ const DataStructureDetail = () => {
                 <div className="border-r border-b border-white/5 p-3 text-cyan-400 font-bold">{dsData.complexities.insert.average}</div>
                 <div className="border-b border-white/5 p-3 text-amber-500">{dsData.complexities.insert.worst}</div>
 
-                <div className="border-r border-white/5 p-3 text-slate-400">Deletion</div>
+                <div className="border-r border-b border-white/5 p-3 text-slate-400">Deletion</div>
                 <div className="border-r border-white/5 p-3 text-cyan-400 font-bold">{dsData.complexities.delete.average}</div>
                 <div className="p-3 text-amber-500">{dsData.complexities.delete.worst}</div>
               </div>
@@ -273,7 +272,7 @@ const DataStructureDetail = () => {
             SYS // COMPATIBLE_PRACTICE_CHALLENGES
           </span>
           <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-950/15 border border-cyan-500/20 px-2 py-0.5">
-            {loading ? "SEARCHING..." : `${matchingFiles.length} FILES FOUND`}
+            {loading ? "SEARCHING..." : `${matchingProblems.length} CHALLENGES FOUND`}
           </span>
         </div>
 
@@ -284,30 +283,30 @@ const DataStructureDetail = () => {
           <div className="text-center py-16 border border-white/5 bg-black/20 text-rose-400 text-xs">
             {error}
           </div>
-        ) : matchingFiles.length > 0 ? (
+        ) : matchingProblems.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {matchingFiles.map((file) => (
+            {matchingProblems.map((problem) => (
               <Link
-                key={file.oid}
-                to={`/terminal?file=${file.name}&category=${slug}&lang=${file.language}`}
+                key={problem.id}
+                to={`/terminal?id=${problem.id}`}
                 className="group border border-white/5 bg-black/40 hover:border-cyan-500/30 hover:bg-cyan-950/10 p-4 rounded-none flex items-center justify-between transition-all duration-300 border-l-2 border-l-cyan-500/10 hover:border-l-cyan-400"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="h-8 w-8 flex items-center justify-center border border-white/10 bg-black/40 text-[10px] font-bold text-cyan-400/60 group-hover:text-cyan-400 group-hover:border-cyan-500/20 transition-all duration-300">
-                    {file.language?.toLowerCase() === "java" ? "JV" : "JS"}
+                    #{problem.problem_number || "•"}
                   </div>
                   <div className="min-w-0">
                     <span className="block text-xs font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
-                      {file.name}
+                      {problem.name}
                     </span>
                     <span className="block text-[8px] text-slate-500 uppercase tracking-widest mt-0.5">
-                      language: {file.language || "Unknown"}
+                      {problem.isSolved ? "Status: Solved" : "Status: Unsolved"}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 select-none">
-                  <span className={`px-2 py-0.5 border text-[8px] font-bold tracking-wider rounded-none uppercase ${getDifficultyColor(file.difficulty_level)}`}>
-                    [ {getDifficultyLabel(file.difficulty_level)} ]
+                  <span className={`px-2 py-0.5 border text-[8px] font-bold tracking-wider rounded-none uppercase ${getDifficultyColor(problem.difficulty_level)}`}>
+                    [ {getDifficultyLabel(problem.difficulty_level)} ]
                   </span>
                 </div>
               </Link>

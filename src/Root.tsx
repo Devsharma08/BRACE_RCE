@@ -38,7 +38,7 @@ import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "not-configured";
 
 const queryClient = new QueryClient({
   defaultOptions: {
