@@ -40,6 +40,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  problemProgress UserProblemProgress[]
 }
 
 model FriendRequest {
@@ -89,6 +91,9 @@ model Problem {
 
   // playlist relation (connects to event)
   events Event[] @relation("EventProblems")
+
+  // user progress tracking
+  userProgress UserProblemProgress[]
   
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
@@ -264,4 +269,36 @@ model TemplateSubscription {
   createdAt         DateTime @default(now())
 
   @@unique([userId, templateEventId]) // A user can only subscribe to a template once
+}
+
+// ------------------------------------------------------
+// DSA PRACTICE PROGRESS
+// ------------------------------------------------------
+
+model UserProblemProgress {
+  id           String    @id @default(uuid())
+
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  problemId    String
+  problem      Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  isSolved     Boolean   @default(false)
+  solvedAt     DateTime?
+
+  attempts     Int       @default(0)
+
+  // Last saved code draft for each user/problem combo (cloud save)
+  lastCode     String?   @db.Text
+  lastLanguage String?   @default("javascript")
+
+  submissionTimes String[] @default([])
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
 }

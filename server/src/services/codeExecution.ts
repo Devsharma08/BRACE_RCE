@@ -1061,8 +1061,7 @@ static void printListNode(struct ListNode* head) {
 
 
 export const executeCode = async (req: Request, res: Response) => {
-  const { code, language, oid, mode, customInput } = req.body as ExecuteBody;
-
+  const { code, language, oid, mode, customInput, timeTaken } = req.body as ExecuteBody & { timeTaken?: string };
   const sourceCode = typeof code === "string" ? code : "";
   const githubOid = typeof oid === "string" ? oid : "";
   const executionMode = getExecutionMode(mode);
@@ -1299,6 +1298,43 @@ export const executeCode = async (req: Request, res: Response) => {
           passedCase: totalPassed,
           totalCases: casesToRun.length,
         }).catch(e => console.error("Failed to save submission:", e));
+      }
+    }
+
+    // --- PRACTICE MODE: upsert UserProblemProgress for solo submissions ---
+    if (executionMode === "SUBMIT" && userId && githubOid && !githubOid.startsWith("local-")) {
+      try {
+        const practiceTargetProblem = await prisma.problem.findFirst({
+          where: { OR: [{ github_oid: githubOid }, { id: githubOid }] },
+          select: { id: true }
+        });
+
+        if (practiceTargetProblem) {
+          const allPassed = totalPassed === casesToRun.length && casesToRun.length > 0;
+          await prisma.userProblemProgress.upsert({
+            where: { userId_problemId: { userId, problemId: practiceTargetProblem.id } },
+            create: {
+              userId,
+              problemId: practiceTargetProblem.id,
+              isSolved: allPassed,
+              solvedAt: allPassed ? new Date() : null,
+              attempts: 1,
+              lastCode: sourceCode,
+              lastLanguage: executionLanguage,
+              submissionTimes: timeTaken ? [timeTaken] : [],
+            },
+            update: {
+              isSolved: allPassed ? true : undefined, // never go back to unsolved
+              solvedAt: allPassed ? new Date() : undefined,
+              attempts: { increment: 1 },
+              lastCode: sourceCode,
+              lastLanguage: executionLanguage,
+              submissionTimes: timeTaken ? { push: timeTaken } : undefined,
+            }
+          });
+        }
+      } catch (e) {
+        console.error("Failed to upsert UserProblemProgress:", e);
       }
     }
 

@@ -1,6 +1,7 @@
 export const githubRestHeaders = () => ({
   Authorization: `Bearer ${process.env.GITHUB_KEY}`,
   Accept: "application/vnd.github.v3+json",
+  "User-Agent": "BRACE-RCE",
 });
 
 export const postGraphQL = async <T>(body: Record<string, unknown>) => {
@@ -10,6 +11,7 @@ export const postGraphQL = async <T>(body: Record<string, unknown>) => {
       Authorization: `Bearer ${process.env.GITHUB_KEY}`,
       "Content-Type": "application/json",
       Accept: "application/json",
+      "User-Agent": "BRACE-RCE",
     },
     body: JSON.stringify(body),
   });

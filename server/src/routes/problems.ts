@@ -9,6 +9,7 @@ problemsRouter.use(authentication);
 // Fetching Problems
 problemsRouter.get("/system", problemController.getSystemProblems);
 problemsRouter.get("/custom", problemController.getMyCustomProblems);
+problemsRouter.get("/:id", problemController.getProblemById);
 
 // Creating Problems
 problemsRouter.post("/create", problemController.createCustomProblem);

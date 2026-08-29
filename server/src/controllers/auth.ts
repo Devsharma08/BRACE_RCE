@@ -45,6 +45,7 @@ export class AuthController {
             await this.setTokenCookie(res, newUser.id);
             res.status(201).json({ message: "Registered successfully", user: { id: newUser.id, username: newUser.username, avatarUrl: newUser.avatarUrl, email: newUser.email } });
         } catch (error) {
+            console.error("Error in signup:", error);
             return res.status(500).json({ message: "Something went wrong" })
         }
 
@@ -61,10 +62,11 @@ export class AuthController {
             if (!validPassword) {
                 return res.status(401).json({ message: "Invalid password" })
             }
-            this.setTokenCookie(res, user.id);
+            await this.setTokenCookie(res, user.id);
 
             res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
         } catch (error) {
+            console.error("Error in signin:", error);
             return res.status(500).json({ message: "Something went wrong" })
         }
     }

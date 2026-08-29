@@ -3,17 +3,124 @@ import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { Level } from "../generated/prisma/client.js";
 import { WrapperGenerator } from "../utils/wrapperGenerator.js";
+
 class Problems {
-    // GET ALL SYSTEM PROBLEMS
+    // GET ALL SYSTEM PROBLEMS (enriched with solved status for the current user)
     async getSystemProblems(req: AuthRequest, res: Response) {
         try {
+            const userId = req.userId as string;
+
             const problems = await prisma.problem.findMany({
                 where: { isCustom: false },
-                orderBy: { problem_number: 'asc' }
+                orderBy: { problem_number: 'asc' },
+                select: {
+                    id: true,
+                    name: true,
+                    problem_number: true,
+                    github_oid: true,
+                    problem_definition: true,
+                    problem_hints: true,
+                    difficulty_level: true,
+                    timeLimitMs: true,
+                    createdAt: true,
+                    code_snippets: {
+                        select: { language: true, code: true }
+                    },
+                    test_cases: {
+                        where: { is_public: true },
+                        select: { id: true, input: true, expectedOutput: true, is_public: true }
+                    },
+                    userProgress: {
+                        where: { userId },
+                        select: {
+                            isSolved: true,
+                            solvedAt: true,
+                            attempts: true,
+                            lastCode: true,
+                            lastLanguage: true,
+                            submissionTimes: true,
+                        }
+                    }
+                }
             });
-            return res.json({ status: "success", problems });
+
+            // Flatten userProgress into top-level fields
+            const enriched = problems.map((p) => {
+                const progress = (p as any).userProgress?.[0] ?? null;
+                const { userProgress, ...rest } = p as any;
+                return {
+                    ...rest,
+                    isSolved: progress?.isSolved ?? false,
+                    solvedAt: progress?.solvedAt ?? null,
+                    attempts: progress?.attempts ?? 0,
+                    lastCode: progress?.lastCode ?? null,
+                    lastLanguage: progress?.lastLanguage ?? "javascript",
+                    submissionTimes: progress?.submissionTimes ?? [],
+                };
+            });
+
+            return res.json({ status: "success", problems: enriched });
         } catch (error) {
             console.error("Fetch system problems error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // GET SINGLE PROBLEM BY ID (full detail with snippets, test cases, user progress)
+    async getProblemById(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { id } = req.params;
+
+            const problem = await prisma.problem.findFirst({
+                where: {
+                    OR: [
+                        { id },
+                        { github_oid: id }
+                    ],
+                    isCustom: false
+                },
+                include: {
+                    code_snippets: true,
+                    test_cases: {
+                        where: { is_public: true },
+                        select: { id: true, input: true, expectedOutput: true, is_public: true }
+                    },
+                    userProgress: {
+                        where: { userId },
+                        select: {
+                            isSolved: true,
+                            solvedAt: true,
+                            attempts: true,
+                            lastCode: true,
+                            lastLanguage: true,
+                            submissionTimes: true,
+                        }
+                    }
+                }
+            });
+
+            if (!problem) {
+                return res.status(404).json({ message: "Problem not found" });
+            }
+
+            const progress = (problem as any).userProgress?.[0] ?? null;
+            const { userProgress, ...rest } = problem as any;
+
+            return res.json({
+                status: "success",
+                problem: {
+                    ...rest,
+                    isSolved: progress?.isSolved ?? false,
+                    solvedAt: progress?.solvedAt ?? null,
+                    attempts: progress?.attempts ?? 0,
+                    lastCode: progress?.lastCode ?? null,
+                    lastLanguage: progress?.lastLanguage ?? "javascript",
+                    submissionTimes: progress?.submissionTimes ?? [],
+                }
+            });
+        } catch (error) {
+            console.error("Fetch problem by ID error:", error);
             return res.status(500).json({ message: "Server error" });
         }
     }
@@ -65,7 +172,7 @@ class Problems {
                         create: test_cases.map((tc: any) => ({
                             input: tc.input,
                             expectedOutput: tc.expectedOutput,
-                            is_public: tc.is_public ?? true // False means it's a hidden edge case
+                            is_public: tc.is_public ?? true
                         }))
                     },
 
@@ -86,13 +193,11 @@ class Problems {
             return res.status(500).json({ message: "Server error" });
         }
     }
+
     // SEED SYSTEM PROBLEMS (Admin / System Integration)
     async seedSystemProblems(req: AuthRequest, res: Response) {
         try {
-            // Ideally, add an admin check here
-            // if (req.role !== 'ADMIN') return res.status(403).json({ message: "Forbidden" });
-            
-            const problems = req.body.problems; // Array of RawSeedProblem objects
+            const problems = req.body.problems;
             if (!Array.isArray(problems)) {
                 return res.status(400).json({ message: "Expected 'problems' array" });
             }
@@ -101,12 +206,10 @@ class Problems {
             for (const p of problems) {
                 const { test_cases, code_snippets, ...problemData } = p;
                 
-                // Format difficulty if passed as lowercase
                 const difficulty = problemData.difficulty_level?.toUpperCase() || Level.MEDIUM;
 
                 const problem = await prisma.problem.upsert({
                     where: { 
-                        // Fallback to name if problem_number isn't provided or unique enough
                         problem_number: problemData.problem_number || -1,
                     },
                     update: {
@@ -115,7 +218,7 @@ class Problems {
                         problem_definition: problemData.problem_definition,
                         problem_hints: problemData.problem_hints || [],
                         difficulty_level: difficulty,
-                        isCustom: false, // Ensure seeded problems are System level
+                        isCustom: false,
                         creatorId: null
                     },
                     create: {
@@ -130,14 +233,12 @@ class Problems {
                     },
                 });
 
-                // Generate generic wrappers for all languages if signature is provided
                 const generatedSnippets = problemData.signature 
                     ? WrapperGenerator.generateAll(problemData.signature) 
                     : null;
                 
                 const finalSnippets = code_snippets || generatedSnippets;
 
-                // Overwrite snippets and test cases completely to ensure sync
                 if (test_cases) {
                     await prisma.testCase.deleteMany({ where: { problemId: problem.id } });
                     await prisma.testCase.createMany({
