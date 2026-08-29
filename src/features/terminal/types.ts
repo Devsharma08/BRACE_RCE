@@ -57,4 +57,5 @@ export type ExecuteCodeRequest = {
   mode: ExecutionMode;
   customInput?: string;
   fileName?: string;
+  timeTaken?: string;
 };

@@ -87,7 +87,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const rawSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+    const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
     const newSocket = io(socketUrl, { withCredentials: true });
     setSocket(newSocket);
 

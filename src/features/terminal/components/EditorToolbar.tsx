@@ -16,6 +16,8 @@ import {
 import type { ExecutionMode, SupportedLanguage } from "../types";
 import { CodeContext } from "../../../context/CodeContext.tsx";
 
+import ProblemTimer from "./ProblemTimer";
+
 type EditorToolbarProps = {
   disabled: boolean;
   activeFile: string | null;
@@ -38,6 +40,9 @@ type EditorToolbarProps = {
   showFileExplorerToggle?: boolean;
   onToggleFileExplorer?: () => void;
   isFileExplorerOpen?: boolean;
+  submissionTrigger?: number;
+  timerRef?: React.RefObject<import("./ProblemTimer").ProblemTimerRef>;
+  initialSubmissionTimes?: string[];
 };
 
 const EditorToolbar = ({
@@ -62,6 +67,9 @@ const EditorToolbar = ({
   showFileExplorerToggle = false,
   onToggleFileExplorer,
   isFileExplorerOpen = false,
+  submissionTrigger = 0,
+  timerRef,
+  initialSubmissionTimes = [],
 }: EditorToolbarProps) => {
   const navigate = useNavigate();
   const context = useContext(CodeContext);
@@ -129,6 +137,9 @@ const EditorToolbar = ({
           placeholder="ENTER_FILE..."
           aria-label="File name"
         />
+        {mode === "problem" && (
+          <ProblemTimer ref={timerRef} problemId={activeFile} submissionTrigger={submissionTrigger} initialSubmissionTimes={initialSubmissionTimes} />
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:w-auto">

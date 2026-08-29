@@ -1,17 +1,14 @@
-import type { FileEntry } from "../../context/FileNamesContext";
-import type { ExecuteCodeRequest, ExecutionResult, FileContentResponse } from "./types";
+import type { ExecuteCodeRequest, ExecutionResult } from "./types";
 
-const API_BASE_URL = `${(import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/+$/, "")}/api`;
+const rawUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+const API_BASE_URL = rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
 
 const getErrorMessage = (payload: unknown, fallback: string) => {
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;
     const message = record.error ?? record.message;
-    if (typeof message === "string") {
-      return message;
-    }
+    if (typeof message === "string") return message;
   }
-
   return fallback;
 };
 
@@ -19,35 +16,27 @@ const readJson = async <T>(response: Response): Promise<T> => {
   return (await response.json()) as T;
 };
 
-export const fetchFileNames = async () => {
-  const response = await fetch(`${API_BASE_URL}/github/filenames`);
-
-  if (!response.ok) {
-    throw new Error("Failed to load file names");
-  }
-
-  return readJson<FileEntry[]>(response);
+// Fetch all system problems (with solved status, code_snippets, test_cases)
+export const fetchSystemProblems = async (signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/problems/system`, { signal, credentials: "include" });
+  if (!response.ok) throw new Error("Failed to load problems");
+  const data = await readJson<{ status: string; problems: any[] }>(response);
+  return data.problems;
 };
 
-export const fetchFileContent = async (oid: string, name?: string) => {
-  const url = `${API_BASE_URL}/github/filecontent?oid=${encodeURIComponent(oid)}` + 
-              (name ? `&name=${encodeURIComponent(name)}` : "") + 
-              `&_cb=${Date.now()}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error("Failed to load file content");
-  }
-
-  return readJson<FileContentResponse>(response);
+// Fetch a single problem by ID or github_oid
+export const fetchProblemById = async (id: string, signal?: AbortSignal) => {
+  const response = await fetch(`${API_BASE_URL}/problems/${encodeURIComponent(id)}`, { signal, credentials: "include" });
+  if (!response.ok) throw new Error("Failed to load problem");
+  const data = await readJson<{ status: string; problem: any }>(response);
+  return data.problem;
 };
 
 export const executeCode = async (request: ExecuteCodeRequest) => {
   const response = await fetch(`${API_BASE_URL}/execute`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(request),
   });
 
