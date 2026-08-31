@@ -9,7 +9,6 @@ const DataStructureDetail = lazy(
   () => import("./pages/DataStructureDetail.tsx"),
 );
 const Profile = lazy(() => import("./pages/Profile.tsx"));
-const Lobby = lazy(() => import("./pages/Lobby.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
 const Problems = lazy(() => import("./pages/Problems.tsx").then((m) => ({ default: m.Problems })));
@@ -32,7 +31,7 @@ import type {
   ExecutionResult,
 } from "./features/terminal/types";
 
-import { PageSkeleton } from "./components/ui/Skeleton.tsx";
+import { RouteLoadingSkeleton, WorkInProgressPage } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 
@@ -69,8 +68,8 @@ export const Root = () => {
   return (
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <Suspense fallback={<PageSkeleton />}>
-          <Router>
+        <Router>
+          <Suspense fallback={<RouteLoadingSkeleton />}>
             <ScrollToTop />
             <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
               <AuthProvider>
@@ -94,7 +93,7 @@ export const Root = () => {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/battle/:roomId" element={<Battle />} />
                         <Route path="/rooms/create" element={<CreateRoom />} />
-                        <Route path="/lobby" element={<Lobby />} />
+                        <Route path="/lobby" element={<WorkInProgressPage />} />
                         <Route path="/problems" element={<Problems />} />
 
                         <Route
@@ -141,8 +140,8 @@ export const Root = () => {
                 </SocketProvider>
               </AuthProvider>
             </GoogleOAuthProvider>
-          </Router>
-        </Suspense>
+          </Suspense>
+        </Router>
       </QueryClientProvider>
     </StrictMode>
   );
