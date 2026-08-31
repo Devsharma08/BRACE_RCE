@@ -12,6 +12,7 @@ import PracticeSidebar, { type PracticeProblem } from "../features/terminal/comp
 import { buildProblemTestCases, formatExecutionOutput } from "../features/terminal/executionOutput";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { ExecutionMode, SupportedLanguage } from "../features/terminal/types";
+import type { ProblemTimerRef } from "../features/terminal/components/ProblemTimer";
 import { NotesPanel } from "../components/ui/NotesPanel";
 
 // ─────────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ const Terminal = () => {
   const [isOutputActive, setIsOutputActive] = useState(true);
   const [submissionTrigger, setSubmissionTrigger] = useState(0);
 
-  const timerRef = useRef<import("./components/ProblemTimer").ProblemTimerRef>(null);
+  const timerRef = useRef<ProblemTimerRef>(null);
 
   // ── Contexts ───────────────────────────────────────────────
   const {
