@@ -16,7 +16,7 @@ import {
 import type { ExecutionMode, SupportedLanguage } from "../types";
 import { CodeContext } from "../../../context/CodeContext.tsx";
 
-import ProblemTimer from "./ProblemTimer";
+import ProblemTimer, { type ProblemTimerRef } from "./ProblemTimer";
 
 type EditorToolbarProps = {
   disabled: boolean;
@@ -41,7 +41,7 @@ type EditorToolbarProps = {
   onToggleFileExplorer?: () => void;
   isFileExplorerOpen?: boolean;
   submissionTrigger?: number;
-  timerRef?: React.RefObject<import("./ProblemTimer").ProblemTimerRef>;
+  timerRef?: React.RefObject<ProblemTimerRef | null>;
   initialSubmissionTimes?: string[];
 };
 
