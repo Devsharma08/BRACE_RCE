@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import type { ComponentProps } from 'react';
 import EditorToolbar from './EditorToolbar';
 import { CodeContext } from '../../../context/CodeContext';
 
@@ -22,7 +23,7 @@ const mockContextValue = {
 };
 
 describe('EditorToolbar Component', () => {
-  const defaultProps = {
+  const defaultProps: ComponentProps<typeof EditorToolbar> = {
     disabled: false,
     activeFile: 'problem-1',
     fileName: 'two-sum.js',
@@ -31,6 +32,7 @@ describe('EditorToolbar Component', () => {
     setLanguage: vi.fn(),
     setCode: vi.fn(),
     onRun: vi.fn(),
+    onSubmit: vi.fn(),
     onFormat: vi.fn(),
     onReset: vi.fn(),
     sidebarWidth: 360,
@@ -50,10 +52,34 @@ describe('EditorToolbar Component', () => {
     );
   };
 
-  test('renders active file name', () => {
-    renderToolbar();
-    const input = screen.getByLabelText('File name') as HTMLInputElement;
-    expect(input.value).toBe('two-sum.js');
+  test('renders language selector and triggers language change', () => {
+    const handleSetLanguage = vi.fn();
+    renderToolbar({ ...defaultProps, setLanguage: handleSetLanguage });
+    const select = screen.getByLabelText('Select programming language') as HTMLSelectElement;
+    expect(select.value).toBe('javascript');
+
+    fireEvent.change(select, { target: { value: 'python' } });
+    expect(handleSetLanguage).toHaveBeenCalledWith('python');
+  });
+
+  test('calls onRun when run button is clicked', () => {
+    const handleRun = vi.fn();
+    renderToolbar({ ...defaultProps, onRun: handleRun });
+
+    const runBtn = screen.getByTitle('Run solution (Ctrl+Enter)');
+    fireEvent.click(runBtn);
+
+    expect(handleRun).toHaveBeenCalledTimes(1);
+  });
+
+  test('calls onSubmit when submit button is clicked', () => {
+    const handleSubmit = vi.fn();
+    renderToolbar({ ...defaultProps, onSubmit: handleSubmit, showSubmit: true });
+
+    const submitBtn = screen.getByTitle('Submit solution for full tests validation');
+    fireEvent.click(submitBtn);
+
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
   });
 
   test('calls onFormat when format button is clicked', () => {

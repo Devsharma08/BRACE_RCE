@@ -6,6 +6,9 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { api } from "../config/api";
+import { useAnalytics } from "../hooks/useAnalytics";
+import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
+import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 import {
   Swords,
   Bell,
@@ -19,6 +22,7 @@ import {
   CheckCircle2,
   LayoutDashboard,
   Activity,
+  BarChart2,
 } from "lucide-react";
 
 export const Dashboard: React.FC = () => {
@@ -63,6 +67,8 @@ export const Dashboard: React.FC = () => {
       };
     },
   });
+
+  const { data: analytics, isLoading: analyticsLoading } = useAnalytics(Boolean(isAuthenticated || user));
 
   const profile = dashboardData?.profile || null;
   const stats = dashboardData?.stats || null;
@@ -212,86 +218,28 @@ export const Dashboard: React.FC = () => {
           </section>
         </div>
 
-        {/* 5. TWO-COLUMN ANALYTICS — border-b divider */}
+        {/* 5. ANALYTICS — live data ─────────────────────────────── */}
         <div className="border-b border-white/10 pb-6 mb-6">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
-            <TrendingUp className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-cyan-400">ANALYTICS</span>
+            <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-cyan-400">ANALYTICS // LIVE DATA</span>
           </div>
 
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Rating Progression */}
-            <div className="rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60 bg-[#06080e] p-5 flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
-                  RATING PROGRESSION
-                </span>
-                <span className="text-[10px] text-slate-500 tracking-wider">Live DB Rating Curve</span>
-              </div>
-
-              <div className="h-40 w-full relative flex items-end pt-4">
-                <svg className="w-full h-full overflow-visible" viewBox="0 0 300 100">
-                  <defs>
-                    <linearGradient id="ratingGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M0,80 Q50,65 100,70 T200,40 T300,20 L300,100 L0,100 Z" fill="url(#ratingGrad)" />
-                  <path d="M0,80 Q50,65 100,70 T200,40 T300,20" fill="none" stroke="#06b6d4" strokeWidth="2.5" strokeLinecap="round" />
-                  <circle cx="0" cy="80" r="3.5" fill="#06b6d4" />
-                  <circle cx="100" cy="70" r="3.5" fill="#06b6d4" />
-                  <circle cx="200" cy="40" r="3.5" fill="#06b6d4" />
-                  <circle cx="300" cy="20" r="4.5" fill="#38bdf8" />
-                </svg>
-              </div>
+          {analyticsLoading ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-32 rounded-none border border-white/5 bg-[#06080e] animate-pulse" />
+              ))}
             </div>
-
-            {/* Recent Battles */}
-            <div className="rounded-none border border-white/20 border-l-4 border-b-4 border-l-emerald-500/60 border-b-emerald-500/60 bg-[#06080e] p-5 flex flex-col gap-4 relative overflow-hidden">
-              <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <span className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-                  <Trophy className="w-4 h-4" />
-                  RECENT BATTLES
-                </span>
-                <span className="text-[10px] text-slate-500 tracking-wider">Live Performance History</span>
-              </div>
-
-              <div className="flex flex-col gap-2.5 relative z-10">
-                {recentBattles.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-slate-500">
-                    NO BATTLES RECORDED YET. CLICK [ FIND MATCH ] TO PLAY!
-                  </div>
-                ) : (
-                  recentBattles.slice(0, 4).map((b, idx) => {
-                    const isWin = b.status === "WON" || b.status === "PASSED";
-                    const oppName = b.event?.performances?.find((p: any) => p.userId !== user?.id)?.user?.username || "Opponent";
-                    return (
-                      <div
-                        key={b.id || idx}
-                        className="flex items-center justify-between p-3 rounded-none border border-white/5 bg-black/40 hover:border-cyan-500/20 transition-all text-xs"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-6 h-6 rounded-none flex items-center justify-center font-extrabold text-xs ${isWin ? "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40" : "bg-rose-950/80 text-rose-400 border border-rose-500/40"}`}>
-                            {isWin ? "W" : "L"}
-                          </span>
-                          <span className="text-slate-200 font-bold">
-                            {username} <span className="text-slate-500 font-normal">vs</span> {oppName}
-                          </span>
-                        </div>
-                        <span className={`font-bold ${isWin ? "text-emerald-400" : "text-rose-400"}`}>
-                          {isWin ? "+25" : "-10"}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+          ) : analytics ? (
+            <AnalyticsErrorBoundary>
+              <AnalyticsPanels analytics={analytics} compact />
+            </AnalyticsErrorBoundary>
+          ) : (
+            <div className="text-xs text-slate-500 font-mono p-8 text-center border border-white/5 bg-[#06080e]">
+              NO ANALYTICS DATA AVAILABLE YET. PLAY SOME MATCHES!
             </div>
-          </section>
+          )}
         </div>
 
         {/* 6. CONTINUE CODING */}

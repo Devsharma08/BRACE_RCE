@@ -1,7 +1,6 @@
-import { useContext } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FileCode,
   Loader2,
   Play,
   Send,
@@ -18,10 +17,18 @@ import { CodeContext } from "../../../context/CodeContext.tsx";
 
 import ProblemTimer, { type ProblemTimerRef } from "./ProblemTimer";
 
+const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string; shortLabel: string }[] = [
+  { value: "javascript", label: "JavaScript", shortLabel: "JS" },
+  { value: "python", label: "Python", shortLabel: "PY" },
+  { value: "c++", label: "C++", shortLabel: "C++" },
+  { value: "java", label: "Java", shortLabel: "JAVA" },
+  { value: "c", label: "C", shortLabel: "C" },
+];
+
 type EditorToolbarProps = {
   disabled: boolean;
   activeFile: string | null;
-  fileName: string;
+  fileName?: string;
   language: SupportedLanguage;
   executingMode: ExecutionMode | null;
   setLanguage: (language: SupportedLanguage) => void;
@@ -48,7 +55,6 @@ type EditorToolbarProps = {
 const EditorToolbar = ({
   disabled,
   activeFile,
-  fileName,
   onRun,
   onSubmit,
   onFormat,
@@ -76,6 +82,33 @@ const EditorToolbar = ({
   if (!context) {
     throw new Error("EditorToolbar must be used inside a CodeContext.Provider");
   }
+
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+
+    if (typeof ResizeObserver === "undefined") {
+      const handleResize = () => {
+        setIsCompact(window.innerWidth < 640);
+      };
+      handleResize();
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // When shrunk to half or less (< 640px), toggle compact mode
+        setIsCompact(entry.contentRect.width < 640);
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const isLocal = activeFile && activeFile.startsWith("local-");
 
@@ -110,7 +143,10 @@ const EditorToolbar = ({
   };
 
   return (
-    <div className="editor-toolbar flex flex-col gap-2 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+    <div
+      ref={toolbarRef}
+      className="editor-toolbar flex flex-col gap-2 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+    >
       <div className="flex min-w-0 items-center gap-2">
         {/* FILE EXPLORER TOGGLE BUTTON (FOR TERMINAL / PROBLEM MODES) */}
         {showFileExplorerToggle && onToggleFileExplorer && (
@@ -127,16 +163,6 @@ const EditorToolbar = ({
             <FolderTree className="w-3.5 h-3.5" />
           </button>
         )}
-
-        <FileCode className="w-4 h-4 text-cyan-400" />
-        <input
-          type="text"
-          className="min-w-0 flex-1 truncate bg-transparent text-xs font-mono text-cyan-400/80 outline-none whitespace-nowrap"
-          value={fileName}
-          readOnly
-          placeholder="ENTER_FILE..."
-          aria-label="File name"
-        />
 
         {mode === "problem" && (
           <ProblemTimer ref={timerRef} problemId={activeFile} submissionTrigger={submissionTrigger} initialSubmissionTimes={initialSubmissionTimes} />
@@ -155,10 +181,8 @@ const EditorToolbar = ({
               : "border-amber-500/25 bg-amber-950/10 text-amber-400/90 hover:border-amber-500/50 hover:bg-amber-950/20 hover:text-amber-300"
           }`}
         >
-          <span className="text-amber-500/40 select-none mr-1">[</span>
           <StickyNote className="w-3.5 h-3.5 text-amber-400" />
-          <span className="ml-1 hidden xs:inline">NOTES</span>
-          <span className="text-amber-500/40 select-none ml-1">]</span>
+          {!isCompact && <span className="ml-1 hidden xs:inline">NOTES</span>}
         </button>
 
         {/* EXIT TO DASHBOARD / HOME BUTTON */}
@@ -168,10 +192,8 @@ const EditorToolbar = ({
           title="Exit to Dashboard / Home"
           className="flex items-center justify-center rounded-none border border-rose-500/30 bg-rose-950/10 hover:border-rose-500/50 hover:bg-rose-950/20 text-rose-400 hover:text-rose-300 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
-          <span className="text-rose-500/40 select-none mr-1">[</span>
           <Home className="w-3.5 h-3.5 text-rose-400" />
-          <span className="ml-1 hidden xs:inline">EXIT</span>
-          <span className="text-rose-500/40 select-none ml-1">]</span>
+          {!isCompact && <span className="ml-1 hidden xs:inline">EXIT</span>}
         </button>
 
         {/* MAXIMIZE MONACO PANEL */}
@@ -181,9 +203,7 @@ const EditorToolbar = ({
           title="Maximize editor panel"
           className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
-          <span className="text-cyan-500/40 select-none mr-1">[</span>
           <Maximize className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
         {/* FORMAT CODE */}
@@ -193,9 +213,7 @@ const EditorToolbar = ({
           title="Format active code"
           className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
-          <span className="text-cyan-500/40 select-none mr-1">[</span>
           <IndentationIcon className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
         {/* CLEAR DRAFT */}
@@ -205,9 +223,7 @@ const EditorToolbar = ({
           title="Clear current draft"
           className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
-          <span className="text-cyan-500/40 select-none mr-1">[</span>
           <Clear className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-cyan-500/40 select-none ml-1">]</span>
         </button>
 
         {/* RESET TEMPLATE */}
@@ -218,9 +234,7 @@ const EditorToolbar = ({
             title="Reset to original problem template"
             className="flex items-center justify-center rounded-none border border-rose-500/20 bg-rose-950/5 hover:border-rose-500/40 hover:bg-rose-950/15 text-rose-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
           >
-            <span className="text-rose-500/40 select-none mr-1">[</span>
             <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-rose-500/40 select-none ml-1">]</span>
           </button>
         )}
 
@@ -229,22 +243,13 @@ const EditorToolbar = ({
           className="min-w-0 rounded-none border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+          aria-label="Select programming language"
         >
-          <option value="javascript" className="bg-[#0b0c0e] text-cyan-400">
-            JavaScript
-          </option>
-          <option value="python" className="bg-[#0b0c0e] text-cyan-400">
-            Python
-          </option>
-          <option value="c++" className="bg-[#0b0c0e] text-cyan-400">
-            C++
-          </option>
-          <option value="java" className="bg-[#0b0c0e] text-cyan-400">
-            Java
-          </option>
-          <option value="c" className="bg-[#0b0c0e] text-cyan-400">
-            C
-          </option>
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value} className="bg-[#0b0c0e] text-cyan-400">
+              {isCompact ? opt.shortLabel : opt.label}
+            </option>
+          ))}
         </select>
 
         {/* RUN CODE BUTTON */}
@@ -253,18 +258,17 @@ const EditorToolbar = ({
           disabled={disabled}
           aria-busy={executingMode === "RUN"}
           title="Run solution (Ctrl+Enter)"
+          aria-label="Run solution"
           className={`flex items-center justify-center rounded-none border border-cyan-500/30 bg-cyan-950/10 text-cyan-400 hover:bg-cyan-950/20 hover:border-cyan-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
             disabled ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
-          <span className="text-cyan-500/40 select-none mr-1">[</span>
           {executingMode === "RUN" ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
           ) : (
             <Play className="w-3.5 h-3.5 text-cyan-400" />
           )}
-          <span className="ml-1 text-[10px]">RUN</span>
-          <span className="text-cyan-500/40 select-none ml-1">]</span>
+          {!isCompact && <span className="ml-1 text-[10px]">RUN</span>}
         </button>
 
         {/* SUBMIT CODE BUTTON (CONDITIONALLY RENDERED FOR BATTLE / FULL MODES) */}
@@ -274,18 +278,17 @@ const EditorToolbar = ({
             disabled={disabled}
             aria-busy={executingMode === "SUBMIT"}
             title="Submit solution for full tests validation"
+            aria-label="Submit solution"
             className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-950/20 hover:border-emerald-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
               disabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            <span className="text-emerald-500/40 select-none mr-1">[</span>
             {executingMode === "SUBMIT" ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
             ) : (
               <Send className="w-3.5 h-3.5 text-emerald-400" />
             )}
-            <span className="ml-1 text-[10px]">SUBMIT</span>
-            <span className="text-emerald-500/40 select-none ml-1">]</span>
+            {!isCompact && <span className="ml-1 text-[10px]">SUBMIT</span>}
           </button>
         )}
       </div>

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Code, LogOut, User, Zap } from "lucide-react";
+import { Activity, Trophy, Crosshair, Clock, Shield, Target, ChevronLeft, Code, LogOut, User, Zap, BarChart2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../config/api";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
 import { useAuth } from "../context/AuthContext";
 import { PageSkeleton } from "../components/ui/Skeleton";
+import { useAnalytics } from "../hooks/useAnalytics";
+import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
+import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 
 interface UserProfile {
   id: string;
@@ -55,6 +58,8 @@ const Profile = () => {
       };
     },
   });
+
+  const { data: analytics } = useAnalytics();
 
   const profile = data?.profile || null;
   const stats = data?.stats || null;
@@ -266,6 +271,47 @@ const Profile = () => {
             </div>
           </div>
         </div>
+
+        {/* ── ANALYTICS ────────────────────────────────────────────── */}
+        {analytics && (
+          <div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest mb-5 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
+              <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
+              <span>ANALYTICS // PERFORMANCE BREAKDOWN</span>
+            </div>
+
+            {/* Summary stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+              {[
+                { label: "SOLVED", value: analytics.summary.totalSolved, color: "text-emerald-400" },
+                { label: "BATTLES", value: analytics.summary.totalMatches, color: "text-cyan-400" },
+                { label: "WINS", value: analytics.summary.wins, color: "text-emerald-400" },
+                { label: "WIN RATE", value: `${analytics.summary.winRate}%`, color: "text-amber-400" },
+                { label: "ATTEMPTS", value: analytics.summary.totalAttempts, color: "text-rose-400" },
+                {
+                  label: "AVG TIME",
+                  value: analytics.summary.avgSolveTimeMs > 0
+                    ? `${Math.round(analytics.summary.avgSolveTimeMs / 60000)}m`
+                    : "0m",
+                  color: "text-purple-400",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="relative rounded-none border border-white/10 bg-[#06080e] p-3 flex flex-col gap-1 overflow-hidden"
+                >
+                  <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+                  <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">{stat.label}</span>
+                  <span className={`text-lg font-extrabold font-mono ${stat.color}`}>{stat.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <AnalyticsErrorBoundary>
+              <AnalyticsPanels analytics={analytics} />
+            </AnalyticsErrorBoundary>
+          </div>
+        )}
 
       </div>
 

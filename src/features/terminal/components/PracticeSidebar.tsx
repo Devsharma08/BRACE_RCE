@@ -159,7 +159,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
           <AlignLeft className="w-3 h-3" /> PROBLEM DESCRIPTION
         </div>
         <div
-          className="min-w-0 max-w-full break-words text-[11px] leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300"
+          className="min-w-0 max-w-full break-words text-sm leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300"
           dangerouslySetInnerHTML={{ __html: problem.problem_definition || "No description available." }}
         />
       </div>

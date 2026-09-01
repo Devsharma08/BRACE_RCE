@@ -250,7 +250,7 @@ const OutputPanel = ({
               <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 mb-2 border-b border-white/5 pb-1">
                 &gt; CONSOLE_OUTPUT // SYSTEM_LOG
               </div>
-              <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words text-xs text-slate-300 leading-relaxed font-mono">
+              <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words text-sm text-slate-300 leading-relaxed font-mono">
                 {outputText || "// System idle. Console logs will generate upon run."}
               </pre>
             </div>
@@ -292,7 +292,7 @@ const OutputPanel = ({
                             <X className="w-3.5 h-3.5 text-rose-400" />
                             ACTUAL_OUTPUT
                           </div>
-                          <pre className="rounded-none bg-black/60 border border-rose-500/10 p-3 text-xs text-rose-200 whitespace-pre-wrap break-words leading-relaxed font-mono">
+                          <pre className="rounded-none bg-black/60 border border-rose-500/10 p-3 text-sm text-rose-200 whitespace-pre-wrap break-words leading-relaxed font-mono">
                             {failedCase.output || "empty"}
                           </pre>
                         </div>
@@ -303,7 +303,7 @@ const OutputPanel = ({
                             <Check className="w-3.5 h-3.5 text-emerald-400" />
                             TARGET_OUTPUT
                           </div>
-                          <pre className="rounded-none bg-black/60 border border-emerald-500/10 p-3 text-xs text-emerald-200 whitespace-pre-wrap break-words leading-relaxed font-mono">
+                          <pre className="rounded-none bg-black/60 border border-emerald-500/10 p-3 text-sm text-emerald-200 whitespace-pre-wrap break-words leading-relaxed font-mono">
                             {failedCase.expectedOutput || "empty"}
                           </pre>
                         </div>
@@ -367,11 +367,11 @@ const OutputPanel = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
                       <div>
                         <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">INPUT_PARAMETERS</div>
-                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-[11px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.input ?? "-"}</pre>
+                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.input ?? "-"}</pre>
                       </div>
                       <div>
                         <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">EXPECTED_RETURN</div>
-                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-[11px] text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.expectedOutput ?? "-"}</pre>
+                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.expectedOutput ?? "-"}</pre>
                       </div>
                     </div>
 
@@ -419,7 +419,7 @@ const OutputPanel = ({
                             match.passed ? "border-emerald-500/10 bg-emerald-950/5" : "border-rose-500/10 bg-rose-950/5"
                           }`}>
                             <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">ACTUAL_OUTPUT</div>
-                            <pre className={`rounded-none bg-black/40 p-2.5 text-[11px] whitespace-pre-wrap font-mono ${
+                            <pre className={`rounded-none bg-black/40 p-2.5 text-sm whitespace-pre-wrap font-mono ${
                               match.passed ? "text-emerald-400" : "text-rose-400"
                             }`}>
                               {match.output || (match.runtimeError ? "Compilation/Runtime Error" : "empty")}
@@ -430,7 +430,7 @@ const OutputPanel = ({
                           {match.runtimeError && (
                             <div className="rounded-none border border-rose-500/20 bg-rose-950/5 p-3 flex flex-col justify-center">
                               <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-rose-400 mb-1">SANDBOX_SYSTEM_TRACE</div>
-                              <pre className="rounded-none bg-black/40 p-2.5 text-[11px] text-rose-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+                              <pre className="rounded-none bg-black/40 p-2.5 text-sm text-rose-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
                                 {match.runtimeError}
                               </pre>
                             </div>
