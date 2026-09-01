@@ -137,6 +137,7 @@ const EditorToolbar = ({
           placeholder="ENTER_FILE..."
           aria-label="File name"
         />
+
         {mode === "problem" && (
           <ProblemTimer ref={timerRef} problemId={activeFile} submissionTrigger={submissionTrigger} initialSubmissionTimes={initialSubmissionTimes} />
         )}

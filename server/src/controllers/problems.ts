@@ -70,7 +70,7 @@ class Problems {
     async getProblemById(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const { id } = req.params;
+            const id = req.params.id as string;
 
             const problem = await prisma.problem.findFirst({
                 where: {

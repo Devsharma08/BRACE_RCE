@@ -7,7 +7,6 @@ import {
   Circle,
   BookOpen,
   LayoutList,
-  Clock,
   Cpu,
   AlignLeft,
   Lightbulb,
@@ -123,7 +122,6 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
 
   const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
   const diffClass = getDiffClass(diff);
-  const timeLimitSec = problem.timeLimitMs ? (problem.timeLimitMs / 1000).toFixed(0) : "600";
   const publicCases = (problem.test_cases || []).filter((tc) => tc.is_public);
 
   return (
@@ -144,9 +142,6 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
 
         <div className="flex flex-wrap gap-2 text-[10px]">
           <span className={`px-2 py-0.5 rounded border font-bold uppercase ${diffClass}`}>{diff}</span>
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 bg-black/30 text-slate-400">
-            <Clock className="w-3 h-3" /> {timeLimitSec}s LIMIT
-          </span>
           {problem.attempts != null && problem.attempts > 0 && (
             <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-white/10 bg-black/30 text-slate-400">
               <Cpu className="w-3 h-3" /> {problem.attempts} ATTEMPT{problem.attempts !== 1 ? "S" : ""}
