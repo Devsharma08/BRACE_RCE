@@ -33,7 +33,7 @@ class Analytics {
     analyticsCache.set(key, { data, timestamp: Date.now() });
   }
 
-  async getUserAnalytics(req: AuthRequest, res: Response) {
+  getUserAnalytics = async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.userId as string;
 
