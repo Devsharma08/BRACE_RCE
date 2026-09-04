@@ -123,6 +123,7 @@ export const Battle = () => {
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [, setMyUserId] = useState<string>("");
+  const [myPerformanceId, setMyPerformanceId] = useState<string>("");
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -252,6 +253,11 @@ export const Battle = () => {
         const myId = profileRes.data.data.id;
         setMyUserId(myId);
         setIsHost(myId === roomData.hostId);
+
+        // find and store current performance ID
+        const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
+
+        if (myPerf) setMyPerformanceId(myPerf.id);
 
         let targetProblems = [];
         if (roomData.type === "ONE_VS_ONE") {
@@ -468,6 +474,8 @@ export const Battle = () => {
         language,
         oid: activeProblem.github_oid || activeProblem.id,
         mode: "SUBMIT",
+        roomId,
+        performanceId:myPerformanceId || ""
       });
 
       setExecutionOutput(res);

@@ -58,4 +58,6 @@ export type ExecuteCodeRequest = {
   customInput?: string;
   fileName?: string;
   timeTaken?: string;
+  roomId?: string;
+  performanceId?: string;
 };
