@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { execFile, execFileSync } from "child_process";
 import { promisify } from "util";
+import jwt from 'jsonwebtoken';
 const execFileAsync = promisify(execFile);
 
 type SupportedLanguage = "javascript" | "java" | "c" | "cpp" | "python";
@@ -15,6 +16,7 @@ type ExecuteBody = {
   mode?: unknown;
   customInput?: unknown;
   performanceId?: unknown;
+  roomId?:unknown
 };
 
 type TestCaseRecord = {
@@ -1129,20 +1131,23 @@ export const executeCode = async (req: Request, res: Response) => {
           }
         ],
         "stdin": testCaseInput,
-        "compile_timeout": 3000,
+        "compile_timeout": 5000,
         "run_timeout": 3000,
-        "compile_memory_limit": -1,
-        "run_memory_limit": -1
+        "compile_memory_limit": 268435456, 
+        "run_memory_limit": 268435456, 
       };
 
       let data: any;
 
       try {
-        // 1. Try hitting the public Piston API first
-        const pistonResponse = await fetch("http://127.0.0.1:2000/api/v2/execute", {
+        // Try hitting the public Piston API first
+
+        const pistonUrl = process.env.PISTON_URL || "http://127.0.0.1:2000"
+        const pistonResponse = await fetch(`${pistonUrl}/api/v2/execute`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal:AbortSignal.timeout(6000),
         });
 
         if (!pistonResponse?.ok) {
@@ -1161,7 +1166,7 @@ export const executeCode = async (req: Request, res: Response) => {
 
       } catch (apiError) {
         console.error("Fetch threw:", apiError);
-        // 2. FALLBACK: Local execution if Piston fails
+        // FALLBACK: Local execution if Piston fails
         if (executionLanguage === "javascript") {
           try {
             const stdout = execFileSync("node", ["-e", finalCode], {
@@ -1231,9 +1236,12 @@ export const executeCode = async (req: Request, res: Response) => {
         totalRuntimeMs += caseRuntimeMs;
         if (caseMemoryKb > 0) totalMemoryKb += caseMemoryKb;
         runCount++;
-
-        const runOutput = data.run?.output || "";
-        const compileOutput = data.compile?.output || "";
+        const MAX_OUTPUT_BYTES = 64*1024;
+        let runOutput = data.run?.output || "";
+        if(runOutput.length > MAX_OUTPUT_BYTES){
+          runOutput = runOutput.substring(0, MAX_OUTPUT_BYTES) + "\n... [OUTPUT TRUNCATED]";
+        }
+        let compileOutput = (data.compile?.output || "").substring(0, MAX_OUTPUT_BYTES);
 
         if (data.compile && data.compile.code !== 0) {
           results.push({
@@ -1272,12 +1280,61 @@ export const executeCode = async (req: Request, res: Response) => {
     const avgRuntimeMs = runCount > 0 ? Math.round(totalRuntimeMs / runCount) : 0;
     const avgMemoryKb = runCount > 0 ? Math.round(totalMemoryKb / runCount) : 0;
 
-    let userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId : "";
-    const userId = (req as any).userId;
-    if (!userPerfId && userId) {
+    // ═══════════════════════════════════════════════════════════
+    //  1v1 SUBMISSION VERIFICATION & RESOLUTION
+    // ═══════════════════════════════════════════════════════════
+
+    let userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId.trim() : "";
+    const requestedRoomId = typeof req.body.roomId === "string" ? req.body.roomId.trim() : "";
+    
+    let userId = (req as any).userId;
+    if(!userId && req.cookies?.token){
+      try {
+         const JWT_SECRET = process.env.JWT_SECRET || "development-only-secret-key";
+        const decoded = jwt.verify(req.cookies.token, JWT_SECRET) as { userId?: string };
+        userId = decoded.userId;
+      } catch (error) {
+        console.error("Failed to verify token:", error);
+      }
+    }
+    if (!userPerfId && requestedRoomId && userId) {
+      const cleanEventId = requestedRoomId.startsWith("room-")
+        ? requestedRoomId.replace("room-", "")
+        : requestedRoomId;
+
+       const targetEvent = await prisma.event.findFirst({
+        where: {
+          OR: [{ id: cleanEventId }, { roomCode: requestedRoomId }],
+        },
+        select: { id: true },
+      });
+
+      if (!targetEvent) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      const roomPerf = await prisma.userPersonalPerformance.findFirst({
+        where: { userId , eventId:targetEvent.id },
+        orderBy: { createdAt: "desc" }
+      });
+      if (roomPerf) {
+        userPerfId = roomPerf.id;
+      } else{
+        const createdPerf = await prisma.userPersonalPerformance.create({
+          data: {
+            userId,
+            eventId: targetEvent.id,
+            status:"PENDING",
+          },
+        });
+        userPerfId = createdPerf.id;
+      }
+    }
+
+     if (!userPerfId && userId) {
       const activePerf = await prisma.userPersonalPerformance.findFirst({
         where: { userId },
-        orderBy: { createdAt: "desc" }
+        orderBy: { createdAt: "desc" },
       });
       if (activePerf) {
         userPerfId = activePerf.id;
