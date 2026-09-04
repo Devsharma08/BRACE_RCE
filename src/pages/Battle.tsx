@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useParams, useNavigate } from "react-router-dom";
@@ -167,6 +167,7 @@ export const Battle = () => {
   const [customInput, setCustomInput] = useState<string>("");
   const [customInputActive, setCustomInputActive] = useState<boolean>(false);
   const [isCustomInputRun, setIsCustomInputRun] = useState<boolean>(false);
+  const [runningTestCaseIndex, setRunningTestCaseIndex] = useState<number | null>(null);
 
   const formatEditorRef = useRef<(() => void) | null>(null);
 
@@ -179,14 +180,13 @@ export const Battle = () => {
     startSidebarDragging,
   } = useTerminalLayout();
 
-  const handleRunSingleTestCase = async (index: number) => {
+  const handleRunSingleTestCase = useCallback(async (index: number) => {
     if (!activeProblem?.test_cases?.[index]) return;
     const targetCase = activeProblem.test_cases[index];
     const inputString = targetCase.input || "";
-
+    setRunningTestCaseIndex(index);
     setIsSubmitting(true);
-    setIsCustomInputRun(true);
-
+    // Do NOT do: setIsCustomInputRun(true) here! Keep it false so cards show!
     try {
       const res = await executeCode({
         code,
@@ -196,18 +196,30 @@ export const Battle = () => {
         mode: "RUN",
         customInput: inputString,
       });
-      setExecutionOutput(res);
+      // Normalize single test case index and merge with existing output
+      const singleDetail = res?.details?.[0];
+      const normalizedDetail = singleDetail ? { ...singleDetail, testCaseIndex: index } : null;
+      setExecutionOutput((prev) => {
+        const existingDetails = (prev?.details || []).filter((d) => d.testCaseIndex !== index);
+        return {
+          ...prev,
+          ...res,
+          details: normalizedDetail ? [...existingDetails, normalizedDetail] : existingDetails,
+        };
+      });
       setTerminalOutput(
         res.status === "PASSED"
-          ? "Single test case execution passed."
-          : "Single test case execution returned errors or output mismatch."
+          ? `[CASE #${index + 1}] Execution passed.`
+          : `[CASE #${index + 1}] Execution returned errors or output mismatch.`
       );
     } catch (err: any) {
       setTerminalOutput(`ERROR: ${err.message || String(err)}`);
     } finally {
       setIsSubmitting(false);
+      setRunningTestCaseIndex(null);
     }
-  };
+  }, [activeProblem, code, language]);
+
 
   const { data: remainingTimeData } = useQuery({
     queryKey: ["room-time-left", roomId],
@@ -787,7 +799,7 @@ export const Battle = () => {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0 pb-24">
+      <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
         <div className="flex items-center justify-between px-6 py-2.5 border-b border-cyan-500/20 bg-[#0b0c0e] font-mono text-xs z-30 shrink-0">
           <div className="flex items-center gap-3">
@@ -826,6 +838,7 @@ export const Battle = () => {
         </div>
 
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
+          {/* CLEAR THIS LOGIC */}
           {battleState.status === "WAITING" && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
               <div className="bg-[#0a0b0e] border border-cyan-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
@@ -918,6 +931,7 @@ export const Battle = () => {
           testCases={activeProblem?.test_cases || []}
           customInput={customInput}
           customInputActive={customInputActive}
+          runningTestCaseIndex={runningTestCaseIndex}
           onResizeStart={startOutputDragging}
           setOutputHeight={setOutputHeight}
           setCustomInput={setCustomInput}

@@ -1,12 +1,16 @@
 import React from "react";
 import { Activity, ShieldCheck, Terminal, Cpu, GitBranch, Zap, ArrowUpRight, Lock, Code2, Server } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link} from "react-router-dom";
 
-export const Footer: React.FC = () => (
-  <footer className="fixed bottom-0 left-0 right-0 w-full border-t border-cyan-500/30 bg-[#03060d] font-mono text-slate-300 z-0 h-[380px] sm:h-[340px] flex flex-col justify-between overflow-hidden shadow-[0_-15px_40px_rgba(0,0,0,0.9)]">
 
-    {/* Blurred Cyber-Dark Gradient Glow Image Backdrop */}
-    <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.25),rgba(15,23,42,0))]" />
+
+export const Footer: React.FC = () => {
+
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 w-full border-t border-cyan-500/30 bg-[#03060d] font-mono text-slate-300 z-0 h-[380px] sm:h-[340px] flex flex-col justify-between overflow-hidden shadow-[0_-15px_40px_rgba(0,0,0,0.9)]">
+
+        {/* Blurred Cyber-Dark Gradient Glow Image Backdrop */}
+        <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-screen bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.25),rgba(15,23,42,0))]" />
     
     {/* Dark blurred graphic mesh background */}
     <div className="absolute inset-0 pointer-events-none opacity-30 bg-gradient-to-br from-cyan-950/40 via-[#03060d] to-indigo-950/40 backdrop-blur-2xl" />
@@ -113,4 +117,4 @@ export const Footer: React.FC = () => (
 
     </div>
   </footer>
-);
+)};

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useRef, type MouseEvent } from "react
 
 const getInitialOutputHeight = () => {
   if (typeof window === "undefined") return 250;
-  return window.innerWidth < 768 ? Math.min(200, Math.floor(window.innerHeight * 0.3)) : 250;
+  return window.innerWidth < 768 ? Math.min(100, Math.floor(window.innerHeight * 0.3)) : 100;
 };
 
 export const useTerminalLayout = () => {
@@ -96,7 +96,9 @@ export const useTerminalLayout = () => {
 
   return {
     outputHeight,
-    sidebarWidth,    setOutputHeight,    startOutputDragging,
+    sidebarWidth,
+    setOutputHeight,
+    startOutputDragging,
     startSidebarDragging,
     setSidebarWidth,
   };

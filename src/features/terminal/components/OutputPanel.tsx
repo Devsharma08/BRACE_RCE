@@ -1,7 +1,19 @@
 import { Loader2, Check, X, AlertTriangle, Info } from "lucide-react";
-import type { ExecutionResult, ProblemTestCase } from "../types";
+import type { ExecutionDetail, ExecutionResult, ProblemTestCase } from "../types";
 import type { MouseEvent } from "react";
 import { Maximize2 } from 'lucide-react';
+
+import { TestCaseCard } from './TestCaseCard';
+
+interface TestCaseCardProps {
+  item: ProblemTestCase;
+  index: number;
+  match?: ExecutionDetail | null;
+  isRunningThis: boolean;
+  isExecutingAny: boolean;
+  onRunSingleTestCase?: (index: number) => void;
+}
+
 
 type OutputPanelProps = {
   isExecuting: boolean;
@@ -13,6 +25,7 @@ type OutputPanelProps = {
   testCases: ProblemTestCase[];
   customInput: string;
   customInputActive: boolean;
+  runningTestCaseIndex?: number | null;
   onResizeStart: (event: MouseEvent<HTMLDivElement>) => void;
   setOutputHeight: (height: number) => void;
   setCustomInput: (value: string) => void;
@@ -22,10 +35,9 @@ type OutputPanelProps = {
 };
 
 const getTabClassName = (isActive: boolean) =>
-  `cursor-pointer rounded-none border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 cursor-pointer ${
-    isActive
-      ? "text-cyan-400 border-cyan-500/30 bg-cyan-950/10 shadow-[0_0_10px_rgba(6,182,212,0.05)]"
-      : "text-slate-500 border-white/5 bg-transparent hover:border-white/10 hover:text-slate-300"
+  `cursor-pointer rounded-none border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 cursor-pointer ${isActive
+    ? "text-cyan-400 border-cyan-500/30 bg-cyan-950/10 shadow-[0_0_10px_rgba(6,182,212,0.05)]"
+    : "text-slate-500 border-white/5 bg-transparent hover:border-white/10 hover:text-slate-300"
   }`;
 
 const OutputPanel = ({
@@ -38,6 +50,7 @@ const OutputPanel = ({
   testCases,
   customInput,
   customInputActive,
+  runningTestCaseIndex,
   onResizeStart,
   setOutputHeight,
   setCustomInput,
@@ -45,6 +58,7 @@ const OutputPanel = ({
   setIsOutputActive,
   onRunSingleTestCase,
 }: OutputPanelProps) => {
+  console.log("output height", outputHeight);
   const getResultForCase = (index: number) => {
     if (isCustomInputRun) {
       return null;
@@ -75,16 +89,16 @@ const OutputPanel = ({
   const outputStatus: "LOADING" | "TIMEOUT" | "RUNTIME_ERROR" | "ACCEPTED" | "WRONG_ANSWER" | "COMPLETED" | "IDLE" = isExecuting
     ? "LOADING"
     : output
-    ? hasError
-      ? output.details?.some((d) => d.runtimeError?.toLowerCase().includes("timeout"))
-        ? "TIMEOUT"
-        : "RUNTIME_ERROR"
-      : output.status === "COMPLETED"
-      ? "COMPLETED"
-      : allPassed
-      ? "ACCEPTED"
-      : "WRONG_ANSWER"
-    : "IDLE";
+      ? hasError
+        ? output.details?.some((d) => d.runtimeError?.toLowerCase().includes("timeout"))
+          ? "TIMEOUT"
+          : "RUNTIME_ERROR"
+        : output.status === "COMPLETED"
+          ? "COMPLETED"
+          : allPassed
+            ? "ACCEPTED"
+            : "WRONG_ANSWER"
+      : "IDLE";
 
   return (
     <>
@@ -93,7 +107,7 @@ const OutputPanel = ({
         onMouseDown={onResizeStart}
         className="w-full h-1 cursor-row-resize border-t border-cyan-500/40 bg-cyan-400/20 transition-all hover:bg-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] active:bg-cyan-400 z-10"
       />
-      
+
       <div
         style={{
           height: `${outputHeight}px`,
@@ -170,15 +184,14 @@ const OutputPanel = ({
             {/* Elegant Top Status Banner */}
             {outputStatus !== "IDLE" && (
               <div
-                className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-none border p-4 shadow-none border-dashed font-mono text-xs tracking-wider ${
-                  outputStatus === "ACCEPTED" || outputStatus === "COMPLETED"
+                className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-none border p-4 shadow-none border-dashed font-mono text-xs tracking-wider ${outputStatus === "ACCEPTED" || outputStatus === "COMPLETED"
                     ? "border-emerald-500/30 bg-emerald-950/5 text-emerald-400"
                     : outputStatus === "WRONG_ANSWER"
-                    ? "border-rose-500/30 bg-rose-950/5 text-rose-400"
-                    : outputStatus === "TIMEOUT"
-                    ? "border-amber-500/30 bg-amber-950/5 text-amber-400"
-                    : "border-rose-500/30 bg-rose-950/5 text-rose-400"
-                }`}
+                      ? "border-rose-500/30 bg-rose-950/5 text-rose-400"
+                      : outputStatus === "TIMEOUT"
+                        ? "border-amber-500/30 bg-amber-950/5 text-amber-400"
+                        : "border-rose-500/30 bg-rose-950/5 text-rose-400"
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   {outputStatus === "ACCEPTED" || outputStatus === "COMPLETED" ? (
@@ -214,13 +227,13 @@ const OutputPanel = ({
                 <div className="absolute top-0 right-0 p-2 text-[8px] text-cyan-500/30 select-none uppercase tracking-widest font-bold">
                   AGGREGATE // SYSTEM_PROFILER
                 </div>
-                
+
                 <div className="flex flex-col gap-1.5 border-r border-white/5 pr-4">
                   <span className="text-slate-500 uppercase tracking-widest text-[8.5px] font-bold">// AVG_EXECUTION_TIME</span>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-cyan-400 font-bold text-base md:text-lg tracking-tight">
-                      {avgDuration >= 1 
-                        ? avgDuration.toFixed(3) 
+                      {avgDuration >= 1
+                        ? avgDuration.toFixed(3)
                         : (avgDuration * 1000).toFixed(0)}
                     </span>
                     <span className="text-[9px] text-slate-500 uppercase font-semibold">
@@ -233,8 +246,8 @@ const OutputPanel = ({
                   <span className="text-slate-500 uppercase tracking-widest text-[8.5px] font-bold">// PEAK_HEAP_MEMORY</span>
                   <div className="flex items-baseline gap-1 mt-1">
                     <span className="text-emerald-400 font-bold text-base md:text-lg tracking-tight">
-                      {maxMemory >= 1024 
-                        ? (maxMemory / 1024).toFixed(2) 
+                      {maxMemory >= 1024
+                        ? (maxMemory / 1024).toFixed(2)
                         : maxMemory.toFixed(1)}
                     </span>
                     <span className="text-[9px] text-slate-500 uppercase font-semibold">
@@ -323,124 +336,20 @@ const OutputPanel = ({
                 <span>Custom input execution is active. Test case suite comparisons are hidden.</span>
               </div>
             ) : null}
-            
+
             {testCases.length === 0 ? (
               <p className="text-slate-600 text-xs font-mono">NO_TEST_CASES // SYNTAX_SEEDED_EXERCISE</p>
             ) : (
-              testCases.map((item, index) => {
-                const match = getResultForCase(index);
-                const borderClassName = match
-                  ? match.passed
-                    ? "border-emerald-500/20 bg-emerald-950/5"
-                    : "border-rose-500/20 bg-rose-950/5"
-                  : "border-white/5 bg-black/20";
-
-                return (
-                  <div key={`${item.input}-${index}`} className={`flex flex-col border rounded-none p-4 gap-3 transition-all ${borderClassName}`}>
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-                        // CASE_{index + 1}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {onRunSingleTestCase && (
-                          <button
-                            type="button"
-                            onClick={() => onRunSingleTestCase(index)}
-                            disabled={isExecuting}
-                            className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border border-cyan-500/30 bg-cyan-950/20 hover:border-cyan-400 hover:bg-cyan-950/40 text-cyan-300 transition-all duration-150 active:scale-95 disabled:opacity-40 cursor-pointer"
-                          >
-                            [ RUN TEST #{index + 1} ONLY ]
-                          </button>
-                        )}
-                        {match && (
-                          <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 border ${
-                            match.passed
-                              ? "text-emerald-400 border-emerald-500/20 bg-emerald-950/15"
-                              : "text-rose-400 border-rose-500/20 bg-rose-950/15"
-                          }`}>
-                            {match.passed ? "[ PASSED ]" : "[ FAILED ]"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
-                      <div>
-                        <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">INPUT_PARAMETERS</div>
-                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.input ?? "-"}</pre>
-                      </div>
-                      <div>
-                        <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">EXPECTED_RETURN</div>
-                        <pre className="rounded-none bg-black/40 border border-white/5 p-3 text-sm text-slate-300 whitespace-pre-wrap font-mono leading-relaxed">{item.expectedOutput ?? "-"}</pre>
-                      </div>
-                    </div>
-
-                    {match && (
-                      <div className="border-t border-white/5 pt-3">
-                        {match.metrics && (
-                          <div className="grid grid-cols-2 gap-4 border border-white/5 bg-black/60 p-3 font-mono text-[9px] relative mb-3">
-                            <div className="absolute top-0 right-0 p-1 text-[7px] text-cyan-500/20 select-none uppercase tracking-widest font-bold">
-                              CASE_METRICS // PROFILER
-                            </div>
-                            
-                            <div className="flex flex-col gap-1 border-r border-white/5 pr-3">
-                              <span className="text-slate-600 uppercase tracking-widest text-[8px]">EXECUTION_TIME</span>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-cyan-400 font-bold text-xs tracking-tight">
-                                  {match.metrics.durationMs >= 1 
-                                    ? match.metrics.durationMs.toFixed(3) 
-                                    : (match.metrics.durationMs * 1000).toFixed(0)}
-                                </span>
-                                <span className="text-[8px] text-slate-500 uppercase">
-                                  {match.metrics.durationMs >= 1 ? "ms" : "μs"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col gap-1 pl-2">
-                              <span className="text-slate-600 uppercase tracking-widest text-[8px]">HEAP_MEMORY</span>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-emerald-400 font-bold text-xs tracking-tight">
-                                  {match.metrics.memoryKb >= 1024 
-                                    ? (match.metrics.memoryKb / 1024).toFixed(2) 
-                                    : match.metrics.memoryKb.toFixed(1)}
-                                </span>
-                                <span className="text-[8px] text-slate-500 uppercase">
-                                  {match.metrics.memoryKb >= 1024 ? "MB" : "KB"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-2">EXECUTION_RETURN_RESULTS</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Actual return value */}
-                          <div className={`rounded-none border p-3 ${
-                            match.passed ? "border-emerald-500/10 bg-emerald-950/5" : "border-rose-500/10 bg-rose-950/5"
-                          }`}>
-                            <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-500 mb-1">ACTUAL_OUTPUT</div>
-                            <pre className={`rounded-none bg-black/40 p-2.5 text-sm whitespace-pre-wrap font-mono ${
-                              match.passed ? "text-emerald-400" : "text-rose-400"
-                            }`}>
-                              {match.output || (match.runtimeError ? "Compilation/Runtime Error" : "empty")}
-                            </pre>
-                          </div>
-
-                          {/* Error block if any */}
-                          {match.runtimeError && (
-                            <div className="rounded-none border border-rose-500/20 bg-rose-950/5 p-3 flex flex-col justify-center">
-                              <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-rose-400 mb-1">SANDBOX_SYSTEM_TRACE</div>
-                              <pre className="rounded-none bg-black/40 p-2.5 text-sm text-rose-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
-                                {match.runtimeError}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+              testCases.map((item, index) => (
+                <TestCaseCard
+                  key={`${item.input}-${index}`}
+                  item={item}
+                  index={index}
+                  match={output?.details?.find((detail) => detail.testCaseIndex === index)}
+                  isRunningThis={runningTestCaseIndex === index}
+                  isExecutingAny={isExecuting}
+                  onRunSingleTestCase={onRunSingleTestCase} />
+              ))
             )}
           </div>
         )}

@@ -7,6 +7,7 @@ import GlobalModals from '../features/GlobalModals'
 const Layout = () => {
   const { pathname } = useLocation()
   const hidden = pathname === "/terminal" || pathname === "/signin" || pathname === "/signup" || pathname.includes("/battle");
+  console.log("hidden",hidden);
   
   return (
     <div className="flex flex-col min-h-screen relative w-full bg-[#02040a]">
