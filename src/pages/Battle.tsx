@@ -187,7 +187,7 @@ export const Battle = () => {
     const inputString = targetCase.input || "";
     setRunningTestCaseIndex(index);
     setIsSubmitting(true);
-    // Do NOT do: setIsCustomInputRun(true) here! Keep it false so cards show!
+    setIsCustomInputRun(true); // Mark as single-test run so panel hides pass/fail counts
     try {
       const res = await executeCode({
         code,
@@ -197,9 +197,11 @@ export const Battle = () => {
         mode: "RUN",
         customInput: inputString,
       });
-      // Normalize single test case index and merge with existing output
+
+      // Normalize detail: set testCaseIndex to the card the user clicked
       const singleDetail = res?.details?.[0];
       const normalizedDetail = singleDetail ? { ...singleDetail, testCaseIndex: index } : null;
+
       setExecutionOutput((prev) => {
         const existingDetails = (prev?.details || []).filter((d) => d.testCaseIndex !== index);
         return {
@@ -208,16 +210,19 @@ export const Battle = () => {
           details: normalizedDetail ? [...existingDetails, normalizedDetail] : existingDetails,
         };
       });
-      setTerminalOutput(
-        res.status === "PASSED"
-          ? `[CASE #${index + 1}] Execution passed.`
-          : `[CASE #${index + 1}] Execution returned errors or output mismatch.`
-      );
+
+      // Set terminal output: show error OR output — never both
+      if (singleDetail?.runtimeError) {
+        setTerminalOutput(singleDetail.runtimeError);
+      } else {
+        setTerminalOutput(singleDetail?.output?.trim() || "// No output produced.");
+      }
     } catch (err: any) {
       setTerminalOutput(`ERROR: ${err.message || String(err)}`);
     } finally {
       setIsSubmitting(false);
       setRunningTestCaseIndex(null);
+      // Keep isCustomInputRun=true so the panel knows it's a single-test run
     }
   }, [activeProblem, code, language]);
 
@@ -450,6 +455,7 @@ export const Battle = () => {
     if (!activeProblem) return;
     setIsSubmitting(true);
     setIsTerminal(true);
+    setIsCustomInputRun(false); // Full submit run — show pass/fail counts in panel
     setTerminalOutput("Executing code and running test cases...");
 
     // Reset test case statuses for active problem before running

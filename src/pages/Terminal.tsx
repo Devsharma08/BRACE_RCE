@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { House } from "lucide-react";
+import { House, ChevronLeft, ChevronRight } from "lucide-react";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
 import { executeCode, fetchSystemProblems } from "../features/terminal/api";
@@ -73,6 +73,7 @@ const Terminal = () => {
   const [isCustomInputRun, setIsCustomInputRun] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isOutputActive, setIsOutputActive] = useState(true);
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [submissionTrigger, setSubmissionTrigger] = useState(0);
 
   const timerRef = useRef<ProblemTimerRef>(null);
@@ -258,7 +259,8 @@ const Terminal = () => {
         setExecutingMode(null);
         setResponseLoading(false);
         setCustomInput("");
-        if (!isCustomExecution) setIsCustomInputRun(false);
+        // For SUBMIT mode always clear custom-input flag; for RUN only keep if custom input was used
+        if (mode === "SUBMIT" || !isCustomExecution) setIsCustomInputRun(false);
         if (mode === "SUBMIT") {
           setSubmissionTrigger((prev) => prev + 1);
         }
@@ -285,7 +287,7 @@ const Terminal = () => {
       setIsExecuting(true);
       setExecutingMode("RUN");
       setStatus("LOADING");
-      setIsCustomInputRun(true);
+      setIsCustomInputRun(true); // Mark as custom/single-test run — panel will hide pass/fail counts
 
       try {
         const data = await executeCode({
@@ -295,9 +297,23 @@ const Terminal = () => {
           mode: "RUN",
           customInput: inputString,
         });
-        setOutput(data);
+
+        // The backend returns details[0] for a single-test run.
+        // Normalise that detail so testCaseIndex matches the card the user clicked.
+        const rawDetail = data.details?.[0];
+        const normalizedData = rawDetail
+          ? { ...data, details: [{ ...rawDetail, testCaseIndex }] }
+          : data;
+
+        setOutput(normalizedData);
         setStatus("SUCCESS");
-        setOutputText(formatExecutionOutput(data, "RUN"));
+
+        // Build outputText: show error OR output — never both
+        if (rawDetail?.runtimeError) {
+          setOutputText(rawDetail.runtimeError);
+        } else {
+          setOutputText(rawDetail?.output?.trim() || "// No output produced.");
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Execution failed";
         setOutputText(`ERROR: ${message}`);
@@ -307,6 +323,7 @@ const Terminal = () => {
         setIsExecuting(false);
         setExecutingMode(null);
         setResponseLoading(false);
+        // Keep isCustomInputRun=true so the panel knows it was a single-test run
       }
     },
     [testCases, code, language, activeFile, setOutput, setStatus]
@@ -321,18 +338,40 @@ const Terminal = () => {
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row">
-      {/* ── PRACTICE SIDEBAR ──────────────────────────────── */}
-      <PracticeSidebar
-        problems={problems}
-        activeProblem={activeProblem}
-        onSelectProblem={handleSelectProblem}
-        width={sidebarWidth}
-        onResizeStart={startSidebarDragging}
-        isLoading={problemsLoading}
-      />
+      {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE) ──────────────── */}
+      <div
+        style={{ width: isPanelOpen ? `${sidebarWidth}px` : "0px" }}
+        className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
+      >
+        <div className="w-full h-full bg-[#06080e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+          <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
+            <PracticeSidebar
+              problems={problems}
+              activeProblem={activeProblem}
+              onSelectProblem={handleSelectProblem}
+              width={sidebarWidth}
+              onResizeStart={startSidebarDragging}
+              isLoading={problemsLoading}
+            />
+          </div>
+        </div>
+
+        {/* SIDEBAR TOGGLE BUTTON */}
+        <button
+          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          className="absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
+          title={isPanelOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isPanelOpen ? (
+            <ChevronLeft className="w-5 h-5" />
+          ) : (
+            <ChevronRight className="w-5 h-5" />
+          )}
+        </button>
+      </div>
 
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] border-l border-white/10">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] relative z-10 transition-all duration-300">
         {/* HEADER BAR */}
         <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-[#06080e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">

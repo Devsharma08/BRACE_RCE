@@ -414,9 +414,11 @@ const PracticeSidebar = ({
       {/* RESIZE HANDLE */}
       <div
         onMouseDown={onResizeStart}
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-cyan-500/40 transition-colors z-10"
-        title="Drag to resize"
-      />
+        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-cyan-400/50 active:bg-cyan-400 z-40 transition-colors group flex items-center justify-center"
+        title="Drag to resize sidebar"
+      >
+        <div className="w-0.5 h-12 bg-cyan-500/40 group-hover:bg-cyan-300 rounded" />
+      </div>
     </aside>
   );
 };

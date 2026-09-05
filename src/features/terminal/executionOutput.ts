@@ -45,24 +45,29 @@ export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCas
 };
 
 export const formatExecutionOutput = (result: ExecutionResult, mode: ExecutionMode) => {
-  if (mode === "RUN") {
-    const runResult = result.details?.[0];
+  const details = result.details ?? [];
 
+  if (mode === "RUN") {
+    // Custom input / single test case execution — return the actual result
+    const runResult = details[0];
     if (!runResult) {
+      // Nothing came back — show raw JSON as fallback
       return JSON.stringify(result, null, 2);
     }
-
-    return runResult.runtimeError
-      ? `Error:\n${runResult.runtimeError}`
-      : runResult.output || "No output";
+    // Exclusively show error OR output, never both
+    if (runResult.runtimeError) {
+      return runResult.runtimeError;
+    }
+    return runResult.output?.trim() || "// No output produced.";
   }
 
-  const details = result.details ?? [];
+  // SUBMIT mode: summary + per-case details
   const summary = `Status: ${result.status}\nPassed: ${result.passedCases}/${result.totalCases}`;
   const caseDetails = details
     .map(
       (detail) =>
-        `Test Case ${detail.testCaseIndex + 1}:\nExpected: ${detail.expectedOutput}\nOutput: ${detail.output}\nResult: ${detail.passed ? "Passed" : "Failed"
+        `Test Case ${detail.testCaseIndex + 1}:\nExpected: ${detail.expectedOutput}\nOutput: ${detail.output}\nResult: ${
+          detail.passed ? "Passed" : "Failed"
         }${detail.runtimeError ? "\nError: " + detail.runtimeError : ""}`,
     )
     .join("\n\n");

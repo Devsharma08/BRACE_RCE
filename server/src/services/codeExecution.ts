@@ -3,8 +3,62 @@ import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { execFile, execFileSync } from "child_process";
 import { promisify } from "util";
+import { writeFileSync, mkdtempSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import jwt from 'jsonwebtoken';
 const execFileAsync = promisify(execFile);
+
+/** Write code to a temp file, run it, clean up. Returns { stdout, stderr, exitCode }. */
+function runWithTempFile(
+  lang: "javascript" | "python",
+  code: string,
+  stdin: string,
+  timeoutMs: number
+): { stdout: string; stderr: string; exitCode: number } {
+  const ext = lang === "javascript" ? "js" : "py";
+  const tmpDir = mkdtempSync(join(tmpdir(), `brace-exec-`));
+  const tmpFile = join(tmpDir, `main.${ext}`);
+  try {
+    writeFileSync(tmpFile, code, "utf-8");
+    const cmd = lang === "javascript" ? "node" : "python3";
+    try {
+      const stdout = execFileSync(cmd, [tmpFile], {
+        input: stdin,
+        encoding: "utf-8",
+        timeout: timeoutMs,
+        maxBuffer: 10 * 1024 * 1024, // 10MB
+      });
+      return { stdout, stderr: "", exitCode: 0 };
+    } catch (err: any) {
+      // execFileSync throws on non-zero exit — capture stdout/stderr
+      return {
+        stdout: err.stdout || "",
+        stderr: err.stderr || err.message || "Runtime Error",
+        exitCode: err.status ?? 1,
+      };
+    }
+  } finally {
+    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+  }
+}
+
+/** Strip server-internal file paths and Node.js stack frames from error messages */
+function sanitizeErrorMessage(raw: string): string {
+  return raw
+    .split("\n")
+    .filter(line => {
+      // Remove lines referencing internal node paths
+      if (line.includes("node:internal/")) return false;
+      if (line.includes("node_modules")) return false;
+      // Keep first few stack frames from user code only
+      return true;
+    })
+    .join("\n")
+    .replace(/\/[^\s]*\/brace-exec-[^/]+\/[^\s]*/g, "<script>") // hide temp file paths
+    .replace(/\s*\(node:[^)]+\)/g, "") // remove (node:internal/...) refs
+    .trim();
+}
 
 type SupportedLanguage = "javascript" | "java" | "c" | "cpp" | "python";
 type ExecutionMode = "RUN" | "SUBMIT";
@@ -1165,42 +1219,23 @@ export const executeCode = async (req: Request, res: Response) => {
         }
 
       } catch (apiError) {
-        console.error("Fetch threw:", apiError);
-        // FALLBACK: Local execution if Piston fails
-        if (executionLanguage === "javascript") {
-          try {
-            const stdout = execFileSync("node", ["-e", finalCode], {
-              input: testCaseInput,
-              encoding: "utf-8",
-              timeout: 3000
-            });
-            data = {
-              compile: { code: 0 },
-              run: { output: stdout, stdout, stderr: "" }
-            };
-          } catch (localErr: any) {
-            data = {
-              compile: { code: 0 },
-              run: { output: localErr.stdout || localErr.message || "Local Execution Error", stderr: localErr.stderr || localErr.message }
-            };
-          }
-        } else if (executionLanguage === "python") {
-          try {
-            const stdout = execFileSync("python3", ["-c", finalCode], {
-              input: testCaseInput,
-              encoding: "utf-8",
-              timeout: 3000
-            });
-            data = {
-              compile: { code: 0 },
-              run: { output: stdout, stdout, stderr: "" }
-            };
-          } catch (localErr: any) {
-            data = {
-              compile: { code: 0 },
-              run: { output: localErr.stdout || localErr.message || "Local Execution Error", stderr: localErr.stderr || localErr.message }
-            };
-          }
+        // FALLBACK: Local execution when Piston is unavailable
+        // Log concisely — don't expose internal stack to end-users
+        const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
+        console.error("Piston unavailable, using local fallback:", apiErrMsg);
+
+        if (executionLanguage === "javascript" || executionLanguage === "python") {
+          // Use a temp file so fs.readFileSync(0) / sys.stdin work correctly
+          const result = runWithTempFile(executionLanguage, finalCode, testCaseInput, 5000);
+          data = {
+            compile: { code: 0 },
+            run: {
+              output: result.stdout,
+              stdout: result.stdout,
+              stderr: result.exitCode !== 0 ? sanitizeErrorMessage(result.stderr) : "",
+              code: result.exitCode,
+            },
+          };
         } else {
           results.push({
             testCaseIndex: index,
@@ -1208,7 +1243,7 @@ export const executeCode = async (req: Request, res: Response) => {
             expectedOutput: currentCase.expectedOutput,
             passed: false,
             ...problemIdPayload(currentCase),
-            runtimeError: `Piston API is down. Fallback only supports JS and Python.`,
+            runtimeError: `Sandbox unavailable. Language '${executionLanguage}' requires the Piston service to be running.`,
           });
           break;
         }
@@ -1262,13 +1297,18 @@ export const executeCode = async (req: Request, res: Response) => {
 
         if (passed) totalPassed++;
 
+        // Only treat stderr as runtimeError if the process exited with non-zero code
+        // (some runtimes write warnings/info to stderr even on success)
+        const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
+        const hasRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
+
         results.push({
           testCaseIndex: index,
           output: runOutput,
           expectedOutput: currentCase.expectedOutput,
           passed,
           ...problemIdPayload(currentCase),
-          runtimeError: data.run?.stderr || null,
+          runtimeError: hasRuntimeError ? sanitizeErrorMessage(String(data.run.stderr)) : null,
         });
 
         if (executionMode === "SUBMIT" && !passed && !isCustomInputRun) {
