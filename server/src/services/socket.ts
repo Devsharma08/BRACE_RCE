@@ -16,10 +16,53 @@ interface CustomLobby {
 }
 
 const LOBBY_TTL_MS = 15 * 60 * 1000; // 15 min constraint
+const ROOM_DISSOLVE_AFTER_MS = 30 * 60 * 1000; // 30 min — WAITING DB rooms dissolve
 
 const activeLobbies = new Map<string, CustomLobby>();
 const onlineUsers = new Map<string, string>();
-const activeSearchIntervals = new Map<string,NodeJS.Timeout>();
+const activeSearchIntervals = new Map<string, NodeJS.Timeout>();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MODULE-LEVEL GARBAGE COLLECTORS (run once regardless of active connections)
+// ──────────────────────────────────────────────────────────────────────────────
+
+// In-memory lobby GC — runs every 60 s
+let _gcInitialized = false;
+let _dbDissolveInterval: NodeJS.Timeout | null = null;
+
+function initModuleGC(io: import('socket.io').Server) {
+    if (_gcInitialized) return;
+    _gcInitialized = true;
+
+    // In-memory lobby cleanup
+    setInterval(() => {
+        const now = Date.now();
+        for (const [code, lobby] of activeLobbies.entries()) {
+            if (now > lobby.expiresAt) {
+                io.to(`lobby-${code}`).emit('lobby_error', 'Lobby expired due to inactivity!');
+                activeLobbies.delete(code);
+                console.log(`[GC] Cleaned stale in-memory lobby: ${code}`);
+            }
+        }
+    }, 60_000);
+
+    // DB room dissolve — runs every 5 minutes
+    // Sets status=DISSOLVED for WAITING Event rows older than ROOM_DISSOLVE_AFTER_MS
+    _dbDissolveInterval = setInterval(async () => {
+        try {
+            const threshold = new Date(Date.now() - ROOM_DISSOLVE_AFTER_MS);
+            const dissolved = await prisma.event.updateMany({
+                where: { status: 'WAITING', createdAt: { lt: threshold } },
+                data: { status: 'DISSOLVED' }
+            });
+            if (dissolved.count > 0) {
+                console.log(`[GC] Auto-dissolved ${dissolved.count} stale WAITING room(s)`);
+            }
+        } catch (e) {
+            console.error('[GC] DB dissolve error:', e);
+        }
+    }, 5 * 60_000);
+}
 
 
 // quick helper function to generate a 6-digit code
@@ -54,6 +97,8 @@ const verifyToken = (token: string) => {
 
 
 export const initSocketServer = (io: Server) => {
+    // Start module-level GC once
+    initModuleGC(io);
     // Authenticate every socket connection
     io.use((socket: any, next: any) => {
         const cookieHeader = socket.handshake.headers.cookie;
@@ -101,17 +146,7 @@ export const initSocketServer = (io: Server) => {
             userId, status: "ONLINE"
         })
 
-        // garbage collector to cleanup the abandoned connection lobbies
-        setInterval(() => {
-            const now = Date.now();
-            for (const [code, lobby] of activeLobbies.entries()) {
-                if (now > lobby.expiresAt) {
-                    io.to(`lobby-${code}`).emit('lobby_error', "Lobby expired due to inactivity!");
-                    activeLobbies.delete(code);
-                    console.log(`Cleaned up stale lobby ${code} due to inactivity`);
-                }
-            }
-        }, 60000); // checks every 60 seconds
+        // Note: In-memory lobby GC is now module-scope; removed per-connection setInterval here.
 
         // DIRECT CHAT AND CHALLENGES
         socket.on("send_direct_message", async (data: { targetUserId: string, content: string }) => {
@@ -799,17 +834,18 @@ export const initSocketServer = (io: Server) => {
                 });
             });
 
-            socket.on('battle_action', async (data: { roomId: string, userId: string, status: string, progress: number, result?: string }) => {
-                const { roomId, progress, status, result } = data;
+            socket.on('battle_action', async (data: { roomId: string, userId: string, status: string, progress: number, result?: string, linesWritten?: number }) => {
+                const { roomId, progress, status, result, linesWritten } = data;
                 if (!roomId) return;
-                const userId = socket.data.userId || data.userId;
+                const currentUserId = socket.data.userId || data.userId;
 
-                // Broadcast progress update to opponent in room
+                // Broadcast progress update (including lines written) to all others in room
                 socket.to(roomId).emit('battle_update', {
-                    userId,
+                    userId: currentUserId,
                     status,
                     progress,
-                    result
+                    result,
+                    linesWritten
                 });
 
                 if (result === 'OPPONENT_WON' || result === 'OPPONENT_COMPLETED' || status === "Passed tests!") {
@@ -839,7 +875,72 @@ export const initSocketServer = (io: Server) => {
                 }
             });
 
-            // IN BATTLE CHAT
+            // ──────────────────────────────────────────────────────────────
+            // HOST POWERS
+            // ──────────────────────────────────────────────────────────────
+
+            // HOST KICKS A PLAYER
+            socket.on('host_kick_user', async (data: { roomId: string, targetUserId: string }) => {
+                try {
+                    const { roomId, targetUserId } = data;
+                    const eventId = roomId.replace('room-', '');
+                    const event = await prisma.event.findFirst({
+                        where: { OR: [{ id: eventId }, { roomCode: roomId }] }
+                    });
+                    if (!event || event.hostId !== userId) {
+                        return socket.emit('host_error', 'Only the host can kick players.');
+                    }
+                    // Mark their performance as FAILED
+                    await prisma.userPersonalPerformance.updateMany({
+                        where: { eventId: event.id, userId: targetUserId },
+                        data: { status: 'FAILED' }
+                    });
+                    // Notify the kicked user
+                    const kickedSocketId = onlineUsers.get(targetUserId);
+                    if (kickedSocketId) {
+                        io.to(kickedSocketId).emit('you_were_kicked', { roomId });
+                    }
+                    // Notify the room
+                    io.to(roomId).emit('player_kicked', { userId: targetUserId });
+                    console.log(`[HOST] User ${targetUserId} kicked from room ${roomId} by host ${userId}`);
+                } catch (e) {
+                    console.error('[host_kick_user] error:', e);
+                }
+            });
+
+            // HOST FORCE-ENDS THE MATCH
+            socket.on('host_end_match', async (data: { roomId: string }) => {
+                try {
+                    const { roomId } = data;
+                    const eventId = roomId.replace('room-', '');
+                    const event = await prisma.event.findFirst({
+                        where: { OR: [{ id: eventId }, { roomCode: roomId }] }
+                    });
+                    if (!event || event.hostId !== userId) {
+                        return socket.emit('host_error', 'Only the host can end the match.');
+                    }
+                    await prisma.event.update({
+                        where: { id: event.id },
+                        data: { status: 'FINISHED', finishedAt: new Date() }
+                    });
+                    await prisma.userPersonalPerformance.updateMany({
+                        where: { eventId: event.id, status: 'PENDING' },
+                        data: { status: 'TIMEOUT' }
+                    });
+                    const performances = await prisma.userPersonalPerformance.findMany({
+                        where: { eventId: event.id },
+                        include: { user: { select: { id: true, username: true, avatarUrl: true } } }
+                    });
+                    io.to(roomId).emit('match_completed', {
+                        status: 'FINISHED',
+                        reason: 'HOST_ENDED',
+                        performances
+                    });
+                    console.log(`[HOST] Match ${roomId} force-ended by host ${userId}`);
+                } catch (e) {
+                    console.error('[host_end_match] error:', e);
+                }
+            });
             socket.on("send_battle_message", (data: {
                 roomId: string,
                 content: string

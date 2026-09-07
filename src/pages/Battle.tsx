@@ -9,22 +9,8 @@ import OutputPanel from "../features/terminal/components/OutputPanel";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import {
-  Code,
-  Activity,
-  Trophy,
-  Skull,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  Send,
-  Play,
-  Clock,
-  StopCircle,
-  Lock,
-  Terminal,
-  Flag,
-} from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity } from "lucide-react";
+import { GlobalTimer } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel } from "../components/ui/NotesPanel";
 
@@ -122,8 +108,13 @@ export const Battle = () => {
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
-  const [, setMyUserId] = useState<string>("");
+  const [myUserId, setMyUserId] = useState<string>("");
   const [myPerformanceId, setMyPerformanceId] = useState<string>("");
+
+  // --- LIVE INTEL (opponent/player progress tracking) ---
+  const [playerProgress, setPlayerProgress] = useState<Record<string, { status: string; progress: number; linesWritten?: number }>>({});
+  const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
+  const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -133,14 +124,6 @@ export const Battle = () => {
   const [code, setCode] = useState<string>("// Initialization...");
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // --- TIMERS ---
-  const [globalTimeRemaining, setGlobalTimeRemaining] = useState<number | null>(
-    null,
-  );
-  const [localTimeRemaining, setLocalTimeRemaining] = useState<number | null>(
-    null,
-  );
 
   // Store codes for each problem
   const [codes, setCodes] = useState<Record<string, string>>({});
@@ -227,24 +210,6 @@ export const Battle = () => {
   }, [activeProblem, code, language]);
 
 
-  const { data: remainingTimeData } = useQuery({
-    queryKey: ["room-time-left", roomId],
-    enabled: Boolean(roomId),
-    queryFn: async () => {
-      const res = await api.get(`/room/time-left`, { params: { roomId } });
-      if (res.data?.status === "success" && res.data?.remainingSeconds !== undefined) {
-        return res.data.remainingSeconds;
-      }
-      return null;
-    },
-  });
-
-  useEffect(() => {
-    if (remainingTimeData !== undefined && remainingTimeData !== null) {
-      setLocalTimeRemaining(remainingTimeData);
-    }
-  }, [remainingTimeData]);
-
   useEffect(() => {
     const fetchRoom = async () => {
       try {
@@ -258,6 +223,9 @@ export const Battle = () => {
         const myId = profileRes.data.data.id;
         setMyUserId(myId);
         setIsHost(myId === roomData.hostId);
+
+        // Store all participants for host panel
+        setRoomParticipants(roomData.performances || []);
 
         // find and store current performance ID
         const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
@@ -317,9 +285,6 @@ export const Battle = () => {
         }
         return data;
       });
-      if (data.remainingSeconds !== undefined) {
-        setLocalTimeRemaining(data.remainingSeconds);
-      }
       if (
         data.status === "FINISHED" ||
         (data.remainingSeconds !== undefined && data.remainingSeconds <= 0)
@@ -334,6 +299,15 @@ export const Battle = () => {
     });
 
     socket.on("battle_update", (data) => {
+      // Update live intel for this player
+      setPlayerProgress((prev) => ({
+        ...prev,
+        [data.userId]: {
+          status: data.status,
+          progress: data.progress,
+          linesWritten: data.linesWritten
+        }
+      }));
       if (data.result === "OPPONENT_WON") {
         setBattleResult("LOST");
         setIsBattleMenuOpen(true);
@@ -344,14 +318,25 @@ export const Battle = () => {
       }
     });
 
+    socket.on("you_were_kicked", () => {
+      alert("You have been removed from this match by the host.");
+      navigate("/lobby");
+    });
+
+    socket.on("player_kicked", (data: { userId: string }) => {
+      setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
+    });
+
     return () => {
       socket.emit("leave_room", roomId);
       socket.off("battle_starting");
       socket.off("battle_state");
       socket.off("receive_battle_message");
       socket.off("battle_update");
+      socket.off("you_were_kicked");
+      socket.off("player_kicked");
     };
-  }, [socket, roomId]);
+  }, [socket, roomId, navigate]);
 
   // Handle 3-second Get Ready Countdown before event begins
   useEffect(() => {
@@ -367,23 +352,6 @@ export const Battle = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, [countdown]);
-
-  // Handle Timers
-  useEffect(() => {
-    if (localTimeRemaining === null || localTimeRemaining <= 0) return;
-    const timer = setInterval(() => {
-      setLocalTimeRemaining((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          setBattleResult("LOST");
-          setIsBattleMenuOpen(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [localTimeRemaining]);
 
   // Update editor when active problem changes
   useEffect(() => {
@@ -430,10 +398,24 @@ export const Battle = () => {
     setNewBattleMessage("");
   };
 
+  const handleTimerExpire = () => {
+    setBattleResult("LOST");
+    setIsBattleMenuOpen(true);
+  };
+
+  const handleKickUser = (targetUserId: string) => {
+    if (!socket || !roomId) return;
+    socket.emit("host_kick_user", { roomId, targetUserId });
+  };
+
+  const handleHostEndMatch = () => {
+    if (!socket || !roomId) return;
+    socket.emit("host_end_match", { roomId });
+  };
+
   const isBattleActive =
     battleState.status === "IN_PROGRESS" &&
-    battleResult === null &&
-    (localTimeRemaining === null || localTimeRemaining > 0);
+    battleResult === null;
 
   const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
@@ -512,8 +494,7 @@ export const Battle = () => {
 
       const isBattleActive =
         battleState.status === "IN_PROGRESS" &&
-        battleResult === null &&
-        (localTimeRemaining === null || localTimeRemaining > 0);
+        battleResult === null;
 
       if (res.status === "PASSED") {
         setTerminalOutput("SUCCESS: All test cases passed!");
@@ -526,6 +507,7 @@ export const Battle = () => {
             status: "Passed tests!",
             progress: 100,
             result: "OPPONENT_WON",
+            linesWritten: code.split("\n").length,
           });
           setBattleResult("WON");
         }
@@ -537,7 +519,8 @@ export const Battle = () => {
           socket?.emit("battle_action", {
             roomId,
             status: "Failed tests...",
-            progress: 50,
+            progress: Math.round(((res.passedCases || 0) / (res.totalCases || 1)) * 100),
+            linesWritten: code.split("\n").length,
           });
         }
       }
@@ -551,15 +534,7 @@ export const Battle = () => {
     }
   };
 
-  const formatTime = (seconds: number | null) => {
-    if (seconds === null || seconds === undefined) return "10:00";
-    const totalSecs = Math.max(0, Math.floor(seconds));
-    const m = Math.floor(totalSecs / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (totalSecs % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
+
 
   if (loading || !room) {
     return <PageSkeleton />;
@@ -588,6 +563,97 @@ export const Battle = () => {
           <p className="mt-8 font-mono text-xs text-cyan-400/70 tracking-widest uppercase">
             PREPARE YOUR EDITOR // INITIALIZING WORKSPACE
           </p>
+        </div>
+      )}
+
+      {/* ─── HOST COMMAND PANEL (fixed overlay, host only) ─── */}
+      {isHost && battleState.status === "IN_PROGRESS" && (
+        <div className="fixed bottom-6 right-6 z-[80] flex flex-col items-end gap-2">
+          {/* Toggle button */}
+          <button
+            onClick={() => setIsHostPanelOpen((v) => !v)}
+            title="Host Command Center"
+            className="flex items-center gap-2 px-3 py-2 bg-amber-900/80 border border-amber-500/60 text-amber-300 font-mono text-xs font-bold rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:bg-amber-800/80 transition-all backdrop-blur"
+          >
+            <ShieldAlert className="w-4 h-4" />
+            HOST CMD
+          </button>
+
+          {isHostPanelOpen && (
+            <div className="bg-[#0a0b0e]/95 border border-amber-500/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
+              {/* Panel Header */}
+              <div className="px-4 py-3 border-b border-amber-500/20 bg-amber-950/30 flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-amber-400 tracking-widest flex items-center gap-2">
+                  <ShieldAlert className="w-3.5 h-3.5" /> HOST COMMAND CENTER
+                </span>
+                <button onClick={() => setIsHostPanelOpen(false)} className="text-slate-500 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Participant List */}
+              <div className="p-3 flex flex-col gap-2">
+                <p className="text-[10px] text-slate-500 tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
+                {roomParticipants.map((p: any) => {
+                  const participantId = p.user?.id || p.userId;
+                  const uname = p.user?.username || "Unknown";
+                  const intel = playerProgress[participantId];
+                  const isMe = participantId === myUserId;
+                  return (
+                    <div key={participantId} className="bg-black/40 border border-white/5 rounded-lg p-2.5 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[10px] font-mono font-bold text-slate-300">
+                        {uname[0]?.toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono text-white truncate">{uname}{isMe ? " (you)" : ""}</span>
+                          {intel && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              intel.progress >= 100 ? "bg-emerald-500/20 text-emerald-400" :
+                              intel.progress > 0 ? "bg-cyan-500/20 text-cyan-400" :
+                              "bg-slate-700 text-slate-400"
+                            }`}>{intel.progress}%</span>
+                          )}
+                        </div>
+                        {intel && (
+                          <div className="mt-1 w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                intel.progress >= 100 ? "bg-emerald-400" : "bg-cyan-400"
+                              }`}
+                              style={{ width: `${intel.progress}%` }}
+                            />
+                          </div>
+                        )}
+                        {intel?.linesWritten !== undefined && (
+                          <p className="text-[9px] text-slate-500 mt-0.5">{intel.linesWritten} lines written</p>
+                        )}
+                      </div>
+                      {!isMe && (
+                        <button
+                          onClick={() => handleKickUser(participantId)}
+                          title={`Kick ${uname}`}
+                          className="p-1 border border-rose-500/30 bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 rounded transition-all"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Danger Zone */}
+              <div className="px-3 pb-3">
+                <button
+                  onClick={handleHostEndMatch}
+                  className="w-full py-2 border border-rose-500/50 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-mono text-xs font-bold tracking-widest rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <StopCircle className="w-3.5 h-3.5" /> TERMINATE MATCH
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -829,25 +895,22 @@ export const Battle = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {problems.length > 1 && globalTimeRemaining !== null && (
-              <div className="flex items-center gap-1.5 border border-cyan-500/30 bg-cyan-950/30 px-3 py-1 text-[11px] font-bold text-cyan-300">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="text-[9px] text-slate-400 uppercase tracking-widest">GLOBAL:</span>
-                <span className={globalTimeRemaining < 60 ? "text-rose-400 animate-pulse" : "text-cyan-300"}>
-                  {formatTime(globalTimeRemaining)}
-                </span>
-              </div>
+            <GlobalTimer 
+              startedAt={battleState.startedAt || room?.startedAt} 
+              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs} 
+              onExpire={handleTimerExpire} 
+              label={problems.length > 1 ? "GLOBAL:" : "TIME LEFT:"}
+              variant="pill"
+            />
+            {/* Host button shortcut in top bar */}
+            {isHost && battleState.status === "IN_PROGRESS" && (
+              <button
+                onClick={() => setIsHostPanelOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-2 py-1 border border-amber-500/30 bg-amber-950/20 text-amber-400 text-[10px] font-mono font-bold rounded hover:bg-amber-900/30 transition-all"
+              >
+                <ShieldAlert className="w-3 h-3" /> HOST
+              </button>
             )}
-
-            <div className="flex items-center gap-1.5 border border-emerald-500/30 bg-emerald-950/30 px-3 py-1 text-[11px] font-bold text-emerald-300">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[9px] text-slate-400 uppercase tracking-widest">
-                {problems.length > 1 ? "PROBLEM:" : "TIME LEFT:"}
-              </span>
-              <span className={localTimeRemaining !== null && localTimeRemaining < 60 ? "text-rose-400 animate-pulse" : "text-emerald-300"}>
-                {formatTime(localTimeRemaining)}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -866,9 +929,9 @@ export const Battle = () => {
               </div>
             </div>
           )}
-          {localTimeRemaining === 0 &&
-            battleState.status === "IN_PROGRESS" &&
-            !battleResult && (
+          {battleState.status === "FINISHED" &&
+            battleResult === "LOST" &&
+            !isBattleMenuOpen && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
                 <div className="bg-[#0a0b0e] border border-rose-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
                   <StopCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
