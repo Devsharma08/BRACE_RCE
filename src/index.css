@@ -51,28 +51,26 @@
 }
 
 
-   @theme{
-      --color-textwhite:#F9FAFB;
-      --color-textgray:#6B7280;
-      --color-textdimwhite: rgba(255,255,255,0.75);
-      --color-textlightwhite:#E5E7EB;
-   }
+   @theme {
+      --color-darkbg: #02040a;
+      --color-secondarybg: #06080e;
+      --color-tertiarybg: #0b0c10;
+      --color-textwhite: #f8fafc;
+      --color-textgray: #94a3b8;
+      --color-textdimwhite: rgba(248, 250, 252, 0.75);
+      --color-textlightwhite: #e2e8f0;
 
-   @theme{
-      --color-darkbg: #0F172A;
-      --color-secondarybg: #0F172A;
-      --color-tertiarybg: #0F172A;
-      --breakpoint-wxs:320px;
-      --breakpoint-wsm:384px;
-      --breakpoint-wmd:448px;
-      --breakpoint-wlg:512px;
-      --breakpoint-wxl:576px;
-      --breakpoint-w2xl:672px;
-      --breakpoint-w3xl:768px;
-      --breakpoint-w4xl:896px;
-      --breakpoint-w5xl:1024px;
-      --breakpoint-w6xl:1152px;
-      --breakpoint-w7xl:1280px;
+      --breakpoint-wxs: 320px;
+      --breakpoint-wsm: 384px;
+      --breakpoint-wmd: 448px;
+      --breakpoint-wlg: 512px;
+      --breakpoint-wxl: 576px;
+      --breakpoint-w2xl: 672px;
+      --breakpoint-w3xl: 768px;
+      --breakpoint-w4xl: 896px;
+      --breakpoint-w5xl: 1024px;
+      --breakpoint-w6xl: 1152px;
+      --breakpoint-w7xl: 1280px;
    }
 
    .sidebar{

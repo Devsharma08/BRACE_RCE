@@ -65,7 +65,7 @@ export const NotesPanel = ({
           value={notes}
           onChange={handleNotesChange}
           placeholder="Jot down algorithm ideas, edge cases, space/time complexity notes here... (Saved globally)"
-          className="flex-1 w-full bg-transparent text-xs text-amber-100/90 p-4 resize-none focus:outline-none custom-scrollbar placeholder:text-amber-900/50 font-mono leading-relaxed"
+          className="flex-1 w-full bg-transparent text-xs text-amber-100/90 p-4 resize-none focus:outline-none custom-scrollbar placeholder:text-amber-400/40 font-mono leading-relaxed"
           spellCheck={false}
           autoFocus
         />

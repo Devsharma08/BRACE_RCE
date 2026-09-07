@@ -725,7 +725,7 @@ export const Battle = () => {
                                   EXAMPLE {index + 1}
                                 </p>
                                 <div className="mb-3">
-                                  <span className="text-cyan-600 block mb-1">
+                                  <span className="text-cyan-400 font-semibold block mb-1">
                                     Input:
                                   </span>
                                   <pre className="text-slate-300 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">
@@ -733,7 +733,7 @@ export const Battle = () => {
                                   </pre>
                                 </div>
                                 <div>
-                                  <span className="text-emerald-600 block mb-1">
+                                  <span className="text-emerald-400 font-semibold block mb-1">
                                     Expected Output:
                                   </span>
                                   <pre className="text-emerald-400 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">

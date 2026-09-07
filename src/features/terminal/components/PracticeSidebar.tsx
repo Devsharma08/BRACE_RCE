@@ -309,7 +309,7 @@ const ProblemsListTab = ({
                   {p.isSolved ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   ) : (
-                    <Circle className="w-3.5 h-3.5 text-slate-700" />
+                    <Circle className="w-3.5 h-3.5 text-slate-500" />
                   )}
                 </span>
 
@@ -317,7 +317,7 @@ const ProblemsListTab = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     {p.problem_number != null && (
-                      <span className="text-[9px] text-slate-600 font-mono shrink-0">#{p.problem_number}</span>
+                      <span className="text-[9px] text-slate-400 font-mono shrink-0">#{p.problem_number}</span>
                     )}
                     <span className={`text-[11px] font-bold truncate ${isActive ? "text-cyan-300" : "text-slate-200 group-hover:text-white"}`}>
                       {p.name}
@@ -335,7 +335,7 @@ const ProblemsListTab = ({
                   {diff.charAt(0)}
                 </span>
 
-                <ChevronRight className={`w-3 h-3 shrink-0 transition-colors ${isActive ? "text-cyan-400" : "text-slate-700 group-hover:text-slate-400"}`} />
+                <ChevronRight className={`w-3 h-3 shrink-0 transition-colors ${isActive ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-300"}`} />
               </button>
             );
           })

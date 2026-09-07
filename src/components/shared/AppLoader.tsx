@@ -5,14 +5,14 @@ type AppLoaderProps = {
   compact?: boolean;
 };
 
-const AppLoader = ({ label = "Loading DSAHub...", compact = false }: AppLoaderProps) => {
+const AppLoader = ({ label = "Loading BRACE RCE...", compact = false }: AppLoaderProps) => {
   return (
-    <div className={`flex ${compact ? "min-h-40" : "min-h-screen"} w-full items-center justify-center bg-darkbg px-6 text-textwhite`}>
+    <div className={`flex ${compact ? "min-h-40" : "min-h-screen"} w-full items-center justify-center bg-[#02040a] px-6 text-slate-100 font-mono`}>
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="rounded-full border border-indigo-400/30 bg-indigo-500/10 p-3">
-          <Loader2 className="h-6 w-6 animate-spin text-indigo-300" />
+        <div className="rounded-none border border-cyan-500/40 bg-cyan-950/30 p-3 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+          <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
         </div>
-        <p className="text-sm font-medium text-textdimwhite">{label}</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">{label}</p>
       </div>
     </div>
   );

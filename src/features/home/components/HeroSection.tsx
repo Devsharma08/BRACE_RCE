@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Terminal, Play, Swords } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATRIX DEFINITIONS — unchanged 11-row × 8-col letter templates
@@ -602,9 +604,27 @@ export const BraceRcePixelArt: React.FC = () => {
             [ v1.0.0 ]
           </span>
         </h2>
-        <p className="text-xs sm:text-sm text-slate-400 font-medium tracking-[0.05em] leading-relaxed max-w-xl">
+        <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-[0.05em] leading-relaxed max-w-xl">
           A high-performance sandboxed playground to run, compile, and solve Data Structures and Algorithms challenges live with high-precision execution telemetry.
         </p>
+
+        {/* Action Buttons */}
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            to="/terminal"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 hover:border-cyan-300 text-cyan-200 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
+          >
+            <Terminal className="w-4 h-4 text-cyan-400" />
+            <span>[ LAUNCH TERMINAL ]</span>
+          </Link>
+          <Link
+            to="/lobby"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-white/15 bg-black/40 hover:bg-white/5 hover:border-white/30 text-slate-300 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+          >
+            <Swords className="w-4 h-4 text-slate-400" />
+            <span>[ 1V1 BATTLE ARENA ]</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

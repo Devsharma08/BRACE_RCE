@@ -175,9 +175,9 @@ const DataStructureDetail = () => {
 
   const getDifficultyColor = (level?: string) => {
     const l = level?.toUpperCase() || "EASY";
-    if (l === "H" || l === "HARD") return "text-red-400 border-red-500/25 bg-red-950/10";
-    if (l === "M" || l === "MEDIUM") return "text-yellow-400 border-yellow-500/25 bg-yellow-950/10";
-    return "text-green-400 border-green-500/25 bg-green-950/10";
+    if (l === "H" || l === "HARD") return "text-rose-400 border-rose-500/30 bg-rose-950/20";
+    if (l === "M" || l === "MEDIUM") return "text-amber-400 border-amber-500/30 bg-amber-950/20";
+    return "text-emerald-400 border-emerald-500/30 bg-emerald-950/20";
   };
 
   const getDifficultyLabel = (level?: string) => {
@@ -188,7 +188,7 @@ const DataStructureDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#08090a] text-textwhite font-mono relative pb-24">
+    <div className="min-h-screen bg-[#02040a] text-slate-100 font-mono relative pb-24">
       {/* Premium FUI L-Bracket Accents */}
       <div className="max-w-6xl mx-auto px-4 pt-32 relative">
         <Link

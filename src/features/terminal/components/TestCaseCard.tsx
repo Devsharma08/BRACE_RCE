@@ -81,20 +81,20 @@ export const TestCaseCard = memo(function TestCaseCard({
                 CASE_METRICS // PROFILER
               </div>
               <div className="flex flex-col gap-1 border-r border-white/5 pr-3">
-                <span className="text-slate-600 uppercase tracking-widest text-[8px]">EXECUTION_TIME</span>
+                <span className="text-slate-400 uppercase tracking-widest text-[8px] font-semibold">EXECUTION_TIME</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-cyan-400 font-bold text-xs tracking-tight">
                     {match.metrics.durationMs >= 1
                       ? match.metrics.durationMs.toFixed(3)
                       : (match.metrics.durationMs * 1000).toFixed(0)}
                   </span>
-                  <span className="text-[8px] text-slate-500 uppercase">
+                  <span className="text-[8px] text-slate-400 uppercase">
                     {match.metrics.durationMs >= 1 ? "ms" : "μs"}
                   </span>
                 </div>
               </div>
               <div className="flex flex-col gap-1 pl-2">
-                <span className="text-slate-600 uppercase tracking-widest text-[8px]">HEAP_MEMORY</span>
+                <span className="text-slate-400 uppercase tracking-widest text-[8px] font-semibold">HEAP_MEMORY</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-emerald-400 font-bold text-xs tracking-tight">
                     {match.metrics.memoryKb >= 1024
