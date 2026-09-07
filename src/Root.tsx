@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ defa
 const Problems = lazy(() => import("./pages/Problems.tsx").then((m) => ({ default: m.Problems })));
 const FriendsDashboard = lazy(() => import("./components/features/FriendDashboard.tsx"));
 const CreateRoom = lazy(() => import("./pages/CreateRoom.tsx"));
+const Lobby = lazy(() => import("./pages/Lobby.tsx"));
 
 import { CodeContext, type TestCase } from "./context/CodeContext.tsx";
 import {
@@ -93,7 +94,7 @@ export const Root = () => {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/battle/:roomId" element={<Battle />} />
                         <Route path="/rooms/create" element={<CreateRoom />} />
-                        <Route path="/lobby" element={<WorkInProgressPage />} />
+                        <Route path="/lobby" element={<Lobby />} />
                         <Route path="/problems" element={<Problems />} />
 
                         <Route
