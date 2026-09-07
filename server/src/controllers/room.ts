@@ -292,7 +292,7 @@ class Rooms {
                 });
             } else {
                 event = await prisma.event.findFirst({
-                    where: { roomId, isTemplate: false },
+                    where: { roomCode: roomId, isTemplate: false },
                     include: {
                         host: { select: { username: true, avatarUrl: true, id: true } },
                         problems: {

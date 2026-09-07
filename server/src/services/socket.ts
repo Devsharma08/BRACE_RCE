@@ -941,6 +941,7 @@ export const initSocketServer = (io: Server) => {
                     console.error('[host_end_match] error:', e);
                 }
             });
+            
             socket.on("send_battle_message", (data: {
                 roomId: string,
                 content: string
