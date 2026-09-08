@@ -10,12 +10,13 @@ class Rooms {
                 where: {
                     isPublic: true,
                     isTemplate: false,
-                    status: "WAITING",
+                    status: { in: ["WAITING", "IN_PROGRESS"] },
                     type: "PUBLIC"
                 },
                 include: {
-                    host: { select: { username: true, avatarUrl: true } },
-                    problems: { select: { id: true, name: true, difficulty_level: true } }
+                    host: { select: { username: true, avatarUrl: true, id: true } },
+                    problems: { select: { id: true, name: true, difficulty_level: true } },
+                    performances: { select: { id: true, userId: true, status: true } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
@@ -140,32 +141,32 @@ class Rooms {
                 }
             });
 
-            // Generate a new live room from this template
+            // Clone the template as a new active room
             const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            const liveRoom = await prisma.event.create({
+            const clonedRoom = await prisma.event.create({
                 data: {
                     name: `${template.name} (Clone)`,
                     description: template.description,
-                    isPublic: template.isPublic,
-                    maxUsers: template.maxUsers,
-                    isTemplate: false, // This is a live room, not a template!
-                    totalTimeLimitMs: template.totalTimeLimitMs,
+                    isPublic: false, // Default private for testing
+                    maxUsers: 2,
                     hostId: userId,
                     roomCode,
                     type: "PUBLIC",
                     status: "WAITING",
-                    version: template.version,
+                    isTemplate: false,
+                    version: template.version ?? 1,
                     problems: {
-                        connect: template.problems.map(p => ({ id: p.id }))
+                        connect: template.problems.map((p: any) => ({ id: p.id }))
                     }
                 }
             });
 
             return res.json({
                 status: "success",
-                message: "Template cloned successfully! Ready to play.",
-                room: liveRoom
+                message: "Template Cloned and Deployed!",
+                room: clonedRoom
             });
+
         } catch (error) {
             console.error("Clone template error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -271,6 +272,8 @@ class Rooms {
     async getLiveRoom(req: AuthRequest, res: Response) {
         try {
             const roomId = req.params.roomId as string;
+            const userId = req.userId as string;
+            const isSpectate = req.query.spectate === "true";
             let event;
 
             if (roomId.startsWith("room-")) {
@@ -278,7 +281,7 @@ class Rooms {
                 event = await prisma.event.findUnique({
                     where: { id: eventId },
                     include: {
-                        host: { select: { username: true, avatarUrl: true } },
+                        host: { select: { username: true, avatarUrl: true, id: true } },
                         problems: {
                             include: { test_cases: true, code_snippets: true }
                         },
@@ -297,6 +300,12 @@ class Rooms {
                         host: { select: { username: true, avatarUrl: true, id: true } },
                         problems: {
                             include: { test_cases: true, code_snippets: true }
+                        },
+                        commonProblem: {
+                            include: { test_cases: true, code_snippets: true }
+                        },
+                        performances: {
+                            include: { user: { select: { id: true, username: true, avatarUrl: true, bio: true } } }
                         }
                     }
                 });
@@ -304,6 +313,31 @@ class Rooms {
 
             if (!event) {
                 return res.status(404).json({ message: "Room not found or has ended." });
+            }
+
+            // If a player/host enters and is competing (not pure spectate), ensure performance record exists
+            if (userId && !isSpectate) {
+                const existingPerf = event.performances?.find((p: any) => p.userId === userId || p.user?.id === userId);
+                if (!existingPerf && (event.status === "WAITING" || event.status === "IN_PROGRESS")) {
+                    const currentCount = event.performances?.length || 0;
+                    if (currentCount < event.maxUsers || event.hostId === userId) {
+                        try {
+                            const newPerf = await prisma.userPersonalPerformance.create({
+                                data: {
+                                    userId,
+                                    eventId: event.id,
+                                    status: "PENDING"
+                                },
+                                include: {
+                                    user: { select: { id: true, username: true, avatarUrl: true, bio: true } }
+                                }
+                            });
+                            event.performances = [...(event.performances || []), newPerf];
+                        } catch (perfErr) {
+                            console.error("Auto performance creation error:", perfErr);
+                        }
+                    }
+                }
             }
 
             return res.json({ status: "success", room: event });

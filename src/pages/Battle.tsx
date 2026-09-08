@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/ui/Skeleton";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
@@ -9,10 +9,10 @@ import OutputPanel from "../features/terminal/components/OutputPanel";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import { Bot, Clock, LayoutTemplate, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity } from "lucide-react";
-import { GlobalTimer } from "../components/common/GlobalTimer";
+import { Bot, Clock, LayoutTemplate, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
+import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
-import { NotesPanel } from "../components/ui/NotesPanel";
+import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
 
 
 interface BattleMessage {
@@ -94,9 +94,126 @@ const getProblemSnippet = (problem: any, lang: SupportedLanguage) => {
   return snippet?.code || getLanguageStarterCode(lang, problem.name);
 };
 
+// ── Spectate Live Intel View ────────────────────────────────────────────────
+const SpectateView = ({
+  room,
+  playerProgress,
+  battleState,
+  onJoin,
+}: {
+  room: any;
+  playerProgress: Record<string, { status: string; progress: number; linesWritten?: number }>;
+  battleState: any;
+  onJoin: () => void;
+}) => {
+  const navigate = useNavigate();
+  const participants = room?.performances || [];
+  return (
+    <div className="min-h-screen bg-[#050505] text-slate-300 font-mono flex flex-col items-center justify-center p-8 relative">
+      {/* bg grid */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(6,182,212,1) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,1) 1px, transparent 1px)`, backgroundSize: "60px 60px" }} />
+      <div className="relative z-10 w-full max-w-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
+              <span className="text-[10px] text-rose-400/70 tracking-[0.3em] uppercase">LIVE SPECTATE MODE</span>
+            </div>
+            <h1 className="text-2xl font-black text-white tracking-widest flex items-center gap-3">
+              <Eye className="w-6 h-6 text-rose-400" />
+              {room?.name || "LIVE MATCH"}
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 tracking-wider">CODE: {room?.roomCode}</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onJoin}
+              className="text-xs font-bold tracking-widest border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 px-4 py-2 rounded-lg hover:bg-cyan-500 hover:text-black transition-all"
+            >
+              JOIN MATCH
+            </button>
+            <button
+              onClick={() => navigate("/lobby")}
+              className="text-xs font-bold tracking-widest border border-slate-700 bg-slate-800/60 text-slate-400 px-4 py-2 rounded-lg hover:bg-slate-700 transition-all"
+            >
+              LOBBY
+            </button>
+          </div>
+        </div>
+
+        {/* Status banner */}
+        <div className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${
+          battleState?.status === "IN_PROGRESS" ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-400" :
+          battleState?.status === "WAITING" ? "bg-amber-950/40 border border-amber-500/30 text-amber-400" :
+          "bg-slate-800/60 border border-slate-700 text-slate-400"
+        }`}>
+          <span>STATUS: {battleState?.status || "LOADING"}</span>
+          {battleState?.startedAt && battleState?.totalDurationMs && (
+            <GlobalTimer startedAt={battleState.startedAt} totalDurationMs={battleState.totalDurationMs} variant="compact" />
+          )}
+        </div>
+
+        {/* Participants intel */}
+        <div className="bg-[#09090c] border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-800 bg-black/40">
+            <p className="text-[10px] text-slate-500 tracking-widest">LIVE OPERATIVES ({participants.length})</p>
+          </div>
+          <div className="divide-y divide-slate-800/60">
+            {participants.length === 0 && (
+              <div className="py-12 text-center text-slate-600 text-xs tracking-widest">NO OPERATIVES REGISTERED</div>
+            )}
+            {participants.map((p: any) => {
+              const uid = p.user?.id || p.userId;
+              const intel = playerProgress[uid];
+              const prog = intel?.progress ?? 0;
+              return (
+                <div key={uid} className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <img
+                      src={p.user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user?.username}`}
+                      alt=""
+                      className="w-9 h-9 rounded-full border border-slate-700"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-white">{p.user?.username || "Unknown"}</p>
+                      <p className="text-[10px] text-slate-500 tracking-widest">
+                        {intel?.status || "STANDBY"}{intel?.linesWritten !== undefined ? ` · ${intel.linesWritten} LINES` : ""}
+                      </p>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${
+                      prog >= 100 ? "bg-emerald-500/20 text-emerald-400" :
+                      prog > 0 ? "bg-cyan-500/20 text-cyan-400" :
+                      "bg-slate-700/60 text-slate-500"
+                    }`}>{prog}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        prog >= 100 ? "bg-gradient-to-r from-emerald-400 to-emerald-500" :
+                        "bg-gradient-to-r from-cyan-500 to-cyan-400"
+                      }`}
+                      style={{ width: `${prog}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <p className="text-center text-[10px] text-slate-700 tracking-widest mt-6">SPECTATE MODE · READ-ONLY · UPDATES IN REAL-TIME</p>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Battle Component ────────────────────────────────────────────────────
 export const Battle = () => {
   const { roomId } = useParams<{ roomId: string }>(); // roomId is actually roomCode for custom rooms
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSpectateMode = new URLSearchParams(location.search).get("spectate") === "true";
   const { socket } = useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
@@ -213,8 +330,10 @@ export const Battle = () => {
   useEffect(() => {
     const fetchRoom = async () => {
       try {
+        // Pass spectate flag so server won't auto-create a performance for spectators
+        const spectateParam = isSpectateMode ? "?spectate=true" : "";
         const [roomRes, profileRes] = await Promise.all([
-          api.get(`/rooms/live/${roomId}`),
+          api.get(`/rooms/live/${roomId}${spectateParam}`),
           api.get("/profile"),
         ]);
 
@@ -228,8 +347,8 @@ export const Battle = () => {
         setRoomParticipants(roomData.performances || []);
 
         // find and store current performance ID
+        // Server auto-creates a performance for the host on first visit (non-spectate)
         const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
-
         if (myPerf) setMyPerformanceId(myPerf.id);
 
         let targetProblems = [];
@@ -401,6 +520,10 @@ export const Battle = () => {
   const handleTimerExpire = () => {
     setBattleResult("LOST");
     setIsBattleMenuOpen(true);
+    // Clear notes for this event when time expires
+    if (room?.id) {
+      clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
+    }
   };
 
   const handleKickUser = (targetUserId: string) => {
@@ -431,6 +554,10 @@ export const Battle = () => {
     setBattleResult("LOST");
     setIsSurrenderModalOpen(false);
     setIsBattleMenuOpen(true);
+    // Clear notes on surrender
+    if (room?.id) {
+      clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
+    }
   };
 
   const handleRunCode = async () => {
@@ -510,6 +637,10 @@ export const Battle = () => {
             linesWritten: code.split("\n").length,
           });
           setBattleResult("WON");
+          // Clear notes on win
+          if (room?.id) {
+            clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
+          }
         }
       } else {
         setTerminalOutput(
@@ -538,6 +669,18 @@ export const Battle = () => {
 
   if (loading || !room) {
     return <PageSkeleton />;
+  }
+
+  // ── Spectate mode: show intel board, not the editor ──
+  if (isSpectateMode) {
+    return (
+      <SpectateView
+        room={room}
+        playerProgress={playerProgress}
+        battleState={battleState}
+        onJoin={() => navigate(`/battle/${roomId}`)}
+      />
+    );
   }
 
   return (
@@ -1018,8 +1161,14 @@ export const Battle = () => {
         />
       </div>
 
-      {/* GLOBAL SCRATCHPAD NOTES PANEL */}
-      <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
+      {/* NOTES PANEL — per-problem tabs for multi-problem events, single scratchpad for 1v1 */}
+      <NotesPanel
+        isOpen={isNotesOpen}
+        onClose={() => setIsNotesOpen(false)}
+        problems={problems.length > 1 ? problems.map((p: any) => ({ id: p.id, name: p.name })) : undefined}
+        activeProblemId={activeProblem?.id}
+        eventId={room?.id}
+      />
 
       {isBattleMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">
