@@ -3,6 +3,7 @@ import { ShieldAlert, CheckCircle2, Lock, Unlock, Globe, EyeOff, Swords, Activit
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import { TestCaseGeneratorPanel, type CreatorSignature } from "../components/features/TestCaseGeneratorPanel";
 
 interface Problem {
   id: string;
@@ -25,6 +26,13 @@ const CreateRoom = () => {
   
 
   const [selectedProblemIds, setSelectedProblemIds] = useState<string[]>([]);
+
+  // --- SIGNATURE BUILDER STATE (ROADMAP §2) ---
+  const [creatorSignature, setCreatorSignature] = useState<CreatorSignature>({
+    funcName: "solve",
+    returnType: "int",
+    args: [{ name: "nums", type: "int[]" }],
+  });
 
   // --- PROBLEM TAB STATE ---
   const [activeProblemTab, setActiveProblemTab] = useState<"EXISTING" | "CUSTOM">("EXISTING");
@@ -330,6 +338,11 @@ const CreateRoom = () => {
                     </div>
 
                     {/* TEST CASES */}
+                    <TestCaseGeneratorPanel
+                      signature={creatorSignature}
+                      setSignature={setCreatorSignature}
+                      onGenerated={(generated) => setCustomTestCases(generated)}
+                    />
                     <div className="border border-slate-800 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-4">
                         <label className="text-xs font-bold tracking-widest text-slate-500 flex items-center gap-2"><Terminal className="w-4 h-4 text-rose-400" /> TEST CASES</label>

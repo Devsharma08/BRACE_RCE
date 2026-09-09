@@ -8,6 +8,8 @@ import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { api } from "../config/api";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
+import { LeaderboardTable } from "../components/features/LeaderboardTable";
+import { useMyRating, TIER_COLORS } from "../hooks/useLeaderboard";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 import {
   Swords,
@@ -69,6 +71,7 @@ export const Dashboard: React.FC = () => {
   });
 
   const { data: analytics, isLoading: analyticsLoading } = useAnalytics(Boolean(isAuthenticated || user));
+  const { data: myRating } = useMyRating(Boolean(isAuthenticated || user));
 
   const profile = dashboardData?.profile || null;
   const stats = dashboardData?.stats || null;
@@ -240,6 +243,23 @@ export const Dashboard: React.FC = () => {
               NO ANALYTICS DATA AVAILABLE YET. PLAY SOME MATCHES!
             </div>
           )}
+        </div>
+
+        {/* 5B. GLOBAL LEADERBOARD + ELO RATING (ROADMAP §1) */}
+        <div className="pb-8">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-amber-400">RANKINGS // ELO</span>
+            {myRating && (
+              <span className="ml-2 text-[10px] font-mono text-slate-400">
+                YOU: <span className="text-white font-bold">{myRating.rating}</span>
+                {" // "}
+                <span className={`font-bold ${TIER_COLORS[myRating.tier] ?? "text-slate-300"}`}>{myRating.tier}</span>
+                {" // "}{myRating.wins}W-{myRating.losses}L
+              </span>
+            )}
+          </div>
+          <LeaderboardTable limit={10} />
         </div>
 
         {/* 6. CONTINUE CODING */}
