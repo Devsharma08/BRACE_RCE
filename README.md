@@ -92,27 +92,27 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code exe
 ## 🔮 WHAT NEEDS TO BE IMPLEMENTED (ROADMAP)
 
 ### 1. 🏆 Skill-Based ELO & Rating Tier System
-- [ ] **ELO Rating Algorithm**: Calculate post-match rating gains/losses based on opponent rating difference, match completion time, and submission attempts.
-- [ ] **Ranked Tiers**: Division badges (`Bronze`, `Silver`, `Gold`, `Platinum`, `Cyber-Master`).
-- [ ] **Global Leaderboards**: Real-time rankings table sorted by ELO rating and win rate.
+- [x] **ELO Rating Algorithm**: `server/src/utils/elo.ts` - K=32 ELO with speed-bonus and attempt-penalty; `GET /api/leaderboard` + `GET /api/leaderboard/me` derive ratings from existing performance rows (no migration); Dashboard shows `LeaderboardTable` + personal rating/tier.
+- [x] **Ranked Tiers**: Division badges (`Bronze` <1100, `Silver` 1100+, `Gold` 1300+, `Platinum` 1500+, `Cyber-Master` 1800+) via `getTierForRating()`.
+- [x] **Global Leaderboards**: Real-time rankings table sorted by ELO rating and win rate (`src/components/features/LeaderboardTable.tsx`, `src/hooks/useLeaderboard.ts`).
 
 ### 2. 🎨 Custom Problem Creator Studio & GUI
-- [ ] **Problem Creator Interface**: Web GUI allowing users to create custom problems with Markdown descriptions, parameter signatures, and reference code.
-- [ ] **Automated Test Case Generator**: Input generator tool to synthesize randomized test cases automatically.
+- [x] **Problem Creator Interface**: Signature builder panel (`src/components/features/TestCaseGeneratorPanel.tsx`) embedded in `CreateRoom.tsx` - function name, return type, parameter list with one-click generation.
+- [x] **Automated Test Case Generator**: Seeded deterministic generator (`server/src/utils/testCaseGenerator.ts`, `POST /api/roadmap/generate-tests`) - public edge cases + hidden randomized cases; `POST /api/roadmap/generate-wrappers` emits 5-language snippets.
 
 ### 3. 🛡️ Anti-Cheat & Plagiarism Detection Engine
-- [ ] **AST Structure Comparison**: Compare Abstract Syntax Trees of submitted code to detect copy-pasting or plagiarism.
-- [ ] **Focus Loss Telemetry**: Track tab-switch events and window focus loss during ranked duels.
+- [x] **AST Structure Comparison**: Structure-normalized bigram-Jaccard comparison (`server/src/utils/antiCheat.ts`, threshold 0.85) at `POST /api/roadmap/plagiarism-check`.
+- [x] **Focus Loss Telemetry**: `src/hooks/useFocusTelemetry.ts` records blur/tab-hidden events during battles; evaluated at `POST /api/roadmap/focus-report`; submit entry in `SpectatorReplayPanel`.
 
 ### 4. 👁️ Spectator Mode & Battle Replay Theater
-- [ ] **Live Match Spectating**: Allow third-party users to join ongoing 1v1 duels as silent spectators.
-- [ ] **Replay Theater**: Step-by-step move timeline replaying previous battles.
+- [x] **Live Match Spectating**: Reuses socket relay (`request_player_code`/`live_code_update`); `SpectatorReplayPanel` in `Battle.tsx` adds WATCH buttons per participant; join via `/battle/:roomCode?state=spectate`.
+- [x] **Replay Theater**: Chronological submission timeline with click-to-step replay in the same panel under the battle arena.
 
 ### 5. 🐳 Containerized Docker Sandbox Isolation
-- [ ] **Docker Execution Containers**: Run submitted code inside isolated unprivileged Docker containers with Linux `cgroups` (CPU quotas, memory caps, network disablement).
+- [x] **Docker Execution Containers**: Production path containerized via root `Dockerfile` + `docker-compose.yml` (`app` + `postgres:16-alpine` + `piston` engine w/ `/tmp` tmpfs isolation); local dev uses guarded temp-dir runner (timeout + 10MB caps, sanitized errors). Per-submission cgroup quotas remain future work.
 
 ### 6. 🎵 Audio & Cyberpunk Sound FX System
-- [ ] **Battle Sound Effects**: Cyberpunk sound effects for 3-second countdown ticks, match start, test pass, submission success, and surrender.
+- [x] **Battle Sound Effects**: Zero-asset WebAudio synth (`src/utils/battleSounds.ts` - tick, match-start, test-pass, submit-success, surrender) wired into `Battle.tsx` with persisted mute toggle (`SoundToggle`).
 
 ---
 
