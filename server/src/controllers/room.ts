@@ -221,18 +221,29 @@ class Rooms {
         }
     }
 
-    // DELETE EVENT (ROOM OR TEMPLATE)
+    // DELETE EVENT (ROOM OR TEMPLATE) — host OR global ADMIN
     async deleteEvent(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
             const eventId = req.params.eventId as string; // Grabbing ID from URL parameter
+            if (!eventId) return res.status(400).json({ message: "Event id required" });
 
-            const event = await prisma.event.findUnique({ where: { id: eventId } });
-            if (!event || event.hostId !== userId) {
+            // Lobby cards sometimes pass roomCode instead of the raw event id.
+            const event = await prisma.event.findFirst({
+                where: { OR: [{ id: eventId }, { roomCode: eventId }] }
+            });
+            if (!event) return res.status(404).json({ message: "Event not found" });
+
+            const caller = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { role: true }
+            });
+            const isAdmin = (caller?.role || "").toUpperCase() === "ADMIN";
+            if (event.hostId !== userId && !isAdmin) {
                 return res.status(403).json({ message: "Unauthorized to delete this event" });
             }
 
-            await prisma.event.delete({ where: { id: eventId } });
+            await prisma.event.delete({ where: { id: event.id } });
 
             return res.json({ status: "success", message: "Event deleted successfully" });
         } catch (error) {
@@ -268,7 +279,7 @@ class Rooms {
         }
     }
 
-    // GET LIVE ROOM BY CODE OR ID
+    // GET LIVE ROOM BY CODE OR ID — includes per-participant event analytics
     async getLiveRoom(req: AuthRequest, res: Response) {
         try {
             const roomId = req.params.roomId as string;
@@ -289,7 +300,19 @@ class Rooms {
                             include: { test_cases: true, code_snippets: true }
                         },
                         performances: {
-                            include: { user: { select: { id: true, username: true, avatarUrl: true, bio: true } } }
+                            include: {
+                                user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+                                submissions: {
+                                    select: {
+                                        id: true, problemId: true, status: true,
+                                        passedCase: true, totalCases: true,
+                                        runtimeMs: true, memoryKb: true,
+                                        language: true, attemptNumber: true,
+                                        isBestSubmission: true, createdAt: true
+                                    },
+                                    orderBy: { attemptNumber: "asc" }
+                                }
+                            }
                         }
                     }
                 });
@@ -305,7 +328,19 @@ class Rooms {
                             include: { test_cases: true, code_snippets: true }
                         },
                         performances: {
-                            include: { user: { select: { id: true, username: true, avatarUrl: true, bio: true } } }
+                            include: {
+                                user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+                                submissions: {
+                                    select: {
+                                        id: true, problemId: true, status: true,
+                                        passedCase: true, totalCases: true,
+                                        runtimeMs: true, memoryKb: true,
+                                        language: true, attemptNumber: true,
+                                        isBestSubmission: true, createdAt: true
+                                    },
+                                    orderBy: { attemptNumber: "asc" }
+                                }
+                            }
                         }
                     }
                 });
@@ -329,7 +364,17 @@ class Rooms {
                                     status: "PENDING"
                                 },
                                 include: {
-                                    user: { select: { id: true, username: true, avatarUrl: true, bio: true } }
+                                    user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+                                    submissions: {
+                                        select: {
+                                            id: true, problemId: true, status: true,
+                                            passedCase: true, totalCases: true,
+                                            runtimeMs: true, memoryKb: true,
+                                            language: true, attemptNumber: true,
+                                            isBestSubmission: true, createdAt: true
+                                        },
+                                        orderBy: { attemptNumber: "asc" }
+                                    }
                                 }
                             });
                             event.performances = [...(event.performances || []), newPerf];
@@ -344,6 +389,86 @@ class Rooms {
         } catch (error) {
             console.error("Get live room error:", error);
             return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // POST /api/rooms/expire — mark a custom group battle FINISHED when time runs
+    // out and stamp per-participant completion verdicts (COMPLETED vs TIMEOUT).
+    async expireBattle(req: AuthRequest, res: Response) {
+        try {
+            const { roomId } = req.body as { roomId?: string };
+            if (!roomId) return res.status(400).json({ status: "error", message: "roomId is required" });
+
+            const event = await prisma.event.findFirst({
+                where: { OR: [{ id: (roomId as string).replace("room-", "") }, { roomCode: roomId as string }] },
+                include: { performances: { include: { submissions: true } } }
+            });
+            if (!event) return res.status(404).json({ status: "error", message: "Event not found" });
+            if (event.status === "FINISHED") {
+                return res.json({ status: "success", message: "Already finished", room: event });
+            }
+
+            // Only host, global ADMIN may close the event.
+            // (Optional groupMember model, if present in the schema, is also honored.)
+            const userId = req.userId as string;
+            const caller = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+            const isAdmin = (caller?.role || "").toUpperCase() === "ADMIN";
+            const prismaAny = prisma as any;
+            let isGroupAdmin = false;
+            if (prismaAny.groupMember) {
+                try {
+                    const gm = await prismaAny.groupMember.findFirst({
+                        where: { groupId: event.id, userId, role: "ADMIN" }
+                    });
+                    isGroupAdmin = !!gm;
+                } catch { isGroupAdmin = false; }
+            }
+            if (event.hostId !== userId && !isAdmin && !isGroupAdmin) {
+                return res.status(403).json({ status: "error", message: "Only the host or an admin can close this battle" });
+            }
+
+            const performances = (event as any).performances ?? [];
+            for (const perf of performances) {
+                const passed = (perf.submissions ?? []).some((s: any) => s.status === "PASSED");
+                const verdict = passed ? "COMPLETED" : "TIMEOUT";
+                await prisma.userPersonalPerformance.update({
+                    where: { id: perf.id },
+                    data: {
+                        status: verdict,
+                        timeTakenMs: perf.timeTakenMs ?? event.totalTimeLimitMs ?? undefined,
+                        finishedAt: (perf as any).finishedAt ?? undefined
+                    } as any
+                }).catch(() => prisma.userPersonalPerformance.update({
+                    where: { id: perf.id },
+                    data: { status: verdict }
+                }));
+            }
+
+            const finished = await prisma.event.update({
+                where: { id: event.id },
+                data: { status: "FINISHED", finishedAt: new Date() },
+                include: {
+                    performances: {
+                        include: {
+                            user: { select: { id: true, username: true, avatarUrl: true } },
+                            submissions: {
+                                select: {
+                                    id: true, problemId: true, status: true,
+                                    passedCase: true, totalCases: true,
+                                    runtimeMs: true, memoryKb: true,
+                                    language: true, attemptNumber: true,
+                                    isBestSubmission: true, createdAt: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            return res.json({ status: "success", message: "Battle marked FINISHED with completion verdicts", room: finished });
+        } catch (error) {
+            console.error("Expire battle error:", error);
+            return res.status(500).json({ status: "error", message: "Server error" });
         }
     }
 

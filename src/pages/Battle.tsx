@@ -13,6 +13,11 @@ import { Bot, Clock, LayoutTemplate, Lock, Play, Send, ShieldAlert, ShieldCheck,
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
+import { participantVerdict, verdictStyle } from "../utils/participantVerdict";
+import { SpectatorReplayPanel } from "../components/features/SpectatorReplayPanel";
+import { SoundToggle } from "../components/features/SoundToggle";
+import { playBattleSound } from "../utils/battleSounds";
+import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
 
 
 interface BattleMessage {
@@ -21,6 +26,20 @@ interface BattleMessage {
   content: string;
   createdAt: string;
 }
+
+/**
+ * Examples ship inside problem_definition HTML already — strip any embedded
+ * "<h3>Example N</h3> … Input:/Output:" blocks so the panel never renders
+ * examples twice (once in statement, once as separate cards).
+ */
+export const stripDuplicateExamples = (raw?: string | null): string => {
+  if (!raw) return "";
+  return raw
+    .replace(/<h3[^>]*>\s*Example\s+\d+\s*<\/h3>[\s\S]*?(?=<h3[^>]*>|$)/gi, (block) =>
+      /Input:|Output:|Explanation:/i.test(block) ? "" : block,
+    )
+    .trim();
+};
 
 const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
@@ -258,6 +277,9 @@ export const Battle = () => {
   );
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
+  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading);
+
   // terminal
   const [isTerminal, setIsTerminal] = useState<boolean>(true);
   const [terminalOutput, setTerminalOutput] = useState(
@@ -275,11 +297,13 @@ export const Battle = () => {
   const {
     outputHeight,
     sidebarWidth,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
     setOutputHeight,
     setSidebarWidth,
     startOutputDragging,
     startSidebarDragging,
-  } = useTerminalLayout();
+  } = useTerminalLayout({ autoCloseBelowPx: 220 });
 
   const handleRunSingleTestCase = useCallback(async (index: number) => {
     if (!activeProblem?.test_cases?.[index]) return;
@@ -395,6 +419,7 @@ export const Battle = () => {
 
     socket.on("battle_starting", (data: { countdownSeconds?: number }) => {
       setCountDown(data?.countdownSeconds || 3);
+      playBattleSound("tick");
     });
 
     socket.on("battle_state", (data) => {
@@ -446,6 +471,30 @@ export const Battle = () => {
       setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
     });
 
+    socket.on("participants_updated", (data: { performances: any[] }) => {
+      if (data?.performances) {
+        setRoomParticipants(data.performances);
+        setBattleState((prev: any) => ({ ...prev, participants: data.performances }));
+      }
+    });
+
+    // HOST/ADMIN terminated the group — treat like host_end_match completion.
+    socket.on("group_terminated", (data: { roomId: string }) => {
+      if (String(data.roomId).replace("room-", "") === String(roomId).replace("room-", "")) {
+        setBattleResult("LOST");
+        setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
+        setIsBattleMenuOpen(true);
+      }
+    });
+
+    socket.on("match_completed", (data: { status?: string; reason?: string; performances?: any[] }) => {
+      if (data?.performances) {
+        setRoomParticipants(data.performances);
+        setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
+      }
+      setIsBattleMenuOpen(true);
+    });
+
     return () => {
       socket.emit("leave_room", roomId);
       socket.off("battle_starting");
@@ -454,6 +503,9 @@ export const Battle = () => {
       socket.off("battle_update");
       socket.off("you_were_kicked");
       socket.off("player_kicked");
+      socket.off("participants_updated");
+      socket.off("group_terminated");
+      socket.off("match_completed");
     };
   }, [socket, roomId, navigate]);
 
@@ -520,6 +572,15 @@ export const Battle = () => {
   const handleTimerExpire = () => {
     setBattleResult("LOST");
     setIsBattleMenuOpen(true);
+    playBattleSound("surrender");
+    try {
+      // Persist focus telemetry for anti-cheat review (ROADMAP §3)
+      localStorage.setItem("brace-focus-events", JSON.stringify(focusTelemetry.snapshot()));
+    } catch { /* ignore */ }
+    // Custom group battles: stamp FINISHED + COMPLETED/TIMEOUT verdicts server-side.
+    if (roomId && problems.length > 1) {
+      api.post("/rooms/expire", { roomId }).catch(() => { /* best-effort */ });
+    }
     // Clear notes for this event when time expires
     if (room?.id) {
       clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
@@ -551,6 +612,10 @@ export const Battle = () => {
     if (!socket || !roomId) return;
     socket.emit("surrender_match", { roomId });
     socket.emit("surrender_battle", roomId);
+    playBattleSound("surrender");
+    try {
+      localStorage.setItem("brace-focus-events", JSON.stringify(focusTelemetry.snapshot()));
+    } catch { /* ignore */ }
     setBattleResult("LOST");
     setIsSurrenderModalOpen(false);
     setIsBattleMenuOpen(true);
@@ -625,6 +690,7 @@ export const Battle = () => {
 
       if (res.status === "PASSED") {
         setTerminalOutput("SUCCESS: All test cases passed!");
+        playBattleSound("submit-success");
         if (isBattleActive) {
           setTimeout(() => {
             setIsBattleMenuOpen(true);
@@ -800,9 +866,9 @@ export const Battle = () => {
         </div>
       )}
 
-      {/* LEFT PANEL */}
+      {/* LEFT PANEL — auto-closes when dragged below ~220px */}
       <div
-        style={{ width: isPanelOpen ? `${sidebarWidth}px` : "0px" }}
+        style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
         <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
@@ -887,17 +953,17 @@ export const Battle = () => {
               </button>
             </div>
 
-            {/* TAB CONTENT */}
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-hide flex flex-col">
+            {/* TAB CONTENT — themed scrollbar + contained text */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 themed-scroll flex flex-col min-w-0">
               {activePanelTab === "PROBLEM" ? (
-                <div className="border border-white/10 w-full rounded-lg p-5 bg-black/40 shadow-inner h-max">
-                  <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-                    <h3 className="font-mono text-sm text-cyan-400 flex items-center gap-2 uppercase tracking-wider">
-                      <Code className="w-4 h-4" />{" "}
-                      {activeProblem?.name || "Select Problem"}
+                <div className="border border-white/10 w-full max-w-full min-w-0 rounded-lg p-5 bg-black/40 shadow-inner h-max overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-3 mb-4 min-w-0">
+                    <h3 className="font-mono text-sm text-cyan-400 flex items-center gap-2 uppercase tracking-wider min-w-0 truncate">
+                      <Code className="w-4 h-4 shrink-0" />{" "}
+                      <span className="truncate">{activeProblem?.name || "Select Problem"}</span>
                     </h3>
                     <span
-                      className={`text-[10px] tracking-widest px-2 py-0.5 rounded font-bold
+                      className={`shrink-0 text-[10px] tracking-widest px-2 py-0.5 rounded font-bold
                     ${activeProblem?.difficulty_level === "HARD" ? "bg-rose-500/20 text-rose-400" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}
                   `}
                     >
@@ -905,62 +971,25 @@ export const Battle = () => {
                     </span>
                   </div>
                   <div
-                    className="text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-none break-words"
+                    className="problem-contain text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-full min-w-0 break-words overflow-hidden [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
                     dangerouslySetInnerHTML={{
                       __html:
-                        activeProblem?.problem_definition || "No definition.",
+                        stripDuplicateExamples(activeProblem?.problem_definition) || "No definition.",
                     }}
                   />
 
                   {/* PROGRESSIVE HINTS & BLUEPRINT */}
                   <ProblemHintsAccordion hints={activeProblem?.problem_hints} />
 
-                  {/* TEST CASES SECTION */}
-                  {activeProblem?.test_cases &&
-                    activeProblem.test_cases.length > 0 && (
-                      <div className="mt-8">
-                        <h4 className="font-mono text-cyan-500 font-bold text-sm tracking-widest mb-4 border-b border-cyan-500/20 pb-2">
-                          PUBLIC EXAMPLES
-                        </h4>
-                        <div className="flex flex-col gap-4">
-                          {activeProblem.test_cases
-                            .slice(0, 2)
-                            .map((tc: any, index: number) => (
-                              <div
-                                key={tc.id}
-                                className="bg-black/60 border border-white/5 rounded-lg p-4 font-mono text-xs shadow-inner"
-                              >
-                                <p className="text-slate-500 tracking-widest mb-2 font-bold">
-                                  EXAMPLE {index + 1}
-                                </p>
-                                <div className="mb-3">
-                                  <span className="text-cyan-400 font-semibold block mb-1">
-                                    Input:
-                                  </span>
-                                  <pre className="text-slate-300 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">
-                                    {tc.input}
-                                  </pre>
-                                </div>
-                                <div>
-                                  <span className="text-emerald-400 font-semibold block mb-1">
-                                    Expected Output:
-                                  </span>
-                                  <pre className="text-emerald-400 bg-black/40 p-2 rounded border border-white/5 whitespace-pre-wrap break-all">
-                                    {tc.expectedOutput}
-                                  </pre>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-center">
-                          <p className="text-amber-500/80 font-mono text-xs tracking-widest font-bold">
-                            TOTAL TEST CASES TO PASS:{" "}
-                            {activeProblem.test_cases.length}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                  {/* Examples already ship inside the problem statement — no separate render. */}
+                  {activeProblem?.test_cases && activeProblem.test_cases.length > 0 && (
+                    <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-center min-w-0">
+                      <p className="text-amber-500/80 font-mono text-xs tracking-widest font-bold break-words">
+                        TOTAL TEST CASES TO PASS:{" "}
+                        {activeProblem.test_cases.length}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col h-full">
@@ -998,12 +1027,12 @@ export const Battle = () => {
             </div>
           </div>
 
-          {/* MOUSE DRAG RESIZE HANDLE */}
-          {isPanelOpen && (
+          {/* MOUSE DRAG RESIZE HANDLE (auto-close below ~220px) */}
+          {isPanelOpen && !isSidebarCollapsed && (
             <div
               onMouseDown={startSidebarDragging}
               className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-cyan-400/50 active:bg-cyan-400 z-40 transition-colors group flex items-center justify-center"
-              title="Drag to resize panel"
+              title="Drag to resize panel (drag below ~220px to auto-close)"
             >
               <div className="w-0.5 h-12 bg-cyan-500/40 group-hover:bg-cyan-300 rounded" />
             </div>
@@ -1011,10 +1040,16 @@ export const Battle = () => {
         </div>
 
         <button
-          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          onClick={() => {
+            const next = !(isPanelOpen && !isSidebarCollapsed);
+            setIsPanelOpen(next);
+            setIsSidebarCollapsed(!next);
+            if (next && sidebarWidth < 220) setSidebarWidth(360);
+          }}
+          title={isPanelOpen && !isSidebarCollapsed ? "Collapse panel" : "Expand panel"}
           className={`absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
         >
-          {isPanelOpen ? (
+          {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
           ) : (
             <ChevronRight className="w-5 h-5" />
@@ -1038,6 +1073,7 @@ export const Battle = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <SoundToggle />
             <GlobalTimer 
               startedAt={battleState.startedAt || room?.startedAt} 
               totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs} 
@@ -1052,6 +1088,19 @@ export const Battle = () => {
                 className="flex items-center gap-1.5 px-2 py-1 border border-amber-500/30 bg-amber-950/20 text-amber-400 text-[10px] font-mono font-bold rounded hover:bg-amber-900/30 transition-all"
               >
                 <ShieldAlert className="w-3 h-3" /> HOST
+              </button>
+            )}
+            {/* Terminate group (host/admin) — ends the event for everyone */}
+            {isHost && problems.length > 1 && battleState.status === "IN_PROGRESS" && (
+              <button
+                onClick={() => {
+                  if (window.confirm("Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.")) {
+                    socket?.emit("terminate_group", { roomId });
+                  }
+                }}
+                className="flex items-center gap-1.5 px-2 py-1 border border-rose-500/40 bg-rose-950/20 text-rose-400 text-[10px] font-mono font-bold rounded hover:bg-rose-900/30 transition-all"
+              >
+                <StopCircle className="w-3 h-3" /> END GROUP
               </button>
             )}
           </div>
@@ -1161,6 +1210,16 @@ export const Battle = () => {
         />
       </div>
 
+      {/* REPLAY THEATER + SPECTATOR ENTRY (ROADMAP §4) */}
+      <div className="px-4 pb-4">
+        <SpectatorReplayPanel
+          roomId={String(roomId || "")}
+          performances={roomParticipants}
+          isSpectator={false}
+          onWatch={(userId) => socket?.emit("request_player_code", { roomId, targetUserId: userId })}
+        />
+      </div>
+
       {/* NOTES PANEL — per-problem tabs for multi-problem events, single scratchpad for 1v1 */}
       <NotesPanel
         isOpen={isNotesOpen}
@@ -1172,7 +1231,7 @@ export const Battle = () => {
 
       {isBattleMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto">
+          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
             <div
               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-cyan-400 to-emerald-500" : "from-rose-500 to-orange-500"}`}
             />
@@ -1193,11 +1252,31 @@ export const Battle = () => {
                 ? "OPERATION SUCCESSFUL"
                 : "SYSTEM FAILURE"}
             </h2>
-            <p className="text-slate-400 text-sm mb-8 font-sans">
+            <p className="text-slate-400 text-sm mb-4 font-sans">
               {battleResult === "WON"
                 ? "You completed the operation."
                 : "Time expired or opponent optimized faster."}
             </p>
+            {/* Per-participant completion verdicts + event analytics */}
+            <div className="w-full flex flex-col gap-2 mb-6 text-left max-h-56 overflow-y-auto themed-scroll pr-1">
+              {roomParticipants?.map((p: any) => {
+                const verdict = participantVerdict(p, battleState?.status || room?.status);
+                const subs = p.submissions ?? [];
+                const passedCount = subs.filter((s: any) => (s.status || "").toUpperCase() === "PASSED").length;
+                const bestRuntime = subs.reduce((m: number | null, s: any) => s.runtimeMs != null ? Math.min(m ?? s.runtimeMs, s.runtimeMs) : m, null as number | null);
+                return (
+                  <div key={p.userId || p.user?.id || p.id} className="flex items-center gap-2 p-2 border border-white/10 bg-black/50 min-w-0">
+                    <span className="text-xs font-bold text-white truncate flex-1 min-w-0">{p.user?.username || "Player"}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold shrink-0 ${verdictStyle(verdict)}`}>
+                      {verdict === "COMPLETED" ? "✓ COMPLETED" : verdict === "TIMEOUT" ? "✗ TIMEOUT" : "● IN PROGRESS"}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                      {passedCount}/{subs.length}{bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
             <div className="flex-1 flex justify-between gap-4 w-full">
               <button
                 onClick={() => navigate("/")}

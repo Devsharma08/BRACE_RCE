@@ -104,11 +104,11 @@ const Lobby = () => {
   const handleDeleteEvent = async (eventId: string) => {
     if (!window.confirm("Are you sure you want to permanently delete this operation?")) return;
     try {
-      await api.delete(`/rooms/${eventId}`);
+      await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Failed to delete event.");
+      alert(error?.response?.data?.message || "Failed to delete operation.");
     }
   };
 

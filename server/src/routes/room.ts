@@ -24,9 +24,10 @@ roomsRouter.post("/clone", roomController.cloneTemplate);
 roomsRouter.put("/lock", roomController.lockRoom);
 roomsRouter.put("/unlock", roomController.unlockRoom);
 
-// Event management (Delete / Toggle Visibility)
+// Event management (Delete / Toggle Visibility / Expire)
 roomsRouter.delete("/:eventId", roomController.deleteEvent);
 roomsRouter.put("/visibility", roomController.toggleEventVisibility);
+roomsRouter.post("/expire", roomController.expireBattle);
 
 
 

@@ -23,6 +23,7 @@ interface SocketContextType {
   joinCustomRoom: (roomCode: string, password?: string) => void;
   startCustomMatch: () => void;
   leaveCustomMatch: () => void;
+  terminateGroup: (roomId: string) => void;
   pendingOpponent: { username: string; id: string; avatarUrl: string; bio: string } | null;
   incomingChallenge: any;
   sendDirectMessage: (targetUserId: string, content: string) => void;
@@ -263,6 +264,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setCustomLobby(null);
   };
 
+  const terminateGroup = (roomId: string) => {
+    socket?.emit("terminate_group", { roomId });
+  };
+
   const acceptMatch = () => {
     if (socket && pendingMatchId) {
       setIsClicked(true);
@@ -294,6 +299,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         incomingChallenge,
         pendingOpponent,
         leaveCustomMatch,
+        terminateGroup,
         createCustomRoom,
         startCustomMatch,
         declineMatch,
