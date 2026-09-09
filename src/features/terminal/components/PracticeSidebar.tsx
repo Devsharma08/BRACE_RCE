@@ -11,7 +11,6 @@ import {
   AlignLeft,
   Lightbulb,
   Lock,
-  FlaskConical,
   Tag,
 } from "lucide-react";
 
@@ -125,7 +124,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
   const publicCases = (problem.test_cases || []).filter((tc) => tc.is_public);
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 py-4 gap-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+    <div className="problem-contain flex flex-col h-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 gap-4 themed-scroll">
       {/* Title & metadata */}
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
@@ -153,45 +152,19 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
       {/* Divider */}
       <div className="border-t border-white/5" />
 
-      {/* Problem Definition */}
-      <div>
+      {/* Problem Definition — examples ship inside the statement; no separate render */}
+      <div className="min-w-0">
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">
           <AlignLeft className="w-3 h-3" /> PROBLEM DESCRIPTION
         </div>
         <div
-          className="min-w-0 max-w-full break-words text-sm leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300"
+          className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300 [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
           dangerouslySetInnerHTML={{ __html: problem.problem_definition || "No description available." }}
         />
       </div>
 
-      {/* Public Test Cases */}
-      {/* {publicCases.length > 0 && (
-        <div>
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">
-            <FlaskConical className="w-3 h-3" /> EXAMPLES
-          </div>
-          <div className="flex flex-col gap-2">
-            {publicCases.slice(0, 2).map((tc, i) => (
-              <div key={tc.id} className="rounded border border-white/10 bg-black/40 text-[10px] font-mono overflow-hidden">
-                <div className="px-3 py-1 bg-white/5 text-slate-500 font-bold border-b border-white/5">
-                  EXAMPLE {i + 1}
-                </div>
-                <div className="px-3 py-2 space-y-1.5">
-                  <div>
-                    <span className="text-slate-500">Input: </span>
-                    <span className="text-slate-200 break-all">{tc.input || "(empty)"}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Expected: </span>
-                    <span className="text-emerald-300 break-all">{tc.expectedOutput}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )} */}
-
+      {/* Public Test Cases — intentionally NOT rendered: examples are embedded
+          in the problem statement HTML above. */}
       {/* Hints */}
       <HintsAccordion hints={problem.problem_hints} />
 
@@ -285,8 +258,8 @@ const ProblemsListTab = ({
         ))}
       </div>
 
-      {/* Problem list */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* Problem list — themed scrollbar */}
+      <div className="flex-1 overflow-y-auto themed-scroll">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-slate-600 text-[10px] font-mono uppercase tracking-widest">
             NO PROBLEMS MATCH YOUR FILTERS
@@ -393,7 +366,7 @@ const PracticeSidebar = ({
         ))}
       </div>
 
-      {/* TAB CONTENT */}
+      {/* TAB CONTENT — contained scroll w/ themed scrollbar, never overflows panel */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {isLoading ? (
           <SidebarSkeleton />

@@ -292,6 +292,52 @@
        pointer-events: none !important;
     }
 
+    /* ── Themed scrollbars for problem/question panels (no blank-white bars) ── */
+    .themed-scroll {
+       scrollbar-width: thin;
+       scrollbar-color: rgba(34, 211, 238, 0.45) rgba(2, 4, 10, 0.6);
+    }
+    .themed-scroll::-webkit-scrollbar {
+       width: 8px;
+       height: 8px;
+    }
+    .themed-scroll::-webkit-scrollbar-track {
+       background: rgba(2, 4, 10, 0.6);
+    }
+    .themed-scroll::-webkit-scrollbar-thumb {
+       background: linear-gradient(180deg, rgba(34, 211, 238, 0.55), rgba(34, 211, 238, 0.2));
+       border-radius: 4px;
+       border: 1px solid rgba(34, 211, 238, 0.25);
+    }
+    .themed-scroll::-webkit-scrollbar-thumb:hover {
+       background: rgba(34, 211, 238, 0.75);
+    }
+
+    /* Word containment: long tokens / HTML from problem statements wrap inside their panel */
+    .problem-contain,
+    .problem-contain * {
+       max-width: 100% !important;
+       overflow-wrap: anywhere !important;
+       word-break: break-word !important;
+    }
+    .problem-contain pre,
+    .problem-contain code {
+       white-space: pre-wrap !important;
+       word-break: break-word !important;
+    }
+    .problem-contain table {
+       display: block !important;
+       max-width: 100% !important;
+       overflow-x: auto !important;
+    }
+    .problem-contain img,
+    .problem-contain svg,
+    .problem-contain video,
+    .problem-contain iframe {
+       max-width: 100% !important;
+       height: auto !important;
+    }
+
     /* Resizing Performance Booster II: disable all layout transitions and keyframe animations during active drags to eliminate reflow lag */
     body.dragging-active * {
        transition: none !important;

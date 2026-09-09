@@ -5,9 +5,12 @@ const getInitialOutputHeight = () => {
   return window.innerWidth < 768 ? Math.min(100, Math.floor(window.innerHeight * 0.3)) : 100;
 };
 
-export const useTerminalLayout = () => {
+export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; autoCloseBelowPx?: number }) => {
   const [sidebarWidth, setSidebarWidth] = useState(360);
   const [isSidebarDragging, setIsSidebarDragging] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const autoCloseBelowPx = opts?.autoCloseBelowPx ?? 220;
+  const onSidebarAutoClose = opts?.onSidebarAutoClose;
   const [outputHeight, setOutputHeight] = useState(getInitialOutputHeight);
   const [isOutputDragging, setIsOutputDragging] = useState(false);
   const startDragY = useRef<number | null>(null);
@@ -43,6 +46,15 @@ export const useTerminalLayout = () => {
     };
 
     const handleMouseUp = () => {
+      // Auto-close: if the user drags the question panel below the threshold
+      // (≈200-300px), collapse it instead of leaving an unusable sliver.
+      setSidebarWidth((current) => {
+        if (current < autoCloseBelowPx) {
+          setIsSidebarCollapsed(true);
+          onSidebarAutoClose?.();
+        }
+        return current;
+      });
       setIsSidebarDragging(false);
       document.body.style.userSelect = "auto";
       document.body.style.cursor = "default";
@@ -97,6 +109,8 @@ export const useTerminalLayout = () => {
   return {
     outputHeight,
     sidebarWidth,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
     setOutputHeight,
     startOutputDragging,
     startSidebarDragging,

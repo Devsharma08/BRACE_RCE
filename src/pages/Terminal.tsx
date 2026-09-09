@@ -102,11 +102,13 @@ const Terminal = () => {
   const {
     outputHeight,
     sidebarWidth,
+    isSidebarCollapsed,
+    setIsSidebarCollapsed,
     setOutputHeight,
     startOutputDragging,
     startSidebarDragging,
     setSidebarWidth,
-  } = useTerminalLayout();
+  } = useTerminalLayout({ autoCloseBelowPx: 220 });
 
   const formatEditorRef = useRef<(() => void) | null>(null);
 
@@ -338,9 +340,9 @@ const Terminal = () => {
   // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row">
-      {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE) ──────────────── */}
+      {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ──────────────── */}
       <div
-        style={{ width: isPanelOpen ? `${sidebarWidth}px` : "0px" }}
+        style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
         <div className="w-full h-full bg-[#06080e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
@@ -358,11 +360,16 @@ const Terminal = () => {
 
         {/* SIDEBAR TOGGLE BUTTON */}
         <button
-          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          onClick={() => {
+            const next = !(isPanelOpen && !isSidebarCollapsed);
+            setIsPanelOpen(next);
+            setIsSidebarCollapsed(!next);
+            if (next && sidebarWidth < 220) setSidebarWidth(360);
+          }}
           className="absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
-          title={isPanelOpen ? "Collapse sidebar" : "Expand sidebar"}
+          title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
         >
-          {isPanelOpen ? (
+          {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
           ) : (
             <ChevronRight className="w-5 h-5" />
