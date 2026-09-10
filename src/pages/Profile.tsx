@@ -70,13 +70,13 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#02040a] text-slate-100 p-6 md:p-10 font-mono relative overflow-hidden">
+    <div className="min-h-screen bg-[#02040a] text-slate-100 p-4 md:p-8 font-mono relative overflow-hidden">
       {/* Global dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-500/5 blur-3xl pointer-events-none -z-10" />
 
-      <div className="max-w-6xl mx-auto flex flex-col gap-8 relative z-10">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6 relative z-10">
 
         {/* ── HEADER / BACK NAVIGATION ─────────────────────────── */}
         <div className="flex items-center justify-between border-b-2 border-white/10 pb-5">
@@ -97,7 +97,7 @@ const Profile = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* LEFT: IDENTITY DOSSIER */}
-          <div className="relative rounded-none border border-white/20 border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-6 flex flex-col items-center text-center overflow-hidden">
+          <div className="relative rounded-none border border-white/20 border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-5 flex flex-col items-center text-center overflow-hidden">
             <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
             {/* Top accent stripe */}
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-rose-500" />
@@ -125,11 +125,11 @@ const Profile = () => {
             </button>
 
             <div className="w-full grid grid-cols-2 gap-3 mt-5 relative z-10">
-              <div className="rounded-none border border-white/10 bg-black/50 p-3">
+              <div className="rounded-none border border-white/10 bg-[#06080e] p-2.5">
                 <span className="text-slate-500 text-[10px] block mb-1 tracking-widest">DESIGNATION</span>
                 <span className="text-cyan-400 font-extrabold text-xs">CYBER_CLASS_I</span>
               </div>
-              <div className="rounded-none border border-white/10 bg-black/50 p-3">
+              <div className="rounded-none border border-white/10 bg-[#06080e] p-2.5">
                 <span className="text-slate-500 text-[10px] block mb-1 tracking-widest">STATUS</span>
                 <span className="text-emerald-400 font-extrabold text-xs">ACTIVE</span>
               </div>
@@ -155,13 +155,13 @@ const Profile = () => {
                 return (
                   <div
                     key={metric.label}
-                    className={`relative rounded-none border border-white/20 bg-[#06080e] p-5 flex flex-col justify-between overflow-hidden ${metric.borderClass}`}
+                    className={`relative rounded-none border border-white/20 bg-[#06080e] p-4 flex flex-col justify-between overflow-hidden ${metric.borderClass}`}
                   >
                     <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-                    <Icon className={`w-4 h-4 mb-3 ${metric.color}`} />
+                    <Icon className={`w-4 h-4 mb-2 ${metric.color}`} />
                     <div>
                       <p className="text-[10px] text-slate-500 tracking-widest mb-1 uppercase">{metric.label}</p>
-                      <p className={`text-2xl font-extrabold ${metric.color}`}>{metric.value}</p>
+                      <p className={`text-xl font-extrabold ${metric.color}`}>{metric.value}</p>
                     </div>
                   </div>
                 );
@@ -182,7 +182,7 @@ const Profile = () => {
             <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
             {/* Table header */}
-            <div className="p-5 border-b border-white/10 bg-[#02040a]/60 flex items-center justify-between relative z-10">
+            <div className="p-4 border-b border-white/10 bg-[#02040a]/60 flex items-center justify-between relative z-10">
               <h2 className="text-sm font-extrabold text-white tracking-widest flex items-center gap-3">
                 <Shield className="w-4 h-4 text-cyan-400" />
                 BATTLE LEDGER & CODE REVIEWS
@@ -190,7 +190,7 @@ const Profile = () => {
               <span className="text-xs text-slate-500 tracking-widest">LAST 10 ENGAGEMENTS</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-3 relative z-10" style={{ scrollbarWidth: "none" }}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 relative z-10" style={{ scrollbarWidth: "none" }}>
               {history.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-50 py-16">
                   <Activity className="w-10 h-10 mb-4" />
@@ -207,7 +207,7 @@ const Profile = () => {
                   return (
                     <div
                       key={record.id}
-                      className={`flex items-center justify-between p-4 rounded-none border bg-black/40 transition-all hover:bg-black/60 ${isWin ? "border-emerald-500/30" : isLoss ? "border-rose-500/30" : "border-white/10"}`}
+                      className={`flex items-center justify-between p-3 rounded-none border bg-black/40 transition-all hover:bg-black/60 ${isWin ? "border-emerald-500/30" : isLoss ? "border-rose-500/30" : "border-white/10"}`}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-1.5 h-12 ${isWin ? "bg-emerald-500" : isLoss ? "bg-rose-500" : "bg-slate-500"}`} />
@@ -298,11 +298,11 @@ const Profile = () => {
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="relative rounded-none border border-white/10 bg-[#06080e] p-3 flex flex-col gap-1 overflow-hidden"
+                  className="relative rounded-none border border-white/10 bg-[#06080e] p-2.5 flex flex-col gap-1 overflow-hidden"
                 >
                   <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
                   <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">{stat.label}</span>
-                  <span className={`text-lg font-extrabold font-mono ${stat.color}`}>{stat.value}</span>
+                  <span className={`text-base font-extrabold font-mono ${stat.color}`}>{stat.value}</span>
                 </div>
               ))}
             </div>

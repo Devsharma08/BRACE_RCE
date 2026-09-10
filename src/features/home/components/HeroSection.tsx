@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Terminal, Play, Swords } from 'lucide-react';
+import { hasBooted, markBooted } from '../../../utils/sessionBoot';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MATRIX DEFINITIONS — unchanged 11-row × 8-col letter templates
@@ -183,6 +184,16 @@ export const BraceRcePixelArt: React.FC = () => {
   const gridRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  // Remount safety: read + mark the boot flag exactly once per mount (even in
+  // StrictMode double-render) so the boot animation only ever plays once per
+  // tab session.
+  const bootAlreadyPlayedRef = React.useRef<boolean | null>(null);
+  if (bootAlreadyPlayedRef.current === null) {
+    bootAlreadyPlayedRef.current = hasBooted('hero-boot');
+    markBooted('hero-boot');
+  }
+  const bootAlreadyPlayed = bootAlreadyPlayedRef.current;
+
   // Refs for pointer RAF loop — zero React state updates ever
   const rafRef = React.useRef<number>(0);
   const pointerRef = React.useRef({ x: -9999, y: -9999, active: false });
@@ -197,9 +208,10 @@ export const BraceRcePixelArt: React.FC = () => {
   const isMobileRef = React.useRef(false);
   const prefersReducedRef = React.useRef(false);
 
-  // Boot state
-  const bootPhaseRef = React.useRef(0);
-  const bootDoneRef = React.useRef(false);
+  // Boot state — when the boot already played this session, treat it as done
+  // on mount so the pixel grid is fully lit and hover/glow effects work.
+  const bootPhaseRef = React.useRef(bootAlreadyPlayed ? 5 : 0);
+  const bootDoneRef = React.useRef(bootAlreadyPlayed);
 
   // Scan sweep state
   const scanActiveRef = React.useRef(false);
@@ -243,6 +255,16 @@ export const BraceRcePixelArt: React.FC = () => {
     if (prefersReducedRef.current) {
       bootDoneRef.current = true;
       bootPhaseRef.current = 5;
+      return;
+    }
+
+    // Boot animation already played this tab session — skip straight to the
+    // fully-lit state. The pointer-glow / hover loop below already sees
+    // bootDoneRef === true (set at mount) so glow works from the first frame.
+    if (bootAlreadyPlayedRef.current) {
+      bootPhaseRef.current = 5;
+      bootDoneRef.current = true;
+      measurePixelPositions();
       return;
     }
 
@@ -555,15 +577,24 @@ export const BraceRcePixelArt: React.FC = () => {
                     }`}
                     style={
                       pixel && pm
-                        ? ({
-                          '--tc': pm.baseColor,
-                          '--ts': pm.baseShadow,
-                          backgroundColor: pm.baseColor,
-                          borderColor: 'rgba(255,255,255,0.12)',
-                          boxShadow: pm.baseShadow,
-                          opacity: 0,
-                          animation: `bootPixel 0.7s cubic-bezier(0.16,1,0.3,1) ${pm.delay}ms forwards`,
-                        } as React.CSSProperties)
+                        ? (bootAlreadyPlayed
+                          ? ({
+                              '--tc': pm.baseColor,
+                              '--ts': pm.baseShadow,
+                              backgroundColor: pm.baseColor,
+                              borderColor: 'rgba(255,255,255,0.12)',
+                              boxShadow: pm.baseShadow,
+                              opacity: 1,
+                            } as React.CSSProperties)
+                          : ({
+                              '--tc': pm.baseColor,
+                              '--ts': pm.baseShadow,
+                              backgroundColor: pm.baseColor,
+                              borderColor: 'rgba(255,255,255,0.12)',
+                              boxShadow: pm.baseShadow,
+                              opacity: 0,
+                              animation: `bootPixel 0.7s cubic-bezier(0.16,1,0.3,1) ${pm.delay}ms forwards`,
+                            } as React.CSSProperties))
                         : undefined
                     }
                   />
@@ -573,31 +604,46 @@ export const BraceRcePixelArt: React.FC = () => {
           ))}
         </div>
 
-        {/* Initialization status — fades out before scan */}
-        <div
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-400/30 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
-          style={{
-            opacity: 0,
-            animation: `statusFade 0.6s ease-out 100ms forwards, statusFade 0.4s ease-in ${maxDelay + 600}ms reverse forwards`,
-          }}
-        >
-          ▸ INITIALIZING RCE CORE
-        </div>
+        {/* Status lines — boot animation only plays on first screen load per tab */}
+        {!bootAlreadyPlayed && (
+          <>
+            {/* Initialization status — fades out before scan */}
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-400/30 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
+              style={{
+                opacity: 0,
+                animation: `statusFade 0.6s ease-out 100ms forwards, statusFade 0.4s ease-in ${maxDelay + 600}ms reverse forwards`,
+              }}
+            >
+              ▸ INITIALIZING RCE CORE
+            </div>
 
-        {/* Online status — appears after boot */}
-        <div
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-300/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
-          style={{
-            opacity: 0,
-            animation: `statusFade 0.8s cubic-bezier(0.16,1,0.3,1) ${maxDelay + 1700}ms forwards`,
-          }}
-        >
-          RCE CORE // ONLINE
-        </div>
+            {/* Online status — appears after boot */}
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-300/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
+              style={{
+                opacity: 0,
+                animation: `statusFade 0.8s cubic-bezier(0.16,1,0.3,1) ${maxDelay + 1700}ms forwards`,
+              }}
+            >
+              RCE CORE // ONLINE
+            </div>
+          </>
+        )}
+        {/* Static online status on return visits — no re-boot */}
+        {bootAlreadyPlayed && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-300/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap">
+            RCE CORE // ONLINE
+          </div>
+        )}
       </div>
 
-      {/* Description subtext */}
-      <div className="mt-10 flex flex-col items-center text-center max-w-2xl px-4 animate-desc-fade opacity-0">
+      {/* Description subtext — no delayed fade on return visits */}
+      <div
+        className={`mt-10 flex flex-col items-center text-center max-w-2xl px-4 ${
+          bootAlreadyPlayed ? "" : "animate-desc-fade opacity-0"
+        }`}
+      >
         <h2 className="text-xs sm:text-sm font-bold tracking-[0.35em] text-cyan-400/90 uppercase mb-3.5 select-none flex flex-wrap items-center justify-center gap-2">
           <span>// CRX // REMOTE_CODE_EXECUTION_IDE</span>
           <span className="px-1.5 py-0.5 border border-cyan-500/25 text-[9px] font-bold tracking-wider rounded-none uppercase text-amber-500 bg-cyan-950/15 select-none">
