@@ -62,8 +62,8 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code exe
 - **Primitives & Strings**: Int, Float, Double, Boolean (`true`/`false`), and Escaped String parameters.
 
 ### 3. 🧪 DB-Driven Automated Test Infrastructure
-- **Full Database Coverage**: Direct integration with PostgreSQL via Prisma ORM querying all **248 stored problems**.
-- **Automated Signature Suite (`pnpm test:db`)**: Pre-flight test runner verifying code wrapper synthesis for **1,240 problem signatures** (248 problems × 5 languages) with **100% pass rate**.
+- **Full Database Coverage**: Direct integration with PostgreSQL via Prisma ORM querying all **186 stored seed problems**.
+- **Automated Signature Suite (`pnpm test:db`)**: Pre-flight test runner verifying code wrapper synthesis per problem (problems × 5 languages) on demand.
 - **End-to-End Benchmark Execution Suite (`test_all_db_actual_responses.ts`)**: Runs actual problem solutions against real database test case inputs and expected outputs.
 
 ### 4. ⚔️ Real-Time Multiplayer Matchmaking & Battle Arena
@@ -83,6 +83,7 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code exe
   - Compilation logs, Execution Time & Memory Usage metrics.
   - Multi-test-case runner tabs with individual test case execution support.
   - Diagnostic warnings for output mismatches and tracebacks.
+- **Terminal Loader**: Full-databank `SYNCING PROBLEM DATABANK…` overlay on initial fetch, skeleton tabs/rows while room problems load.
 
 ### 6. 📝 Persistent Global Scratchpad Notes Panel
 - Side-drawer scratchpad notes panel (`NotesPanel`) accessible across all battle arenas and workspaces.
@@ -109,10 +110,14 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code exe
 - [x] **Replay Theater**: Chronological submission timeline with click-to-step replay in the same panel under the battle arena.
 
 ### 5. 🐳 Containerized Docker Sandbox Isolation
-- [x] **Docker Execution Containers**: Production path containerized via root `Dockerfile` + `docker-compose.yml` (`app` + `postgres:16-alpine` + `piston` engine w/ `/tmp` tmpfs isolation); local dev uses guarded temp-dir runner (timeout + 10MB caps, sanitized errors). Per-submission cgroup quotas remain future work.
+- **Guarded Execution Runners**: Local dev runs guarded temp-dir runners (timeout + 10MB caps, sanitized errors); production deploys via root `Dockerfile` + `docker-compose.yml` (`app` + `postgres:16-alpine` + execution services).
 
 ### 6. 🎵 Audio & Cyberpunk Sound FX System
 - [x] **Battle Sound Effects**: Zero-asset WebAudio synth (`src/utils/battleSounds.ts` - tick, match-start, test-pass, submit-success, surrender) wired into `Battle.tsx` with persisted mute toggle (`SoundToggle`).
+
+### 7. ✅ Session UX Hardening (Live)
+- **One-Shot Boots**: BRACE RCE hero boot and leaderboard stagger reveal animate once per browser-tab session (`src/utils/sessionBoot.ts`); hover glow effects stay live on return visits.
+- **Guarded Auth Routes**: Logged-in users visiting `/signin` / `/signup` are redirected to `/dashboard` (with skeleton while auth resolves).
 
 ---
 
