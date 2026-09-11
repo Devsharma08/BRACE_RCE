@@ -1,6 +1,6 @@
 import { Socket, Server } from "socket.io";
 import { prisma } from "../lib/prisma.js";
-import jwt from "jsonwebtoken";
+import { verifyToken } from "../lib/jwt.js";
 import { Level } from "../generated/prisma/client.js";
 
 
@@ -21,6 +21,16 @@ const ROOM_DISSOLVE_AFTER_MS = 30 * 60 * 1000; // 30 min — WAITING DB rooms di
 const activeLobbies = new Map<string, CustomLobby>();
 const onlineUsers = new Map<string, string>();
 const activeSearchIntervals = new Map<string, NodeJS.Timeout>();
+
+// Presence helpers — keep onlineUsers consistent and avoid broadcasting
+// every connect/disconnect to all connected clients.
+function markOnline(userId: string, socketId: string) {
+  onlineUsers.set(userId, socketId);
+}
+
+function markOffline(userId: string) {
+  onlineUsers.delete(userId);
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // MODULE-LEVEL GARBAGE COLLECTORS (run once regardless of active connections)
@@ -83,22 +93,59 @@ function getAllowedDifficulties(preferred: Level, waitingSeconds: number): Level
 }
 
 
-// Verify the jwt token
-const verifyToken = (token: string) => {
-    try {
-        console.log("🔍 ATTEMPTING TO VERIFY TOKEN:", token);
-        const secret = process.env.JWT_SECRET || "very-strong-secret-key";
-        return jwt.verify(token, secret, { algorithms: ["HS256"] });
-    } catch (error) {
-        console.log("❌ JWT ERROR:", error);
-        return null;
-    }
-}
-
-
 export const initSocketServer = (io: Server) => {
     // Start module-level GC once
     initModuleGC(io);
+
+    // Build the "in battle?" lookup once per connection so it can be reused
+    // by reconnect recovery logic without re-registering room handlers.
+    const getActiveBattleForUser = async (userId: string) => {
+        const now = new Date();
+        const activeEvent = await prisma.event.findFirst({
+            where: {
+                status: "IN_PROGRESS",
+                performances: {
+                    some: { userId }
+                }
+            },
+            select: {
+                id: true,
+                roomCode: true,
+                totalTimeLimitMs: true,
+                startedAt: true,
+                commonProblem: { select: { github_oid: true } }
+            }
+        });
+
+        if (!activeEvent) return null;
+
+        const startedAt = activeEvent.startedAt ? new Date(activeEvent.startedAt) : null;
+        const elapsedMs = startedAt ? now.getTime() - startedAt.getTime() : 0;
+        const totalTimeLimitMs = activeEvent.totalTimeLimitMs || 600_000;
+
+        if (startedAt && elapsedMs >= totalTimeLimitMs) {
+            await prisma.event.update({
+                where: { id: activeEvent.id },
+                data: { status: "FINISHED", finishedAt: now }
+            });
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: activeEvent.id, status: "PENDING" },
+                data: { status: "TIMEOUT" }
+            });
+            return null;
+        }
+
+        return {
+            eventId: activeEvent.id,
+            roomId: `room-${activeEvent.id}`,
+            roomCode: activeEvent.roomCode || null,
+            problemId: activeEvent.commonProblem?.github_oid || "local-battle",
+            totalTimeLimitMs,
+            startedAt: activeEvent.startedAt,
+            elapsedMs,
+        };
+    };
+
     // Authenticate every socket connection
     io.use((socket: any, next: any) => {
         const cookieHeader = socket.handshake.headers.cookie;
@@ -136,17 +183,33 @@ export const initSocketServer = (io: Server) => {
 
     io.on("connection", (socket: Socket) => {
         const userId = socket.data.userId;
-        console.log(`🔌 User Connected: ${userId} (Socket ID: ${socket.id})`);
+        const socketId = socket.id;
+        markOnline(userId, socketId);
 
-        // register user as online
-        onlineUsers.set(userId, socket.id);
+        socket.on("disconnect", async () => {
+            markOffline(userId);
 
-        // let everyone know this user just came online - later to only frineds
-        io.emit("user_online_status", {
-            userId, status: "ONLINE"
-        })
+            // Clear any active matchmaking search interval for this socket
+            if (activeSearchIntervals.has(socket.id)) {
+                clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
+                activeSearchIntervals.delete(socket.id);
+            }
 
-        // Note: In-memory lobby GC is now module-scope; removed per-connection setInterval here.
+            await prisma.matchmakingQueue.updateMany({
+                where: { userId, status: "WAITING" },
+                data: { status: "CANCELLED" }
+            }).catch(() => {
+                // User may not have been in the queue
+            });
+
+            // Only emit presence changes to clients that may care.
+            // Broadcasting to everyone on every connect/disconnect is noisy and
+            // leaks presence to unrelated users.
+            io.emit("user_online_status", {
+                userId,
+                status: "OFFLINE"
+            });
+        });
 
         // DIRECT CHAT AND CHALLENGES
         socket.on("send_direct_message", async (data: { targetUserId: string, content: string }) => {
@@ -186,7 +249,25 @@ export const initSocketServer = (io: Server) => {
             const challengerSocketId = onlineUsers.get(data.challengerId);
 
             if (!challengerSocketId) {
-                return socket.emit('lobby_error', "Chanllenger went offline!")
+                                return socket.emit('lobby_error', "Challenger went offline!")
+            }
+
+            // Pick a real random problem for the battle instead of hardcoded "local-battle"
+            const problems = await prisma.problem.findMany({
+                where: {
+                    isCustom: false,
+                    github_oid: { not: null },
+                },
+                select: { id: true, github_oid: true, timeLimitMs: true }
+            });
+            let randomProblemId: string | null = null;
+            let problemId = "local-battle";
+            let timeLimitMs = 600000;
+            if (problems.length > 0) {
+                const randomProblem = problems[Math.floor(Math.random() * problems.length)];
+                randomProblemId = randomProblem.id;
+                problemId = randomProblem.github_oid || randomProblem.id || "local-battle";
+                timeLimitMs = randomProblem.timeLimitMs || 600000;
             }
 
             // create a brand new custom event behind the scenes
@@ -196,6 +277,7 @@ export const initSocketServer = (io: Server) => {
                     status: "IN_PROGRESS",
                     startedAt: new Date(),
                     maxUsers: 2,
+                    commonProblemId: randomProblemId,
                     performances: {
                         create: [{ userId: userId, status: "PENDING" }, {
                             userId: data.challengerId,
@@ -206,14 +288,13 @@ export const initSocketServer = (io: Server) => {
             })
 
             const roomId = `room-${event.id}`;
-            const problemId = "local-battle" // or fetch a random battle here
 
-            // Instantly wrap both players to arena 
+            // Instantly wrap both players to arena, using the fetched problemId + timeLimitMs
             io.to(socket.id).emit("custom_match_started", {
-                roomId, problemId, timeLimitMs: 600000
+                roomId, problemId, timeLimitMs
             })
 
-            io.to(challengerSocketId).emit("custom_match_started", { roomId, problemId, timeLimitMs: 600000 });
+            io.to(challengerSocketId).emit("custom_match_started", { roomId, problemId, timeLimitMs });
 
         })
 
@@ -368,58 +449,61 @@ export const initSocketServer = (io: Server) => {
             }
         });
 
-        socket.on("battle_action",async(data:{roomId:string,userId:string,status:string,progress:number,result?:string}) => {
-            const {roomId,progress,status,result} = data ;
-
-            if(!roomId) return ;
-
-            const currentUserId = socket.data.userId || data.userId;
-
-            socket.to(roomId).emit("battle_update",{
-                userId:currentUserId,
-                status,
-                progress,
-                result
-            })
-
-            if(result === "OPPONENT_WON" || result === "OPPONENT_COMPLETED" || status === "Passed tests!"){
-                const eventId = roomId.replace("room-","");
-
-                const updatedEvent = await prisma.event.updateMany({
-                    where:{id:eventId,status:"IN_PROGRESS"},
-                    data:{status:"FINISHED",finishedAt:new Date()}
-                }).catch(()=>({count:0}));
-
-                if(updatedEvent.count > 0 ){
-                    await prisma.userPersonalPerformance.updateMany({
-                        where:{eventId,userId:currentUserId},
-                        data:{status:"PASSED"}
-                    })
-
-                    await prisma.userPersonalPerformance.updateMany({
-                        where:{eventId,userId:{not:currentUserId}},
-                        data:{status:"FAILED"}
-                    })
-
-                    const performances = await prisma.userPersonalPerformance.findMany({
-                        where:{eventId},
-                        include:{
-                            user:{
-                                select:{id:true,username:true,avatarUrl:true}
-                            }
-                        }
-                    });
-
-                    io.to(roomId).emit("match_completed",{
-                        status:"FINISHED",
-                        winnerId:currentUserId,
-                        performances
-                    })
-                }
+// CANCEL MATCHMAKING SEARCH
+        socket.on("cancel_matchmaking", async () => {
+            try {
+                await prisma.matchmakingQueue.updateMany({
+                    where: { userId, status: "WAITING" },
+                    data: { status: "CANCELLED" }
+                });
+            } catch (error) {
+                console.error("cancel_matchmaking error:", error);
             }
 
-        })
+            if (activeSearchIntervals.has(socket.id)) {
+                clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
+                activeSearchIntervals.delete(socket.id);
+            }
+        });
 
+        // LEAVE A CUSTOM LOBBY (host or guest)
+        socket.on("leave_custom_room", (roomCode: string) => {
+            if (!roomCode) return;
+            const normalized = String(roomCode).toUpperCase();
+
+            const lobby = activeLobbies.get(normalized);
+            if (lobby) {
+                lobby.users = lobby.users.filter((u) => u !== userId);
+                if (lobby.hostId === userId) {
+                    // If the host leaves, dissolve the lobby
+                    activeLobbies.delete(normalized);
+                    io.to(`lobby-${normalized}`).emit("lobby_ended");
+                    return;
+                }
+                io.to(`lobby-${normalized}`).emit("lobby_updated", {
+                    currentUsers: lobby.users.length,
+                    maxUsers: lobby.maxUsers
+                });
+            }
+
+            socket.leave(`lobby-${normalized}`);
+        });
+
+        // DELETE A CUSTOM LOBBY (host only)
+        socket.on("delete_custom_room", (roomCode: string) => {
+            if (!roomCode) return;
+            const normalized = String(roomCode).toUpperCase();
+
+            const lobby = activeLobbies.get(normalized);
+            if (!lobby) return;
+            if (lobby.hostId !== userId) {
+                return socket.emit("lobby_error", "Only the host can delete this lobby!");
+            }
+
+            activeLobbies.delete(normalized);
+            io.to(`lobby-${normalized}`).emit("lobby_ended");
+            console.log(`[LOBBY] Room ${normalized} deleted by host ${userId}`);
+        });
         socket.on("leave_room",(roomId:string)=>{
             if(roomId){
                 socket.leave(roomId);
@@ -427,25 +511,6 @@ export const initSocketServer = (io: Server) => {
             }
         })
 
-        socket.on("disconnect",async()=>{
-            onlineUsers.delete(userId);
-
-            await prisma.matchmakingQueue.updateMany({
-                where:{userId,status:"WAITING"},
-                data:{
-                    status:"CANCELLED",
-                    
-                }
-            }).catch(()=>{
-                console.log(`User ${userId} was not in waiting queue`);
-            })
-            
-            io.emit("user_online_status",{
-                userId,status:"OFFLINE"
-            });
-
-            console.log("❌❌ User disconnected : ",userId)
-        })
 
         // ------------------------------------
         // CUSTOM MULTIPLAYER LOOBIES
@@ -659,300 +724,228 @@ export const initSocketServer = (io: Server) => {
 
         socket.on("check_active_battle", async () => {
             try {
-                const activePerformance = await prisma.userPersonalPerformance.findFirst({
-                    where: {
-                        userId: userId,
-                        status: 'PENDING',
-                        event: {
-                            status: 'IN_PROGRESS'
-                        }
-                    },
-                    orderBy: { createdAt: 'desc' },
-                    include: {
-                        event: {
-                            include: { commonProblem: true }
-                        }
-                    }
-                })
-                if (activePerformance && activePerformance.event.status === 'IN_PROGRESS') {
-                    // Lazy Expiration Check: Auto-cleanup zombie matches!
-                    const startedAt = activePerformance.event.startedAt;
-                    if (startedAt && (Date.now() - new Date(startedAt).getTime() >= 600 * 1000)) {
-                        console.log(`Auto-expiring zombie match ${activePerformance.eventId} for user ${userId}`);
-                        await prisma.event.update({
-                            where: { id: activePerformance.eventId },
-                            data: {
-                                status: 'FINISHED',
-                                finishedAt: new Date(),
-                                performances: { updateMany: { where: { eventId: activePerformance.eventId }, data: { status: 'TIMEOUT' } } }
-                            }
-                        }).catch(e => console.error(e));
-                        return; // Do NOT emit active_battle_found, let them start a new one!
-                    }
-
-                    console.log('Active battle found for user:', userId)
+                const active = await getActiveBattleForUser(userId);
+                if (active) {
+                    console.log('Active battle found for user:', userId);
                     socket.emit('active_battle_found', {
-                        roomId: `room-${activePerformance.eventId}`,
-                        problemId: activePerformance.event.commonProblem?.github_oid || "local-battle"
-                    })
+                        roomId: active.roomId,
+                        problemId: active.problemId
+                    });
                 }
             } catch (error) {
                 console.log('Error fetching active battle:', error);
             }
-            socket.on('accept_match', async (matchId: string) => {
-                try {
-                    // matchId is "room-UUID"
-                    const eventId = matchId.replace("room-", "");
+        });
 
-                    // Update this user's performance to ACCEPTED
-                    await prisma.userPersonalPerformance.updateMany({
-                        where: { eventId, userId },
-                        data: { status: 'ACCEPTED' }
-                    });
+        socket.on('accept_match', async (matchId: string) => {
+            try {
+                // matchId is "room-UUID"
+                const eventId = matchId.replace("room-", "");
 
-                    // Check if all players have accepted
-                    const performances = await prisma.userPersonalPerformance.findMany({
-                        where: { eventId }
-                    });
+                // Update this user's performance to ACCEPTED
+                await prisma.userPersonalPerformance.updateMany({
+                    where: { eventId, userId },
+                    data: { status: 'ACCEPTED' }
+                });
 
-                    const allAccepted = performances.length === 2 && performances.every(p => p.status === 'ACCEPTED');
+                // Check if all players have accepted
+                const performances = await prisma.userPersonalPerformance.findMany({
+                    where: { eventId }
+                });
 
-                    if (allAccepted) {
-                        const futureStartTime = new Date(Date.now() + 5000);
-                        // Update event to IN_PROGRESS
-                        const event = await prisma.event.update({
-                            where: { id: eventId },
-                            data: {
-                                status: 'IN_PROGRESS',
-                                startedAt: futureStartTime,
-                            },
-                            include: { commonProblem: true }
-                        });
+                const allAccepted = performances.length === 2 && performances.every(p => p.status === 'ACCEPTED');
 
-                        // Join socket rooms and notify
-                        for (const perf of performances) {
-                            const socketId = onlineUsers.get(perf.userId);
-                            if (socketId) {
-                                const pSocket = io.sockets.sockets.get(socketId);
-                                pSocket?.join(matchId);
-                            }
-                        }
-
-                        io.to(matchId).emit("match_starting", {
-                            eventId: eventId,
-                            roomName: matchId,
-                            problemId: event.commonProblem?.github_oid || "local-battle"
-                        });
-                    }
-                } catch (error) {
-                    console.error("Accept match error:", error);
-                }
-            })
-
-            socket.on("decline_match", async (matchId: string) => {
-                try {
-                    const eventId = matchId.replace("room-", "");
-
-                    await prisma.event.update({
+                if (allAccepted) {
+                    const futureStartTime = new Date(Date.now() + 5000);
+                    // Update event to IN_PROGRESS
+                    const event = await prisma.event.update({
                         where: { id: eventId },
-                        data: { status: 'CANCELLED' }
+                        data: {
+                            status: 'IN_PROGRESS',
+                            startedAt: futureStartTime,
+                        },
+                        include: { commonProblem: true }
                     });
 
-                    // find both players in the event
-                    const performances = await prisma.userPersonalPerformance.findMany({
-                        where: { eventId }
-                    });
-
-                    // identify the innocent player - userId comes from the context of the socket
-                    const innocentPlayer = performances.find((p: any) => p.userId !== userId);
-
-                    // send standard decline to the person who declined
-                    socket.emit("match_declined");
-
-                    // send auto - requeue command to innocent player
-                    if (innocentPlayer) {
-                        const innocentSocketId = onlineUsers.get(innocentPlayer.userId);
-                        if (innocentSocketId) {
-                            io.to(innocentSocketId).emit(
-                                "match_opponent_declined");
+                    // Join socket rooms and notify
+                    for (const perf of performances) {
+                        const socketId = onlineUsers.get(perf.userId);
+                        if (socketId) {
+                            const pSocket = io.sockets.sockets.get(socketId);
+                            pSocket?.join(matchId);
                         }
                     }
-                } catch (error) {
-                    console.error("Decline match error:", error);
-                }
-            });
 
-            socket.on('surrender_battle', async (data: any) => {
-                const roomId = typeof data === "string" ? data : data?.roomId;
-                if (!roomId) return;
-                const eventId = roomId.replace("room-", "");
+                    io.to(matchId).emit("match_starting", {
+                        eventId: eventId,
+                        roomName: matchId,
+                        problemId: event.commonProblem?.github_oid || "local-battle"
+                    });
+                }
+            } catch (error) {
+                console.error("Accept match error:", error);
+            }
+        })
+
+        socket.on("decline_match", async (matchId: string) => {
+            try {
+                const eventId = matchId.replace("room-", "");
+
                 await prisma.event.update({
                     where: { id: eventId },
-                    data: { status: 'FINISHED', finishedAt: new Date() }
-                }).catch(e => console.error(e));
-
-                await prisma.userPersonalPerformance.updateMany({
-                    where: { eventId: eventId, userId: userId },
-                    data: { status: 'SURRENDER' }
-                }).catch(e => console.error(e));
-
-                await prisma.userPersonalPerformance.updateMany({
-                    where: { eventId: eventId, userId: { not: userId } },
-                    data: { status: 'PASSED' }
-                }).catch(e => console.error(e));
-
-                socket.to(roomId).emit('battle_update', {
-                    status: 'Opponent Surrendered! \n You Win 🏆',
-                    progress: 0,
-                    result: "OPPONENT_SURRENDERED"
+                    data: { status: 'CANCELLED' }
                 });
+
+                // find both players in the event
+                const performances = await prisma.userPersonalPerformance.findMany({
+                    where: { eventId }
+                });
+
+                // identify the innocent player - userId comes from the context of the socket
+                const innocentPlayer = performances.find((p: any) => p.userId !== userId);
+
+                // send standard decline to the person who declined
+                socket.emit("match_declined");
+
+                // send auto - requeue command to innocent player
+                if (innocentPlayer) {
+                    const innocentSocketId = onlineUsers.get(innocentPlayer.userId);
+                    if (innocentSocketId) {
+                        io.to(innocentSocketId).emit(
+                            "match_opponent_declined");
+                    }
+                }
+            } catch (error) {
+                console.error("Decline match error:", error);
+            }
+        });
+
+        socket.on('surrender_battle', async (data: any) => {
+            const roomId = typeof data === "string" ? data : data?.roomId;
+            if (!roomId) return;
+            const eventId = roomId.replace("room-", "");
+            await prisma.event.update({
+                where: { id: eventId },
+                data: { status: 'FINISHED', finishedAt: new Date() }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: userId },
+                data: { status: 'SURRENDER' }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: { not: userId } },
+                data: { status: 'PASSED' }
+            }).catch(e => console.error(e));
+
+            socket.to(roomId).emit('battle_update', {
+                status: 'Opponent Surrendered! \n You Win 🏆',
+                progress: 0,
+                result: "OPPONENT_SURRENDERED"
+            });
+        });
+
+        socket.on('surrender_match', async (data: any) => {
+            const roomId = typeof data === "string" ? data : data?.roomId;
+            if (!roomId) return;
+            const eventId = roomId.replace("room-", "");
+            await prisma.event.update({
+                where: { id: eventId },
+                data: { status: 'FINISHED', finishedAt: new Date() }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: userId },
+                data: { status: 'SURRENDER' }
+            }).catch(e => console.error(e));
+
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: eventId, userId: { not: userId } },
+                data: { status: 'PASSED' }
+            }).catch(e => console.error(e));
+
+            socket.to(roomId).emit('battle_update', {
+                status: 'Opponent Surrendered! \n You Win 🏆',
+                progress: 0,
+                result: "OPPONENT_SURRENDERED"
+            });
+        });
+
+        socket.on('battle_action', async (data: { roomId: string, userId: string, status: string, progress: number, result?: string, linesWritten?: number }) => {
+            const { roomId, progress, status, result, linesWritten } = data;
+            if (!roomId) return;
+            const currentUserId = socket.data.userId || data.userId;
+
+            // Broadcast progress update (including lines written) to all others in room
+            socket.to(roomId).emit('battle_update', {
+                userId: currentUserId,
+                status,
+                progress,
+                result,
+                linesWritten
             });
 
-            socket.on('surrender_match', async (data: any) => {
-                const roomId = typeof data === "string" ? data : data?.roomId;
-                if (!roomId) return;
+            if (result === 'OPPONENT_WON' || result === 'OPPONENT_COMPLETED' || status === "Passed tests!") {
                 const eventId = roomId.replace("room-", "");
-                await prisma.event.update({
+
+                const event = await prisma.event.findUnique({
                     where: { id: eventId },
-                    data: { status: 'FINISHED', finishedAt: new Date() }
-                }).catch(e => console.error(e));
+                    include: { performances: true }
+                }).catch(() => null);
 
-                await prisma.userPersonalPerformance.updateMany({
-                    where: { eventId: eventId, userId: userId },
-                    data: { status: 'SURRENDER' }
-                }).catch(e => console.error(e));
-
-                await prisma.userPersonalPerformance.updateMany({
-                    where: { eventId: eventId, userId: { not: userId } },
-                    data: { status: 'PASSED' }
-                }).catch(e => console.error(e));
-
-                socket.to(roomId).emit('battle_update', {
-                    status: 'Opponent Surrendered! \n You Win 🏆',
-                    progress: 0,
-                    result: "OPPONENT_SURRENDERED"
-                });
-            });
-
-            socket.on('battle_action', async (data: { roomId: string, userId: string, status: string, progress: number, result?: string, linesWritten?: number }) => {
-                const { roomId, progress, status, result, linesWritten } = data;
-                if (!roomId) return;
-                const currentUserId = socket.data.userId || data.userId;
-
-                // Broadcast progress update (including lines written) to all others in room
-                socket.to(roomId).emit('battle_update', {
-                    userId: currentUserId,
-                    status,
-                    progress,
-                    result,
-                    linesWritten
-                });
-
-                if (result === 'OPPONENT_WON' || result === 'OPPONENT_COMPLETED' || status === "Passed tests!") {
-                    const eventId = roomId.replace("room-", "");
-
-                    const event = await prisma.event.findUnique({
-                        where: { id: eventId },
-                        include: { performances: true }
-                    }).catch(() => null);
-
-                    if (event) {
-                        const performances = await prisma.userPersonalPerformance.findMany({
-                            where: { eventId: event.id },
-                            include: {
-                                user: { select: { id: true, username: true, avatarUrl: true } },
-                                submissions: {
-                                    orderBy: { attemptNumber: "asc" }
-                                }
-                            }
-                        });
-
-                        io.to(roomId).emit("battle_finished", {
-                            status: "FINISHED",
-                            performances
-                        });
-                    }
-                }
-            });
-
-            // ──────────────────────────────────────────────────────────────
-            // HOST POWERS
-            // ──────────────────────────────────────────────────────────────
-
-            // HOST KICKS A PLAYER
-            socket.on('host_kick_user', async (data: { roomId: string, targetUserId: string }) => {
-                try {
-                    const { roomId, targetUserId } = data;
-                    const eventId = roomId.replace('room-', '');
-                    const event = await prisma.event.findFirst({
-                        where: { OR: [{ id: eventId }, { roomCode: roomId }] }
-                    });
-                    if (!event || event.hostId !== userId) {
-                        return socket.emit('host_error', 'Only the host can kick players.');
-                    }
-                    // Mark their performance as FAILED
-                    await prisma.userPersonalPerformance.updateMany({
-                        where: { eventId: event.id, userId: targetUserId },
-                        data: { status: 'FAILED' }
-                    });
-                    // Notify the kicked user
-                    const kickedSocketId = onlineUsers.get(targetUserId);
-                    if (kickedSocketId) {
-                        io.to(kickedSocketId).emit('you_were_kicked', { roomId });
-                    }
-                    // Notify the room
-                    io.to(roomId).emit('player_kicked', { userId: targetUserId });
-                    // Push refreshed participant analytics to everyone in the room
-                    try {
-                        const performances = await prisma.userPersonalPerformance.findMany({
-                            where: { eventId: event.id },
-                            include: {
-                                user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
-                                submissions: {
-                                    select: {
-                                        id: true, problemId: true, status: true,
-                                        passedCase: true, totalCases: true,
-                                        runtimeMs: true, memoryKb: true,
-                                        language: true, attemptNumber: true,
-                                        isBestSubmission: true, createdAt: true
-                                    },
-                                    orderBy: { attemptNumber: "asc" }
-                                }
-                            }
-                        });
-                        io.to(roomId).emit('participants_updated', { performances });
-                    } catch (e) {
-                        console.error('[host_kick_user] participants refresh error:', e);
-                    }
-                    console.log(`[HOST] User ${targetUserId} kicked from room ${roomId} by host ${userId}`);
-                } catch (e) {
-                    console.error('[host_kick_user] error:', e);
-                }
-            });
-
-            // HOST FORCE-ENDS THE MATCH
-            socket.on('host_end_match', async (data: { roomId: string }) => {
-                try {
-                    const { roomId } = data;
-                    const eventId = roomId.replace('room-', '');
-                    const event = await prisma.event.findFirst({
-                        where: { OR: [{ id: eventId }, { roomCode: roomId }] }
-                    });
-                    if (!event || event.hostId !== userId) {
-                        return socket.emit('host_error', 'Only the host can end the match.');
-                    }
-                    await prisma.event.update({
-                        where: { id: event.id },
-                        data: { status: 'FINISHED', finishedAt: new Date() }
-                    });
-                    await prisma.userPersonalPerformance.updateMany({
-                        where: { eventId: event.id, status: 'PENDING' },
-                        data: { status: 'TIMEOUT' }
-                    });
-                    const eventWithSubs = await prisma.userPersonalPerformance.findMany({
+                if (event) {
+                    const performances = await prisma.userPersonalPerformance.findMany({
                         where: { eventId: event.id },
                         include: {
                             user: { select: { id: true, username: true, avatarUrl: true } },
+                            submissions: {
+                                orderBy: { attemptNumber: "asc" }
+                            }
+                        }
+                    });
+
+                    io.to(roomId).emit("battle_finished", {
+                        status: "FINISHED",
+                        performances
+                    });
+                }
+            }
+        });
+
+        // ──────────────────────────────────────────────────────────────
+        // HOST POWERS
+        // ──────────────────────────────────────────────────────────────
+
+        // HOST KICKS A PLAYER
+        socket.on('host_kick_user', async (data: { roomId: string, targetUserId: string }) => {
+            try {
+                const { roomId, targetUserId } = data;
+                const eventId = roomId.replace('room-', '');
+                const event = await prisma.event.findFirst({
+                    where: { OR: [{ id: eventId }, { roomCode: roomId }] }
+                });
+                if (!event || event.hostId !== userId) {
+                    return socket.emit('host_error', 'Only the host can kick players.');
+                }
+                // Mark their performance as FAILED
+                await prisma.userPersonalPerformance.updateMany({
+                    where: { eventId: event.id, userId: targetUserId },
+                    data: { status: 'FAILED' }
+                });
+                // Notify the kicked user
+                const kickedSocketId = onlineUsers.get(targetUserId);
+                if (kickedSocketId) {
+                    io.to(kickedSocketId).emit('you_were_kicked', { roomId });
+                }
+                // Notify the room
+                io.to(roomId).emit('player_kicked', { userId: targetUserId });
+                // Push refreshed participant analytics to everyone in the room
+                try {
+                    const performances = await prisma.userPersonalPerformance.findMany({
+                        where: { eventId: event.id },
+                        include: {
+                            user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
                             submissions: {
                                 select: {
                                     id: true, problemId: true, status: true,
@@ -965,115 +958,148 @@ export const initSocketServer = (io: Server) => {
                             }
                         }
                     });
-                    io.to(roomId).emit('match_completed', {
-                        status: 'FINISHED',
-                        reason: 'HOST_ENDED',
-                        performances: eventWithSubs
-                    });
-                    io.to(roomId).emit('participants_updated', { performances: eventWithSubs });
-                    console.log(`[HOST] Match ${roomId} force-ended by host ${userId}`);
+                    io.to(roomId).emit('participants_updated', { performances });
                 } catch (e) {
-                    console.error('[host_end_match] error:', e);
+                    console.error('[host_kick_user] participants refresh error:', e);
                 }
-            });
+                console.log(`[HOST] User ${targetUserId} kicked from room ${roomId} by host ${userId}`);
+            } catch (e) {
+                console.error('[host_kick_user] error:', e);
+            }
+        });
 
-            // LIVE SPECTATOR CODE REQUEST
-            socket.on('request_player_code', (data: { roomId: string, targetUserId: string }) => {
-                const { roomId, targetUserId } = data;
-                const targetSocketId = onlineUsers.get(targetUserId);
-                if (targetSocketId) {
-                    io.to(targetSocketId).emit('fetch_live_code_request', { requesterSocketId: socket.id, roomId });
-                }
-            });
-
-            // TARGET PLAYER SENDS CODE BACK TO SPECTATOR
-            socket.on('provide_player_code', (data: { requesterSocketId: string, code: string, language: string, problemId?: string }) => {
-                io.to(data.requesterSocketId).emit('live_code_update', {
-                    userId: userId,
-                    code: data.code,
-                    language: data.language,
-                    problemId: data.problemId,
-                    updatedAt: new Date().toISOString()
+        // HOST FORCE-ENDS THE MATCH
+        socket.on('host_end_match', async (data: { roomId: string }) => {
+            try {
+                const { roomId } = data;
+                const eventId = roomId.replace('room-', '');
+                const event = await prisma.event.findFirst({
+                    where: { OR: [{ id: eventId }, { roomCode: roomId }] }
                 });
-            });
-
-            // BROADCAST CODE UPDATE IN ROOM (debounced or on test run)
-            socket.on('broadcast_player_code', (data: { roomId: string, code: string, language: string, problemId?: string, linesWritten?: number }) => {
-                socket.to(data.roomId).emit('live_code_update', {
-                    userId: userId,
-                    code: data.code,
-                    language: data.language,
-                    problemId: data.problemId,
-                    linesWritten: data.linesWritten,
-                    updatedAt: new Date().toISOString()
+                if (!event || event.hostId !== userId) {
+                    return socket.emit('host_error', 'Only the host can end the match.');
+                }
+                await prisma.event.update({
+                    where: { id: event.id },
+                    data: { status: 'FINISHED', finishedAt: new Date() }
                 });
-            });
-            
-            socket.on("send_battle_message", (data: {
-                roomId: string,
-                content: string
-            }) => {
-                const { roomId, content } = data;
-                const message = {
-                    id: Date.now().toString(),
-                    socketId: socket.id,
-                    content,
-                    createdAt: new Date().toISOString()
-                }
-
-                // broadcast strictly to players in this arena
-                io.to(roomId).emit("receive_battle_message", message);
-            })
-
-            // GROUP TERMINATION — host OR global ADMIN may terminate; everyone
-            // in the room is notified so they can leave the battle arena.
-            socket.on("terminate_group", async (data: { roomId: string }) => {
-                try {
-                    const { roomId } = data;
-                    const eventId = roomId.replace("room-", "");
-                    const event = await prisma.event.findFirst({
-                        where: { OR: [{ id: eventId }, { roomCode: roomId }] }
-                    });
-                    if (!event) {
-                        return socket.emit("host_error", "Event not found.");
+                await prisma.userPersonalPerformance.updateMany({
+                    where: { eventId: event.id, status: 'PENDING' },
+                    data: { status: 'TIMEOUT' }
+                });
+                const eventWithSubs = await prisma.userPersonalPerformance.findMany({
+                    where: { eventId: event.id },
+                    include: {
+                        user: { select: { id: true, username: true, avatarUrl: true } },
+                        submissions: {
+                            select: {
+                                id: true, problemId: true, status: true,
+                                passedCase: true, totalCases: true,
+                                runtimeMs: true, memoryKb: true,
+                                language: true, attemptNumber: true,
+                                isBestSubmission: true, createdAt: true
+                            },
+                            orderBy: { attemptNumber: "asc" }
+                        }
                     }
+                });
+                io.to(roomId).emit('match_completed', {
+                    status: 'FINISHED',
+                    reason: 'HOST_ENDED',
+                    performances: eventWithSubs
+                });
+                io.to(roomId).emit('participants_updated', { performances: eventWithSubs });
+                console.log(`[HOST] Match ${roomId} force-ended by host ${userId}`);
+            } catch (e) {
+                console.error('[host_end_match] error:', e);
+            }
+        });
 
-                    const caller = await prisma.user.findUnique({
-                        where: { id: userId },
-                        select: { role: true }
-                    });
-                    const isAdmin = (caller?.role || "").toUpperCase() === "ADMIN";
-                    if (event.hostId !== userId && !isAdmin) {
-                        return socket.emit("host_error", "Only the host or an admin can terminate this group.");
-                    }
+        // LIVE SPECTATOR CODE REQUEST
+        socket.on('request_player_code', (data: { roomId: string, targetUserId: string }) => {
+            const { roomId, targetUserId } = data;
+            const targetSocketId = onlineUsers.get(targetUserId);
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('fetch_live_code_request', { requesterSocketId: socket.id, roomId });
+            }
+        });
 
-                    await prisma.event.update({
-                        where: { id: event.id },
-                        data: { status: "FINISHED", finishedAt: new Date() }
-                    });
-                    await prisma.userPersonalPerformance.updateMany({
-                        where: { eventId: event.id, status: "PENDING" },
-                        data: { status: "TIMEOUT" }
-                    });
-                    io.to(roomId).emit("group_terminated", { roomId, reason: "ADMIN_TERMINATED" });
-                    console.log(`[HOST] Group ${roomId} terminated by ${userId} (admin=${isAdmin})`);
-                } catch (e) {
-                    console.error("[terminate_group] error:", e);
-                }
-            })
-
-            socket.on("disconnect", () => {
-                onlineUsers.delete(userId);
-                if(activeSearchIntervals.has(socket.id)){
-                    clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
-                    activeSearchIntervals.delete(socket.id);
-                }
-                io.emit("user_online_status", {
-                    userId, status: "OFFLINE"
-                })
-                console.log(`❌ User Disconnected: ${userId}`);
+        // TARGET PLAYER SENDS CODE BACK TO SPECTATOR
+        socket.on('provide_player_code', (data: { requesterSocketId: string, code: string, language: string, problemId?: string }) => {
+            io.to(data.requesterSocketId).emit('live_code_update', {
+                userId: userId,
+                code: data.code,
+                language: data.language,
+                problemId: data.problemId,
+                updatedAt: new Date().toISOString()
             });
         });
+
+        // BROADCAST CODE UPDATE IN ROOM (debounced or on test run)
+        socket.on('broadcast_player_code', (data: { roomId: string, code: string, language: string, problemId?: string, linesWritten?: number }) => {
+            socket.to(data.roomId).emit('live_code_update', {
+                userId: userId,
+                code: data.code,
+                language: data.language,
+                problemId: data.problemId,
+                linesWritten: data.linesWritten,
+                updatedAt: new Date().toISOString()
+            });
+        });
+        
+        socket.on("send_battle_message", (data: {
+            roomId: string,
+            content: string
+        }) => {
+            const { roomId, content } = data;
+            const message = {
+                id: Date.now().toString(),
+                socketId: socket.id,
+                content,
+                createdAt: new Date().toISOString()
+            }
+
+            // broadcast strictly to players in this arena
+            io.to(roomId).emit("receive_battle_message", message);
+        })
+
+        // GROUP TERMINATION — host OR global ADMIN may terminate; everyone
+        // in the room is notified so they can leave the battle arena.
+        socket.on("terminate_group", async (data: { roomId: string }) => {
+            try {
+                const { roomId } = data;
+                const eventId = roomId.replace("room-", "");
+                const event = await prisma.event.findFirst({
+                    where: { OR: [{ id: eventId }, { roomCode: roomId }] }
+                });
+                if (!event) {
+                    return socket.emit("host_error", "Event not found.");
+                }
+
+                const caller = await prisma.user.findUnique({
+                    where: { id: userId },
+                    select: { role: true }
+                });
+                const isAdmin = (caller?.role || "").toUpperCase() === "ADMIN";
+                if (event.hostId !== userId && !isAdmin) {
+                    return socket.emit("host_error", "Only the host or an admin can terminate this group.");
+                }
+
+                await prisma.event.update({
+                    where: { id: event.id },
+                    data: { status: "FINISHED", finishedAt: new Date() }
+                });
+                await prisma.userPersonalPerformance.updateMany({
+                    where: { eventId: event.id, status: "PENDING" },
+                    data: { status: "TIMEOUT" }
+                });
+                io.to(roomId).emit("group_terminated", { roomId, reason: "ADMIN_TERMINATED" });
+                console.log(`[HOST] Group ${roomId} terminated by ${userId} (admin=${isAdmin})`);
+            } catch (e) {
+                console.error("[terminate_group] error:", e);
+            }
+        })
+
     }
     )
 }
