@@ -9,7 +9,7 @@ import OutputPanel from "../features/terminal/components/OutputPanel";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
-import { Bot, Clock, LayoutTemplate, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Loader2, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
@@ -801,9 +801,18 @@ export const Battle = () => {
               </div>
 
               {/* Participant List */}
-              <div className="p-3 flex flex-col gap-2">
+              <div className="p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
                 <p className="text-[10px] text-slate-500 tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
-                {roomParticipants.map((p: any) => {
+                {loading && roomParticipants.length === 0 ? (
+                  // ── Loader: operative telemetry syncing
+                  <div className="flex items-center justify-center gap-2 py-6 border border-white/10 bg-black/40 rounded-none">
+                    <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                    <span className="text-[10px] text-cyan-300 font-mono font-bold tracking-[0.2em] uppercase animate-pulse">
+                      SYNCING OPERATIVES…
+                    </span>
+                  </div>
+                ) : (
+                roomParticipants.map((p: any) => {
                   const participantId = p.user?.id || p.userId;
                   const uname = p.user?.username || "Unknown";
                   const intel = playerProgress[participantId];
@@ -849,7 +858,8 @@ export const Battle = () => {
                       )}
                     </div>
                   );
-                })}
+                })
+              )}
               </div>
 
               {/* Danger Zone */}

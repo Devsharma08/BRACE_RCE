@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { GoogleLogin } from '@react-oauth/google';
 import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { PageSkeleton } from '../../components/ui/Skeleton';
 import {api} from "../../config/api";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 
@@ -17,7 +18,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
+  const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +57,9 @@ export const Login = () => {
       setError(err.response?.data?.message || "Google Login failed");
     }
   };
+
+  if (authLoading) return <PageSkeleton />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-[#0d1117]">

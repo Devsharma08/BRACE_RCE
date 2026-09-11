@@ -28,6 +28,15 @@ export const Footer: React.FC = () => {
 
     <div className="w-full max-w-full px-6 sm:px-12 md:px-16 pt-8 sm:pt-10 pb-6 flex flex-col justify-between h-full relative z-10">
 
+      {/* ── HERO STRIP: arena one-liner ── */}
+      <div className="relative mb-4 overflow-hidden rounded-none border border-white/10 bg-black/40 px-4 py-3 sm:px-6">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_120%_at_50%_0%,rgba(6,182,212,0.08),transparent_70%)]" />
+        <p className="relative z-10 text-center font-sans text-[11px] sm:text-sm font-bold uppercase leading-relaxed tracking-[0.15em] text-slate-200">
+          Live 1v1 duels · Global ELO ladder · Polyglot RCE —
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-amber-400"> one submission at a time.</span>
+        </p>
+      </div>
+
       {/* TOP SECTION: Expanded 4-Column Directory Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-6">
         
@@ -38,7 +47,7 @@ export const Footer: React.FC = () => {
             BRACE <span className="text-cyan-400">// RCE</span>
           </Link>
           <p className="text-xs text-slate-400 font-sans leading-relaxed max-w-xs font-normal">
-            High-performance browser execution playground with sandboxed telemetry and real-time DSA telemetry.
+            Live 1v1 coding duels with a polyglot RCE sandbox, global ELO ladder, and real-time battle telemetry.
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded-none text-[11px]">
@@ -56,23 +65,23 @@ export const Footer: React.FC = () => {
             <Code2 className="w-3.5 h-3.5" /> // PLATFORM
           </span>
           <ul className="flex flex-col gap-1.5 text-xs text-slate-300 font-medium">
-            <li><Link to="/terminal" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Monaco Workspace <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
+            <li><Link to="/lobby" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Live Lobby <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
             <li><Link to="/dashboard" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Telemetry Dashboard <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
-            <li><Link to="/battle" className="hover:text-cyan-300 transition-colors flex items-center gap-1">1v1 Code Battle <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
-            <li><Link to="/rooms/create" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Multiplayer Lobby <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
+            <li><Link to="/terminal" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Monaco Workspace <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
+            <li><Link to="/rooms/create" className="hover:text-cyan-300 transition-colors flex items-center gap-1">Host a Room <ArrowUpRight className="w-3 h-3 text-slate-500" /></Link></li>
           </ul>
         </div>
 
         {/* Column 3: Data Structures */}
         <div className="flex flex-col gap-2.5">
           <span className="text-xs font-bold text-cyan-400 tracking-widest uppercase flex items-center gap-1.5">
-            <Server className="w-3.5 h-3.5" /> // ALGORITHMS
+            <Server className="w-3.5 h-3.5" /> // EXPLORE
           </span>
           <ul className="flex flex-col gap-1.5 text-xs text-slate-300 font-medium">
-            <li><Link to="/ds/tree" className="hover:text-cyan-300 transition-colors">Trees & Graphs</Link></li>
-            <li><Link to="/ds/dynamic-programming" className="hover:text-cyan-300 transition-colors">Dynamic Programming</Link></li>
-            <li><Link to="/ds/array" className="hover:text-cyan-300 transition-colors">Arrays & Strings</Link></li>
-            <li><Link to="/ds/stack" className="hover:text-cyan-300 transition-colors">Stacks & Queues</Link></li>
+            <li><Link to="/lobby" className="hover:text-cyan-300 transition-colors">Live Lobby</Link></li>
+            <li><Link to="/problems" className="hover:text-cyan-300 transition-colors">Problem Bank</Link></li>
+            <li><Link to="/friends" className="hover:text-cyan-300 transition-colors">Friends & Duels</Link></li>
+            <li><Link to="/about" className="hover:text-cyan-300 transition-colors">About the Arena</Link></li>
           </ul>
         </div>
 
@@ -88,11 +97,11 @@ export const Footer: React.FC = () => {
             </div>
             <div className="flex items-center justify-between border-b border-white/5 pb-1">
               <span>SANDBOX</span>
-              <span className="text-cyan-300 font-bold">DOCKER_RCE</span>
+              <span className="text-cyan-300 font-bold">GUARDED_RCE</span>
             </div>
             <div className="flex items-center justify-between border-b border-white/5 pb-1">
               <span>SECURITY</span>
-              <span className="text-emerald-400 font-bold">ISOLATED</span>
+              <span className="text-emerald-400 font-bold">RATE_LIMITED</span>
             </div>
           </div>
         </div>

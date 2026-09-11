@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { House, ChevronLeft, ChevronRight } from "lucide-react";
+import { House, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
 import { executeCode, fetchSystemProblems } from "../features/terminal/api";
@@ -355,6 +355,17 @@ const Terminal = () => {
               onResizeStart={startSidebarDragging}
               isLoading={problemsLoading}
             />
+            {/* ── Loader: full problems fetch overlay (blocks panels until databank syncs) ── */}
+            {problemsLoading && (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-[#06080e]/95 backdrop-blur-[1px]">
+                <div className="w-10 h-10 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                </div>
+                <p className="text-[11px] text-cyan-300 font-mono font-bold tracking-[0.25em] uppercase animate-pulse">
+                  SYNCING PROBLEM DATABANK…
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
