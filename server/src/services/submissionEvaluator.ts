@@ -96,11 +96,27 @@ export async function saveSubmisssion(params: SaveSubmisssionParams) {
         ? 1000
         : Math.floor((bestSubmission.passedCase / (bestSubmission.totalCases || 1)) * 500);
 
+    // Only record timeTakenMs when it is a passing submission AND it is faster
+    // than the previously stored value (the fastest pass determines the speed bonus).
+    let timeTakenMsWrite: number | null | undefined = undefined;
+    if (params.timeTakenMs !== undefined && params.timeTakenMs !== null) {
+        const currentPerf = await prisma.userPersonalPerformance.findUnique({
+            where: { id: params.performanceId },
+            select: { timeTakenMs: true }
+        });
+        const existing = currentPerf?.timeTakenMs;
+        if (existing === null || existing === undefined || params.timeTakenMs < existing) {
+            timeTakenMsWrite = params.timeTakenMs;
+        }
+    }
+
     await prisma.userPersonalPerformance.update({
         where: { id: params.performanceId },
         data: {
             score: computedScore,
-            status: bestSubmission.status === "PASSED" ? "PASSED" : "PENDING"
+            status: bestSubmission.status === "PASSED" ? "PASSED" : "PENDING",
+            // Record how long the user took when they pass (fastest/only pass wins).
+            ...(timeTakenMsWrite !== undefined ? { timeTakenMs: timeTakenMsWrite } : {})
         }
     });
 

@@ -6,7 +6,7 @@ import { promisify } from "util";
 import { writeFileSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../lib/jwt.js';
 const execFileAsync = promisify(execFile);
 
 /** Write code to a temp file, run it, clean up. Returns { stdout, stderr, exitCode }. */
@@ -1150,14 +1150,12 @@ export const executeCode = async (req: Request, res: Response) => {
       }
       const snippet = fileData?.code_snippets?.find((s: any) => s.language === executionLanguage);
       finalCode = prepareFinalCode(executionLanguage, sourceCode, snippet);
-
-      console.log("EXECUTION LANGUAGE:", executionLanguage);
-      console.log("FOUND SNIPPET:", snippet ? "YES" : "NO");
-      console.log("FINAL CODE:\n", finalCode);
     }
 
-    // Override if custom input is provided
-    if (userCustomInput.length > 0) {
+    // Override if custom input is provided — only meaningful for RUN mode.
+    // In SUBMIT mode we MUST evaluate against the real test cases, otherwise
+    // a single custom input would let users game the pass/fail scoring.
+    if (userCustomInput.length > 0 && executionMode !== "SUBMIT") {
       casesToRun = [{ input: userCustomInput, expectedOutput: "" }];
     }
 
@@ -1292,15 +1290,22 @@ export const executeCode = async (req: Request, res: Response) => {
         const actualOutput = normalize(data.run?.stdout || runOutput);
         const expectedOutput = normalize(currentCase.expectedOutput);
 
-        const isCustomInputRun = userCustomInput.length > 0;
-        const passed = isCustomInputRun ? true : (actualOutput === expectedOutput);
+        // Promote the exit-code/stderr computation so `passed` below can use it.
+        const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
+
+        // Custom-input runs have no expected output, so never auto-pass them —
+        // a clean run (exit code 0) is the best we can assert. This prevents a
+        // user from submitting custom input in SUBMIT mode to fake a PASS.
+        const isCustomInputRun = userCustomInput.length > 0 && expectedOutput === "";
+        const passed = expectedOutput !== ""
+          ? actualOutput === expectedOutput
+          : processExitCode === 0;
 
         if (passed) totalPassed++;
 
         // Only treat stderr as runtimeError if the process exited with non-zero code
         // (some runtimes write warnings/info to stderr even on success)
-        const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
-        const hasRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
+        const storeRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
 
         results.push({
           testCaseIndex: index,
@@ -1308,10 +1313,10 @@ export const executeCode = async (req: Request, res: Response) => {
           expectedOutput: currentCase.expectedOutput,
           passed,
           ...problemIdPayload(currentCase),
-          runtimeError: hasRuntimeError ? sanitizeErrorMessage(String(data.run.stderr)) : null,
+          runtimeError: storeRuntimeError ? sanitizeErrorMessage(String(data.run.stderr)) : null,
         });
 
-        if (executionMode === "SUBMIT" && !passed && !isCustomInputRun) {
+        if (executionMode === "SUBMIT" && !passed) {
           break;
         }
       }
@@ -1330,9 +1335,8 @@ export const executeCode = async (req: Request, res: Response) => {
     let userId = (req as any).userId;
     if(!userId && req.cookies?.token){
       try {
-         const JWT_SECRET = process.env.JWT_SECRET || "development-only-secret-key";
-        const decoded = jwt.verify(req.cookies.token, JWT_SECRET) as { userId?: string };
-        userId = decoded.userId;
+        const decoded = verifyToken(req.cookies.token) as { userId?: string } | null;
+        userId = decoded?.userId;
       } catch (error) {
         console.error("Failed to verify token:", error);
       }
@@ -1384,6 +1388,28 @@ export const executeCode = async (req: Request, res: Response) => {
     if (executionMode === "SUBMIT" && userPerfId) {
       const problemId = casesToRun[0]?.problemId || githubOid;
       if (problemId) {
+        // Record how long (ms) the user took from the battle start until this
+        // successful submission. Falls back to the performance's createdAt when
+        // the event has no startedAt (e.g. old events / custom rooms).
+        let timeTakenMs: number | undefined;
+        if (totalPassed === casesToRun.length && userPerfId) {
+          try {
+            const perfWithEvent = await prisma.userPersonalPerformance.findUnique({
+              where: { id: userPerfId },
+              select: {
+                createdAt: true,
+                event: { select: { startedAt: true } }
+              }
+            });
+            const startedAt = perfWithEvent?.event?.startedAt || perfWithEvent?.createdAt;
+            if (startedAt) {
+              timeTakenMs = Math.max(0, Date.now() - new Date(startedAt).getTime());
+            }
+          } catch (error) {
+            console.error("Failed to compute timeTakenMs:", error);
+          }
+        }
+
         await saveSubmisssion({
           performanceId: userPerfId,
           problemId,
@@ -1394,6 +1420,7 @@ export const executeCode = async (req: Request, res: Response) => {
           memoryKb: avgMemoryKb,
           passedCase: totalPassed,
           totalCases: casesToRun.length,
+          timeTakenMs,
         }).catch(e => console.error("Failed to save submission:", e));
       }
     }
