@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import jwt from 'jsonwebtoken'
+import { getToken } from "../lib/jwt.js";
 import type { AuthRequest } from "../middleware/authentication.js";
 import { OAuth2Client } from "google-auth-library";
 
@@ -10,7 +10,7 @@ import { OAuth2Client } from "google-auth-library";
 export class AuthController {
 
     setTokenCookie = async (res: any, userId: string) => {
-        const token = jwt.sign({ userId }, process.env.JWT_SECRET || "very-strong-secret-key", { expiresIn: '7d', algorithm: "HS256" })
+        const token = getToken(userId)
         return res.cookie("token", token, {
             httpOnly: true,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -19,16 +19,40 @@ export class AuthController {
         })
     }
 
+    private validateSignupBody(body: any) {
+        const username = typeof body.username === "string" ? body.username.trim() : "";
+        const email = typeof body.email === "string" ? body.email.trim() : "";
+        const password = typeof body.password === "string" ? body.password : "";
+
+        const errors: string[] = [];
+
+        if (!username) errors.push("username is required");
+        else if (username.length < 3) errors.push("username must be at least 3 characters");
+        else if (username.length > 64) errors.push("username must be 64 characters or fewer");
+
+        if (!email) errors.push("email is required");
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("email is invalid");
+
+        if (!password) errors.push("password is required");
+        else if (password.length < 8) errors.push("password must be at least 8 characters");
+        else if (password.length > 128) errors.push("password must be 128 characters or fewer");
+
+        return { username, email, password, errors };
+    }
+
     signup = async (req: Request, res: Response) => {
-        const { username, email, avatarUrl, password } = req.body;
+        const { username, email, password, errors } = this.validateSignupBody(req.body);
+
+        if (errors.length > 0) {
+            return res.status(400).json({ message: errors[0] });
+        }
 
         try {
-            // checking for existing user
             const existingUser = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } })
             if (existingUser) {
                 return res.status(409).json({ message: "Username or email already exists" })
             }
-            // hash password
+
             const salt = await bcrypt.genSalt(10);
             const hashedpassword = await bcrypt.hash(password, salt);
             const userId = uuidv4();
@@ -37,7 +61,7 @@ export class AuthController {
                     id: userId,
                     username,
                     email,
-                    avatarUrl,
+                    avatarUrl: typeof req.body.avatarUrl === "string" ? req.body.avatarUrl : undefined,
                     password: hashedpassword,
                     updatedAt: new Date()
                 }
@@ -54,6 +78,10 @@ export class AuthController {
     signin = async (req: Request, res: Response) => {
         try {
             const { email, password } = req.body;
+            if (typeof email !== "string" || typeof password !== "string") {
+                return res.status(400).json({ message: "Invalid request body" });
+            }
+
             const user = await prisma.user.findUnique({ where: { email } })
             if (!user) {
                 return res.status(404).json({ message: "User not found" })
@@ -91,7 +119,7 @@ export class AuthController {
 
     googleAuth = async (req: Request, res: Response) => {
         const google_client_id = process.env.GOOGLE_CLIENT_ID;
-        if (!google_client_id?.trim()) {
+        if (!google_client_id || !google_client_id.trim() || google_client_id.trim() === "not-configured") {
             return res.status(500).json({
                 message: "Server is not configured with GOOGLE_CLIENT_ID"
             });
@@ -139,7 +167,7 @@ export class AuthController {
                     data: {
                         id: uuidv4(),
                         email,
-                        avatarUrl: picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uniqueUsername}`,
+                        avatarUrl: picture || `https://api.dicebear.com/9.x/avataaars/svg?seed=${uniqueUsername}`,
                         username: uniqueUsername,
                         updatedAt: new Date()
                     }

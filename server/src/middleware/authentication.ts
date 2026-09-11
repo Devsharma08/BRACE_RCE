@@ -1,12 +1,8 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
+import { JWT_SECRET, verifyTokenResult } from '../lib/jwt.js';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-if(!JWT_SECRET && process.env.NODE_ENV==="production"){
-    throw new Error("JWT_SECRET is not defined in production mode");
-}
-
-const SECRET_KEY = JWT_SECRET || "development-only-secret-key";
+const SECRET_KEY = JWT_SECRET;
 
 // Extend Express Request
 export interface AuthRequest extends Request {
@@ -25,23 +21,21 @@ export const authentication = (req: Request, res: Response, next: NextFunction) 
         return res.status(401).json({ status: "error", message: "Token is not present" });
     }
 
-    try {
-        // Synchronous verification works cleanly inside try/catch
-        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as CustomJwtPayload;
+    const result = verifyTokenResult(token);
 
-        // Attach userId to custom request
-        (req as AuthRequest).userId = decoded.userId;
-        
+    if (result.ok) {
+        (req as AuthRequest).userId = result.payload.userId as string;
         return next();
-    } catch (err: unknown) {
-        if (err instanceof jwt.TokenExpiredError) {
-            return res.status(401).json({ status: "error", message: "Token has expired" });
-        }
-        
-        if (err instanceof jwt.JsonWebTokenError) {
-            return res.status(403).json({ status: "error", message: err.message });
-        }
-
-        return res.status(500).json({ status: "error", message: "Internal server error" });
     }
+
+    // Preserve distinct status codes: expired → 401, invalid signature → 403.
+    if (result.error === "EXPIRED") {
+        return res.status(401).json({ status: "error", message: "Token has expired" });
+    }
+
+    if (result.error === "INVALID") {
+        return res.status(403).json({ status: "error", message: "Invalid token" });
+    }
+
+    return res.status(500).json({ status: "error", message: "Internal server error" });
 };
