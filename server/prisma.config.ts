@@ -8,7 +8,13 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
+  // Prisma 7: connection URLs live here, not in schema.prisma (url/directUrl are
+  // no longer allowed in the datasource block). Prisma CLI commands that touch
+  // the database (migrate, db push, db seed) connect via `datasource.url`, so the
+  // direct (non-pooled) connection string is used for migrations. The runtime
+  // client does not read this — it connects through the @prisma/adapter-pg
+  // driver adapter in src/lib/prisma.ts.
   datasource: {
-    url: process.env["DIRECT_URL"],
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
