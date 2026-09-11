@@ -1,6 +1,7 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { outcomeFromStatus } from "../utils/elo.js";
 
 // ── In-memory cache for analytics (5-minute TTL) ──────────────────────────────
 interface CacheEntry<T> {
@@ -81,7 +82,10 @@ class Analytics {
       const totalSolved = progressRecords.filter((p) => p.isSolved).length;
       const totalMatches = performances.length;
       const wins = performances.filter(
-        (p) => p.status === "WON" || p.status === "PASSED"
+        (p) => p.status === "PASSED" || p.status === "WON" || p.status === "COMPLETED"
+      ).length;
+      const losses = performances.filter(
+        (p) => p.status === "FAILED" || p.status === "SURRENDER" || p.status === "TIMEOUT" || p.status === "LOST"
       ).length;
       const winRate =
         totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
@@ -138,17 +142,20 @@ class Analytics {
       }));
 
       // ── 4. BATTLE TREND (last 20 battles) ─────────────────────────────
-      const battleTrend = performances.slice(-20).map((p, idx) => ({
-        index: idx + 1,
-        result:
-          p.status === "WON" || p.status === "PASSED"
-            ? "WIN"
-            : p.status === "SURRENDER"
-            ? "SURRENDER"
-            : "LOSS",
-        score: p.score,
-        questionsSolved: p.questionsSolved,
-      }));
+      const battleTrend = performances
+        .filter((p) => outcomeFromStatus(p.status) !== null)
+        .slice(-20)
+        .map((p, idx) => ({
+          index: idx + 1,
+          result:
+            p.status === "PASSED" || p.status === "WON" || p.status === "COMPLETED"
+              ? "WIN"
+              : p.status === "SURRENDER"
+              ? "SURRENDER"
+              : "LOSS",
+          score: p.score,
+          questionsSolved: p.questionsSolved,
+        }));
 
       // ── 5. LANGUAGE USAGE ─────────────────────────────────────────────
       const langMap = new Map<string, number>();

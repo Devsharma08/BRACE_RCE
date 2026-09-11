@@ -68,9 +68,11 @@ class Profile {
             });
 
             // Calculate stats
+            // Win = any finished performance that was a success outcome.
+            // Loss = any finished performance with a defeat outcome.
+            const wins = performances.filter(p => p.status === "PASSED" || p.status === "WON" || p.status === "COMPLETED").length;
+            const losses = performances.filter(p => p.status === "FAILED" || p.status === "SURRENDER" || p.status === "TIMEOUT" || p.status === "LOST").length;
             const totalMatches = performances.length;
-            const wins = performances.filter(p => p.status === 'WON' || p.status === 'PASSED').length;
-            const losses = performances.filter(p => p.status === 'LOST' || p.status === 'FAILED' || p.status === 'SURRENDER').length;
             const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
 
             // Calculate total time spent (in seconds/minutes) based on timeTakenMs

@@ -20,21 +20,36 @@ class Leaderboard {
     try {
       const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? "25"), 10) || 25, 1), 100);
 
+      // Ratings are derived from performance history, so the final ordering must
+      // happen in JS. We still bound the query heavily so the DB does not return
+      // every user and their full (unbounded) match history:
+      //  - only fetch users who actually have a finished match, and
+      //  - cap history at the 100 most recent finished matches per user.
+      const FINISHED_STATUSES = ["WON", "PASSED", "COMPLETED", "LOST", "FAILED", "SURRENDER", "TIMEOUT"];
+
       const users = await prisma.user.findMany({
+        where: {
+          performances: {
+            some: { status: { in: FINISHED_STATUSES } },
+          },
+        },
         select: {
           id: true,
           username: true,
           avatarUrl: true,
           performances: {
+            where: { status: { in: FINISHED_STATUSES } },
             select: { status: true, timeTakenMs: true, score: true },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
+            take: 100,
           },
         },
       });
 
       const ranked = (users as any[])
         .map((u) => {
-          const perfs = u.performances ?? [];
+          // Restore chronological order for the rating fold (newest-first query above).
+          const perfs = (u.performances ?? []).reverse();
           const finished = perfs.filter((p: any) => outcomeFromStatus(p.status) !== null);
           const rating = finished.length > 0 ? this.ratingForPerformances(finished) : BASE_RATING;
           const wins = finished.filter((p: any) => outcomeFromStatus(p.status) === "WIN").length;
