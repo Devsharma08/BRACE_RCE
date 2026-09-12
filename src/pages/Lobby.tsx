@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CardSkeletonGrid } from "../components/ui/Skeleton";
 import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
 
 interface Room {
   id: string;
@@ -281,7 +282,11 @@ const Lobby = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#02040a] text-slate-300 font-mono relative overflow-hidden">
+    <div className="flex min-h-screen bg-[#02040a] text-slate-300 font-mono relative overflow-x-hidden">
+      {/* DESKTOP SIDEBAR */}
+      <DashboardSidebar />
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative">
       {/* ── Dot-grid overlay (app-standard) ── */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.04]"
@@ -439,6 +444,7 @@ const Lobby = () => {
         onClose={() => setPwModal({ isOpen: false, roomCode: "", roomName: "" })}
         onSubmit={handlePasswordSubmit}
       />
+      </main>
     </div>
   );
 };
