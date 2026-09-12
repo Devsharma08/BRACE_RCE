@@ -27,6 +27,7 @@ describe('EditorToolbar Component', () => {
     disabled: false,
     activeFile: 'problem-1',
     fileName: 'two-sum.js',
+    code: '// test code',
     language: 'javascript' as const,
     executingMode: null,
     setLanguage: vi.fn(),
@@ -100,6 +101,19 @@ describe('EditorToolbar Component', () => {
     fireEvent.click(notesBtn);
 
     expect(handleToggleNotes).toHaveBeenCalledTimes(1);
+  });
+
+  test('copies code and shows copied state that reverts', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+
+    renderToolbar({ ...defaultProps, code: 'const a = 1;' });
+
+    const copyBtn = screen.getByLabelText('Copy code to clipboard');
+    fireEvent.click(copyBtn);
+
+    expect(writeText).toHaveBeenCalledWith('const a = 1;');
+    expect(await screen.findByLabelText('Code copied to clipboard')).toBeInTheDocument();
   });
 
   test('calls onExit when exit button is clicked', () => {

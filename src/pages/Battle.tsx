@@ -1158,6 +1158,7 @@ export const Battle = () => {
         <EditorToolbar
           activeFile={activeProblem?.id || "battle-file"}
           fileName={activeProblem?.name || "BATTLE_SOLUTION"}
+          code={code}
           disabled={isSubmitting}
           executingMode={isSubmitting ? "RUN" : null}
           language={language}

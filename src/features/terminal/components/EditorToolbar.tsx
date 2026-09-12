@@ -8,6 +8,8 @@ import {
   Maximize,
   StickyNote,
   Home,
+  Copy,
+  Check,
   BrushCleaning as Clear,
   Indent as IndentationIcon,
   FolderTree,
@@ -50,6 +52,7 @@ type EditorToolbarProps = {
   submissionTrigger?: number;
   timerRef?: React.RefObject<ProblemTimerRef | null>;
   initialSubmissionTimes?: string[];
+  code:string;
 };
 
 const EditorToolbar = ({
@@ -68,6 +71,7 @@ const EditorToolbar = ({
   onToggleNotes,
   isNotesOpen = false,
   onExit,
+  code,
   showSubmit = true,
   mode = "problem",
   showFileExplorerToggle = false,
@@ -85,6 +89,18 @@ const EditorToolbar = ({
 
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the pending "copied" reset when the toolbar unmounts.
+  useEffect(() => {
+    return () => {
+      if (copyResetTimer.current) {
+        clearTimeout(copyResetTimer.current);
+        copyResetTimer.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const el = toolbarRef.current;
@@ -142,6 +158,40 @@ const EditorToolbar = ({
     }
   };
 
+  const handleCopyCode = async () => {
+    const text = code ?? "";
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for non-secure contexts (e.g. plain http) where
+        // navigator.clipboard is unavailable.
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    } catch (error: any) {
+      alert(`error is ${error.message}`);
+      return;
+    }
+
+    // Show the "copied" check, then auto-revert to the copy icon.
+    setCopied(true);
+    if (copyResetTimer.current) {
+      clearTimeout(copyResetTimer.current);
+    }
+    copyResetTimer.current = setTimeout(() => {
+      setCopied(false);
+      copyResetTimer.current = null;
+    }, 2000);
+  };
+
   return (
     <div
       ref={toolbarRef}
@@ -194,6 +244,29 @@ const EditorToolbar = ({
         >
           <Home className="w-3.5 h-3.5 text-rose-400" />
           {!isCompact && <span className="ml-1 hidden xs:inline">EXIT</span>}
+        </button>
+
+        {/* COPY CURRENT CODE (WITH COPIED CONFIRMATION) */}
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          title={copied ? "Copied!" : "Copy Code"}
+          aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
+          aria-live="polite"
+          className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+            copied
+              ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 hover:text-emerald-300"
+              : "border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400"
+          }`}
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5 text-emerald-400" />
+          ) : (
+            <Copy className="w-3.5 h-3.5 text-cyan-400" />
+          )}
+          {!isCompact && (
+            <span className="ml-1 hidden xs:inline">{copied ? "COPIED" : "COPY"}</span>
+          )}
         </button>
 
         {/* MAXIMIZE MONACO PANEL */}

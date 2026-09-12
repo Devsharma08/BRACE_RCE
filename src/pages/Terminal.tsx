@@ -437,6 +437,7 @@ const Terminal = () => {
               <>
                 <EditorToolbar
                   activeFile={activeFile}
+                  code={code}
                   disabled={resLoading || loading}
                   executingMode={executingMode}
                   language={language}
