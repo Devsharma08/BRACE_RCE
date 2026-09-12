@@ -7,6 +7,7 @@ import { CodeComparisonModal } from "../components/features/CodeComparisonModal"
 import { useAuth } from "../context/AuthContext";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 
@@ -70,7 +71,11 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#02040a] text-slate-100 p-4 md:p-8 font-mono relative overflow-hidden">
+    <div className="flex min-h-screen bg-[#02040a] text-slate-100 font-mono relative overflow-x-hidden">
+      {/* DESKTOP SIDEBAR */}
+      <DashboardSidebar />
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative p-4 md:p-8 overflow-hidden">
       {/* Global dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 blur-3xl pointer-events-none -z-10" />
@@ -314,6 +319,8 @@ const Profile = () => {
         )}
 
       </div>
+
+      </main>
 
       {selectedPerformances && (
         <CodeComparisonModal
