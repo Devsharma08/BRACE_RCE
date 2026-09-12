@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { ExecutionMode, SupportedLanguage } from "../types";
 import { CodeContext } from "../../../context/CodeContext.tsx";
+import { toast } from "sonner";
 
 import ProblemTimer, { type ProblemTimerRef } from "./ProblemTimer";
 
@@ -177,7 +178,7 @@ const EditorToolbar = ({
         document.body.removeChild(textarea);
       }
     } catch (error: any) {
-      alert(`error is ${error.message}`);
+      toast.error(`error is ${error.message}`);
       return;
     }
 

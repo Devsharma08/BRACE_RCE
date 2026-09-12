@@ -1,7 +1,7 @@
 import { type AuthRequest } from '../middleware/authentication.js'
 import { prisma } from '../lib/prisma.js';
 import { type Response } from 'express';
-import { request } from 'node:http';
+import { notifyFriendAccept, notifyFriendRequest } from '../services/notificationService.js';
 
 class Friends {
     // ALL FRIENDS
@@ -51,7 +51,9 @@ class Friends {
 
             const users = await prisma.user.findMany({
                 where: { username: { contains: query, mode: "insensitive" }, id: { not: userId } },
-                select: { id: true, username: true }
+                select: { id: true, username: true, avatarUrl: true },
+                take: 20,
+                orderBy: { username: 'asc' }
             });
 
             // Find all pending requests sent by this user to the searched users
@@ -65,7 +67,7 @@ class Friends {
                 requestSent: requests.some((r: any) => r.receiverId === u.id)
             }));
 
-            return res.json({ user: userWithReqs });
+            return res.json({ users: userWithReqs, user: userWithReqs });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
         }
@@ -165,6 +167,15 @@ class Friends {
                 }
             })
 
+            // queue notification for receiver (best-effort, never blocks the request)
+            try {
+                const sender = await prisma.user.findUnique({
+                    where: { id: userId as string },
+                    select: { username: true }
+                });
+                await notifyFriendRequest(targetUserId, sender?.username ?? "Someone");
+            } catch { /* notification queue is best-effort */ }
+
             return res.json({
                 message: "Request sent successfully"
             })
@@ -206,6 +217,13 @@ class Friends {
                 where: { id: senderId },
                 data: { friends: { connect: { id: userId as string } } }
             });
+            try {
+                const accepter = await prisma.user.findUnique({
+                    where: { id: userId as string },
+                    select: { username: true }
+                });
+                await notifyFriendAccept(senderId, accepter?.username ?? "Someone");
+            } catch { /* best-effort */ }
             return res.json({ message: "Friend added!" });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });

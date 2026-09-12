@@ -32,11 +32,12 @@ import type {
   ExecutionResult,
 } from "./features/terminal/types";
 
-import { RouteLoadingSkeleton, WorkInProgressPage } from "./components/ui/Skeleton.tsx";
+import { RouteLoadingSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "not-configured";
 
@@ -72,6 +73,29 @@ export const Root = () => {
         <Router>
           <Suspense fallback={<RouteLoadingSkeleton />}>
             <ScrollToTop />
+            {/* Sonner toast viewport — styled to match the dark cyber-arena theme */}
+            <Toaster
+              position="bottom-right"
+              toastOptions={
+                (
+                  {
+                    style: {
+                      background: "rgba(6, 8, 14, 0.92)",
+                      border: "1px solid rgba(34, 211, 238, 0.35)",
+                      color: "#e2e8f0",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                      fontSize: "12px",
+                    },
+                    classNames: {
+                      error: "toast-error",
+                      info: "toast-info",
+                      success: "toast-success",
+                      warning: "toast-warning",
+                    },
+                  } as never
+                )
+              }
+            />
             <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
               <AuthProvider>
                 <SocketProvider>

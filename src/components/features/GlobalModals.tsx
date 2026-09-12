@@ -77,9 +77,17 @@ export default function GlobalModals() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
           <div className="p-8 border-2 border-rose-500/50 bg-[#0b0c0e] flex flex-col items-center rounded-2xl shadow-[0_0_50px_rgba(225,29,72,0.2)]">
             <Swords className="w-16 h-16 text-rose-500 animate-bounce mb-4" />
-            <h2 className="text-rose-400 font-mono text-xl font-bold mb-6">
+            <h2 className="text-rose-400 font-mono text-xl font-bold mb-2">
               CHALLENGE RECEIVED
             </h2>
+            <p className="text-slate-400 font-mono text-xs tracking-widest mb-1">
+              FROM // {(incomingChallenge.challengerUsername ?? "FRIEND").toUpperCase()}
+            </p>
+            <p className="text-[11px] font-mono tracking-widest mb-6 px-3 py-1.5 border border-rose-500/30 bg-rose-950/30 text-rose-300">
+              {incomingChallenge.mode === "CUSTOM"
+                ? `CUSTOM // ${incomingChallenge.problemName ?? incomingChallenge.problemId ?? "ARENA"}`
+                : `RANDOM // ${incomingChallenge.difficulty ?? "MEDIUM"}`}
+            </p>
             <div className="flex gap-4">
               <button
                 disabled={isClicked}
@@ -90,7 +98,11 @@ export default function GlobalModals() {
               </button>
               <button
                 disabled={isClicked}
-                onClick={() => acceptChallenge(incomingChallenge.challengerId)}
+                onClick={() => acceptChallenge(incomingChallenge.challengerId, {
+                  problemId: incomingChallenge.problemId,
+                  mode: incomingChallenge.mode,
+                  difficulty: incomingChallenge.difficulty,
+                })}
                 className="px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-mono font-bold tracking-widest rounded-lg shadow-[0_0_20px_rgba(225,29,72,0.4)]"
               >
                 ACCEPT BATTLE

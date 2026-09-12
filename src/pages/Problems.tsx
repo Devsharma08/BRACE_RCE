@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ListFilter,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Problems: React.FC = () => {
@@ -41,7 +42,7 @@ export const Problems: React.FC = () => {
     });
   };
 
-  const { data: problems = [], isLoading: loading } = useQuery<any[]>({
+  const { data: problems = [], isLoading: loading, isError: isProblemsError, refetch: refetchProblems } = useQuery<any[]>({
     queryKey: ["system-problems"],
     queryFn: async () => {
       const res = await api.get("/problems/system");
@@ -145,7 +146,29 @@ export const Problems: React.FC = () => {
           </div>
         </div>
 
+        {/* QUERY FAILURE — themed error state with retry */}
+        {isProblemsError && !loading && (
+          <div className="flex flex-col items-center gap-3 border border-rose-500/30 bg-rose-950/20 p-10 text-center">
+            <div className="w-12 h-12 rounded-none border border-rose-500/40 bg-rose-950/40 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-rose-400" />
+            </div>
+            <p className="text-sm font-mono font-bold tracking-widest text-rose-300">
+              FAILED TO QUERY PROBLEM REPOSITORY
+            </p>
+            <p className="text-xs font-mono text-slate-400 max-w-md">
+              The server did not return the problem list. Check your connection and retry the query.
+            </p>
+            <button
+              onClick={() => refetchProblems()}
+              className="mt-1 px-5 py-2 text-xs font-mono font-bold tracking-widest border border-rose-500/50 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-none transition-all active:scale-95"
+            >
+              [ RETRY QUERY ]
+            </button>
+          </div>
+        )}
+
         {/* PROBLEMS TABLE */}
+        {!isProblemsError && (
         <div className="border border-cyan-500/20 bg-slate-950/40 rounded overflow-hidden shadow-xl">
           {/* TABLE HEADER */}
           <div className="grid grid-cols-12 p-3.5 bg-black/80 border-b border-cyan-500/20 text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
@@ -284,6 +307,7 @@ export const Problems: React.FC = () => {
             </div>
           )}
         </div>
+        )}
       </main>
     </div>
   );

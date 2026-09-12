@@ -1,6 +1,7 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Header from './Header';
 
 // Mock useAuth context hook
@@ -12,24 +13,35 @@ vi.mock('../../context/AuthContext', () => ({
   }),
 }));
 
-describe('Header Component', () => {
-  test('renders logo branding title BRACE // RCE', () => {
-    render(
-      <MemoryRouter>
+// Mock socket context (NotificationCenter registers listeners on it)
+vi.mock('../../context/SocketContext', () => ({
+  useSocket: () => ({ socket: null, isConnected: false }),
+}));
+
+// NotificationCenter uses react-query hooks, so provide a client per test
+const renderHeader = (initialEntries?: string[]) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={initialEntries}>
         <Header />
       </MemoryRouter>
-    );
+    </QueryClientProvider>
+  );
+};
+
+describe('Header Component', () => {
+  test('renders logo branding title BRACE // RCE', () => {
+    renderHeader();
 
     expect(screen.getByText(/BRACE \/\//i)).toBeDefined();
     expect(screen.getByText('RCE')).toBeDefined();
   });
 
   test('renders navigation links for desktop', () => {
-    render(
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <Header />
-      </MemoryRouter>
-    );
+    renderHeader(['/dashboard']);
 
     expect(screen.getByText('HOME')).toBeDefined();
     expect(screen.getByText('DASHBOARD')).toBeDefined();

@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UseHeadroom } from '../../utils/styles/headRoom'
 import { useAuth } from '../../context/AuthContext'
-import { House, Terminal, LogIn, LayoutDashboard, Info, User } from 'lucide-react'
+import { House, Terminal, LogIn, LayoutDashboard, Info, User, UserPlus } from 'lucide-react'
+import { NotificationCenter } from '../features/NotificationCenter'
 
 const Header = () => {
-   const {visible,scrollDirection} = UseHeadroom();
+   const {visible} = UseHeadroom();
    const { pathname } = useLocation();
    const { isAuthenticated, user } = useAuth();
 
@@ -47,9 +47,14 @@ const Header = () => {
                   <span>HOME</span>
                </Link>
                {isAuthenticated && (
-                  <Link to="/dashboard" className={desktopLinkClass('/dashboard')}>
-                     <span>DASHBOARD</span>
-                  </Link>
+                  <>
+                    <Link to="/dashboard" className={desktopLinkClass('/dashboard')}>
+                      <span>DASHBOARD</span>
+                    </Link>
+                    <Link to="/friends" className={desktopLinkClass('/friends')}>
+                      <span>FRIENDS</span>
+                    </Link>
+                  </>
                )}
                <Link to="/terminal" className={desktopLinkClass('/terminal')}>
                   <span>TERMINAL</span>
@@ -59,12 +64,15 @@ const Header = () => {
                </Link>
 
                {isAuthenticated ? (
-                  <Link to="/profile" className='ml-2'>
+                  <>
+                    <NotificationCenter />
+                    <Link to="/profile" className='ml-2'>
                      <span className={`flex items-center gap-2 px-4 py-2 bg-cyan-950/40 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 font-bold rounded-full transition-all shadow-[0_0_12px_rgba(6,182,212,0.2)] ${isActive('/profile') ? 'bg-cyan-600/30 border-cyan-300 text-white' : ''}`}>
                         <User className='w-4 h-4' />
                         <span>PROFILE ({user?.username?.toUpperCase()})</span>
                      </span>
                   </Link>
+                  </>
                ) : (
                   <Link to="/signin" className='ml-2'>
                      <span className={`flex items-center gap-2 px-4.5 py-2 bg-indigo-950/60 border border-indigo-400/50 hover:border-indigo-300 text-indigo-200 font-bold rounded-full transition-all shadow-[0_0_15px_rgba(99,102,241,0.25)] hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] ${isActive('/signin') ? 'bg-indigo-600/40 border-indigo-300 text-white' : ''}`}>
@@ -82,9 +90,14 @@ const Header = () => {
                </Link>
 
                {isAuthenticated && (
-                  <Link to="/dashboard" title="Dashboard" className={`p-2.5 rounded-full transition-all ${isActive('/dashboard') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
-                     <LayoutDashboard className='w-4.5 h-4.5' />
-                  </Link>
+                  <>
+                    <Link to="/dashboard" title="Dashboard" className={`p-2.5 rounded-full transition-all ${isActive('/dashboard') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+                       <LayoutDashboard className='w-4.5 h-4.5' />
+                    </Link>
+                    <Link to="/friends" title="Friends" className={`p-2.5 rounded-full transition-all ${isActive('/friends') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
+                       <UserPlus className='w-4.5 h-4.5' />
+                    </Link>
+                 </>
                )}
 
                <Link to="/terminal" title="Terminal" className={`p-2.5 border border-white/30 rounded-full transition-all ${isActive('/terminal') ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.35)]' : 'text-slate-300 hover:text-cyan-300 hover:bg-white/5 border border-transparent'}`}>
@@ -96,9 +109,12 @@ const Header = () => {
                </Link>
 
                {isAuthenticated ? (
-                  <Link to="/profile" title={`Profile (${user?.username})`} className={`p-2.5 rounded-full border border-white/30 bg-cyan-950/50 text-cyan-300 hover:text-white transition-all ml-1 shadow-[0_0_12px_rgba(6,182,212,0.25)] ${isActive('/profile') ? 'bg-cyan-600/40 border-cyan-300 text-white' : ''}`}>
-                     <User className='w-4.5 h-4.5' />
-                  </Link>
+                  <>
+                    <NotificationCenter />
+                    <Link to="/profile" title={`Profile (${user?.username})`} className={`p-2.5 rounded-full border border-white/30 bg-cyan-950/50 text-cyan-300 hover:text-white transition-all ml-1 shadow-[0_0_12px_rgba(6,182,212,0.25)] ${isActive('/profile') ? 'bg-cyan-600/40 border-cyan-300 text-white' : ''}`}>
+                       <User className='w-4.5 h-4.5' />
+                    </Link>
+                  </>
                ) : (
                   <Link to="/signin" title="Login" className={`p-2.5 rounded-full bg-indigo-950/60 border border-white/30 text-indigo-200 hover:text-white transition-all ml-1 shadow-[0_0_12px_rgba(99,102,241,0.25)] ${isActive('/signin') ? 'bg-indigo-600/40 border-indigo-300 text-white' : ''}`}>
                      <LogIn className='w-4.5 h-4.5' />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAdminUsers, useUpdateUser, useDeleteUser, type AdminUser } from '../../hooks/useAdmin';
+import { toast } from 'sonner';
 
 const roleOptions = ['USER', 'ADMIN'];
 
@@ -22,7 +23,7 @@ const AdminUsers = () => {
       await updateUser.mutateAsync({ userId: user.id, role: newRole });
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to update role');
+      toast.error(err?.response?.data?.message || 'Failed to update role');
     } finally {
       setUpdatingId(null);
     }
@@ -39,7 +40,7 @@ const AdminUsers = () => {
       await deleteUser.mutateAsync(user.id);
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete user');
+      toast.error(err?.response?.data?.message || 'Failed to delete user');
     } finally {
       setDeletingId(null);
     }

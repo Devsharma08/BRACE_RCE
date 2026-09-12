@@ -9,6 +9,7 @@ import OutputPanel from "../features/terminal/components/OutputPanel";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
+import { toast } from "sonner";
 import { Bot, Clock, LayoutTemplate, Loader2, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
@@ -400,7 +401,7 @@ export const Battle = () => {
         setCodes(initialCodes);
       } catch (err: any) {
         console.error("Failed to load room", err);
-        alert(
+        toast.error(
           `Could not join room: ${err.response?.data?.message || err.message}`,
         );
         navigate("/lobby");
@@ -463,7 +464,7 @@ export const Battle = () => {
     });
 
     socket.on("you_were_kicked", () => {
-      alert("You have been removed from this match by the host.");
+      toast.error("You have been removed from this match by the host.");
       navigate("/lobby");
     });
 

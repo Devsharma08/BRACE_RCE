@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAdminSettings, useUpdateSetting } from '../../hooks/useAdmin';
+import { toast } from 'sonner';
 import { Save, RefreshCw } from 'lucide-react';
 
 interface SettingField {
@@ -36,7 +37,7 @@ const AdminSettings = () => {
       await updateSetting.mutateAsync({ key: field.key, value: currentValue(field.key) });
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to save setting');
+      toast.error(err?.response?.data?.message || 'Failed to save setting');
     } finally {
       setSavingKey(null);
     }
@@ -164,7 +165,7 @@ const AdminSettings = () => {
       await updateSetting.mutateAsync({ key: field.key, value });
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to save setting');
+      toast.error(err?.response?.data?.message || 'Failed to save setting');
     } finally {
       setSavingKey(null);
     }

@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -21,6 +22,7 @@ const NAV_LINKS = [
   { icon: Swords, to: "/lobby", label: "Battle" },
   { icon: Code2, to: "/problems", label: "Problems" },
   { icon: User, to: "/profile", label: "Profile" },
+  { icon: UserPlus, to: "/friends", label: "Friends" },
 ];
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) => {

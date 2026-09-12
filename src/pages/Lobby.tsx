@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CardSkeletonGrid } from "../components/ui/Skeleton";
 import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
+import { toast } from "sonner";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 
 interface Room {
@@ -96,7 +97,7 @@ const Lobby = () => {
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (error) {
       console.error(error);
-      alert("Failed to clone template");
+      toast.error("Failed to clone template");
     } finally {
       setCloningId(null);
     }
@@ -109,7 +110,7 @@ const Lobby = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
     } catch (error: any) {
       console.error(error);
-      alert(error?.response?.data?.message || "Failed to delete operation.");
+      toast.error(error?.response?.data?.message || "Failed to delete operation.");
     }
   };
 
@@ -119,7 +120,7 @@ const Lobby = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
     } catch (error) {
       console.error(error);
-      alert("Failed to change visibility.");
+      toast.error("Failed to change visibility.");
     }
   };
 

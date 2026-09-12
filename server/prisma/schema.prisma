@@ -42,6 +42,8 @@ model User {
   friends User[] @relation("UserFriends")
   friendOf User[] @relation("UserFriends")
 
+  notifications Notification[] @relation("UserNotifications")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -233,7 +235,48 @@ model Message {
   receiver User @relation("ReceivedMessages", fields:[receiverId],references:[id])
 
   createdAt DateTime @default(now())
-  
+
+}
+
+// ── NOTIFICATION CENTER (3-day retained queue) ──
+
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPT
+  DIRECT_MESSAGE
+  CHALLENGE_RECEIVED
+  CHALLENGE_RESULT
+  MATCH_RESULT
+  SYSTEM
+  WEEKLY_ANALYSIS
+  EVENT_REPORT
+  EVENT_RESULT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+model Notification {
+  id String @id @default(uuid())
+
+  userId String
+  user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  type NotificationType @default(SYSTEM)
+  title String
+  body String @db.Text
+  data Json?
+
+  status NotificationStatus @default(UNREAD)
+
+  createdAt DateTime @default(now())
+  readAt DateTime?
+
+  @@index([userId, status, createdAt])
+  @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────────────────

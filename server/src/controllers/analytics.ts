@@ -109,31 +109,40 @@ class Analytics {
           if (level in difficultyBreakdown) difficultyBreakdown[level]++;
         });
 
-      // ── 3. ACTIVITY HEATMAP (current month only) ──────────────────────
+      // ── 3. ACTIVITY HEATMAP (365-day window; solo + battle) ─────────────
+      // BUG FIX: previously seeded only the current month, so `activityData`
+      // never contained yesterday/tomorrow-spanning history and the streak loop
+      // below could not see practice-only days. Now union every signal:
+      // submissionTimes ticks, solvedAt, progress createdAt/updatedAt, battle
+      // performance createdAt and per-submission createdAt.
+      const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
+      const bumpDay = (map: Map<string, number>, v: unknown): void => {
+        if (!v) return;
+        const d = v instanceof Date ? v : new Date(v as string);
+        if (Number.isNaN(d.getTime())) return;
+        const k = dayKey(d);
+        map.set(k, (map.get(k) || 0) + 1);
+      };
       const now2 = new Date();
-      const year = now2.getFullYear();
-      const month = now2.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
       const dayMap = new Map<string, number>();
-
-      // Seed every day of current month with 0
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        dayMap.set(dateStr, 0);
+      for (let back = 364; back >= 0; back--) {
+        const d = new Date(now2);
+        d.setDate(d.getDate() - back);
+        dayMap.set(dayKey(d), 0);
       }
 
-      // Count submission timestamps from practice
+      // Count submission timestamps from practice (every SUBMIT ticks)
       progressRecords.forEach((p) => {
-        (p.submissionTimes || []).forEach((ts) => {
-          const day = new Date(ts).toISOString().slice(0, 10);
-          if (dayMap.has(day)) dayMap.set(day, (dayMap.get(day) || 0) + 1);
-        });
+        (p.submissionTimes || []).forEach((ts) => bumpDay(dayMap, ts));
+        bumpDay(dayMap, p.solvedAt);
+        bumpDay(dayMap, (p as { updatedAt?: unknown }).updatedAt);
+        bumpDay(dayMap, (p as { createdAt?: unknown }).createdAt);
       });
 
-      // Count battle performances
+      // Count battle performances + their submissions (outside current month too)
       performances.forEach((p) => {
-        const day = new Date(p.createdAt).toISOString().slice(0, 10);
-        if (dayMap.has(day)) dayMap.set(day, (dayMap.get(day) || 0) + 1);
+        bumpDay(dayMap, p.createdAt);
+        (p.submissions || []).forEach((s) => bumpDay(dayMap, s.createdAt));
       });
 
       const activityData = Array.from(dayMap.entries()).map(([date, count]) => ({
@@ -208,19 +217,18 @@ class Analytics {
         .map(([month, count]) => ({ month, count }));
 
       // ── 8. CURRENT STREAK ───────────────────────────────────────────────
+      // Counts consecutive active days ending today (or yesterday if today is
+      // still idle — the user keeps the streak until end of today).
+      const countsByDay = new Map(activityData.map((a) => [a.date, a.count]));
+      const hasActivity = (d: Date): boolean =>
+        (countsByDay.get(d.toISOString().slice(0, 10)) || 0) > 0;
       let currentStreak = 0;
-      let lastActive = new Date();
-      for (let d = 1; d <= 365; d++) {
-        const checkDate = new Date(lastActive);
-        checkDate.setDate(checkDate.getDate() - d);
-        const dateStr = checkDate.toISOString().slice(0, 10);
-
-        const hasActivity = activityData.some((a) => a.date === dateStr && a.count > 0);
-        if (hasActivity) {
-          currentStreak++;
-        } else if (currentStreak > 0) {
-          break;
-        }
+      const cursor = new Date();
+      if (!hasActivity(cursor)) cursor.setDate(cursor.getDate() - 1);
+      while (hasActivity(cursor)) {
+        currentStreak++;
+        cursor.setDate(cursor.getDate() - 1);
+        if (currentStreak > 365) break;
       }
 
       // ── 9. WEAK AREAS (difficulty levels with lowest solve rate) ────────

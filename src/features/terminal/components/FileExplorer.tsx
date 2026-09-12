@@ -4,6 +4,7 @@ import { FileCode, Loader2, X } from "lucide-react";
 import React,{ useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ChangeEvent, useCallback } from "react";
 import type { FileEntry } from "../../../context/FileNamesContext";
 import type { FileContentResponse } from "../types";
+import { toast } from "sonner";
 
 type FileExplorerProps = {
   activeFile: string | null;
@@ -729,13 +730,13 @@ const FileExplorer = ({
   const crossCheckFileName = useCallback((name: string) => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      alert("Please enter a file name.");
+      toast.error("Please enter a file name.");
       return false;
     }
 
     const parts = trimmedName.toLowerCase().split(".");
     if (parts.length > 2) {
-      alert("Invalid file name. Only one dot is allowed for a file extension.");
+      toast.error("Invalid file name. Only one dot is allowed for a file extension.");
       return false;
     }
 
@@ -743,23 +744,23 @@ const FileExplorer = ({
     const extension = parts.length === 2 ? parts[1] : null;
 
     if (!baseName?.match(/^[a-zA-Z0-9_-]+$/)) {
-      alert("Invalid file name. Only letters, numbers, underscores and hyphens are allowed.");
+      toast.error("Invalid file name. Only letters, numbers, underscores and hyphens are allowed.");
       return false;
     }
 
     if (baseName.length > 50) {
-      alert("File name too long. Please keep it under 50 characters.");
+      toast.error("File name too long. Please keep it under 50 characters.");
       return false;
     }
 
     if (extension && extension !== "js" && extension !== "java") {
-      alert("Invalid file extension. Only .js and .java files are allowed.");
+      toast.error("Invalid file extension. Only .js and .java files are allowed.");
       return false;
     }
 
     const normalizedName = trimmedName.toLowerCase();
     if (files.some((file) => file.name.toLowerCase() === normalizedName)) {
-      alert("File name already exists. Please choose a different name.");
+      toast.error("File name already exists. Please choose a different name.");
       return false;
     }
 

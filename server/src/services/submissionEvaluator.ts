@@ -13,6 +13,8 @@ interface SaveSubmisssionParams {
     passedCase: number;
     totalCases: number;
     timeTakenMs?: number;
+    /** Solo-practice owner so battle solves also feed streak/monthly heatmaps. */
+    userId?: string;
 }
 
 export async function saveSubmisssion(params: SaveSubmisssionParams) {
@@ -119,6 +121,45 @@ export async function saveSubmisssion(params: SaveSubmisssionParams) {
             ...(timeTakenMsWrite !== undefined ? { timeTakenMs: timeTakenMsWrite } : {})
         }
     });
+
+    // Mirror battle activity into solo-practice progress so streak + monthly
+    // heatmaps count battle solves. Never unsets isSolved.
+    try {
+        const ownerId =
+            params.userId ??
+            (await prisma.userPersonalPerformance.findUnique({
+                where: { id: params.performanceId },
+                select: { userId: true },
+            }))?.userId;
+        if (ownerId) {
+            const solved = bestSubmission.status === "PASSED";
+            const { invalidateUserAnalyticsCache } = await import("../controllers/analytics.js");
+            await prisma.userProblemProgress.upsert({
+                where: { userId_problemId: { userId: ownerId, problemId: params.problemId } },
+                create: {
+                    userId: ownerId,
+                    problemId: params.problemId,
+                    isSolved: solved,
+                    solvedAt: solved ? new Date() : null,
+                    attempts: 1,
+                    lastCode: params.submittedCode,
+                    lastLanguage: params.language,
+                    submissionTimes: [new Date().toISOString()],
+                },
+                update: {
+                    isSolved: solved ? true : undefined,
+                    solvedAt: solved ? new Date() : undefined,
+                    attempts: { increment: 1 },
+                    lastCode: params.submittedCode,
+                    lastLanguage: params.language,
+                    submissionTimes: { push: new Date().toISOString() },
+                },
+            });
+            invalidateUserAnalyticsCache(ownerId);
+        }
+    } catch (e) {
+        console.error("Failed to mirror battle submission to progress:", e);
+    }
 
     return newSubmisssion;
 }

@@ -3,6 +3,7 @@ import { ShieldAlert, CheckCircle2, Lock, Unlock, Globe, EyeOff, Swords, Activit
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import { toast } from "sonner";
 import { TestCaseGeneratorPanel, type CreatorSignature } from "../components/features/TestCaseGeneratorPanel";
 
 interface Problem {
@@ -89,7 +90,7 @@ const CreateRoom = () => {
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedProblemIds.length === 0) return alert("You must select at least one problem!");
+    if (selectedProblemIds.length === 0) return toast.error("You must select at least one problem!");
 
     setLoading(true);
     try {
@@ -106,14 +107,14 @@ const CreateRoom = () => {
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (err) {
       console.error(err);
-      alert("Failed to initialize room.");
+      toast.error("Failed to initialize room.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateCustomProblem = async () => {
-    if (!customName || !customDefinition) return alert("Please fill out the problem name and definition.");
+    if (!customName || !customDefinition) return toast.error("Please fill out the problem name and definition.");
     setCustomLoading(true);
     try {
       const res = await api.post("/problems/create", {
@@ -146,7 +147,7 @@ const CreateRoom = () => {
       
     } catch (err) {
       console.error(err);
-      alert("Failed to create custom problem.");
+      toast.error("Failed to create custom problem.");
     } finally {
       setCustomLoading(false);
     }

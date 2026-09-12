@@ -11,9 +11,9 @@ import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { LeaderboardTable } from "../components/features/LeaderboardTable";
 import { useMyRating, TIER_COLORS } from "../hooks/useLeaderboard";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
+import { NotificationCenter } from "../components/features/NotificationCenter";
 import {
   Swords,
-  Bell,
   TrendingUp,
   Trophy,
   Flame,
@@ -139,14 +139,7 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/profile")}
-              className="relative p-2 text-slate-400 hover:text-cyan-400 transition-colors border border-white/10 hover:border-cyan-500/40 bg-[#06080e] rounded-none cursor-pointer"
-              title="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            </button>
+            <NotificationCenter />
 
             <div
               onClick={() => navigate("/profile")}

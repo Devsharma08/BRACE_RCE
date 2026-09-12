@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAdminReports, useActOnReport, type AdminReport } from '../../hooks/useAdmin';
+import { toast } from 'sonner';
 import { Check, X } from 'lucide-react';
 
 const AdminReports = () => {
@@ -20,7 +21,7 @@ const AdminReports = () => {
       await actOn.mutateAsync({ reportId: report.id, status });
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to process report');
+      toast.error(err?.response?.data?.message || 'Failed to process report');
     } finally {
       setProcessingId(null);
     }

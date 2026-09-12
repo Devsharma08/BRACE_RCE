@@ -1435,6 +1435,13 @@ export const executeCode = async (req: Request, res: Response) => {
 
         if (practiceTargetProblem) {
           const allPassed = totalPassed === casesToRun.length && casesToRun.length > 0;
+          // Always record an activity tick so streak/monthly heatmaps count every
+          // solo SUBMIT — `timeTaken` (timer string) is client-optional, so fall
+          // back to an ISO timestamp that sorts with existing entries.
+          const activityTick = typeof timeTaken === "string" && timeTaken.length > 0
+            ? timeTaken
+            : new Date().toISOString();
+          const { invalidateUserAnalyticsCache } = await import("../controllers/analytics.js");
           await prisma.userProblemProgress.upsert({
             where: { userId_problemId: { userId, problemId: practiceTargetProblem.id } },
             create: {
@@ -1445,7 +1452,7 @@ export const executeCode = async (req: Request, res: Response) => {
               attempts: 1,
               lastCode: sourceCode,
               lastLanguage: executionLanguage,
-              submissionTimes: timeTaken ? [timeTaken] : [],
+              submissionTimes: [activityTick],
             },
             update: {
               isSolved: allPassed ? true : undefined, // never go back to unsolved
@@ -1453,9 +1460,10 @@ export const executeCode = async (req: Request, res: Response) => {
               attempts: { increment: 1 },
               lastCode: sourceCode,
               lastLanguage: executionLanguage,
-              submissionTimes: timeTaken ? { push: timeTaken } : undefined,
+              submissionTimes: { push: activityTick },
             }
           });
+          invalidateUserAnalyticsCache(userId);
         }
       } catch (e) {
         console.error("Failed to upsert UserProblemProgress:", e);

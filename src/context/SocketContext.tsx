@@ -2,6 +2,24 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
+
+export interface IncomingChallenge {
+  challengerId: string;
+  challengerUsername?: string;
+  mode?: "RANDOM" | "CUSTOM";
+  difficulty?: string;
+  problemId?: string;
+  problemName?: string;
+}
+
+export interface ChallengeOpts {
+  mode?: "RANDOM" | "CUSTOM";
+  difficulty?: string;
+  problemId?: string;
+  problemName?: string;
+  username?: string;
+}
 
 interface SocketContextType {
   socket: Socket | null;
@@ -25,10 +43,10 @@ interface SocketContextType {
   leaveCustomMatch: () => void;
   terminateGroup: (roomId: string) => void;
   pendingOpponent: { username: string; id: string; avatarUrl: string; bio: string } | null;
-  incomingChallenge: any;
+  incomingChallenge: IncomingChallenge | null;
   sendDirectMessage: (targetUserId: string, content: string) => void;
-  sendChallenge: (targetUserId: string, problemId?: string) => void;
-  acceptChallenge: (challengerId: string) => void;
+  sendChallenge: (targetUserId: string, opts?: ChallengeOpts | string) => void;
+  acceptChallenge: (challengerId: string, opts?: { problemId?: string; mode?: "RANDOM" | "CUSTOM"; difficulty?: string }) => void;
   declineChallenge: (targetUserId: string) => void;
   sendBattleMessage: (roomId: string, content: string) => void;
   isClicked: boolean;
@@ -97,9 +115,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setCustomLobby(data);
     });
 
-    newSocket.on("incoming_challenge", (data: { challengerId: string, challengerUsername?: string }) => {
+    newSocket.on("incoming_challenge", (data: IncomingChallenge) => {
       setIncomingChallenge(data);
       setIsClicked(false);
+      toast.info(`Challenge from ${data.challengerUsername ?? "a friend"}`, {
+        description: data.mode === "CUSTOM"
+          ? `Custom problem: ${data.problemName ?? data.problemId ?? "arena"}`
+          : `Random ${data.difficulty ?? "MEDIUM"} problem`,
+      });
     });
 
 
@@ -111,12 +134,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     );
 
     newSocket.on("lobby_error", (msg: string) => {
-      alert(msg);
+      toast.error(msg);
     });
 
     newSocket.on("lobby_ended", () => {
       setCustomLobby(null);
-      alert("Lobby has ended.");
+      toast.info("Lobby has ended.");
     });
 
     newSocket.on(
@@ -172,8 +195,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
-      alert("Match timed out.");
+      toast.error("Match timed out.");
       setWaitingTime(0);
+    });
+
+    newSocket.on("challenge_declined", () => {
+      toast.info("Challenge was declined.");
+      setIsClicked(false);
     });
 
     // opponent declined
@@ -197,14 +225,18 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
   };
 
-  const sendChallenge = (targetUserId: string, problemId?: string) => {
-    socket?.emit("send_challenge", { targetUserId, problemId });
+  const sendChallenge = (targetUserId: string, opts?: ChallengeOpts | string) => {
+    if (typeof opts === "string") {
+      socket?.emit("send_challenge", { targetUserId, problemId: opts, mode: "CUSTOM" });
+    } else {
+      socket?.emit("send_challenge", { targetUserId, ...(opts ?? { mode: "RANDOM" }) });
+    }
   };
 
-  const acceptChallenge = (challengerId: string) => {
+  const acceptChallenge = (challengerId: string, opts?: { problemId?: string; mode?: "RANDOM" | "CUSTOM"; difficulty?: string }) => {
     setWaitingTime(0);
     setIsClicked(true);
-    socket?.emit("accept_challenge", { challengerId });
+    socket?.emit("accept_challenge", { challengerId, ...(opts ?? {}) });
     setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
   };
 

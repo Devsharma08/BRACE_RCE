@@ -13,6 +13,7 @@ import analyticsRouter from "./routes/analytics.js";
 import leaderboardRouter from "./routes/leaderboard.js";
 import roadmapRouter from "./routes/roadmap.js";
 import { adminRouter } from "./routes/admin.js";
+import { notificationsRouter } from "./routes/notifications.js";
 
 // Read allowed origins from env (ALLOWED_ORIGINS is a comma-separated list)
 const getAllowedOrigins = () => {
@@ -50,6 +51,7 @@ export const createApp = (): Express => {
   app.use("/api/leaderboard", leaderboardRouter);
   app.use("/api/roadmap", roadmapRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/notifications", notificationsRouter);
 
 
 

@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
+// The header auto-hides only when the user has scrolled INTO the content.
+// Fixed-height pages (e.g. the friends workspace) often have little or no
+// window scroll — previously the inactivity timer hid the header there and
+// made nav links permanently unclickable (had to refresh). At/near the top
+// of any page the header now stays visible and interactive.
+const SCROLL_HIDE_THRESHOLD = 100;
+
 export const UseHeadroom = () => {
   const [visible, setVisible] = useState(true);
   const [scrollDirection, setScrollDirection] = useState<"up" | "down">("up");
@@ -8,11 +15,15 @@ export const UseHeadroom = () => {
   const lastScrollY = useRef(window.scrollY);
 
   useEffect(() => {
-    const hideAfterInactivity = () => {
+    const clearHideTimer = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
+    };
 
+    const hideAfterInactivity = () => {
+      clearHideTimer();
       timeoutRef.current = setTimeout(() => {
         setVisible(false);
       }, 3000);
@@ -31,29 +42,33 @@ export const UseHeadroom = () => {
 
       setScrollDirection(direction);
 
-      // Scrolling UP → immediately show header
       if (direction === "up") {
+        // Scrolling UP → immediately show header and keep it shown
         setVisible(true);
+        clearHideTimer();
+      } else if (currentScrollY > SCROLL_HIDE_THRESHOLD) {
+        // Scrolled deep into content → show, then hide after 3s of inactivity
+        setVisible(true);
+        hideAfterInactivity();
+      } else {
+        // Near the top of the page → always keep the header visible
+        setVisible(true);
+        clearHideTimer();
       }
-
-      // Any meaningful scroll resets the inactivity timer
-      setVisible(true);
-      hideAfterInactivity();
 
       lastScrollY.current = Math.max(currentScrollY, 0);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Start 3-second inactivity timer
-    hideAfterInactivity();
+    // Start the inactivity timer only if the page is already scrolled down
+    if (window.scrollY > SCROLL_HIDE_THRESHOLD) {
+      hideAfterInactivity();
+    }
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      clearHideTimer();
     };
   }, []);
 

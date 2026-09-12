@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAdminFeedback, useResolveFeedback, type AdminFeedback } from '../../hooks/useAdmin';
+import { toast } from 'sonner';
 
 const statusOptions = [
   { value: 'PENDING', label: 'PENDING', color: 'text-amber-400 bg-amber-950/40 border border-amber-500/30' },
@@ -23,7 +24,7 @@ const AdminFeedback = () => {
       });
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to update feedback');
+      toast.error(err?.response?.data?.message || 'Failed to update feedback');
     } finally {
       setResolvingId(null);
     }

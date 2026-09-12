@@ -12,8 +12,16 @@ import {
   Trash2,
   X,
   Ban,
+  MessageSquare,
+  RefreshCw,
+  Wifi,
+  ChevronLeft,
 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "../../config/api";
+import { ChallengeModal } from "./ChallengeModal";
+import DashboardSidebar from "../layout/DashboardSidebar";
+import { useMyRating } from "../../hooks/useLeaderboard";
 
 interface Friend {
   id: string;
@@ -34,26 +42,26 @@ interface FriendRequest {
 }
 
 export default function FriendsDashboard() {
-  const {
-    sendDirectMessage,
-    sendChallenge,
-    socket,
-    incomingChallenge,
-    acceptChallenge,
-    declineChallenge,
-  } = useSocket();
+  const { sendDirectMessage, socket } = useSocket();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Scroll the chat pane itself (never the window — scrollIntoView on the
+  // end-marker used to bubble up and yank the whole page to the bottom).
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   // New States for Search & Requests
   const [leftPaneMode, setLeftPaneMode] = useState<
     "FRIENDS" | "SEARCH" | "REQUESTS" | "BLOCK"
   >("FRIENDS");
+  // Friend challenge modal (RANDOM-by-difficulty vs CUSTOM problem)
+  const [challengeFriend, setChallengeFriend] = useState<Friend | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: friends = [], refetch: fetchFriends } = useQuery<Friend[]>({
+  // Friend presence (realtime online map)
+  const [onlineIds, setOnlineIds] = useState<string[]>([]);
+
+  const { data: friends = [], isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
     queryFn: async () => {
       const res = await api.get("/friends");
@@ -73,7 +81,7 @@ export default function FriendsDashboard() {
     queryKey: ["blocked-users"],
     queryFn: async () => {
       const res = await api.get("/friends/blocked");
-      return (res.data.users || []).map((req: any) => req.receiver);
+      return ((res.data.users || []) as { receiver: Friend }[]).map((entry) => entry.receiver);
     },
   });
 
@@ -86,13 +94,22 @@ export default function FriendsDashboard() {
     },
   });
 
-  useEffect(() => {
-    setMessages(directMessages);
-  }, [directMessages]);
+  // Derive the displayed list instead of syncing query data into state:
+  // local optimistic messages take priority, otherwise fall back to the
+  // persisted history fetched for the active chat.
+  const displayedMessages: Message[] =
+    messages.length > 0 ? messages : (directMessages as Message[]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    chatScrollRef.current?.scrollTo({
+      top: chatScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [displayedMessages]);
+
+  const { data: myRating } = useMyRating(true);
+
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!socket) return;
@@ -102,13 +119,25 @@ export default function FriendsDashboard() {
         (msg.senderId === activeTab.id || msg.receiverId === activeTab.id)
       ) {
         setMessages((prev) => [...prev, msg]);
+      } else {
+        toast.info("New message", { description: msg.content });
       }
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    };
+    const handlePresence = (data: { userId: string; status: string }) => {
+      setOnlineIds((prev) =>
+        data.status === "ONLINE" || data.status === "online"
+          ? Array.from(new Set([...prev, data.userId]))
+          : prev.filter((id) => id !== data.userId)
+      );
     };
     socket.on("receive_direct_message", handleReceiveMessage);
+    socket.on("user_online_status", handlePresence);
     return () => {
       socket.off("receive_direct_message", handleReceiveMessage);
+      socket.off("user_online_status", handlePresence);
     };
-  }, [socket, activeTab]);
+  }, [socket, activeTab, queryClient]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,14 +157,12 @@ export default function FriendsDashboard() {
     }
   };
 
-  const queryClient = useQueryClient();
-
   const { data: searchResults = [] } = useQuery<Friend[]>({
     queryKey: ["friend-search", searchQuery],
     enabled: Boolean(searchQuery.trim()),
     queryFn: async () => {
-      const res = await api.get(`/friends/search?q=${searchQuery}`);
-      return res.data.user || [];
+      const res = await api.get(`/friends/search?q=${encodeURIComponent(searchQuery)}`);
+      return res.data.users ?? res.data.user ?? [];
     },
   });
 
@@ -143,8 +170,10 @@ export default function FriendsDashboard() {
     try {
       await api.post("/friends/reject", { requestId });
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      toast.success("Request rejected");
     } catch (error) {
       console.error(error);
+      toast.error("Failed to reject request");
     }
   };
 
@@ -154,9 +183,10 @@ export default function FriendsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
       queryClient.invalidateQueries({ queryKey: ["friends-list"] });
-      alert("User has been blocked.");
+      toast.success("User has been blocked.");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to block user");
     }
   };
 
@@ -165,9 +195,10 @@ export default function FriendsDashboard() {
       await api.post("/friends/unblock", { targetUserId });
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
-      alert("User has been unblocked.");
+      toast.success("User has been unblocked.");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to unblock user");
     }
   };
 
@@ -180,9 +211,10 @@ export default function FriendsDashboard() {
     try {
       await api.post("/friends/request", { targetUserId });
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
-      alert("Request Sent!");
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Request sent!");
     } catch (e: any) {
-      alert(e.response?.data?.message || "Failed to send request");
+      toast.error(e.response?.data?.message || "Failed to send request");
     }
   };
 
@@ -191,9 +223,12 @@ export default function FriendsDashboard() {
       await api.post("/friends/accept", { requestId, senderId });
       queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       queryClient.invalidateQueries({ queryKey: ["friends-list"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       setLeftPaneMode("FRIENDS");
+      toast.success("Friend added!");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to accept request");
     }
   };
 
@@ -203,153 +238,254 @@ export default function FriendsDashboard() {
       await api.delete(`/friends/remove/${targetId}`);
       if (activeTab?.id === targetId) setActiveTab(null);
       queryClient.invalidateQueries({ queryKey: ["friends-list"] });
+      toast.success("Friend removed");
     } catch (e) {
       console.error(e);
+      toast.error("Failed to remove friend");
     }
   };
 
+  const leftPaneTabs = [
+    { id: "FRIENDS", label: "FRIENDS", icon: Users, badge: 0 },
+    { id: "SEARCH", label: "SEARCH", icon: Search, badge: 0 },
+    { id: "REQUESTS", label: "REQUESTS", icon: Bell, badge: pendingRequests.length },
+    { id: "BLOCK", label: "BLOCK", icon: Ban, badge: 0 },
+  ] as const;
+
+  // Switch panes; lazily refetch lists when entering REQUESTS / BLOCK
+  const handleSwitchPane = (pane: (typeof leftPaneTabs)[number]["id"]) => {
+    setLeftPaneMode(pane);
+    if (pane === "REQUESTS") void fetchRequests();
+    if (pane === "BLOCK") void getBlockedUsers();
+  };
+
+  // Opening a chat must clear the local optimistic buffer so the previous
+  // friend's messages never leak into the new conversation.
+  const handleSelectFriend = (friend: Friend) => {
+    setActiveTab(friend);
+    setMessages([]);
+  };
+
   return (
-    <div className="flex h-screen w-full pt-20 px-4 pb-4 gap-4 bg-[#030406] relative">
+    <div className="flex min-h-screen bg-[#02040a] text-slate-100 font-mono relative overflow-x-hidden select-none">
+      {/* Global dot-grid texture + glows — same cyber-arena theme as dashboard */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] z-0" />
+      <div className="fixed top-1/4 left-1/3 w-96 h-96 bg-cyan-500/5 blur-3xl pointer-events-none z-0" />
+      <div className="fixed bottom-1/4 right-1/3 w-96 h-96 bg-blue-500/5 blur-3xl pointer-events-none z-0" />
 
+      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* LEFT COLUMN: NAVIGATION & LISTS */}
-      <div className="w-1/3 max-w-sm flex flex-col bg-[#0b0c0e] border border-cyan-500/20 rounded-2xl overflow-hidden">
-        {/* TOP NAV BAR */}
-        <div className="flex border-b border-cyan-500/20 bg-cyan-950/20">
-          <button
-            onClick={() => setLeftPaneMode("FRIENDS")}
-            className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all ${leftPaneMode === "FRIENDS" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
-          >
-            <Users className="w-4 h-4 mx-auto mb-1" /> FRIENDS
-          </button>
-          <button
-            onClick={() => setLeftPaneMode("SEARCH")}
-            className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all ${leftPaneMode === "SEARCH" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
-          >
-            <Search className="w-4 h-4 mx-auto mb-1" /> SEARCH
-          </button>
-          <button
-            onClick={() => setLeftPaneMode("REQUESTS")}
-            className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "REQUESTS" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
-          >
-            <Bell className="w-4 h-4 mx-auto mb-1" /> REQUESTS
-            {pendingRequests.length > 0 && (
-              <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            )}
-          </button>
-          <button
-            onClick={() => setLeftPaneMode("BLOCK")}
-            className={`flex-1 p-4 font-mono text-xs tracking-widest transition-all relative ${leftPaneMode === "BLOCK" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
-          >
-            <Ban className="w-4 h-4 mx-auto mb-1" /> BLOCK
-            {pendingRequests.length > 0 && (
-              <span className="absolute top-2 right-4 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            )}
-          </button>
-        </div>
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full p-4 sm:p-6 lg:p-8 flex flex-col gap-6 max-w-[1400px] z-10 relative">
+        {/* HEADER BAR */}
+        <header className="flex items-center justify-between border-b border-cyan-500/20 pb-4">
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
+              <Users className="w-5 h-5 text-cyan-400" />
+              <span>SOCIAL UPLINK</span>
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Friends, user search, direct messages and 1v1 battle challenges
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fetchFriends()}
+              title="Refresh"
+              className="p-2 text-cyan-400 border border-cyan-500/30 bg-cyan-950/30 hover:bg-cyan-900/40 rounded-none transition-all active:scale-95"
+            >
+              <RefreshCw className={`w-4 h-4 ${friendsLoading ? "animate-spin" : ""}`} />
+            </button>
+            <div className="hidden sm:flex text-xs font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 px-3.5 py-1.5 rounded-none shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+              ONLINE: <strong className="text-white ml-1">{onlineIds.length}</strong>
+            </div>
+            <div className="text-xs font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-500/30 px-3.5 py-1.5 rounded-none shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              FRIENDS: <strong className="text-white">{friends.length}</strong>
+            </div>
+          </div>
+        </header>
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        {/* WORKSPACE GRID — fixed height, all scrolling happens inside panes */}
+        <div className="flex-1 min-h-[560px] grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4">
+          {/* LEFT COLUMN: NAVIGATION & LISTS */}
+          <div className="flex flex-col h-full min-h-0 max-h-[480px] lg:max-h-none rounded-none border border-white/20 bg-[#06080e] overflow-hidden relative">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+
+            {/* TOP NAV TABS */}
+            <div className="flex border-b border-white/10 relative z-10">
+              {leftPaneTabs.map((tab) => {
+                const TabIcon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleSwitchPane(tab.id)}
+                    className={`relative flex-1 p-3.5 font-mono text-xs tracking-widest transition-all ${
+                      leftPaneMode === tab.id
+                        ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300"
+                        : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
+                    }`}
+                  >
+                    <TabIcon className="w-4 h-4 mx-auto mb-1" />
+                    {tab.label}
+                    {tab.badge > 0 && (
+                      <span className="absolute top-2 right-3 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2 relative z-10">
           {/* FRIENDS MODE */}
           {leftPaneMode === "FRIENDS" && (
             <>
-              {friends.length === 0 && (
-                <p className="text-slate-500 font-mono text-xs text-center mt-4">
-                  NO FRIENDS FOUND
+              {friendsLoading ? (
+                [...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 rounded-none border border-white/10 bg-black/40 animate-pulse"
+                  />
+                ))
+              ) : friends.length === 0 ? (
+                <p className="text-slate-500 font-mono text-xs text-center mt-6">
+                  NO FRIENDS YET — USE SEARCH TO ADD SOME
                 </p>
-              )}
-              {friends.map((friend) => (
-                <div
-                  key={friend.id}
-                  onClick={() => setActiveTab(friend)}
-                  className={`flex items-center justify-between p-4 rounded-xl cursor-pointer border transition-all group ${activeTab?.id === friend.id ? "bg-cyan-950/40 border-cyan-500/50" : "hover:bg-cyan-950/20 border-transparent hover:border-cyan-500/30"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-cyan-900 flex items-center justify-center font-mono text-cyan-300 font-bold uppercase">
-                      {friend.username.charAt(0)}
-                    </div>
-                    <span className="font-mono text-sm text-white font-bold">
-                      {friend.username}
-                    </span>
-                  </div>
-                  <button
-                    onClick={(e) => removeFriend(e, friend.id)}
-                    className="text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+              ) : (
+                friends.map((friend) => (
+                  <div
+                    key={friend.id}
+                    onClick={() => handleSelectFriend(friend)}
+                    className={`group flex items-center justify-between p-3 rounded-none cursor-pointer border transition-all ${
+                      activeTab?.id === friend.id
+                        ? "bg-cyan-950/40 border-cyan-500/50"
+                        : "border-white/10 bg-black/40 hover:border-cyan-500/30 hover:bg-cyan-950/20"
+                    }`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative w-9 h-9 shrink-0 rounded-none bg-cyan-900/50 border border-cyan-500/30 flex items-center justify-center font-mono text-cyan-300 font-bold uppercase">
+                        {friend.username.charAt(0)}
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#06080e] ${
+                            onlineIds.includes(friend.id) ? "bg-emerald-400" : "bg-slate-600"
+                          }`}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block font-mono text-sm text-white font-bold truncate">
+                          {friend.username}
+                        </span>
+                        <span
+                          className={`flex items-center gap-1 text-[10px] ${
+                            onlineIds.includes(friend.id) ? "text-emerald-400" : "text-slate-500"
+                          }`}
+                        >
+                          <Wifi className="w-3 h-3" />
+                          {onlineIds.includes(friend.id) ? "ONLINE" : "OFFLINE"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => removeFriend(e, friend.id)}
+                      title="Remove friend"
+                      className="p-2 text-slate-600 hover:text-rose-400 rounded-none opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </>
           )}
 
           {/* SEARCH MODE */}
           {leftPaneMode === "SEARCH" && (
             <>
-              <form onSubmit={handleSearch} className="flex gap-2 mb-4">
+              <form onSubmit={handleSearch} className="flex gap-2 mb-3">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search users..."
-                  className="flex-1 bg-black/50 border border-slate-700 p-2 rounded text-white font-mono text-sm focus:border-cyan-500 outline-none"
+                  className="flex-1 bg-black/60 border border-white/10 p-2 rounded-none text-white font-mono text-xs focus:border-cyan-500 outline-none"
                 />
                 <button
                   type="submit"
-                  className="px-4 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded"
+                  className="px-3 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-none transition-all active:scale-95"
                 >
                   <Search className="w-4 h-4" />
                 </button>
               </form>
-              {searchResults?.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-black/40"
-                >
-                  <span className="font-mono text-sm text-slate-300">
-                    {user.username}
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (!user.requestSent) {
-                        sendRequest(user.id);
-                      }
-                    }}
-                    className={`transition-colors ${user.requestSent ? "text-slate-500 cursor-not-allowed" : "text-cyan-400 hover:text-cyan-300"}`}
-                    disabled={user.requestSent}
+              {searchResults.length === 0 ? (
+                <p className="text-slate-500 font-mono text-xs text-center mt-4">
+                  {searchQuery.trim() ? "NO USERS FOUND" : "TYPE A USERNAME TO FIND PLAYERS"}
+                </p>
+              ) : (
+                searchResults.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 rounded-none border border-white/10 bg-black/40"
                   >
-                    {user.requestSent ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      <UserPlus className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 shrink-0 rounded-none bg-slate-800/60 border border-white/10 flex items-center justify-center font-mono text-slate-300 font-bold uppercase">
+                        {user.username.charAt(0)}
+                      </div>
+                      <span className="font-mono text-sm text-slate-200 truncate">
+                        {user.username}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!user.requestSent) {
+                          sendRequest(user.id);
+                        }
+                      }}
+                      title={user.requestSent ? "Request already sent" : "Send friend request"}
+                      className={`p-2 rounded-none transition-colors ${
+                        user.requestSent
+                          ? "text-slate-500 cursor-not-allowed"
+                          : "text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/40"
+                      }`}
+                      disabled={user.requestSent}
+                    >
+                      {user.requestSent ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <UserPlus className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
             </>
           )}
 
           {/* REQUESTS MODE */}
           {leftPaneMode === "REQUESTS" && (
             <>
-              {pendingRequests?.length === 0 && (
-                <p className="text-slate-500 font-mono text-xs text-center mt-4">
+              {pendingRequests.length === 0 && (
+                <p className="text-slate-500 font-mono text-xs text-center mt-6">
                   NO PENDING REQUESTS
                 </p>
               )}
-              {pendingRequests?.map((req) => (
+              {pendingRequests.map((req) => (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-black/40"
+                  className="flex items-center justify-between p-3 rounded-none border border-white/10 bg-black/40"
                 >
-                  <span className="font-mono text-sm text-slate-300">
-                    {req.sender.username}
-                  </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 shrink-0 rounded-none bg-amber-900/40 border border-amber-500/30 flex items-center justify-center font-mono text-amber-300 font-bold uppercase">
+                      {req.sender.username.charAt(0)}
+                    </div>
+                    <span className="font-mono text-sm text-slate-200 truncate">
+                      {req.sender.username}
+                    </span>
+                  </div>
                   <div className="flex gap-2">
                     {/* ACCEPT FRIEND REQUEST */}
                     <button
                       onClick={() => handleAcceptRequest(req.id, req.senderId)}
-                      className="p-2 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900 rounded"
                       title="Accept Request"
+                      className="p-2 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900 rounded-none transition-all"
                     >
                       <Check className="w-4 h-4" />
                     </button>
@@ -357,7 +493,8 @@ export default function FriendsDashboard() {
                     {/* REJECT BUTTON */}
                     <button
                       onClick={() => handleRejectRequest(req.id)}
-                      className="p-2 bg-rose-950/40 text-rose-400 hover:bg-rose-900 rounded"
+                      title="Reject Request"
+                      className="p-2 bg-rose-950/40 text-rose-400 hover:bg-rose-900 rounded-none transition-all"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -365,8 +502,8 @@ export default function FriendsDashboard() {
                     {/* BLOCK BUTTON */}
                     <button
                       onClick={() => handleBlockRequest(req.senderId)}
-                      className="p-2 bg-slate-900/40 text-slate-400 hover:bg-slate-800 hover:text-white rounded transition-colors"
                       title="Block User"
+                      className="p-2 bg-slate-900/40 text-slate-400 hover:bg-slate-800 hover:text-white rounded-none transition-colors"
                     >
                       <Ban className="w-4 h-4" />
                     </button>
@@ -380,25 +517,24 @@ export default function FriendsDashboard() {
           {leftPaneMode === "BLOCK" && (
             <>
               {blockedUsers && blockedUsers.length === 0 ? (
-                <p className="text-slate-500 font-mono text-xs text-center mt-4">
+                <p className="text-slate-500 font-mono text-xs text-center mt-6">
                   NO BLOCKED USERS
                 </p>
               ) : (
-                blockedUsers &&
                 blockedUsers?.map((user: Friend) => (
                   <div
                     key={user?.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-black/40"
+                    className="flex items-center justify-between p-3 rounded-none border border-white/10 bg-black/40"
                   >
-                    <span className="font-mono text-sm text-slate-300">
+                    <span className="font-mono text-sm text-slate-300 truncate">
                       {user?.username}
                     </span>
                     <div className="flex gap-2">
                       {/* UNBLOCK BUTTON */}
                       <button
                         onClick={() => unblockUser(user.id)}
-                        className="p-2 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900 rounded"
                         title="Unblock User"
+                        className="p-2 bg-emerald-950/40 text-emerald-400 hover:bg-emerald-900 rounded-none transition-all"
                       >
                         <Ban className="w-4 h-4" />
                       </button>
@@ -411,61 +547,109 @@ export default function FriendsDashboard() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: ACTION HUB / CHAT */}
-      <div className="flex-1 flex flex-col bg-[#0b0c0e] border border-cyan-500/20 rounded-2xl overflow-hidden relative">
-        {leftPaneMode === "FRIENDS" && !activeTab ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 font-mono tracking-widest">
-            <Swords className="w-16 h-16 mb-4 opacity-20" />
-            SELECT A FRIEND TO INITIATE UPLINK
-          </div>
-        ) : (
-          <>
-            <div className="p-6 border-b border-cyan-500/20 bg-cyan-950/10 flex justify-between items-center">
-              <h3 className="font-mono text-xl font-bold text-white tracking-widest uppercase">
-                {activeTab?.username}
-              </h3>
-              <button
-                onClick={() => activeTab && sendChallenge(activeTab.id)}
-                className="group flex items-center gap-2 px-6 py-3 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tracking-widest rounded-xl transition-all shadow-[0_0_15px_rgba(244,63,94,0.1)] hover:shadow-[0_0_25px_rgba(244,63,94,0.3)]"
-              >
-                <Swords className="w-4 h-4" /> [ INITIATE BATTLE ]
-              </button>
-            </div>
-            <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-4">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id) ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`px-4 py-2 rounded-2xl max-w-[70%] font-mono text-sm ${msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id) ? "bg-cyan-900/40 border border-cyan-500/30 text-cyan-100" : "bg-slate-800/50 border border-slate-700 text-slate-300"}`}
-                  >
-                    {msg.content}
+          {/* RIGHT COLUMN: ACTION HUB / CHAT */}
+          <div className="flex flex-col h-full min-h-0 rounded-none border border-white/20 bg-[#06080e] overflow-hidden relative">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+            {leftPaneMode === "FRIENDS" && !activeTab ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 font-mono tracking-widest relative z-10">
+                <Swords className="w-16 h-16 mb-4 opacity-20" />
+                <p className="text-xs">SELECT A FRIEND TO INITIATE UPLINK</p>
+              </div>
+            ) : (
+              <>
+                {/* CHAT HEADER */}
+                <div className="p-4 border-b border-white/10 bg-black/40 flex justify-between items-center relative z-10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      onClick={() => setActiveTab(null)}
+                      title="Back to friends"
+                      className="lg:hidden p-1.5 text-slate-400 hover:text-white transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="w-9 h-9 shrink-0 rounded-none bg-cyan-900/50 border border-cyan-500/30 flex items-center justify-center font-mono text-cyan-300 font-bold uppercase">
+                      {activeTab ? (
+                        activeTab.username.charAt(0)
+                      ) : (
+                        <MessageSquare className="w-4 h-4 text-slate-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-mono text-sm font-bold text-white tracking-widest uppercase truncate">
+                        {activeTab?.username ?? "CHAT"}
+                      </h3>
+                      <span
+                        className={`text-[10px] flex items-center gap-1 ${
+                          activeTab && onlineIds.includes(activeTab.id)
+                            ? "text-emerald-400"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        <Wifi className="w-3 h-3" />
+                        {activeTab && onlineIds.includes(activeTab.id) ? "ONLINE" : "OFFLINE"}
+                      </span>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => activeTab && setChallengeFriend(activeTab)}
+                    className="flex items-center gap-2 px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/50 text-rose-300 font-mono text-xs font-bold tracking-widest rounded-none transition-all shadow-[0_0_15px_rgba(244,63,94,0.1)] hover:shadow-[0_0_25px_rgba(244,63,94,0.3)] active:scale-95"
+                  >
+                    <Swords className="w-4 h-4" />
+                    <span className="hidden sm:inline">[ BATTLE ]</span>
+                  </button>
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="p-4 border-t border-cyan-500/20 bg-[#060709]">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="TRANSMIT MESSAGE..."
-                  className="flex-1 bg-black/50 border border-slate-700 p-4 rounded-xl text-white font-mono text-sm focus:border-cyan-500 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-6 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-xl transition-all"
+
+                {/* MESSAGES — scrolls internally, window never moves */}
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 min-h-0 p-4 overflow-y-auto flex flex-col gap-3 relative z-10"
                 >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
-          </>
-        )}
-      </div>
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${
+                        msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id)
+                          ? "items-end"
+                          : "items-start"
+                      }`}
+                    >
+                      <div
+                        className={`px-4 py-2 rounded-lg max-w-[70%] font-mono text-sm ${
+                          msg.senderId === "ME" || (activeTab && msg.senderId !== activeTab.id)
+                            ? "bg-cyan-900/40 border border-cyan-500/30 text-cyan-100"
+                            : "bg-slate-800/50 border border-white/10 text-slate-300"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* MESSAGE COMPOSER */}
+                <div className="p-3 border-t border-white/10 bg-[#04060b] relative z-10">
+                  <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="TRANSMIT MESSAGE..."
+                      className="flex-1 bg-black/60 border border-white/10 p-3 rounded-none text-white font-mono text-sm focus:border-cyan-500 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-none transition-all active:scale-95"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </main>
+      <ChallengeModal friend={challengeFriend} open={Boolean(challengeFriend)} onClose={() => setChallengeFriend(null)} />
     </div>
   );
 }

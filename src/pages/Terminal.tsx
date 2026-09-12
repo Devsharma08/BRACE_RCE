@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { House, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
 import { executeCode, fetchSystemProblems } from "../features/terminal/api";
@@ -393,14 +393,6 @@ const Terminal = () => {
         {/* HEADER BAR */}
         <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-[#06080e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
-            <Link
-              to="/dashboard"
-              title="Exit to Dashboard"
-              className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 rounded-none border border-cyan-500/25 bg-cyan-950/10 px-2 text-[10px] font-bold uppercase tracking-wider text-cyan-400 transition-all hover:border-cyan-400 hover:bg-cyan-950/20 active:scale-95"
-            >
-              <House className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">[ DASHBOARD ]</span>
-            </Link>
             <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
           <div className="flex items-center gap-3">

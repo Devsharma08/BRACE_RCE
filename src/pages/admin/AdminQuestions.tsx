@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAdminQuestions, useCreateQuestion, useUpdateQuestion, useDeleteQuestion, type AdminQuestion } from '../../hooks/useAdmin';
+import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 const difficultyColors: Record<string, string> = {
@@ -48,7 +49,7 @@ const AdminQuestions = () => {
 
   const handleSubmit = async () => {
     if (!form.name || !form.problem_definition) {
-      alert('Name and problem definition are required');
+      toast.error('Name and problem definition are required');
       return;
     }
     try {
@@ -61,7 +62,7 @@ const AdminQuestions = () => {
       await refetch();
       cancelForm();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to save question');
+      toast.error(err?.response?.data?.message || 'Failed to save question');
     }
   };
 
@@ -72,7 +73,7 @@ const AdminQuestions = () => {
       await deleteMut.mutateAsync(q.id);
       await refetch();
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Failed to delete');
+      toast.error(err?.response?.data?.message || 'Failed to delete');
     }
   };
 
