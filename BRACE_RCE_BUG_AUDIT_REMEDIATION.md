@@ -13,10 +13,10 @@ I verified the relevant files on disk before writing this plan.
 
 I confirmed the following are present in the current codebase:
 
-- `server/.env`, `server/.env.development`, `server/.env.production` all contain live secrets.
-  - Neon DB password: `npg_tgoKU4F9QjqV`
-  - Upstash Redis auth token
-  - GitHub PAT `github_pat_11BOYY6NA0...`
+- `server/.env`, `server/.env.development`, `server/.env.production` contained live secrets; values were scrubbed to placeholders during remediation and must be re-entered locally (and rotated, since fragments of them appeared in earlier revisions of this file before it was redacted).
+  - Neon DB password: `[redacted — rotate]`
+  - Upstash Redis auth token: `[redacted — rotate]`
+  - GitHub PAT: `[redacted — rotate]`
   - Production/development JWT secrets
 - `server/prisma/schema.prisma` has the datasource URL lines commented out.
 - `server/src/services/socket.ts` registers many handlers inside `check_active_battle`,
