@@ -2,6 +2,10 @@ node_modules
 # Keep environment variables out of version control
 .env*
 !.env.example
+# Explicit local env files (belt & suspenders alongside the .env* wildcard)
+.env
+.env.development
+.env.production
 
 /src/generated/prisma
 coverage/

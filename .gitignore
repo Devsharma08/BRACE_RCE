@@ -28,4 +28,13 @@ dist-ssr
 !/.env.example
 !/server/.env.example
 
+# Explicit local env files (belt & suspenders alongside the .env* wildcard)
+.env
+.env.local
+.env.development
+.env.production
+server/.env
+server/.env.development
+server/.env.production
+
 piston
