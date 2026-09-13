@@ -1,67 +1,130 @@
 # Implementation Plan
 
 ## Overview
-Restore unused Friends/User-Search/DM/Challenge flows, replace alerts with toasts, build a workable 3-day Notification Center queue, and fix streak plus monthly activity so solo practice SUBMITs count alongside battle submissions.
+Fix multiple UI/UX bugs and optimize the BRACE_RCE dashboard layout: resolve top padding issues for page content below the fixed header, prevent unnecessary full-page re-renders when switching sidebar tabs, fix notification API 500 errors, correct the FriendDashboard chat rendering bug on non-friends tabs, and restore proper online/offline presence indicators.
 
 ## Types
-- Prisma enums NotificationType (FRIEND_REQUEST, FRIEND_ACCEPT, DIRECT_MESSAGE, CHALLENGE_RECEIVED, CHALLENGE_RESULT, MATCH_RESULT, SYSTEM, WEEKLY_ANALYSIS, EVENT_REPORT, EVENT_RESULT) and NotificationStatus (UNREAD, READ, ARCHIVED).
-- Prisma model Notification: id uuid, userId FK User cascade, type, title, body Text, data Json nullable, status default UNREAD, createdAt default now, readAt nullable; indexes (userId,status,createdAt) and (createdAt). Add User.notifications relation.
-- server/src/types/notifications.ts: CreateNotificationInput {userId,type,title,body,data?}, ListQuery {unreadOnly?,type?,cursor?,take?}.
-- Frontend hooks/useNotifications.ts: NotificationItem {id,type,title,body,data?,status,createdAt,readAt?}.
-- Toast types: ToastKind success|error|info; ToastOptions {durationMs?}.
-- Challenge types: ChallengeMode RANDOM|CUSTOM; ChallengePayload {targetUserId,mode,difficulty?,problemId?}.
-- Analytics: ActivityPoint {date YYYY-MM-DD,count}; streak = consecutive active days ending today or yesterday over 365-day window.
+- No new types required. Existing Friend, Message, FriendRequest interfaces in FriendDashboard.tsx are sufficient.
+- Socket event `user_online_status` payload: `{ userId: string; status: "ONLINE" | "OFFLINE" }`.
 
 ## Files
-- New backend: server/src/types/notifications.ts, server/src/controllers/notifications.ts, server/src/routes/notifications.ts (GET /, GET /unread-count, PATCH /:id/read, PATCH /read-all, DELETE /:id), server/src/services/notificationService.ts (create, broadcast via socket, prune 3-day, weekly analysis builder, event report builder), server/src/scripts/pruneNotifications.ts.
-- New frontend: src/components/ui/Toast.tsx plus Toaster mount, src/hooks/useNotifications.ts, src/components/features/NotificationCenter.tsx (tabs All/Unread/Friends/Messages/System/Reports), src/components/features/ChallengeModal.tsx (RANDOM difficulty select vs CUSTOM problem picker from GET /problems/system and GET /problems/custom), optional src/hooks/useChallenge.ts.
-- Modify backend: server/prisma/schema.prisma (Notification model), server/src/app.ts (mount /api/notifications), server/src/controllers/friends.ts (searchUsers return users alias plus take 20, side-effect notifications on request/accept/reject), server/src/controllers/analytics.ts (activity/streak/monthly rewrite), server/src/services/codeExecution.ts (fix submissionTimes push with ISO string, review local- guard, invalidate analytics cache), server/src/services/socket.ts (persist plus emit notification:new on DM/challenge/match/lobby events, carry mode/difficulty/problemId), server/src/services/submissionEvaluator.ts (battle save also upserts UserProblemProgress), server/src/index.ts (daily prune interval plus weekly cron trigger).
-- Modify frontend: src/Root.tsx (mount Toaster), src/components/layout/Header.tsx + src/pages/Dashboard.tsx (bell placeholder currently navigates to /profile) + src/components/layout/DashboardSidebar.tsx (add Friends /friends link), src/components/features/FriendDashboard.tsx (replace 4 alerts, open ChallengeModal instead of bare sendChallenge, presence via user_online_status), src/context/SocketContext.tsx (replace 3 alerts lobby_error/lobby_ended/timeout with toast, extend sendChallenge opts and incomingChallenge type, listen notification:new), src/components/features/GlobalModals.tsx (show mode/difficulty/problem name).
-- Alert sweep (~32 hits): SocketContext, FriendDashboard, EditorToolbar.tsx, FileExplorer.tsx, Battle.tsx, CreateRoom.tsx, Lobby.tsx, AdminFeedback/Questions/Reports/Settings/Users.
-- Delete/move: none. Update public/todo.md checkboxes after.
+
+### 1. src/components/layout/DashboardSidebar.tsx
+**Purpose:** The sidebar collapse feature still exists but the user reported it was removed — likely a visual/UX issue where the toggle is hard to see or the collapsed state doesn't properly shift content.
+
+**Changes:**
+- Keep the collapse toggle but make it more visible: increase button size, add hover tooltip, ensure the chevron icons are clearly visible
+- The collapsed state already exists — verify the w-[60px] vs w-[245px] transition works with the main content ml-[60px] / ml-[245px] margins
+- Add aria-label to the toggle button for accessibility
+- No structural changes needed — the feature is intact
+
+### 2. src/pages/Dashboard.tsx
+**Purpose:** Add proper top padding to prevent content from hiding behind the fixed header.
+
+**Changes:**
+- Already has pt-16 — verify it's sufficient (header is h-[52px], so pt-16 = 64px should be enough)
+- If still insufficient, increase to pt-20 or pt-[72px]
+- The overflow-x-hidden is correct
+
+### 3. src/pages/Lobby.tsx
+**Purpose:** Same top padding fix as Dashboard.
+
+**Changes:**
+- Already has pt-16 — verify and adjust if needed
+
+### 4. src/pages/Profile.tsx
+**Purpose:** Same top padding fix as Dashboard.
+
+**Changes:**
+- Currently missing pt-16 — add it to the <main> element
+- Change p-4 md:p-8 to pt-16 p-4 md:p-8
+
+### 5. src/components/features/FriendDashboard.tsx
+**Purpose:** Fix chat auto-rendering on non-friends tabs (SEARCH, REQUESTS, BLOCK).
+
+**Bug:** Line 553: `{leftPaneMode === "FRIENDS" && !activeTab ? (<empty>) : (<chat>)}` — when leftPaneMode is SEARCH/REQUESTS/BLOCK, the right pane shows the chat UI even though no friend is selected.
+
+**Changes:**
+- Change the right pane condition to only show chat when activeTab is set AND leftPaneMode === "FRIENDS"
+- When on SEARCH/REQUESTS/BLOCK tabs and no friend is selected, show the empty state (same as FRIENDS empty state)
+- Condition should be: `!activeTab || leftPaneMode !== "FRIENDS"` → show empty state
+- Only show chat when: `activeTab && leftPaneMode === "FRIENDS"`
+
+**Online/Offline Status Fix:**
+- The socket listener for user_online_status is correct (line 135)
+- The issue is likely that the server emits the event but the client doesn't receive it properly
+- Add a useEffect on mount to request current online status from the server via a new socket event get_online_status
+- Alternatively, fetch initial online friends list via API on component mount
+- Add socket.emit("get_presence") on connect and handle presence_snapshot response
+
+### 6. src/components/features/NotificationCenter.tsx
+**Purpose:** Fix 500 errors on notification API calls.
+
+**Changes:**
+- Add error boundary around notification queries
+- Add retry logic with useQuery retry: 2 option
+- Add fallback UI when notifications fail to load instead of showing nothing
+- Check that the useNotifications and useUnreadCount hooks have proper error handling
+
+### 7. src/hooks/useNotifications.ts
+**Purpose:** Add error handling and retry logic for notification API calls.
+
+**Changes:**
+- Add retry: 2 and retryDelay: 1000 to both useNotifications and useUnreadCount queries
+- Add onError callback to log errors gracefully
+- Return empty array / zero count on error instead of undefined
+
+### 8. src/context/SocketContext.tsx
+**Purpose:** Fix online status and add presence snapshot request.
+
+**Changes:**
+- Add requestPresence() method that emits get_presence socket event
+- Handle presence_snapshot event to populate initial online users list
+- Ensure user_online_status events are properly forwarded
+
+### 9. src/Root.tsx (or equivalent layout)
+**Purpose:** Optimize rendering to prevent full page reloads when switching sidebar tabs.
+
+**Changes:**
+- The current architecture uses separate routes (/dashboard, /lobby, /profile, /friends) which causes full page re-renders
+- To prevent this, implement a layout-based approach where the sidebar persists and only the main content area updates using React Router's <Outlet />
+- Create a MainLayout component that includes the sidebar and renders child routes via <Outlet />
+- Update routes to use this layout for dashboard, lobby, profile, and friends pages
 
 ## Functions
-- New service server/src/services/notificationService.ts: createNotification(input), notifyFriendRequest(receiverId,sender), notifyDirectMessage(receiverId,senderId,preview), notifyChallenge(targetId,payload), notifyMatchResult(userId,eventId), notifySystem(userId,title,body), buildWeeklyAnalysis(userId), buildEventReport(eventId), pruneNotificationsOlderThan(days=3).
-- New controller server/src/controllers/notifications.ts class Notifications: listNotifications, getUnreadCount, markRead, markAllRead, deleteNotification.
-- New script server/src/scripts/pruneNotifications.ts: runPrune().
-- New frontend: Toast.tsx exports toast.success/error/info plus Toaster component; useNotifications.ts exports useNotifications/useUnreadCount/useMarkRead/useMarkAllRead; NotificationCenter.tsx exports NotificationCenter and NotificationItemRow; ChallengeModal.tsx exports ChallengeModal({friend,open,onClose}) plus helpers fetchRandomProblem(difficulty) and fetchCustomProblems and handleSendChallenge.
-- Modified friends.ts searchUsers: return {users} keep {user} alias, add take 20 orderBy username; sendFriendRequest/acceptFriendRequest/rejectFriendRequest: add notification side-effects; getMessages: add cursor/take pagination.
-- Modified analytics.ts getUserAnalytics sections 3/7/8: new helpers buildActivityDayMap(progressRecords,performances) unioning submissionTimes plus solvedAt plus performances.createdAt plus submissions.createdAt over 365 days with UTC YYYY-MM-DD keys; computeCurrentStreak(dayMap) starting today-or-yesterday then consecutive; solvesByMonth from same union.
-- Modified codeExecution.ts executeCode: replace submissionTimes timeTaken?push with nowIso ISO string, keep attempts increment and solvedAt set on allPassed, never unset isSolved, add invalidateUserAnalyticsCache(userId); review githubOid local- guard for solo saves.
-- Modified socket.ts handlers send_direct_message/send_challenge/accept_challenge/decline_challenge/battle_action/battle_finished/custom_match_started: persist Notification row plus io.to(targetSocket).emit(notification:new) alongside existing emits.
-- Modified SocketContext sendChallenge(targetUserId,opts?) and incomingChallenge type extension; lobby_error/lobby_ended/timeout handlers switch alert to toast.
-- Modified FriendDashboard handleBlockRequest/unblockUser/sendRequest/handleSearch: toast mapping; new openChallengeModal(friend).
-- Removed: all alert() calls 1:1 to toast; no other deletions.
+
+### Modified: FriendDashboard.tsx
+- handleSwitchPane — already clears nothing; should also clear activeTab when switching away from FRIENDS mode to prevent chat from showing
+- Add useEffect on mount to request presence snapshot
+
+### Modified: useNotifications.ts
+- Add error handling to both hooks
+- Add retry configuration
+
+### Modified: SocketContext.tsx
+- Add requestPresence method
+- Add onPresenceSnapshot handler
 
 ## Classes
-- New class Notifications in server/src/controllers/notifications.ts (list, unreadCount, markRead, markAllRead, remove; export notificationsController). NotificationService as function module, not ORM class.
-- Modified class Friends in server/src/controllers/friends.ts: add notification side-effects, compatible signatures.
-- Modified class Analytics in server/src/controllers/analytics.ts: extract buildActivityDayMap and computeCurrentStreak helpers for testability.
-- Modified SocketContext provider value: additive challengeOpts and notification:new passthrough; no breaking shape change.
-- Removed classes: none.
+No class modifications required.
 
 ## Dependencies
-- Default Option A zero-dep custom Toast (Tailwind plus React context, matches cyber-arena style): no package.json change.
-- Alternative Option B sonner v2: pnpm/npm add sonner, add Toaster theme dark position bottom-right in Root.tsx, update lockfile, check Vite compat. Needs user decision; plan defaults to A.
-- Backend: no version changes; after schema edit run prisma generate plus prisma migrate dev --name add_notifications.
-- Retention without cloud: deleteMany Notifications where createdAt less than now minus 3 days; DMs keep last-50 query plus optional prune flag PRUNE_DMS_3D.
+No new dependencies required.
 
 ## Testing
-- Server Jest: extend friends.test.ts (search users key compat, mocked notification side-effect), new notifications.test.ts (list filter createdAt >=3d, unread count, mark read/all, delete), new notificationService.test.ts (create/prune/weekly builder), analytics streak/monthly tests (today active, yesterday active, gap breaks, solo-only counts, solvesByMonth includes practice), submissionEvaluator.test.ts (battle save upserts UserProblemProgress).
-- Client Vitest: new NotificationCenter.test.tsx (tabs, mark-read, empty 3-day state), ChallengeModal.test.tsx (RANDOM/CUSTOM toggle, difficulty, problem pick, payload), Toast.test.tsx (no window.alert), update FriendDashboard tests (search plus modal open).
-- Validation: server npx tsc --noEmit, client npx tsc -b, server npx jest --forceExit (baseline 19 suites 94 tests), client npx vitest run (baseline 9 files 34 tests), npm run build; manual QA search/request/bell/accept/DM/RANDOM EASY/CUSTOM/retention/streak/monthly.
+- Manual QA: verify all pages have proper top padding below the fixed header
+- Manual QA: click sidebar links and confirm only content area updates (no full page flash)
+- Manual QA: open FriendDashboard on SEARCH tab — right pane should show empty state, not chat
+- Manual QA: check browser console for notification 500 errors
+- Manual QA: verify online/offline indicators update in real-time
+- Run npx tsc --noEmit to verify no type errors
+- Run npm run build to verify production build succeeds
 
 ## Implementation Order
-1. Schema plus migration plus notifications router/service skeleton plus app.ts mount.
-2. Retention prune plus interval/cron plus weekly-analysis and event-report builders with tests.
-3. Friends backend: searchUsers fix plus notification side-effects plus getMessages pagination.
-4. Socket realtime: extended challenge payload plus notification:new persistence/emits.
-5. Analytics fix: activity/streak/monthly union plus codeExecution submissionTimes fix plus battle-to-progress upsert plus cache invalidation with Jest cover.
-6. Toast foundation plus useNotifications hook plus NotificationCenter bell replacing Dashboard header placeholder.
-7. Friends UI restore: /friends nav in Header/Sidebar, FriendDashboard fixes, ChallengeModal RANDOM-by-difficulty and CUSTOM picker, GlobalModals display.
-8. Alert sweep across SocketContext, FriendDashboard, EditorToolbar, FileExplorer, Battle, CreateRoom, Lobby, Admin pages.
-9. Polish plus verification: todo.md checkboxes, type-checks, tests, build, manual end-to-end loop, handoff.
-
-
-
-
+1. Fix top padding on Profile.tsx (add pt-16)
+2. Fix FriendDashboard chat rendering bug (right pane should show empty state on non-friends tabs)
+3. Fix FriendDashboard online status (add presence snapshot request on mount)
+4. Fix notification 500 errors (add error handling and retry logic)
+5. Verify sidebar collapse feature is working and visible
+6. Implement layout-based routing to prevent full page re-renders
+7. Final verification: type-check, build, manual QA
