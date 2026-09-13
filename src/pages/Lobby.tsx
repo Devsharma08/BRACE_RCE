@@ -24,6 +24,7 @@ import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
 import { toast } from "sonner";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
+import { useMyRating } from "../hooks/useLeaderboard";
 
 interface Room {
   id: string;
@@ -40,6 +41,7 @@ interface Room {
 
 const Lobby = () => {
   const navigate = useNavigate();
+  const { data: myRating } = useMyRating(true);
   const [activeTab, setActiveTab] = useState<"ROOMS" | "TEMPLATES" | "MY_ARCHIVES">("ROOMS");
   const [cloningId, setCloningId] = useState<string | null>(null);
 
@@ -83,8 +85,6 @@ const Lobby = () => {
 
   // Called when user confirms password in modal
   const handlePasswordSubmit = (password: string) => {
-    // Password is validated server-side when joining the battle route
-    // We just navigate; the join_battle socket event passes the password
     navigate(`/battle/${pwModal.roomCode}`, { state: { password } });
     setPwModal({ isOpen: false, roomCode: "", roomName: "" });
   };
@@ -108,269 +108,135 @@ const Lobby = () => {
     try {
       await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to delete operation.");
-    }
-  };
-
-  const handleToggleVisibility = async (eventId: string, currentVisibility: boolean) => {
-    try {
-      await api.put(`/rooms/visibility`, { eventId, isPublic: !currentVisibility });
-      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
+      fetchLobby();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to change visibility.");
+      toast.error("Failed to delete operation");
     }
   };
 
-  const getOverallDifficulty = (problems: { difficulty_level: string }[]) => {
-    if (problems.length === 0) return "UNKNOWN";
-    const hasHard = problems.some((p) => p.difficulty_level === "HARD");
-    const hasMedium = problems.some((p) => p.difficulty_level === "MEDIUM");
-    return hasHard ? "HARD" : hasMedium ? "MEDIUM" : "EASY";
-  };
-
-  const difficultyStyle = (d: string) => {
-    if (d === "HARD") return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
-    if (d === "MEDIUM") return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
-    return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-  };
-
-  const renderCard = (room: Room, isArchiveView: boolean = false) => {
-    const difficulty = getOverallDifficulty(room.problems);
-    const isLocked = !!room.password;
-
+  const renderCard = (room: Room, isArchive: boolean) => {
+    const isTemplate = room.isTemplate;
     return (
       <div
         key={room.id}
-        className={`group relative bg-[#06080e] border border-white/10 rounded-none p-5 transition-all duration-300 overflow-hidden
-          ${room.isTemplate
-            ? "border-r-4 border-b-4 border-r-amber-500/60 border-b-amber-500/60 hover:border-amber-400 hover:shadow-[0_0_25px_rgba(245,158,11,0.10)]"
-            : "border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60 hover:border-cyan-400 hover:shadow-[0_0_25px_rgba(6,182,212,0.10)]"
-          }`}
+        className={`border border-white/6 bg-[#0c0f18] p-5 flex flex-col gap-4 hover:bg-[#111520] transition-colors ${
+          isTemplate ? "border-t-2 border-t-[#FFB800]/35" : "border-t-2 border-t-[#00D4FF]/35"
+        }`}
       >
-        {/* Dot-grid overlay (Dashboard-style) */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.06]"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255,255,255,0.5) 1px, transparent 1px)",
-            backgroundSize: "14px 14px",
-          }}
-        />
+        {/* Card Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#111520] border border-white/8 flex items-center justify-center">
+              <span className="text-[11px] font-mono text-[#00D4FF]">{room.host.username.slice(0,2).toUpperCase()}</span>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">{room.name}</h3>
+              <p className="text-[10px] text-[#8892A4] font-mono">{room.host.username}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {room.isPublic ? (
+              <Globe className="w-3.5 h-3.5 text-[#8892A4]" />
+            ) : (
+              <Lock className="w-3.5 h-3.5 text-[#8892A4]" />
+            )}
+          </div>
+        </div>
 
-        {/* Top accent stripe */}
-        <div
-          className={`absolute top-0 left-0 right-0 h-[2px] ${room.isTemplate
-            ? "bg-gradient-to-r from-transparent via-amber-400/60 to-transparent"
-            : "bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent"
-            }`}
-        />
+        {/* Card Body */}
+        <div className="flex items-center gap-2 text-[10px] text-[#8892A4]">
+          <Users className="w-3 h-3" />
+          <span>Max {room.maxUsers} users</span>
+          {room.problems?.length > 0 && (
+            <>
+              <span className="text-[#3D4657]">|</span>
+              <span>{room.problems.length} problems</span>
+            </>
+          )}
+        </div>
 
-        {/* Corner bracket decorations */}
-        <div className={`absolute top-0 left-0 w-3 h-3 border-t border-l opacity-40 group-hover:opacity-100 transition-opacity ${room.isTemplate ? "border-amber-400" : "border-cyan-400"}`} />
-        <div className={`absolute top-0 right-0 w-3 h-3 border-t border-r opacity-40 group-hover:opacity-100 transition-opacity ${room.isTemplate ? "border-amber-400" : "border-cyan-400"}`} />
-
-        {/* Archive controls */}
-        <div className="absolute top-3 right-3 flex items-center gap-2">
-          {isArchiveView && (
+        {/* Card Actions */}
+        <div className="flex items-center gap-2 mt-auto">
+          {isArchive ? (
             <>
               <button
-                onClick={() => handleToggleVisibility(room.id, room.isPublic)}
-                className={`p-1.5 rounded-md transition-all ${room.isPublic ? "text-emerald-400 hover:bg-emerald-500/10" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
-                title={room.isPublic ? "Make Private" : "Make Public"}
+                onClick={() => handleJoinRoom(room)}
+                className="flex-1 py-2 border border-white/10 text-[#8892A4] hover:border-[#00D4FF] hover:text-[#00D4FF] text-xs font-medium transition-all"
               >
-                {room.isPublic ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                View
               </button>
               <button
                 onClick={() => handleDeleteEvent(room.id)}
-                className="p-1.5 rounded-md text-rose-500/40 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
-                title="Delete Event"
+                className="py-2 px-3 border border-[#FF3B5C]/25 text-[#FF3B5C] hover:bg-[#FF3B5C]/10 text-xs transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
-              <div className="h-3 w-px bg-slate-800 mx-0.5" />
             </>
-          )}
-          {isLocked ? (
-            <span title="Password Protected"><Lock className="w-3.5 h-3.5 text-rose-400" /></span>
+          ) : isTemplate ? (
+            <button
+              onClick={() => handleCloneTemplate(room.id)}
+              disabled={cloningId === room.id}
+              className="flex-1 py-2 border border-[#FFB800]/25 text-[#FFB800] hover:border-[#FFB800] hover:bg-[#FFB800]/8 text-xs font-medium transition-all disabled:opacity-50"
+            >
+              {cloningId === room.id ? "Deploying..." : "Clone & Deploy"}
+            </button>
           ) : (
-            <span title="Open Room"><Unlock className="w-3.5 h-3.5 text-emerald-500/60" /></span>
-          )}
-        </div>
-
-        {/* Host / Template icon + name */}
-        <div className="flex items-center gap-3 mb-3 pr-16">
-          {room.isTemplate ? (
-            <div className="w-10 h-10 rounded-none bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <LayoutTemplate className="w-5 h-5 text-amber-400" />
-            </div>
-          ) : (
-            <img
-              src={room.host.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${room.host.username}`}
-              alt="host"
-              className="w-10 h-10 rounded-none bg-slate-900 border border-slate-700 shrink-0 object-cover"
-            />
-          )}
-          <div className="min-w-0">
-            <p className="text-white font-bold tracking-wider text-sm truncate">
-              {room.name || "Untitled Operation"}
-            </p>
-            <p className={`text-[10px] tracking-widest uppercase ${room.isTemplate ? "text-amber-500/70" : "text-cyan-500/70"}`}>
-              {room.isTemplate ? "Architect" : "Host"}: {room.host.username}
-            </p>
-          </div>
-        </div>
-
-        {/* Description */}
-        <p className="text-xs text-slate-500 mb-4 line-clamp-2 leading-relaxed">
-          {room.description || "No mission briefing provided."}
-        </p>
-
-        {/* Stats row */}
-        <div className="flex items-center justify-between border-t border-white/5 pt-3 mb-4">
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 tracking-widest">
-            {room.isTemplate ? (
-              <span>{room.problems.length} PROBLEMS</span>
-            ) : (
-              <>
-                <Users className="w-3.5 h-3.5" />
-                <span>1 / {room.maxUsers} OPERATIVES</span>
-              </>
-            )}
-          </div>
-          <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-none ${difficultyStyle(difficulty)}`}>
-            {difficulty}
-          </span>
-        </div>
-
-        {/* Actions */}
-        {room.isTemplate ? (
-          <button
-            onClick={() => handleCloneTemplate(room.id)}
-            disabled={cloningId === room.id}
-            className="w-full bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black font-bold tracking-widest py-2 rounded-none transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50 disabled:cursor-not-allowed border border-amber-500/20 hover:border-amber-400"
-          >
-            {cloningId === room.id ? (
-              <Activity className="w-4 h-4 animate-pulse" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4" />
-            )}
-            CLONE & DEPLOY
-          </button>
-        ) : (
-          <div className="flex gap-2">
-            {/* Join */}
             <button
               onClick={() => handleJoinRoom(room)}
-              className="flex-1 bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-black font-bold tracking-widest py-2 rounded-none transition-all flex items-center justify-center gap-2 text-xs border border-cyan-500/20 hover:border-cyan-400"
+              className="flex-1 py-2 border border-white/10 text-[#8892A4] hover:border-[#00D4FF] hover:text-[#00D4FF] text-xs font-medium transition-all flex items-center justify-center gap-2"
             >
-              {isLocked ? <Lock className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              JOIN
+              Join Room
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
-            {/* Spectate */}
-            <button
-              onClick={() => navigate(`/battle/${room.roomCode}?spectate=true`)}
-              title="Watch Live"
-              className="px-3 py-2 bg-[#0b0e15] hover:bg-slate-700 text-slate-400 hover:text-white rounded-none border border-white/10 hover:border-slate-500 transition-all"
-            >
-              <Radio className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="flex min-h-screen bg-[#02040a] text-slate-300 font-mono relative overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono">
       {/* DESKTOP SIDEBAR */}
-      <DashboardSidebar />
+      <DashboardSidebar rating={myRating?.rating} />
+
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative">
-      {/* ── Dot-grid overlay (app-standard) ── */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.04]"
-        style={{
-          backgroundImage: "radial-gradient(rgba(6,182,212,0.9) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-      {/* ── Ambient top glow ── */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-cyan-500/5 blur-[80px] pointer-events-none rounded-full" />
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-16 p-4 md:p-8 overflow-x-hidden">
+      {/* Global dot-grid texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-28 pb-16">
+      <div className="max-w-6xl mx-auto flex flex-col gap-6 relative z-10">
 
-        {/* ── HEADER ── */}
-        <div className="flex flex-col md:flex-row justify-between items-end mb-8 gap-6">
+        {/* ── PAGE HEADER ─────────────────────────────────────────── */}
+        <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-[10px] text-cyan-500/70 tracking-[0.3em] uppercase">SYS // GLOBAL MATCHMAKING</span>
+              <span className="w-1.5 h-1.5 bg-[#00FF87]" />
+              <span className="text-[10px] text-[#8892A4] font-medium uppercase tracking-wider">Lobby</span>
             </div>
-            <h1 className="text-3xl font-black text-white tracking-widest flex items-center gap-4">
-              <Globe className="w-7 h-7 text-cyan-400" />
-              GLOBAL LOBBY
-            </h1>
-            <p className="text-slate-500 tracking-widest text-xs mt-2">
-              JOIN ACTIVE OPERATIONS · DEPLOY TEMPLATES · SPECTATE LIVE MATCHES
-            </p>
+            <h1 className="text-2xl font-bold text-white tracking-normal">Game Rooms</h1>
           </div>
-
-          <div className="flex gap-3 items-center">
-            <button
-              onClick={() => fetchLobby()}
-              className="p-2.5 rounded-none border border-white/10 bg-[#06080e] text-slate-400 hover:text-cyan-400 hover:border-cyan-500/50 transition-all"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <Link
-              to="/rooms/create"
-              className="bg-cyan-500 hover:bg-cyan-400 text-black px-5 py-2.5 rounded-none font-bold tracking-widest text-xs transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
-            >
-              <Swords className="w-4 h-4" /> HOST ROOM
-            </Link>
-          </div>
+          <Link
+            to="/rooms/create"
+            className="flex items-center gap-2 px-4 py-2 bg-[#00D4FF] text-[#050608] font-bold text-xs hover:opacity-85 transition-all"
+          >
+            + Create Room
+          </Link>
         </div>
 
-        {/* ── TABS ── */}
-        <div className="flex border-b border-white/10 mb-8 overflow-x-auto scrollbar-hide">
-          {(
-            [
-              { id: "ROOMS", label: "LIVE ROOMS", icon: Activity, activeColor: "cyan" },
-              { id: "TEMPLATES", label: "TEMPLATES", icon: LayoutTemplate, activeColor: "amber" },
-              { id: "MY_ARCHIVES", label: "MY ARCHIVES", icon: Archive, activeColor: "purple" },
-            ] as const
-          ).map(({ id, label, icon: Icon, activeColor }) => (
+        {/* ── TABS ────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-0 border-b border-white/6">
+          {(["ROOMS", "TEMPLATES", "MY_ARCHIVES"] as const).map((tab) => (
             <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`px-5 py-3 font-bold tracking-widest text-[10px] flex items-center gap-2 transition-all whitespace-nowrap relative
-                ${
-                  activeTab === id
-                    ? activeColor === "cyan"
-                      ? "text-cyan-400"
-                      : activeColor === "amber"
-                        ? "text-amber-400"
-                        : "text-purple-400"
-                    : "text-slate-500 hover:text-slate-300"
-                }`}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-3 text-xs font-medium uppercase tracking-wide transition-all ${
+                activeTab === tab
+                  ? "border-b-2 border-[#00D4FF] text-[#00D4FF]"
+                  : "text-[#8892A4] hover:text-white border-b-2 border-transparent"
+              }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
-              {/* Active underline */}
-              {activeTab === id && (
-                <span
-                  className={`absolute bottom-0 left-0 right-0 h-0.5 ${
-                    activeColor === "cyan"
-                      ? "bg-cyan-400"
-                      : activeColor === "amber"
-                        ? "bg-amber-400"
-                        : "bg-purple-400"
-                  }`}
-                />
-              )}
+              {tab === "ROOMS" ? "Rooms" : tab === "TEMPLATES" ? "Templates" : "My Archives"}
             </button>
           ))}
         </div>
@@ -383,22 +249,18 @@ const Lobby = () => {
 
             {activeTab === "ROOMS" && rooms.length === 0 && (
               <div
-                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#06080e] rounded-none flex flex-col items-center gap-4 relative overflow-hidden"
-                style={{
-                  backgroundImage: "radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                }}
+                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#0c0f18] flex flex-col items-center gap-4"
               >
-                <Shield className="w-12 h-12 text-slate-700" />
+                <Shield className="w-12 h-12 text-[#3D4657]" />
                 <div>
-                  <p className="text-slate-500 tracking-widest text-sm">NO ACTIVE ROOMS DETECTED</p>
-                  <p className="text-slate-700 text-xs mt-1 tracking-wider">Host a room to start an operation</p>
+                  <p className="text-[#8892A4] text-sm">No active rooms</p>
+                  <p className="text-[#3D4657] text-xs mt-1">Host a room to start an operation</p>
                 </div>
                 <Link
                   to="/rooms/create"
-                  className="mt-2 text-xs font-bold tracking-widest text-cyan-400 border border-cyan-500/30 px-4 py-2 rounded-none hover:bg-cyan-500/10 transition-all"
+                  className="mt-2 text-xs font-medium text-[#00D4FF] border border-white/10 px-4 py-2 hover:bg-[#00D4FF]/8 transition-all"
                 >
-                  + HOST ROOM
+                  Host a room
                 </Link>
               </div>
             )}
@@ -406,29 +268,21 @@ const Lobby = () => {
 
             {activeTab === "TEMPLATES" && templates.length === 0 && (
               <div
-                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#06080e] rounded-none flex flex-col items-center gap-4"
-                style={{
-                  backgroundImage: "radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                }}
+                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#0c0f18] flex flex-col items-center gap-4"
               >
-                <LayoutTemplate className="w-12 h-12 text-slate-700" />
-                <p className="text-slate-500 tracking-widest text-sm">NO PUBLIC TEMPLATES DETECTED</p>
+                <LayoutTemplate className="w-12 h-12 text-[#3D4657]" />
+                <p className="text-[#8892A4] text-sm">No public templates</p>
               </div>
             )}
             {activeTab === "TEMPLATES" && templates.map((t) => renderCard(t, false))}
 
             {activeTab === "MY_ARCHIVES" && myEvents.length === 0 && (
               <div
-                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#06080e] rounded-none flex flex-col items-center gap-4"
-                style={{
-                  backgroundImage: "radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px)",
-                  backgroundSize: "20px 20px",
-                }}
+                className="col-span-full py-16 text-center border border-dashed border-white/10 bg-[#0c0f18] flex flex-col items-center gap-4"
               >
-                <Archive className="w-12 h-12 text-slate-700" />
-                <p className="text-slate-500 tracking-widest text-sm">YOUR ARCHIVES ARE EMPTY</p>
-                <p className="text-slate-700 text-xs tracking-wider">Rooms you host or create will appear here</p>
+                <Archive className="w-12 h-12 text-[#3D4657]" />
+                <p className="text-[#8892A4] text-sm">Your archives are empty</p>
+                <p className="text-[#3D4657] text-xs">Rooms you host or create will appear here</p>
               </div>
             )}
             {activeTab === "MY_ARCHIVES" && myEvents.map((e) => renderCard(e, true))}

@@ -7,6 +7,7 @@ import { CodeComparisonModal } from "../components/features/CodeComparisonModal"
 import { useAuth } from "../context/AuthContext";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { useMyRating } from "../hooks/useLeaderboard";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
@@ -44,6 +45,7 @@ interface MatchRecord {
 const Profile = () => {
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
   const { logout } = useAuth();
+  const { data: myRating } = useMyRating(true);
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ["user-profile-data"],
@@ -71,243 +73,181 @@ const Profile = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#02040a] text-slate-100 font-mono relative overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono relative overflow-x-hidden">
       {/* DESKTOP SIDEBAR */}
-      <DashboardSidebar />
+      <DashboardSidebar rating={myRating?.rating} />
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative p-4 md:p-8 overflow-hidden">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-16 p-4 md:p-8 overflow-hidden">
       {/* Global dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] -z-10" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-cyan-500/5 blur-3xl pointer-events-none -z-10" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-500/5 blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-6xl mx-auto flex flex-col gap-6 relative z-10">
 
         {/* ── HEADER / BACK NAVIGATION ─────────────────────────── */}
-        <div className="flex items-center justify-between border-b-2 border-white/10 pb-5">
+        <div className="flex items-center justify-between border-b border-white/6 pb-5">
           <Link
             to="/"
-            className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 text-xs tracking-widest transition-all"
+            className="flex items-center gap-2 text-[#8892A4] hover:text-[#00D4FF] text-xs transition-all"
           >
-            <ChevronLeft className="w-4 h-4" />[ MAINFRAME ]
+            <ChevronLeft className="w-4 h-4" />Home
           </Link>
 
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-            <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>OPERATIVE PROFILE</span>
+          <div className="border border-white/8 bg-[#0c0f18] px-3 py-1.5 text-[#8892A4] text-xs font-medium uppercase tracking-wider">
+            Profile
           </div>
         </div>
 
-        {/* ── TOP ROW: IDENTITY CARD + METRICS ────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* LEFT: IDENTITY DOSSIER */}
-          <div className="relative rounded-none border border-white/20 border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-5 flex flex-col items-center text-center overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-            {/* Top accent stripe */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 to-rose-500" />
-
-            <div className="relative mb-4 mt-3">
-              <img
-                src={profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username}`}
-                alt="Avatar"
-                className="w-20 h-20 rounded-none border-2 border-cyan-500/40 p-0.5 shadow-[0_0_20px_rgba(34,211,238,0.15)]"
-              />
-              <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#06080e]" />
+        {/* ── IDENTITY CARD ─────────────────────────────────────── */}
+        <div className="border border-white/6 border-t-2 border-t-[#00D4FF]/40 bg-[#0c0f18] p-6">
+          <div className="flex items-start gap-6">
+            {/* Avatar */}
+            <div className="w-18 h-18 bg-[#111520] border border-white/8 flex items-center justify-center relative">
+              <span className="text-2xl font-mono text-[#00D4FF]">{(profile?.username || "?").slice(0, 2).toUpperCase()}</span>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00FF87] border-2 border-[#0c0f18]" />
             </div>
 
-            <h1 className="text-lg font-extrabold tracking-widest text-white mb-1 uppercase">
-              {profile?.username}
-            </h1>
-            <p className="text-xs text-slate-400 mb-5 font-sans">{profile?.email}</p>
+            {/* Info */}
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-white">{profile?.username || "Unknown"}</h1>
+              <p className="text-xs text-[#8892A4] mt-1">{profile?.email || ""}</p>
+              <div className="flex items-center gap-4 mt-3">
+                <div className="text-center">
+                  <div className="text-xs text-[#00D4FF] font-mono font-bold">{stats?.totalMatches || 0}</div>
+                  <div className="text-[9px] text-[#3D4657] uppercase">Battles</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-[#00D4FF] font-mono font-bold">{stats?.winRate || 0}%</div>
+                  <div className="text-[9px] text-[#3D4657] uppercase">Win Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-[#00D4FF] font-mono font-bold">{stats?.totalScore || 0}</div>
+                  <div className="text-[9px] text-[#3D4657] uppercase">Score</div>
+                </div>
+              </div>
+            </div>
 
+            {/* Logout */}
             <button
               onClick={logout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-none bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/40 hover:border-rose-400 text-rose-300 hover:text-rose-200 text-xs font-bold tracking-wider transition-all cursor-pointer relative z-10"
+              className="flex items-center gap-2 px-3 py-2 border border-[#FF3B5C]/25 text-[#FF3B5C] hover:bg-[#FF3B5C]/7 text-xs font-medium transition-all"
             >
-              <LogOut className="w-4 h-4" />
-              <span>[ TERMINATE SESSION ]</span>
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign out</span>
             </button>
-
-            <div className="w-full grid grid-cols-2 gap-3 mt-5 relative z-10">
-              <div className="rounded-none border border-white/10 bg-[#06080e] p-2.5">
-                <span className="text-slate-500 text-[10px] block mb-1 tracking-widest">DESIGNATION</span>
-                <span className="text-cyan-400 font-extrabold text-xs">CYBER_CLASS_I</span>
-              </div>
-              <div className="rounded-none border border-white/10 bg-[#06080e] p-2.5">
-                <span className="text-slate-500 text-[10px] block mb-1 tracking-widest">STATUS</span>
-                <span className="text-emerald-400 font-extrabold text-xs">ACTIVE</span>
-              </div>
-            </div>
           </div>
+        </div>
 
-          {/* CENTER/RIGHT: METRICS GRID */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            {/* Section badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 self-start rounded-none border border-slate-700/60 bg-[#06080e] text-slate-400 text-xs font-bold uppercase tracking-widest">
-              <User className="w-3.5 h-3.5" />
-              <span>PERFORMANCE METRICS</span>
+        {/* ── STATS METRICS ─────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/6">
+          {[
+            { label: "Battles", value: stats?.totalMatches || 0, icon: Shield },
+            { label: "Wins", value: stats?.wins || 0, icon: Trophy },
+            { label: "Losses", value: stats?.losses || 0, icon: Target },
+            { label: "Win Rate", value: `${stats?.winRate || 0}%`, icon: Crosshair },
+            { label: "Score", value: stats?.totalScore || 0, icon: Zap },
+            { label: "Avg Time", value: stats?.totalTimeMs ? `${Math.round(stats.totalTimeMs / 60000)}m` : "0m", icon: Clock },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-[#0c0f18] p-4 flex flex-col gap-1">
+              <stat.icon className="w-3.5 h-3.5 text-[#3D4657]" />
+              <span className="text-base font-extrabold text-white font-mono">{stat.value}</span>
+              <span className="text-[9px] text-[#8892A4] uppercase tracking-wider">{stat.label}</span>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { icon: Crosshair, label: "ENGAGEMENTS", value: stats?.totalMatches || 0, color: "text-cyan-400", borderClass: "border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60" },
-                { icon: Trophy, label: "SUCCESSES", value: stats?.wins || 0, color: "text-emerald-400", borderClass: "border-l-4 border-b-4 border-l-emerald-500/60 border-b-emerald-500/60" },
-                { icon: Target, label: "WIN RATE", value: `${stats?.winRate || 0}%`, color: "text-rose-400", borderClass: "border-t-4 border-r-4 border-t-rose-500/60 border-r-rose-500/60" },
-                { icon: Clock, label: "TIME IN FIELD", value: stats?.totalTimeMs ? `${Math.round(stats.totalTimeMs / 60000)}m` : "0m", color: "text-amber-400", borderClass: "border-t-4 border-l-4 border-t-amber-500/60 border-l-amber-500/60" },
-              ].map((metric) => {
-                const Icon = metric.icon;
-                return (
-                  <div
-                    key={metric.label}
-                    className={`relative rounded-none border border-white/20 bg-[#06080e] p-4 flex flex-col justify-between overflow-hidden ${metric.borderClass}`}
-                  >
-                    <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-                    <Icon className={`w-4 h-4 mb-2 ${metric.color}`} />
-                    <div>
-                      <p className="text-[10px] text-slate-500 tracking-widest mb-1 uppercase">{metric.label}</p>
-                      <p className={`text-xl font-extrabold ${metric.color}`}>{metric.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          ))}
         </div>
 
         {/* ── BATTLE LEDGER ─────────────────────────────────────── */}
         <div>
-          {/* Section badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest mb-5 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-            <Shield className="w-3.5 h-3.5 text-cyan-400" />
-            <span>BATTLE LEDGER // CODE REVIEWS</span>
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-4 h-4 text-[#00D4FF]" />
+            <span className="text-sm font-semibold text-white">Battle history</span>
           </div>
 
-          <div className="relative rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] flex flex-col max-h-[700px] overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-
-            {/* Table header */}
-            <div className="p-4 border-b border-white/10 bg-[#02040a]/60 flex items-center justify-between relative z-10">
-              <h2 className="text-sm font-extrabold text-white tracking-widest flex items-center gap-3">
-                <Shield className="w-4 h-4 text-cyan-400" />
-                BATTLE LEDGER & CODE REVIEWS
-              </h2>
-              <span className="text-xs text-slate-500 tracking-widest">LAST 10 ENGAGEMENTS</span>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 relative z-10" style={{ scrollbarWidth: "none" }}>
-              {history.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-50 py-16">
-                  <Activity className="w-10 h-10 mb-4" />
-                  <p className="text-xs tracking-widest">NO COMBAT RECORDS FOUND</p>
-                </div>
-              ) : (
-                history.map((record) => {
-                  const isWin = record.status === "WON" || record.status === "PASSED";
-                  const isLoss = record.status === "LOST" || record.status === "FAILED" || record.status === "SURRENDER";
-                  const problemName = record.event?.commonProblem?.name || record.problem?.name || "BATTLE OPERATION";
-                  const diffLevel = record.event?.commonProblem?.difficulty_level || record.problem?.difficulty_level || "MEDIUM";
-                  const bestSub = record.submissions?.find((s: any) => s.isBestSubmission) || record.submissions?.[0];
-
+          <div className="border border-white/6 border-t-2 border-t-[#00D4FF]/40 bg-[#0c0f18]">
+            {history.length > 0 ? (
+              <div className="flex flex-col">
+                {history.map((record) => {
+                  const isWin = record.status === "WIN";
                   return (
                     <div
                       key={record.id}
-                      className={`flex items-center justify-between p-3 rounded-none border bg-black/40 transition-all hover:bg-black/60 ${isWin ? "border-emerald-500/30" : isLoss ? "border-rose-500/30" : "border-white/10"}`}
+                      className={`flex items-center justify-between border-b border-white/5 hover:bg-[#111520] px-5 py-3 transition-colors ${
+                        isWin ? "bg-[#00FF87]/[0.02]" : "bg-[#FF3B5C]/[0.02]"
+                      }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-1.5 h-12 ${isWin ? "bg-emerald-500" : isLoss ? "bg-rose-500" : "bg-slate-500"}`} />
+                      <div className="flex items-center gap-3">
+                        <div className={`w-[3px] h-8 ${isWin ? "bg-[#00FF87]" : "bg-[#FF3B5C]"}`} />
                         <div>
-                          <p className="text-white font-bold text-sm tracking-wider mb-1 flex items-center gap-2">
-                            {problemName}
-                            <span className={`text-[10px] px-2 py-0.5 rounded-none font-extrabold border ${
-                              diffLevel === "HARD" ? "bg-rose-950/40 text-rose-400 border-rose-500/30" :
-                              diffLevel === "MEDIUM" ? "bg-amber-950/40 text-amber-400 border-amber-500/30" :
-                              "bg-emerald-950/40 text-emerald-400 border-emerald-500/30"
-                            }`}>
-                              {diffLevel}
-                            </span>
+                          <p className="text-sm text-white font-medium">
+                            {record.event?.commonProblem?.name || record.problem?.name || "Unknown Problem"}
                           </p>
-                          <div className="flex gap-4 text-xs text-slate-500 font-sans">
-                            <span>{new Date(record.createdAt).toLocaleDateString()}</span>
-                            {bestSub?.runtimeMs !== undefined && (
-                              <span className="text-cyan-400">Runtime: {bestSub.runtimeMs}ms</span>
-                            )}
-                            {bestSub?.memoryKb !== undefined && (
-                              <span className="text-cyan-400">
-                                Memory: {bestSub.memoryKb >= 1024 ? `${(bestSub.memoryKb / 1024).toFixed(1)}MB` : `${bestSub.memoryKb}KB`}
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-[10px] text-[#8892A4] font-mono mt-0.5">
+                            {new Date(record.createdAt).toLocaleDateString()} • {record.status}
+                          </p>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-5">
-                        <div className="text-right">
-                          <p className={`font-extrabold tracking-widest text-sm ${isWin ? "text-emerald-400" : isLoss ? "text-rose-400" : "text-slate-400"}`}>
-                            {record.status}
-                          </p>
-                          <p className="text-xs text-amber-400 font-bold tracking-widest mt-0.5">
-                            +{record.score || 0} PTS
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            const perfsToPass = (record.event?.performances && record.event.performances.length > 0)
-                              ? record.event.performances
-                              : [{
-                                  userId: profile?.id || "",
-                                  user: { id: profile?.id || "", username: profile?.username || "YOU", avatarUrl: profile?.avatarUrl || "" },
-                                  submissions: record.submissions || [],
-                                  score: record.score || 0,
-                                  timeTakenMs: record.timeTakenMs,
-                                }];
-                            setSelectedPerformances(perfsToPass);
-                          }}
-                          className="px-3 py-2 rounded-none bg-cyan-950/40 hover:bg-cyan-600 border border-cyan-500/40 hover:border-cyan-300 text-cyan-200 hover:text-white text-xs font-bold tracking-widest transition-all flex items-center gap-1.5"
-                        >
-                          <Code className="w-3.5 h-3.5" /> [ REVIEW CODE ]
-                        </button>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs font-bold ${isWin ? "text-[#00FF87]" : "text-[#FF3B5C]"}`}>
+                          {isWin ? "VICTORY" : "DEFEAT"}
+                        </span>
+                        {(record.event?.performances || record.submissions) && (
+                          <button
+                            onClick={() => {
+                              const perfsToPass = record.event?.performances || record.submissions || [];
+                              setSelectedPerformances(perfsToPass);
+                            }}
+                            className="px-3 py-1.5 border border-white/10 text-[#8892A4] hover:border-[#00D4FF] hover:text-[#00D4FF] text-xs font-medium transition-all"
+                          >
+                            <Code className="w-3 h-3 inline mr-1" />
+                            Review code
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            ) : (
+              <div className="p-8 flex flex-col items-center gap-3">
+                <Shield className="w-10 h-10 text-[#3D4657]" />
+                <p className="text-sm text-[#8892A4]">No match history yet</p>
+                <p className="text-xs text-[#3D4657]">Complete a battle to start building your record</p>
+                <Link to="/lobby" className="mt-2 text-xs text-[#00D4FF] hover:underline">
+                  Enter lobby →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── ANALYTICS ────────────────────────────────────────────── */}
+        {/* ── ANALYTICS ──────────────────────────────────────────── */}
         {analytics && (
           <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest mb-5 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-              <BarChart2 className="w-3.5 h-3.5 text-cyan-400" />
-              <span>ANALYTICS // PERFORMANCE BREAKDOWN</span>
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 className="w-4 h-4 text-[#00D4FF]" />
+              <span className="text-sm font-semibold text-white">Analytics</span>
             </div>
 
             {/* Summary stat cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/6 mb-6">
               {[
-                { label: "SOLVED", value: analytics.summary.totalSolved, color: "text-emerald-400" },
-                { label: "BATTLES", value: analytics.summary.totalMatches, color: "text-cyan-400" },
-                { label: "WINS", value: analytics.summary.wins, color: "text-emerald-400" },
-                { label: "WIN RATE", value: `${analytics.summary.winRate}%`, color: "text-amber-400" },
-                { label: "ATTEMPTS", value: analytics.summary.totalAttempts, color: "text-rose-400" },
+                { label: "SOLVED", value: analytics.summary.totalSolved },
+                { label: "BATTLES", value: analytics.summary.totalMatches },
+                { label: "WINS", value: analytics.summary.wins },
+                { label: "WIN RATE", value: `${analytics.summary.winRate}%` },
+                { label: "ATTEMPTS", value: analytics.summary.totalAttempts },
                 {
                   label: "AVG TIME",
                   value: analytics.summary.avgSolveTimeMs > 0
                     ? `${Math.round(analytics.summary.avgSolveTimeMs / 60000)}m`
                     : "0m",
-                  color: "text-purple-400",
                 },
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="relative rounded-none border border-white/10 bg-[#06080e] p-2.5 flex flex-col gap-1 overflow-hidden"
+                  className="bg-[#0c0f18] border border-white/6 p-3 flex flex-col gap-1"
                 >
-                  <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-                  <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono">{stat.label}</span>
-                  <span className={`text-base font-extrabold font-mono ${stat.color}`}>{stat.value}</span>
+                  <span className="text-[9px] text-[#3D4657] uppercase tracking-wider">{stat.label}</span>
+                  <span className="text-base font-extrabold text-white font-mono">{stat.value}</span>
                 </div>
               ))}
             </div>
