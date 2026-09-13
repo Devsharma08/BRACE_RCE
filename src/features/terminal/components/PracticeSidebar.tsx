@@ -152,15 +152,19 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
       {/* Divider */}
       <div className="border-t border-white/5" />
 
-      {/* Problem Definition — examples ship inside the statement; no separate render */}
+      {/* Problem Definition */}
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-cyan-400 font-bold mb-2">
           <AlignLeft className="w-3 h-3" /> PROBLEM DESCRIPTION
         </div>
-        <div
-          className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300 [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
-          dangerouslySetInnerHTML={{ __html: problem.problem_definition || "No description available." }}
-        />
+        {problem.problem_definition && problem.problem_definition.trim().length > 0 ? (
+          <div
+            className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-slate-300 font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/30 [&>pre]:p-2 [&>code]:text-cyan-300 [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
+            dangerouslySetInnerHTML={{ __html: problem.problem_definition }}
+          />
+        ) : (
+          <p className="text-xs text-slate-600 italic">Problem description unavailable.</p>
+        )}
       </div>
 
       {/* Public Test Cases — intentionally NOT rendered: examples are embedded

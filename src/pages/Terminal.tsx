@@ -422,80 +422,89 @@ const Terminal = () => {
 
         {/* EDITOR + OUTPUT */}
         <div className="flex-1 min-h-0 relative">
-          {loading && <LoadingOverlay label="Loading workspace..." />}
-
-          <div className="absolute inset-0 flex flex-col min-h-0">
-            {activeFile ? (
-              <>
-                <EditorToolbar
-                  activeFile={activeFile}
-                  code={code}
-                  disabled={resLoading || loading}
-                  executingMode={executingMode}
-                  language={language}
-                  setLanguage={handleLanguageChange}
-                  sidebarWidth={sidebarWidth}
-                  setSidebarWidth={setSidebarWidth}
-                  setCode={setCode}
-                  fileName={activeFileName}
-                  onRun={() => void handleRunCode(code, language, activeFile, "RUN")}
-                  onSubmit={() => void handleRunCode(code, language, activeFile, "SUBMIT")}
-                  showSubmit={true}
-                  showFileExplorerToggle={false}
-                  onToggleFileExplorer={() => {}}
-                  isFileExplorerOpen={false}
-                  onFormat={() => formatEditorRef.current?.()}
-                  onReset={handleResetCode}
-                  onToggleNotes={() => setIsNotesOpen((p) => !p)}
-                  isNotesOpen={isNotesOpen}
-                  onExit={() => navigate("/dashboard")}
-                  submissionTrigger={submissionTrigger}
-                  timerRef={timerRef}
-                  initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
-                />
-
-                <div className="flex-1 min-h-0 grid" style={{ gridTemplateRows: "minmax(0, 1fr) auto" }}>
-                  <div className="h-full min-h-0 overflow-hidden">
-                    <MonacoIDE
-                      handleRunCode={handleRunCode}
-                      language={language}
-                      code={code}
-                      oid={activeFile}
-                      fileKey={activeFileKey}
-                      onCodeChange={handleCodeChange}
-                      onFormatMount={(formatAction) => {
-                        formatEditorRef.current = formatAction;
-                      }}
-                    />
-                  </div>
-
-                  <OutputPanel
-                    isExecuting={isExecuting}
-                    isOutputActive={isOutputActive}
-                    output={output}
-                    outputHeight={outputHeight}
-                    setOutputHeight={setOutputHeight}
-                    outputText={outputText}
-                    testCases={testCases}
-                    customInput={customInput}
-                    customInputActive={customInputActive}
-                    isCustomInputRun={isCustomInputRun}
-                    setCustomInput={setCustomInput}
-                    setCustomInputActive={setCustomInputActive}
-                    onResizeStart={startOutputDragging}
-                    setIsOutputActive={setIsOutputActive}
-                    onRunSingleTestCase={handleRunSingleTestCase}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="p-8 text-center text-cyan-500 font-mono text-sm">
-                {problemsLoading
-                  ? "LOADING PRACTICE PROBLEMS..."
-                  : "NO PROBLEMS FOUND. ADD PROBLEMS VIA SEED ENDPOINT."}
+          {problemsLoading ? (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#05070c]">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-6 w-6 animate-spin text-[#00D4FF]" />
+                <span className="text-xs font-mono text-[#8892A4] uppercase tracking-widest">Setting up environment...</span>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              {loading && <LoadingOverlay label="Loading workspace..." />}
+
+              <div className="absolute inset-0 flex flex-col min-h-0">
+                {activeFile ? (
+                  <>
+                    <EditorToolbar
+                      activeFile={activeFile}
+                      code={code}
+                      disabled={resLoading || loading}
+                      executingMode={executingMode}
+                      language={language}
+                      setLanguage={handleLanguageChange}
+                      sidebarWidth={sidebarWidth}
+                      setSidebarWidth={setSidebarWidth}
+                      setCode={setCode}
+                      fileName={activeFileName}
+                      onRun={() => void handleRunCode(code, language, activeFile, "RUN")}
+                      onSubmit={() => void handleRunCode(code, language, activeFile, "SUBMIT")}
+                      showSubmit={true}
+                      showFileExplorerToggle={false}
+                      onToggleFileExplorer={() => {}}
+                      isFileExplorerOpen={false}
+                      onFormat={() => formatEditorRef.current?.()}
+                      onReset={handleResetCode}
+                      onToggleNotes={() => setIsNotesOpen((p) => !p)}
+                      isNotesOpen={isNotesOpen}
+                      onExit={() => navigate("/dashboard")}
+                      submissionTrigger={submissionTrigger}
+                      timerRef={timerRef}
+                      initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
+                    />
+
+                    <div className="flex-1 min-h-0 grid" style={{ gridTemplateRows: "minmax(0, 1fr) auto" }}>
+                      <div className="h-full min-h-0 overflow-hidden">
+                        <MonacoIDE
+                          handleRunCode={handleRunCode}
+                          language={language}
+                          code={code}
+                          oid={activeFile}
+                          fileKey={activeFileKey}
+                          onCodeChange={handleCodeChange}
+                          onFormatMount={(formatAction) => {
+                            formatEditorRef.current = formatAction;
+                          }}
+                        />
+                      </div>
+
+                      <OutputPanel
+                        isExecuting={isExecuting}
+                        isOutputActive={isOutputActive}
+                        output={output}
+                        outputHeight={outputHeight}
+                        setOutputHeight={setOutputHeight}
+                        outputText={outputText}
+                        testCases={testCases}
+                        customInput={customInput}
+                        customInputActive={customInputActive}
+                        isCustomInputRun={isCustomInputRun}
+                        setCustomInput={setCustomInput}
+                        setCustomInputActive={setCustomInputActive}
+                        onResizeStart={startOutputDragging}
+                        setIsOutputActive={setIsOutputActive}
+                        onRunSingleTestCase={handleRunSingleTestCase}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-8 text-center text-[#8892A4] font-mono text-sm">
+                    NO PROBLEMS FOUND. ADD PROBLEMS VIA SEED ENDPOINT.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
 
