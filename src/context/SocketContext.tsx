@@ -52,6 +52,7 @@ interface SocketContextType {
   isClicked: boolean;
   waitingTime: number;
   requestPresence: (userIds: string[]) => void;
+}
 
 export interface CustomLobbyState {
   roomCode: string;
