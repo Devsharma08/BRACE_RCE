@@ -139,7 +139,7 @@ export const Dashboard: React.FC = () => {
               <p className="text-xs text-[#8892A4]">Enter matchmaking queue for a ranked 1v1 battle</p>
             </div>
             <button
-              onClick={findMatch}
+              onClick={() => findMatch()}
               className="bg-[#00D4FF] text-[#050608] font-bold px-8 py-3 transition-all hover:opacity-85"
             >
               START MATCHMAKING
