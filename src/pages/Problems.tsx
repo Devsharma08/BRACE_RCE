@@ -2,6 +2,7 @@ import React, { useState, useEffect, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
+import { useMyRating } from "../hooks/useLeaderboard";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +20,7 @@ import {
 
 export const Problems: React.FC = () => {
   const { user } = useAuth();
+  const { data: myRating } = useMyRating(true);
   const navigate = useNavigate();
 
   const [isPending, startTransition] = useTransition();
@@ -86,7 +88,7 @@ export const Problems: React.FC = () => {
       <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none z-0" />
 
       {/* DESKTOP SIDEBAR */}
-      <DashboardSidebar rating={1248} />
+      <DashboardSidebar rating={myRating?.rating} />
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 ml-[245px] p-6 lg:p-8 flex flex-col gap-6 max-w-[1400px] z-10 relative">

@@ -51,7 +51,7 @@ interface SocketContextType {
   sendBattleMessage: (roomId: string, content: string) => void;
   isClicked: boolean;
   waitingTime: number;
-}
+  requestPresence: (userIds: string[]) => void;
 
 export interface CustomLobbyState {
   roomCode: string;
@@ -166,6 +166,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(false);
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
+    });
+
+    newSocket.on("presence_snapshot", (data: { userId: string; status: string }[]) => {
+      // This will be handled by FriendDashboard's own socket listener
+      // We just need to forward the event via a custom event bus
     });
 
     // Both players found, waiting for accept
@@ -316,6 +321,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const requestPresence = (userIds: string[]) => {
+    socket?.emit("request_presence", { userIds });
+  };
+
   return (
     <SocketContext.Provider
       value={{
@@ -342,7 +351,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         declineChallenge,
         sendBattleMessage,
         isClicked,
-        waitingTime
+        waitingTime,
+        requestPresence,
       }}
     >
       {children}

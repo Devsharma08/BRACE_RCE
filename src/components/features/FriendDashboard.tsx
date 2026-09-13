@@ -42,7 +42,7 @@ interface FriendRequest {
 }
 
 export default function FriendsDashboard() {
-  const { sendDirectMessage, socket } = useSocket();
+  const { sendDirectMessage, socket, requestPresence } = useSocket();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -138,6 +138,13 @@ export default function FriendsDashboard() {
       socket.off("user_online_status", handlePresence);
     };
   }, [socket, activeTab, queryClient]);
+
+  // Request presence snapshot for all friends on mount
+  useEffect(() => {
+    if (!socket || friends.length === 0) return;
+    const friendIds = friends.map((f) => f.id);
+    requestPresence(friendIds);
+  }, [socket, friends, requestPresence]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -554,6 +561,11 @@ export default function FriendsDashboard() {
               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 font-mono tracking-widest relative z-10">
                 <Swords className="w-16 h-16 mb-4 opacity-20" />
                 <p className="text-xs">SELECT A FRIEND TO INITIATE UPLINK</p>
+              </div>
+            ) : leftPaneMode !== "FRIENDS" ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-500 font-mono tracking-widest relative z-10">
+                <Swords className="w-16 h-16 mb-4 opacity-20" />
+                <p className="text-xs">PANEL DISABLED IN THIS MODE</p>
               </div>
             ) : (
               <>
