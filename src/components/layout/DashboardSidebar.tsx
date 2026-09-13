@@ -25,7 +25,7 @@ const NAV_LINKS = [
   { icon: UserPlus, to: "/friends", label: "Friends" },
 ];
 
-const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) => {
+const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const displayName = (user?.username || "DEV").toUpperCase();
@@ -146,7 +146,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating = 1248 }) =>
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-1.5 mt-0.5">
               <span>Rating:</span>
-              <span className="font-bold text-cyan-400">{rating.toLocaleString()}</span>
+              <span className="font-bold text-[#00D4FF]">
+                {typeof rating === "number" ? rating.toLocaleString() : "—"}
+              </span>
             </div>
           </div>
         )}

@@ -37,7 +37,6 @@ export const Signup = () => {
         captchaToken,
         avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
       });
-      
       await checkAuth(); 
       navigate('/');
     } catch (err: any) {
@@ -67,136 +66,98 @@ export const Signup = () => {
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-[#0d1117]">
-
-      {/* Left Side: Generated Cyber Battle Art */}
-      <div className="hidden md:flex flex-col justify-center items-center relative overflow-hidden border-r border-white/5 bg-black">
-        <img 
-          src="/signup-art.png" 
-          alt="Cyber Battle Arena" 
-          className="absolute inset-0 w-full h-full object-cover opacity-70"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-transparent to-transparent"></div>
-        <div className="relative z-10 p-12 text-center backdrop-blur-sm bg-black/40 border border-white/10 rounded-2xl mx-8 shadow-2xl">
-          <h2 className="text-3xl font-bold text-white mb-3 tracking-tight uppercase">Join the Battle</h2>
-          <p className="text-sm text-cyan-400 font-mono tracking-widest">// PVP_CODING_INITIALIZED</p>
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-[#080a10]">
+      {/* Left Side: Onboarding Steps */}
+      <div className="hidden md:flex flex-col justify-center items-center relative overflow-hidden bg-[#080a10] p-12"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
+          backgroundSize: '20px 20px'
+        }}
+      >
+        <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" />
+        <div className="w-full border-t border-white/6 mb-8"></div>
+        <div className="flex flex-col gap-8 w-full">
+          <div className="flex gap-4">
+            <span className="text-xs font-mono text-[#00D4FF] font-bold">01</span>
+            <div>
+              <p className="text-sm text-white font-medium mb-1">Create your profile</p>
+              <p className="text-xs text-[#8892A4]">Choose a handle — it's your callsign in every match.</p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <span className="text-xs font-mono text-[#00D4FF] font-bold">02</span>
+            <div>
+              <p className="text-sm text-white font-medium mb-1">Enter the lobby</p>
+              <p className="text-xs text-[#8892A4]">Join or host rooms. Challenge others directly.</p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <span className="text-xs font-mono text-[#00D4FF] font-bold">03</span>
+            <div>
+              <p className="text-sm text-white font-medium mb-1">Build your record</p>
+              <p className="text-xs text-[#8892A4]">Every solve tracked. Rating adjusts after each match.</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Right Side: Form */}
-      <div className="flex items-center justify-center px-4 py-12 relative pt-16">
-        {/* Subtle glowing background effect for the form side */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-        
-        <div className="max-w-md w-full bg-[#161b22]/80 backdrop-blur-md border border-[#30363d] rounded-2xl p-8 shadow-2xl relative z-10">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-          <p className="text-[#8b949e]">Join BRACE // RCE to start battling</p>
+      <div className="flex items-center justify-center px-4 py-12 relative">
+        <div className="max-w-md w-full bg-[#080a10] border border-white/8 p-8 relative z-10">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Create account</h1>
+            <p className="text-[#8892A4]">Join the battle arena</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-none flex items-center gap-3 text-red-400">
+              <AlertCircle size={20} />
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSignup} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-[#8892A4] mb-2">Username</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#3D4657]"><User size={18} /></div>
+                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-[#0c0f18] border border-white/8 rounded-none text-[#F0F4FF] focus:outline-none focus:border-[#00D4FF] transition-colors" placeholder="CyberCoder" required />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#8892A4] mb-2">Email Address</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#3D4657]"><Mail size={18} /></div>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-[#0c0f18] border border-white/8 rounded-none text-[#F0F4FF] focus:outline-none focus:border-[#00D4FF] transition-colors" placeholder="you@example.com" required />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#8892A4] mb-2">Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#3D4657]"><Lock size={18} /></div>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-[#0c0f18] border border-white/8 rounded-none text-[#F0F4FF] focus:outline-none focus:border-[#00D4FF] transition-colors" placeholder="........" required />
+              </div>
+            </div>
+
+            <div className="flex justify-center py-2"><Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={(token) => setCaptchaToken(token)} options={{ theme: 'dark' }} /></div>
+
+            <button type="submit" disabled={loading || !captchaToken} className="w-full flex items-center justify-center gap-2 bg-[#00D4FF] hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[#050608] py-3 px-4 rounded-none font-bold transition-all duration-200">
+              {loading ? "Creating account..." : "Sign Up"} {!loading && <ArrowRight size={18} />}
+            </button>
+          </form>
+
+          {Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && (
+            <>
+              <div className="mt-8 flex items-center gap-4 before:h-px before:flex-1 before:bg-white/8 after:h-px after:flex-1 after:bg-white/8"><span className="text-xs font-medium text-[#8892A4] uppercase">Or continue with</span></div>
+              <div className="mt-6 flex justify-center"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Google Signup Failed')} theme="filled_black" shape="rectangular" text="signup_with" /></div>
+            </>
+          )}
+
+          <p className="mt-8 text-center text-sm text-[#8892A4]">Already have an account?{' '}<Link to="/signin" className="text-[#00D4FF] hover:underline font-medium transition-colors">Sign in</Link></p>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-center gap-3 text-red-400">
-            <AlertCircle size={20} />
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[#c9d1d9] mb-1.5">Username</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8b949e]">
-                <User size={18} />
-              </div>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-xl text-[#c9d1d9] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="CyberCoder"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#c9d1d9] mb-1.5">Email Address</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8b949e]">
-                <Mail size={18} />
-              </div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-xl text-[#c9d1d9] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-[#c9d1d9] mb-1.5">Password</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8b949e]">
-                <Lock size={18} />
-              </div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-xl text-[#c9d1d9] focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-center py-1">
-            <Turnstile
-              siteKey={TURNSTILE_SITE_KEY}
-              onSuccess={(token) => setCaptchaToken(token)}
-              options={{ theme: 'dark' }}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !captchaToken}
-            className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 mt-2"
-          >
-            {loading ? "Creating account..." : "Sign Up"}
-            {!loading && <ArrowRight size={18} />}
-          </button>
-        </form>
-
-        {Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && (
-          <>
-            <div className="mt-6 flex items-center gap-4 before:h-px before:flex-1 before:bg-[#30363d] after:h-px after:flex-1 after:bg-[#30363d]">
-              <span className="text-xs font-medium text-[#8b949e] uppercase">Or continue with</span>
-            </div>
-
-            <div className="mt-5 flex justify-center">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Google Signup Failed')}
-                theme="filled_black"
-                shape="rectangular"
-                text="signup_with"
-              />
-            </div>
-          </>
-        )}
-
-        <p className="mt-6 text-center text-sm text-[#8b949e]">
-          Already have an account?{' '}
-          <Link to="/signin" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">
-            Sign in
-          </Link>
-        </p>
       </div>
-      </div>
-      </div>
-  )
-}
+    </div>
+  );
+};
