@@ -1,4 +1,4 @@
-export type SupportedLanguage = "javascript" | "java" | "c" | "c++" | 'python';
+export type SupportedLanguage = "javascript" | "java" | "c" | "c++" | "c11" | "python";
 
 export type ExecutionMode = "RUN" | "SUBMIT";
 

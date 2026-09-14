@@ -18,7 +18,7 @@ const Header = () => {
 
    const desktopLinkClass = (path: string) =>
       `flex items-center px-4 py-2 font-mono text-xs uppercase tracking-wide font-semibold transition-all duration-300 ${isActive(path)
-         ? 'border-b-2 border-[#00D4FF] text-[#00D4FF] pb-[2px]'
+         ? 'border-b-2 border-[#00D4FF] bg-cyan-500/8 text-[#00D4FF] pb-[2px]'
          : 'text-[#8892A4] hover:text-white border-b-2 border-transparent'
       }`;
 
@@ -30,23 +30,29 @@ const Header = () => {
 
    return (
       <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 w-full h-[52px] bg-[#050608]/92 border-b border-white/6 font-mono text-xs transition-all duration-300 ${
+      <nav className={`fixed top-0 left-0 right-0 z-50 w-full h-14 bg-[#0b1021]/90 backdrop-blur-xl border-b border-cyan-500/20 font-mono text-xs transition-all duration-300 ${
       visible
         ? "opacity-100 translate-y-0"
         : "opacity-0 -translate-y-28 pointer-events-none"
       }`}>
-         <div className='flex items-center justify-between px-4 sm:px-8 h-full'>
+         <div className='flex items-center justify-between px-4 sm:px-8 h-full relative'>
             {/* BRAND LOGO - FAVICON SVG IMAGE & ALWAYS VISIBLE TITLE */}
-            <Link to="/" className='flex items-center gap-2.5 group shrink-0'>
+            <Link to="/" className='flex items-center gap-2.5 group shrink-0' style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.6))' }}>
                <img
                   src="/favicon.svg"
                   alt="BRACE RCE Logo"
                   className='w-7 h-7 transition-transform duration-300 group-hover:scale-110'
                />
-               <span className=' hidden sm:inline text-sm uppercase tracking-widest text-white font-bold'>
+               <span className='hidden sm:inline text-sm uppercase tracking-widest text-white font-bold' style={{ fontFamily: "'Orbitron', sans-serif" }}>
                   BRACE // <span className='text-[#00D4FF] font-bold'>RCE</span>
                </span>
             </Link>
+
+            {/* CENTER MODE INDICATOR */}
+            <div className='hidden md:flex items-center gap-4 absolute left-1/2 -translate-x-1/2'>
+               <span className='text-[10px] font-bold tracking-[0.2em] uppercase text-cyan-400/80'>1v1 BATTLE ARENA</span>
+               <span className='text-[10px] font-mono text-emerald-400'>PING: 14ms</span>
+            </div>
 
             {/* DESKTOP NAV (TEXT ONLY - NO ICONS ON LARGE SCREENS) */}
             <div className='hidden md:flex items-center space-x-2 lg:space-x-3'>
@@ -75,7 +81,7 @@ const Header = () => {
                     <NotificationCenter />
                     <Link to="/profile" className='ml-2'>
                      <span className={`flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-[#0c0f18] text-[#00D4FF] font-bold transition-all`}>
-                        <span className='w-1.5 h-1.5 bg-[#00FF87]' />
+                        <span className='w-1.5 h-1.5 bg-[#00FF87] animate-pulse' />
                         {user?.username || 'PROFILE'}
                      </span>
                     </Link>
@@ -102,7 +108,7 @@ const Header = () => {
 
          {/* MOBILE DROPDOWN DRAWER */}
          {mobileOpen && (
-            <div className="md:hidden absolute top-[52px] left-0 right-0 bg-[#080a10] border-b border-white/6 p-2 flex flex-col gap-1 z-40">
+            <div className="md:hidden absolute top-14 left-0 right-0 bg-[#0b1021]/98 backdrop-blur-xl border-b border-white/6 p-2 flex flex-col gap-1 z-40">
                <Link to="/" className={mobileLinkClass('/')} onClick={() => setMobileOpen(false)}>
                   <House className="w-4 h-4" />
                   <span>Home</span>

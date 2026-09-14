@@ -1,115 +1,123 @@
 import { useState } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { Turnstile } from '@marsidev/react-turnstile';
-import { GoogleLogin } from '@react-oauth/google';
-import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { PageSkeleton } from '../../components/ui/Skeleton';
-import {api} from "../../config/api";
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 
-
-export const Login = () => {
+const Login = () => {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!captchaToken) {
-      setError("Please complete the captcha.");
-      return;
-    }
+    setError('');
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      await api.post(`/auth/signin`, { email, password, captchaToken });
-      await checkAuth();
-      navigate('/');
+      await login(email, password);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      await api.post(`/auth/google`, { credential: credentialResponse.credential });
-      await checkAuth();
-      navigate('/');
-    } catch (err:any) {
-      setError(err.response?.data?.message || "Google Login failed");
-    }
-  };
-
-  if (authLoading) return <PageSkeleton />;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
-
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-[#080a10]">
-      <div className="hidden md:flex flex-col justify-center items-center relative overflow-hidden bg-[#080a10] p-12"
-        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
-      >
-        <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" />
-        <div className="flex flex-col gap-1 mb-6">
-          <span className="text-3xl font-bold text-white">Battle.</span>
-          <span className="text-3xl font-bold text-white">Ranked.</span>
-          <span className="text-3xl font-bold text-[#00D4FF]">Code.</span>
-        </div>
-        <span className="text-xs font-mono text-[#8892A4] tracking-widest uppercase mb-8">Remote Code Execution Arena</span>
-        <div className="w-full border-t border-white/6 mb-8"></div>
-        <div className="flex items-center justify-between w-full">
-          <div className="text-center"><div className="text-xs text-[#8892A4] font-mono">1v1</div><div className="text-[10px] text-[#3D4657]">Live battles</div></div>
-          <div className="text-center"><div className="text-xs text-[#8892A4] font-mono">12+</div><div className="text-[10px] text-[#3D4657]">Languages</div></div>
-          <div className="text-center"><div className="text-xs text-[#8892A4] font-mono">Real</div><div className="text-[10px] text-[#3D4657]">Execution</div></div>
+    <div className="flex min-h-screen bg-[#050811] text-slate-100 font-mono">
+      {/* LEFT PANEL */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#080a10] border-r border-white/8 flex-col justify-center px-16 relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(rgba(0,243,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,243,255,0.04) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        
+        <div className="relative z-10">
+          <img src="/favicon.svg" alt="BRACE RCE" className="w-10 h-10 mb-12" />
+          
+          <div className="space-y-2 mb-8">
+            <p className="text-3xl font-black text-white tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>Battle.</p>
+            <p className="text-3xl font-black text-white tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>Ranked.</p>
+            <p className="text-3xl font-black text-[#00D4FF] tracking-wider" style={{ fontFamily: "'Orbitron', sans-serif" }}>Code.</p>
+          </div>
+
+          <p className="text-xs text-[#3D4657] uppercase tracking-[0.2em] mb-8">Remote Code Execution Arena</p>
+
+          <div className="border-t border-white/6 pt-6">
+            <div className="flex items-center gap-8">
+              <div>
+                <div className="text-base font-black text-cyan-400 font-mono">1v1</div>
+                <div className="text-[9px] text-[#3D4657] uppercase tracking-widest">Live battles</div>
+              </div>
+              <div>
+                <div className="text-base font-black text-cyan-400 font-mono">12+</div>
+                <div className="text-[9px] text-[#3D4657] uppercase tracking-widest">Languages</div>
+              </div>
+              <div>
+                <div className="text-base font-black text-cyan-400 font-mono">Real</div>
+                <div className="text-[9px] text-[#3D4657] uppercase tracking-widest">Execution</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="flex items-center justify-center px-4 py-12 relative">
-        <div className="max-w-md w-full bg-[#080a10] border border-white/8 p-8 relative z-10">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome back</h1>
-            <p className="text-[#8892A4]">Sign in to your account</p>
-          </div>
+
+      {/* RIGHT PANEL - FORM */}
+      <div className="flex-1 flex items-center justify-center px-8">
+        <div className="w-full max-w-sm bg-[#080a10] border border-white/8 p-8">
+          <h2 className="text-xl font-bold text-white mb-6">Sign in</h2>
+          
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-none flex items-center gap-3 text-red-400">
-              <AlertCircle size={20} />
-              <p className="text-sm">{error}</p>
+            <div className="mb-4 p-3 border border-[#FF3B5C]/30 bg-[#FF3B5C]/5 text-[#FF3B5C] text-xs">
+              {error}
             </div>
           )}
-          <form onSubmit={handleLogin} className="space-y-5">
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-[#8892A4] mb-2">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#3D4657]"><Mail size={18} /></div>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-[#0c0f18] border border-white/8 rounded-none text-[#F0F4FF] focus:outline-none focus:border-[#00D4FF] transition-colors" placeholder="you@example.com" required />
-              </div>
+              <label className="block text-[10px] text-[#8892A4] uppercase tracking-widest mb-1">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-cyan-500/15 bg-[#050811] text-white text-sm focus:border-cyan-400 focus:outline-none focus:shadow-[0_0_0_1px_rgba(0,243,255,0.2)] transition-all"
+                required
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#8892A4] mb-2">Password</label>
+              <label className="block text-[10px] text-[#8892A4] uppercase tracking-widest mb-1">Password</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#3D4657]"><Lock size={18} /></div>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-[#0c0f18] border border-white/8 rounded-none text-[#F0F4FF] focus:outline-none focus:border-[#00D4FF] transition-colors" placeholder="........" required />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-cyan-500/15 bg-[#050811] text-white text-sm focus:border-cyan-400 focus:outline-none focus:shadow-[0_0_0_1px_rgba(0,243,255,0.2)] transition-all"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8892A4] hover:text-white"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
-            <div className="flex justify-center py-2"><Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={(token) => setCaptchaToken(token)} options={{ theme: 'dark' }} /></div>
-            <button type="submit" disabled={loading || !captchaToken} className="w-full flex items-center justify-center gap-2 bg-[#00D4FF] hover:opacity-85 disabled:opacity-50 disabled:cursor-not-allowed text-[#050608] py-3 px-4 rounded-none font-bold transition-all duration-200">
-              {loading ? "Signing in..." : "Sign In"} {!loading && <ArrowRight size={18} />}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-[#00D4FF] text-[#050608] font-bold text-sm hover:bg-cyan-300 hover:shadow-[0_0_16px_rgba(0,243,255,0.3)] transition-all disabled:opacity-50"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-          {Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && (
-            <>
-              <div className="mt-8 flex items-center gap-4 before:h-px before:flex-1 before:bg-white/8 after:h-px after:flex-1 after:bg-white/8"><span className="text-xs font-medium text-[#8892A4] uppercase">Or continue with</span></div>
-              <div className="mt-6 flex justify-center"><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Google Login Failed')} theme="filled_black" shape="rectangular" text="signin_with" /></div>
-            </>
-          )}
-          <p className="mt-8 text-center text-sm text-[#8892A4]">Don't have an account?{' '}<Link to="/signup" className="text-[#00D4FF] hover:underline font-medium transition-colors">Create one now</Link></p>
+
+          <p className="mt-6 text-xs text-[#8892A4] text-center">
+            Don't have an account?{' '}
+            <Link to="/signup" className="text-[#00D4FF] hover:underline">Sign up</Link>
+          </p>
         </div>
       </div>
     </div>
   );
 };
+
+export default Login;

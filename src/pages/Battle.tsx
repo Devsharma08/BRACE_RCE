@@ -273,7 +273,7 @@ export const Battle = () => {
   // --- CHAT STATE ---
   const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
   const [newBattleMessage, setNewBattleMessage] = useState("");
-  const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT">(
+  const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY">(
     "PROBLEM",
   );
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -754,8 +754,8 @@ export const Battle = () => {
     <div className="flex w-full h-screen bg-[#050505] overflow-hidden relative">
       {countdown > 0 && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-fade-in select-none">
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/40 bg-cyan-950/40 text-cyan-400 font-mono text-xs tracking-[0.3em] uppercase mb-6 shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/40 bg-amber-950/40 text-amber-400 font-mono text-xs tracking-[0.3em] uppercase mb-6 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
             OPERATIVE ALERT // BATTLE COMMENCING
           </div>
           <h2 className="text-3xl font-black text-white font-mono mb-6 tracking-[0.4em] uppercase">
@@ -775,6 +775,24 @@ export const Battle = () => {
           </p>
         </div>
       )}
+
+      {/* FOCUS LOSS WARNING */}
+      {focusTelemetry.snapshot().filter(e => e.type === "blur" || e.type === "tab_hidden").length > 0 && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[90] px-4 py-2 border border-amber-500/30 bg-amber-950/20 text-amber-400 font-mono text-xs tracking-widest uppercase animate-[glitch_0.3s_infinite]">
+          [WARNING: TELEMETRY ALERT - FOCUS LOST]
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes glitch {
+          0% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+          100% { transform: translate(0); }
+        }
+      ` }} />
 
       {/* ─── HOST COMMAND PANEL (fixed overlay, host only) ─── */}
       {isHost && battleState.status === "IN_PROGRESS" && (
@@ -962,6 +980,12 @@ export const Battle = () => {
               >
                 <MessageSquare className="w-4 h-4 mx-auto mb-1" /> CHAT
               </button>
+              <button
+                onClick={() => setActivePanelTab("OPPONENT_TELEMETRY")}
+                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "OPPONENT_TELEMETRY" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+              >
+                <Activity className="w-4 h-4 mx-auto mb-1" /> OPPONENT
+              </button>
             </div>
 
             {/* TAB CONTENT — themed scrollbar + contained text */}
@@ -975,7 +999,7 @@ export const Battle = () => {
                     </h3>
                     <span
                       className={`shrink-0 text-[10px] tracking-widest px-2 py-0.5 rounded font-bold
-                    ${activeProblem?.difficulty_level === "HARD" ? "bg-rose-500/20 text-rose-400" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}
+                    ${activeProblem?.difficulty_level === "HARD" ? "bg-[#ff0055]/10 text-[#ff0055]" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}
                   `}
                     >
                       {activeProblem?.difficulty_level}
@@ -1001,6 +1025,26 @@ export const Battle = () => {
                       </p>
                     </div>
                   )}
+                </div>
+              ) : activePanelTab === "OPPONENT_TELEMETRY" ? (
+                <div className="flex flex-col gap-4">
+                  <div className="border border-white/10 bg-black/40 p-4">
+                    <p className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest mb-3">Opponent Status</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="border border-cyan-500/15 bg-[#0b1021]/60 p-3">
+                        <div className="text-[9px] text-slate-500 uppercase tracking-widest">Tests Passed</div>
+                        <div className="text-lg font-mono font-bold text-white mt-1">4/5</div>
+                      </div>
+                      <div className="border border-cyan-500/15 bg-[#0b1021]/60 p-3">
+                        <div className="text-[9px] text-slate-500 uppercase tracking-widest">Focus Alerts</div>
+                        <div className="text-lg font-mono font-bold text-amber-400 mt-1">2</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border border-amber-500/20 bg-amber-950/10 p-3">
+                    <p className="text-[9px] font-mono text-amber-400 uppercase tracking-widest">⚠ Telemetry Notice</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Opponent focus blurred twice during this battle.</p>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col h-full">

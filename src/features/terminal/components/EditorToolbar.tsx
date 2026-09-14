@@ -26,6 +26,7 @@ const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string; shortLabel: s
   { value: "c++", label: "C++", shortLabel: "C++" },
   { value: "java", label: "Java", shortLabel: "JAVA" },
   { value: "c", label: "C", shortLabel: "C" },
+  { value: "c11", label: "C11", shortLabel: "C11" },
 ];
 
 type EditorToolbarProps = {
@@ -53,7 +54,7 @@ type EditorToolbarProps = {
   submissionTrigger?: number;
   timerRef?: React.RefObject<ProblemTimerRef | null>;
   initialSubmissionTimes?: string[];
-  code:string;
+  code: string;
 };
 
 const EditorToolbar = ({
@@ -93,7 +94,6 @@ const EditorToolbar = ({
   const [copied, setCopied] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Clear the pending "copied" reset when the toolbar unmounts.
   useEffect(() => {
     return () => {
       if (copyResetTimer.current) {
@@ -118,190 +118,106 @@ const EditorToolbar = ({
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // When shrunk to half or less (< 640px), toggle compact mode
         setIsCompact(entry.contentRect.width < 640);
       }
     });
-
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  const isLocal = activeFile && activeFile.startsWith("local-");
-
-  const handleMaximize = () => {
-    if (sidebarWidth <= 50) {
-      setSidebarWidth(window.innerWidth / 3.1);
-      return;
-    } else {
-      setSidebarWidth(50);
-    }
-  };
-
-  const {
-    setCode: setContextCode,
-    setOutput: setContextOutput,
-    setCustomInput: setContextCustomInput,
-  } = context;
-
-  const ClearChanges = () => {
-    setCode("");
-    setContextCode("");
-    setContextOutput(null);
-    setContextCustomInput("");
-  };
-
-  const handleExitClick = () => {
-    if (onExit) {
-      onExit();
-    } else {
-      navigate("/dashboard");
-    }
-  };
-
   const handleCopyCode = async () => {
-    const text = code ?? "";
+    if (!code) return;
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        // Fallback for non-secure contexts (e.g. plain http) where
-        // navigator.clipboard is unavailable.
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "absolute";
-        textarea.style.left = "-9999px";
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-      }
-    } catch (error: any) {
-      toast.error(`error is ${error.message}`);
-      return;
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+      copyResetTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
     }
-
-    // Show the "copied" check, then auto-revert to the copy icon.
-    setCopied(true);
-    if (copyResetTimer.current) {
-      clearTimeout(copyResetTimer.current);
-    }
-    copyResetTimer.current = setTimeout(() => {
-      setCopied(false);
-      copyResetTimer.current = null;
-    }, 2000);
   };
 
   return (
     <div
       ref={toolbarRef}
-      className="editor-toolbar flex flex-col gap-2 border-b border-white/5 bg-[#0b0c0e] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+      className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#0b0c0e] border-b border-cyan-500/20 select-none"
+      style={{ marginLeft: sidebarWidth }}
     >
-      <div className="flex min-w-0 items-center gap-2">
-        {/* FILE EXPLORER TOGGLE BUTTON (FOR TERMINAL / PROBLEM MODES) */}
-        {showFileExplorerToggle && onToggleFileExplorer && (
+      {/* LEFT ACTIONS */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            title="Back to dashboard"
+            className="flex items-center justify-center rounded-none text-slate-500 hover:text-white hover:bg-white/5 p-1.5 transition-all duration-150 cursor-pointer"
+          >
+            <Home className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {showFileExplorerToggle && (
           <button
             type="button"
             onClick={onToggleFileExplorer}
-            title={isFileExplorerOpen ? "Hide File Explorer" : "Show File Explorer"}
-            className={`flex items-center justify-center border px-2 py-1 text-xs font-mono transition-all cursor-pointer ${
-              isFileExplorerOpen
-                ? "border-cyan-500/60 bg-cyan-950/40 text-cyan-300"
-                : "border-white/10 bg-black/40 text-slate-400 hover:border-cyan-500/40 hover:text-cyan-400"
-            }`}
+            title={isFileExplorerOpen ? "Hide file explorer" : "Show file explorer"}
+            className="flex items-center justify-center rounded-none text-slate-500 hover:text-white hover:bg-white/5 p-1.5 transition-all duration-150 cursor-pointer"
           >
             <FolderTree className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {mode === "problem" && (
-          <ProblemTimer ref={timerRef} problemId={activeFile} submissionTrigger={submissionTrigger} initialSubmissionTimes={initialSubmissionTimes} />
-        )}
+        <ProblemTimer
+          submissionTrigger={submissionTrigger}
+          initialSubmissionTimes={initialSubmissionTimes}
+          ref={timerRef}
+        />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 sm:flex-nowrap sm:w-auto">
-        {/* NOTES BUTTON */}
-        <button
-          type="button"
-          onClick={onToggleNotes}
-          title="Toggle Global Scratchpad Notes"
-          className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
-            isNotesOpen
-              ? "border-amber-500/60 bg-amber-950/30 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-              : "border-amber-500/25 bg-amber-950/10 text-amber-400/90 hover:border-amber-500/50 hover:bg-amber-950/20 hover:text-amber-300"
-          }`}
-        >
-          <StickyNote className="w-3.5 h-3.5 text-amber-400" />
-          {!isCompact && <span className="ml-1 hidden xs:inline">NOTES</span>}
-        </button>
-
-        {/* EXIT TO DASHBOARD / HOME BUTTON */}
-        <button
-          type="button"
-          onClick={handleExitClick}
-          title="Exit to Dashboard / Home"
-          className="flex items-center justify-center rounded-none border border-rose-500/30 bg-rose-950/10 hover:border-rose-500/50 hover:bg-rose-950/20 text-rose-400 hover:text-rose-300 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
-        >
-          <Home className="w-3.5 h-3.5 text-rose-400" />
-          {!isCompact && <span className="ml-1 hidden xs:inline">EXIT</span>}
-        </button>
-
-        {/* COPY CURRENT CODE (WITH COPIED CONFIRMATION) */}
+      {/* RIGHT ACTIONS */}
+      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        {/* COPY CODE */}
         <button
           type="button"
           onClick={handleCopyCode}
-          title={copied ? "Copied!" : "Copy Code"}
-          aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
-          aria-live="polite"
-          className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
-            copied
-              ? "border-emerald-500/50 bg-emerald-950/20 text-emerald-400 hover:text-emerald-300"
-              : "border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400"
-          }`}
+          title="Copy code to clipboard"
+          className="flex items-center justify-center rounded-none border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/5 text-slate-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
           {copied ? (
             <Check className="w-3.5 h-3.5 text-emerald-400" />
           ) : (
-            <Copy className="w-3.5 h-3.5 text-cyan-400" />
-          )}
-          {!isCompact && (
-            <span className="ml-1 hidden xs:inline">{copied ? "COPIED" : "COPY"}</span>
+            <Copy className="w-3.5 h-3.5 text-slate-400" />
           )}
         </button>
 
-        {/* MAXIMIZE MONACO PANEL */}
-        <button
-          type="button"
-          onClick={handleMaximize}
-          title="Maximize editor panel"
-          className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
-        >
-          <Maximize className="w-3.5 h-3.5 text-cyan-400" />
-        </button>
+        {/* NOTES TOGGLE */}
+        {onToggleNotes && (
+          <button
+            type="button"
+            onClick={onToggleNotes}
+            title={isNotesOpen ? "Close notes" : "Open notes"}
+            className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+              isNotesOpen
+                ? "border-amber-500/60 bg-amber-950/30 text-amber-300"
+                : "border-cyan-500/20 bg-transparent text-cyan-400/60"
+            }`}
+          >
+            <StickyNote className="w-3.5 h-3.5" />
+          </button>
+        )}
 
-        {/* FORMAT CODE */}
+        {/* CLEAR OUTPUT */}
         <button
           type="button"
-          onClick={onFormat}
-          title="Format active code"
-          className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
-        >
-          <IndentationIcon className="w-3.5 h-3.5 text-cyan-400" />
-        </button>
-
-        {/* CLEAR DRAFT */}
-        <button
-          type="button"
-          onClick={() => ClearChanges()}
-          title="Clear current draft"
-          className="flex items-center justify-center rounded-none border border-cyan-500/20 bg-cyan-950/5 hover:border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+          onClick={() => {}}
+          title="Clear output"
+          className="flex items-center justify-center rounded-none border border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
           <Clear className="w-3.5 h-3.5 text-cyan-400" />
         </button>
 
         {/* RESET TEMPLATE */}
-        {!isLocal && (
+        {!isCompact && (
           <button
             type="button"
             onClick={onReset}
@@ -314,7 +230,7 @@ const EditorToolbar = ({
 
         {/* LANGUAGE SELECTOR */}
         <select
-          className="min-w-0 rounded-none border border-white/10 bg-black/40 px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
+          className="min-w-0 rounded-none border border-cyan-500/20 bg-[#0b0c0e] px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
           aria-label="Select programming language"
@@ -333,7 +249,7 @@ const EditorToolbar = ({
           aria-busy={executingMode === "RUN"}
           title="Run solution (Ctrl+Enter)"
           aria-label="Run solution"
-          className={`flex items-center justify-center rounded-none border border-cyan-500/30 bg-cyan-950/10 text-cyan-400 hover:bg-cyan-950/20 hover:border-cyan-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center rounded-none border border-cyan-500/40 bg-slate-800/60 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 px-4 py-1.5 text-xs font-mono font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
             disabled ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
@@ -345,7 +261,7 @@ const EditorToolbar = ({
           {!isCompact && <span className="ml-1 text-[10px]">RUN</span>}
         </button>
 
-        {/* SUBMIT CODE BUTTON (CONDITIONALLY RENDERED FOR BATTLE / FULL MODES) */}
+        {/* SUBMIT CODE BUTTON */}
         {showSubmit && onSubmit && (
           <button
             onClick={onSubmit}
@@ -353,7 +269,7 @@ const EditorToolbar = ({
             aria-busy={executingMode === "SUBMIT"}
             title="Submit solution for full tests validation"
             aria-label="Submit solution"
-            className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-950/20 hover:border-emerald-400 px-2.5 py-1.5 text-xs font-mono tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+            className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:font-black px-4 py-1.5 text-xs font-mono font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(0,255,102,0.3)] ${
               disabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >

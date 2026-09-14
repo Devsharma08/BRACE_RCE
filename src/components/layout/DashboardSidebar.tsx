@@ -25,40 +25,48 @@ const NAV_LINKS = [
   { icon: UserPlus, to: "/friends", label: "Friends" },
 ];
 
+const getTier = (rating: number): string => {
+  if (rating >= 1800) return "Cyber-Master";
+  if (rating >= 1500) return "Platinum";
+  if (rating >= 1300) return "Gold";
+  if (rating >= 1100) return "Silver";
+  return "Bronze";
+};
+
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const displayName = (user?.username || "DEV").toUpperCase();
+  const tier = getTier(rating ?? 1000);
 
   const sidebarWidth = collapsed ? "w-[60px]" : "w-[245px]";
 
   return (
     <aside
-      className={`hidden md:flex fixed top-0 left-0 h-screen ${sidebarWidth} bg-[#02040a] border-r border-white/10 font-mono flex-col justify-between z-40 select-none transition-all duration-300 overflow-hidden`}
+      className={`hidden md:flex fixed top-0 left-0 h-screen ${sidebarWidth} bg-[#080d1a] border-r border-cyan-500/15 font-mono flex-col justify-between z-40 select-none transition-all duration-300 overflow-hidden`}
     >
       {/* Dot-grid texture */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(rgba(0,243,255,0.04)_1px,transparent_1px)] [background-size:48px_48px]" />
 
       <div className="flex flex-col gap-4 relative z-10">
         {/* BRAND HEADER */}
         <div className={`flex items-center border-b border-white/10 ${collapsed ? "justify-center p-3" : "gap-2 justify-between px-3 py-3"}`}>
           {collapsed ? (
-            /* Minimized: show only icon */
-            <div className="w-8 h-8 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+            <div className="w-8 h-8 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(0,243,255,0.25)]">
               <Zap className="w-4 h-4 fill-cyan-400" />
             </div>
           ) : (
             <>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+                <div className="w-8 h-8 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(0,243,255,0.25)]">
                   <Zap className="w-4 h-4 fill-cyan-400" />
                 </div>
                 <div>
-                  <h1 className="text-base font-black tracking-widest text-white flex items-center gap-1">
+                  <h1 className="text-base font-black tracking-widest text-white flex items-center gap-1" style={{ fontFamily: "'Orbitron', sans-serif" }}>
                     <span>BRACE</span>
-                    <span className="text-cyan-400 text-xs">RCE</span>
+                    <span className="text-cyan-400 text-xs">// RCE</span>
                   </h1>
-                  <p className="text-[10px] text-slate-500 tracking-wider uppercase">
+                  <p className="text-[10px] text-cyan-500/30 tracking-wider uppercase">
                     CYBER ARENA v2.0
                   </p>
                 </div>
@@ -78,6 +86,30 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
           </button>
         </div>
 
+        {/* PROFILE CARD */}
+        {!collapsed && (
+          <div className="mx-3 border border-cyan-500/20 bg-[#0b1021] p-3 shadow-[0_0_15px_rgba(0,212,255,0.1)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[9px] font-bold text-cyan-400/70 uppercase tracking-widest">Operative</span>
+              <span className="text-[8px] font-bold text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5">{tier}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1 text-center">
+              <div>
+                <div className="text-[10px] font-black text-cyan-400">--</div>
+                <div className="text-[8px] text-slate-500 uppercase">Win Rate</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-cyan-400">--</div>
+                <div className="text-[8px] text-slate-500 uppercase">Duels</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-cyan-400">--</div>
+                <div className="text-[8px] text-slate-500 uppercase">Exec ms</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* NAVIGATION LINKS */}
         <nav className={`flex flex-col gap-1 ${collapsed ? "px-1.5" : "px-2"}`}>
           {NAV_LINKS.map(({ icon: Icon, to, label }) => (
@@ -89,7 +121,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                   collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
                 } ${
                   isActive
-                    ? "border-l-2 border-l-cyan-500 border-cyan-500/30 bg-cyan-950/20 text-cyan-400"
+                    ? "border-l-2 border-l-cyan-500 border-cyan-500/30 bg-cyan-500/10 text-cyan-400 shadow-[inset_0_0_8px_rgba(0,243,255,0.05)]"
                     : "border border-white/5 bg-[#06080e] text-slate-500 hover:text-cyan-400 hover:border-white/20 hover:bg-cyan-950/10"
                 }`
               }
@@ -114,7 +146,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
       <div className={`relative z-10 border-t border-white/10 ${collapsed ? "flex flex-col items-center gap-2 p-2" : "p-3"}`}>
         {collapsed ? (
           <>
-            {/* Collapsed: show only profile icon */}
             <NavLink
               to="/profile"
               className="p-2.5 rounded-none border border-white/10 bg-[#06080e] text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all"
@@ -146,7 +177,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             </div>
             <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-1.5 mt-0.5">
               <span>Rating:</span>
-              <span className="font-bold text-[#00D4FF]">
+              <span className="font-black font-mono text-sm text-cyan-400" style={{ filter: 'drop-shadow(0 0 6px rgba(0,243,255,0.4))' }}>
                 {typeof rating === "number" ? rating.toLocaleString() : "—"}
               </span>
             </div>
