@@ -43,7 +43,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
 
   return (
     <aside
-      className={`hidden md:flex fixed top-0 left-0 h-screen ${sidebarWidth} bg-[#080d1a] border-r border-cyan-500/15 font-mono flex-col justify-between z-40 select-none transition-all duration-300 overflow-hidden`}
+      className={`hidden md:flex fixed top-14 left-0 h-[calc(100vh-3.5rem)] ${sidebarWidth} bg-[#080d1a] border-r border-cyan-500/15 font-mono flex-col justify-between z-40 select-none transition-all duration-300 overflow-hidden`}
     >
       {/* Dot-grid texture */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(rgba(0,243,255,0.04)_1px,transparent_1px)] [background-size:48px_48px]" />

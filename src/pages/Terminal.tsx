@@ -339,7 +339,7 @@ const Terminal = () => {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row">
+    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row pt-14">
       {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ──────────────── */}
       <div
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}

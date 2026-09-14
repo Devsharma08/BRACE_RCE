@@ -229,7 +229,7 @@ export default function FriendsDashboard() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-screen overflow-hidden">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] overflow-hidden">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
         <aside className="w-64 border-r border-white/6 bg-[#080a10] flex flex-col shrink-0">
