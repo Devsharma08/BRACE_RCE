@@ -25,8 +25,8 @@ import { UserResponseContext } from "./context/ResponseContext.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
 import { SocketProvider } from "./context/SocketContext.tsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { Login } from "./features/auth/Login.tsx";
-import { Signup } from "./features/auth/Signup.tsx";
+import  Login  from "./features/auth/Login.tsx";
+import Signup from "./features/auth/Signup.tsx";
 import type {
   SupportedLanguage,
   ExecutionResult,

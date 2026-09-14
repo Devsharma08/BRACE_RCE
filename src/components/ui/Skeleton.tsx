@@ -17,6 +17,12 @@ export const PageSkeleton = () => (
   </div>
 );
 
+export const RouteLoadingSkeleton = () => {
+  return (
+    <div> loading</div>
+  )
+}
+
 // ─── Table Skeleton ──────────────────────────────────────────────────────────
 export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => (
   <div className="bg-[#050811] border border-white/10 p-4">

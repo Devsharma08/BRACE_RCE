@@ -156,7 +156,7 @@ const Lobby = () => {
               disabled={cloningId === room.id}
               className="text-[10px] text-[#FFB800] border border-[#FFB800]/25 hover:border-[#FFB800] hover:bg-[#FFB800]/8 px-2 py-1 transition-all flex items-center gap-1 disabled:opacity-50"
             >
-              <RefreshCw className={`w-3 h-3 ${cloningId === room.id ? "animate-spin" : "`} />
+              <RefreshCw className={`w-3 h-3 ${cloningId === room.id ? "animate-spin" : ""}`} />
               Clone
             </button>
           ) : (
