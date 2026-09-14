@@ -117,7 +117,7 @@ export const Dashboard: React.FC = () => {
       <DashboardSidebar rating={myRating?.rating} />
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-16 p-4 md:p-8 overflow-x-hidden">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-14 p-4 md:p-8 overflow-x-hidden">
       {/* Global dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(rgba(0,243,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
 

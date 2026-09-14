@@ -91,7 +91,7 @@ export const Problems: React.FC = () => {
       <DashboardSidebar rating={myRating?.rating} />
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 ml-[245px] p-6 lg:p-8 flex flex-col gap-6 max-w-[1400px] z-10 relative">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-14 p-4 md:p-8 overflow-x-hidden">
         {/* HEADER BAR */}
         <header className="flex items-center justify-between border-b border-cyan-500/20 pb-4">
           <div>

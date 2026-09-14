@@ -229,10 +229,10 @@ export default function FriendsDashboard() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] overflow-hidden pt-14">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
-        <aside className="w-64 border-r border-white/6 bg-[#080a10] flex flex-col shrink-0">
+        <aside className="w-64 border-r border-white/6 bg-[#080a10] flex flex-col shrink-0 min-w-0">
           {/* Nav Tabs */}
           <div className="flex border-b border-white/6">
             {leftNavItems.map((item) => (
@@ -384,7 +384,7 @@ export default function FriendsDashboard() {
         </section>
 
         {/* ── RIGHT COLUMN: FRIEND PROFILE + BATTLE HISTORY ───────────────── */}
-        <aside className="w-72 border-l border-white/6 bg-[#080a10] flex flex-col shrink-0 overflow-y-auto">
+        <aside className="w-72 border-l border-white/6 bg-[#080a10] flex flex-col shrink-0 overflow-y-auto min-w-0">
           {activeTab ? (
             <>
               {/* Friend Profile Card */}
