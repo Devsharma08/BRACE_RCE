@@ -700,7 +700,8 @@ export const Battle = () => {
             roomId,
             status: "Passed tests!",
             progress: 100,
-            result: "OPPONENT_WON",
+            // NOTE: no `result` field — the server derives the outcome from the
+            // persisted submission and ignores any client-claimed result.
             linesWritten: code.split("\n").length,
           });
           setBattleResult("WON");
