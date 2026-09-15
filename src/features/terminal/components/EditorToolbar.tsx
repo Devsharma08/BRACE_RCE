@@ -184,6 +184,7 @@ const EditorToolbar = ({
           type="button"
           onClick={handleCopyCode}
           title="Copy code to clipboard"
+          aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
           className="flex items-center justify-center rounded-none border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/5 text-slate-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
           {copied ? (
@@ -191,6 +192,17 @@ const EditorToolbar = ({
           ) : (
             <Copy className="w-3.5 h-3.5 text-slate-400" />
           )}
+        </button>
+
+        {/* FORMAT CODE */}
+        <button
+          type="button"
+          onClick={onFormat}
+          title="Format active code"
+          aria-label="Format active code"
+          className="flex items-center justify-center rounded-none border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/5 text-slate-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+        >
+          <IndentationIcon className="w-3.5 h-3.5 text-slate-400" />
         </button>
 
         {/* NOTES TOGGLE */}
@@ -214,6 +226,7 @@ const EditorToolbar = ({
           type="button"
           onClick={() => {}}
           title="Clear output"
+          aria-label="Clear output"
           className="flex items-center justify-center rounded-none border border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
         >
           <Clear className="w-3.5 h-3.5 text-cyan-400" />
@@ -225,6 +238,7 @@ const EditorToolbar = ({
             type="button"
             onClick={onReset}
             title="Reset to original problem template"
+            aria-label="Reset to original problem template"
             className="flex items-center justify-center rounded-none border border-rose-500/20 bg-rose-950/5 hover:border-rose-500/40 hover:bg-rose-950/15 text-rose-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
           >
             <RotateCcw className="w-3.5 h-3.5 text-rose-400" />

@@ -97,7 +97,7 @@ describe('EditorToolbar Component', () => {
     const handleToggleNotes = vi.fn();
     renderToolbar({ ...defaultProps, onToggleNotes: handleToggleNotes });
 
-    const notesBtn = screen.getByTitle('Toggle Global Scratchpad Notes');
+    const notesBtn = screen.getByTitle('Open notes');
     fireEvent.click(notesBtn);
 
     expect(handleToggleNotes).toHaveBeenCalledTimes(1);
@@ -120,7 +120,7 @@ describe('EditorToolbar Component', () => {
     const handleExit = vi.fn();
     renderToolbar({ ...defaultProps, onExit: handleExit });
 
-    const exitBtn = screen.getByTitle('Exit to Dashboard / Home');
+    const exitBtn = screen.getByTitle('Back to dashboard');
     fireEvent.click(exitBtn);
 
     expect(handleExit).toHaveBeenCalledTimes(1);
