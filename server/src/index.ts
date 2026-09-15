@@ -3,7 +3,7 @@ import { createApp } from "./app.js";
 import { assertRuntimeEnv } from "./config/runtime.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { initSocketServer } from "./services/socket.js";
+import { initSocketServer } from "./socket/index.js";
 import { prisma } from "./lib/prisma.js";
 
 assertRuntimeEnv();
