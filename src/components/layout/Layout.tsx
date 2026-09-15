@@ -1,29 +1,45 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import Header from './Header'
 import { Footer } from './Footer'
-
 import GlobalModals from '../features/GlobalModals'
 
+/**
+ * Shell layout wrapping all public-facing pages.
+ *
+ * Pages that are fullscreen experiences (terminal, battle, auth) skip
+ * the header + footer entirely and render their own chrome.
+ */
 const Layout = () => {
   const { pathname } = useLocation()
-  const hidden = pathname === "/terminal" || pathname === "/signin" || pathname === "/signup" || pathname.includes("/battle");
-  console.log("hidden",hidden);
-  
+
+  // These routes manage their own full-screen layout
+  const isFullscreen =
+    pathname === '/terminal' ||
+    pathname === '/signin' ||
+    pathname === '/signup' ||
+    pathname.startsWith('/battle')
+
   return (
-    <div className="flex flex-col min-h-screen relative w-full bg-[#02040a]">
+    <div className="flex flex-col min-h-screen w-full bg-[#050608] text-[#F0F4FF]">
       <GlobalModals />
 
-      {hidden ? (
-        <main className="h-screen w-full relative z-10 bg-[#02040a]">
+      {isFullscreen ? (
+        /* Full-screen routes: no header, no footer, no padding */
+        <main className="flex-1 h-screen w-full bg-[#050608]">
           <Outlet />
         </main>
       ) : (
         <>
           <Header />
-          {/* Main content wrapper with margin-bottom to reveal expanded 380px/340px fixed curtain footer on scroll */}
-          <main className="flex-grow min-h-screen w-full relative z-10 bg-[#02040a] mb-[380px] sm:mb-[340px] shadow-[0_20px_50px_rgba(0,0,0,0.95)]">
+
+          {/*
+            Main content sits below the fixed header (pt-14 = 3.5rem = 56px).
+            The footer is a normal document-flow element so scrolling is natural.
+          */}
+          <main className="flex-1 w-full pt-14 bg-[#050608]">
             <Outlet />
           </main>
+
           <Footer />
         </>
       )}

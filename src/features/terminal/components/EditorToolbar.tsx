@@ -54,6 +54,7 @@ type EditorToolbarProps = {
   submissionTrigger?: number;
   timerRef?: React.RefObject<ProblemTimerRef | null>;
   initialSubmissionTimes?: string[];
+  problemId?: string | null;
   code: string;
 };
 
@@ -82,6 +83,7 @@ const EditorToolbar = ({
   submissionTrigger = 0,
   timerRef,
   initialSubmissionTimes = [],
+  problemId = null,
 }: EditorToolbarProps) => {
   const navigate = useNavigate();
   const context = useContext(CodeContext);
@@ -168,6 +170,7 @@ const EditorToolbar = ({
         )}
 
         <ProblemTimer
+          problemId={problemId}
           submissionTrigger={submissionTrigger}
           initialSubmissionTimes={initialSubmissionTimes}
           ref={timerRef}

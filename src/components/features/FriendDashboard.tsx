@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { api } from "../../config/api";
 import { ChallengeModal } from "./ChallengeModal";
 import DashboardSidebar from "../layout/DashboardSidebar";
+import MobileBottomNav from "../layout/MobileBottomNav";
 import { useMyRating } from "../../hooks/useLeaderboard";
 
 interface Friend {
@@ -222,17 +223,23 @@ export default function FriendsDashboard() {
   return (
     <div className="flex min-h-screen bg-[#050811] text-slate-100 font-mono">
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* GLOBAL DASHBOARD SIDEBAR                                               */}
-      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* GLOBAL DASHBOARD SIDEBAR */}
       <DashboardSidebar rating={myRating?.rating} />
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <MobileBottomNav />
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] overflow-hidden pt-14">
+      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] pb-14 md:pb-0 overflow-hidden pt-14">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
-        <aside className="w-64 border-r border-white/6 bg-[#080a10] flex flex-col shrink-0 min-w-0">
+        <aside
+          className={`w-full md:w-64 border-r border-white/6 bg-[#080a10] flex flex-col shrink-0 min-w-0 ${
+            activeTab ? "hidden md:flex" : "flex"
+          }`}
+        >
           {/* Nav Tabs */}
           <div className="flex border-b border-white/6">
             {leftNavItems.map((item) => (
@@ -302,12 +309,24 @@ export default function FriendsDashboard() {
         </aside>
 
         {/* ── MIDDLE COLUMN: CONVERSATION ─────────────────────────────────── */}
-        <section className="flex-1 flex flex-col min-w-0 bg-[#050811]">
+        <section
+          className={`flex-1 flex flex-col min-w-0 bg-[#050811] ${
+            !activeTab ? "hidden md:flex" : "flex"
+          }`}
+        >
           {activeTab ? (
             <>
               {/* Conversation Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/6 bg-[#080a10]">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab(null)}
+                    aria-label="Back to friend list"
+                    className="md:hidden p-1 -ml-1 text-[#8892A4] hover:text-white transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
                   <div className="w-8 h-8 bg-[#111520] border border-white/8 flex items-center justify-center">
                     <span className="text-[9px] font-bold text-cyan-400">{activeTab.username.slice(0, 2).toUpperCase()}</span>
                   </div>
@@ -384,7 +403,7 @@ export default function FriendsDashboard() {
         </section>
 
         {/* ── RIGHT COLUMN: FRIEND PROFILE + BATTLE HISTORY ───────────────── */}
-        <aside className="w-72 border-l border-white/6 bg-[#080a10] flex flex-col shrink-0 overflow-y-auto min-w-0">
+        <aside className="hidden xl:flex w-72 border-l border-white/6 bg-[#080a10] flex-col shrink-0 overflow-y-auto min-w-0">
           {activeTab ? (
             <>
               {/* Friend Profile Card */}

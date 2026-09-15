@@ -240,46 +240,6 @@ export const BentoPixelArt: React.FC<BentoPixelArtProps> = ({ slug }) => {
         animationDelay: `${floatDelayOffset}s`
       }}
     >
-      {/* Dynamic Keyframes that ONLY trigger float and shimmer loops when their parent card (.group) is hovered */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes bentoPixelShimmer {
-          0%, 100% {
-            opacity: 0.55;
-            filter: brightness(0.95);
-          }
-          50% {
-            opacity: 0.95;
-            filter: brightness(1.3);
-            box-shadow: 0 0 10px var(--color);
-          }
-        }
-        @keyframes bentoIconFloat {
-          0%, 100% {
-            transform: translateY(0px) scale(1);
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
-          }
-          50% {
-            transform: translateY(-5px) scale(1.02);
-            filter: drop-shadow(0 10px 12px rgba(6,182,212,0.08));
-          }
-        }
-        .bento-icon-container {
-          transform: translateY(0px);
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, background-color 0.3s;
-        }
-        .group:hover .bento-icon-container {
-          animation: bentoIconFloat 4s ease-in-out infinite;
-        }
-        .bento-pixel-active {
-          background-color: var(--color);
-          box-shadow: var(--shadow);
-          opacity: 0.55;
-          transition: opacity 0.4s ease;
-        }
-        .group:hover .bento-pixel-active {
-          animation: bentoPixelShimmer 3.5s ease-in-out infinite;
-        }
-      `}} />
 
       {/* Grid container with custom micro layout spacing */}
       <div className="flex flex-col gap-[1.5px] transition-transform duration-500 ease-in-out group-hover:scale-[1.05]">

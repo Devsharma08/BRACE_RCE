@@ -154,15 +154,15 @@ const CreateRoom = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-slate-300 p-8 pt-24 font-mono relative">
+    <div className="min-h-screen bg-[#050608] text-slate-300 px-4 py-8 pt-20 sm:pt-24 pb-32 font-mono relative">
       <div className="max-w-6xl mx-auto relative z-10">
         
-        <div className="mb-10 text-center">
-          <h1 className="text-4xl font-bold text-white tracking-widest mb-2 flex items-center justify-center gap-4">
-            <ShieldAlert className="w-8 h-8 text-cyan-400" />
-            OPERATION DEPLOYMENT
+        <div className="mb-8 sm:mb-10 text-center">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-widest mb-2 flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+            <ShieldAlert className="w-7 h-7 sm:w-8 h-8 text-cyan-400 shrink-0" />
+            <span>OPERATION DEPLOYMENT</span>
           </h1>
-          <p className="text-cyan-500/60 tracking-widest text-sm">
+          <p className="text-cyan-500/60 tracking-widest text-xs sm:text-sm">
             CONFIGURE PARAMETERS AND ASSEMBLE MISSION QUEUE
           </p>
         </div>
@@ -404,14 +404,14 @@ const CreateRoom = () => {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 w-full bg-[#0a0b0e]/90 backdrop-blur border-t border-cyan-500/20 p-6 z-50 flex justify-end">
+        <div className="fixed bottom-0 left-0 w-full bg-[#080d1a]/95 backdrop-blur-xl border-t border-cyan-500/20 p-4 sm:p-6 z-50">
           <div className="max-w-6xl w-full mx-auto flex justify-end">
              <button 
                 onClick={handleCreateRoom}
                 disabled={loading || selectedProblemIds.length === 0}
-                className="bg-cyan-500 hover:bg-cyan-400 text-black font-bold tracking-widest px-8 py-4 rounded-xl flex items-center gap-3 transition-all disabled:opacity-50"
+                className="w-full sm:w-auto bg-cyan-500 hover:bg-cyan-400 text-black font-bold tracking-widest px-8 py-3.5 rounded-none flex items-center justify-center gap-3 transition-all disabled:opacity-50 text-xs sm:text-sm uppercase shadow-[0_0_15px_rgba(0,212,255,0.3)]"
               >
-                {loading ? <Activity className="w-5 h-5 animate-pulse" /> : <Swords className="w-5 h-5" />}
+                {loading ? <Activity className="w-4 h-4 animate-pulse" /> : <Swords className="w-4 h-4" />}
                 INITIALIZE OPERATION
               </button>
           </div>

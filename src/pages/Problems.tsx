@@ -2,6 +2,7 @@ import React, { useState, useEffect, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { useMyRating } from "../hooks/useLeaderboard";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
@@ -82,33 +83,44 @@ export const Problems: React.FC = () => {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-slate-100 font-mono relative overflow-x-hidden select-none">
-      {/* BACKGROUND GRID */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#00f0ff_1px,transparent_1px)] [background-size:16px_16px] z-0" />
-      <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none z-0" />
+    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono relative select-none">
+      {/* Dot-grid texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,243,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
+      <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-cyan-500/4 rounded-full blur-3xl pointer-events-none z-0" />
 
-      {/* DESKTOP SIDEBAR */}
+      {/* Desktop sidebar */}
       <DashboardSidebar rating={myRating?.rating} />
 
+      {/* Mobile bottom nav */}
+      <MobileBottomNav />
+
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] w-full relative pt-14 p-4 md:p-8 overflow-x-hidden">
+      <main
+        className="
+          flex-1 min-w-0 w-full
+          ml-0 md:ml-[60px] lg:ml-[245px]
+          pt-14 px-4 py-6 md:px-8 md:py-8
+          pb-20 md:pb-8
+          flex flex-col gap-6
+        "
+      >
         {/* HEADER BAR */}
-        <header className="flex items-center justify-between border-b border-cyan-500/20 pb-4">
-          <div>
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-cyan-500/15 pb-4">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
-              <Code2 className="w-5 h-5 text-cyan-400" />
+              <Code2 className="w-5 h-5 text-cyan-400 shrink-0" />
               <span>PROBLEM REPOSITORY</span>
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
               Explore and solve algorithmic challenges across all data structures
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-xs font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 px-3.5 py-1.5 rounded shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="text-xs font-mono text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 px-3 py-1.5 whitespace-nowrap">
               SOLVED: <strong className="text-white">{problems.filter((p: any) => p.isSolved).length}</strong> / {problems.length}
             </div>
-            <div className="text-xs font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-500/30 px-3.5 py-1.5 rounded shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-              TOTAL PROBLEMS: <strong className="text-white">{problems.length}</strong>
+            <div className="text-xs font-mono text-cyan-400 bg-cyan-950/30 border border-cyan-500/30 px-3 py-1.5 whitespace-nowrap">
+              TOTAL: <strong className="text-white">{problems.length}</strong>
             </div>
           </div>
         </header>
@@ -169,9 +181,11 @@ export const Problems: React.FC = () => {
           </div>
         )}
 
-        {/* PROBLEMS TABLE */}
+        {/* PROBLEMS TABLE — overflow-x-auto is intentional: table scrolls horizontally on
+            narrow screens rather than breaking the page layout */}
         {!isProblemsError && (
-        <div className="border border-cyan-500/20 bg-slate-950/40 rounded overflow-hidden shadow-xl">
+        <div className="border border-cyan-500/20 bg-slate-950/40 overflow-x-auto shadow-xl">
+          <div className="min-w-[640px]">
           {/* TABLE HEADER */}
           <div className="grid grid-cols-12 p-3.5 bg-black/80 border-b border-cyan-500/20 text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
             <span className="col-span-1">#</span>
@@ -308,6 +322,7 @@ export const Problems: React.FC = () => {
               </div>
             </div>
           )}
+          </div>{/* min-w wrapper */}
         </div>
         )}
       </main>

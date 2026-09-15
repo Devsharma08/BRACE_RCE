@@ -479,58 +479,6 @@ export const BraceRcePixelArt: React.FC = () => {
     }, DURATION);
   }, []);
 
-  // ── CSS (keyframes + responsive sizing) ───────────────────────────────
-  const styles = `
-    @keyframes bootPixel {
-      0%   { opacity: 0; transform: scale(0.25); box-shadow: none; }
-      45%  { opacity: 0.65; transform: scale(1.08); box-shadow: 0 0 10px var(--tc); }
-      100% { opacity: 1;  transform: scale(1);    box-shadow: var(--ts); }
-    }
-    @keyframes statusFade {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes descFade {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .animate-desc-fade {
-      animation: descFade 1s cubic-bezier(0.16,1,0.3,1) forwards;
-      animation-delay: 2.4s;
-    }
-
-    /* Pixel cell sizing — responsive breakpoints unchanged from original */
-    .pixel-cell {
-      height: 1.6px; width: 1.6px; border-radius: 0.2px;
-      transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.1s ease;
-      will-change: filter, box-shadow, transform;
-    }
-    @media (min-width: 360px)  { .pixel-cell { height: 2.2px; width: 2.2px; } }
-    @media (min-width: 440px)  { .pixel-cell { height: 3.2px; width: 3.2px; } }
-    @media (min-width: 640px)  { .pixel-cell { height: 5.2px; width: 5.2px; border-radius: 0.5px; } }
-    @media (min-width: 768px)  { .pixel-cell { height: 6.8px; width: 6.8px; } }
-    @media (min-width: 1024px) { .pixel-cell { height: 8.5px; width: 8.5px; } }
-
-    .pixel-row  { display: flex; gap: 0.8px; }
-    @media (min-width: 360px)  { .pixel-row { gap: 1px; } }
-    @media (min-width: 440px)  { .pixel-row { gap: 1.5px; } }
-    @media (min-width: 640px)  { .pixel-row { gap: 2.5px; } }
-    @media (min-width: 768px)  { .pixel-row { gap: 3px; } }
-
-    .pixel-grid { display: flex; flex-direction: column; gap: 0.8px; }
-    @media (min-width: 360px)  { .pixel-grid { gap: 1px; } }
-    @media (min-width: 440px)  { .pixel-grid { gap: 1.5px; } }
-    @media (min-width: 640px)  { .pixel-grid { gap: 2.5px; } }
-    @media (min-width: 768px)  { .pixel-grid { gap: 3px; } }
-
-    /* Reduced-motion overrides */
-    @media (prefers-reduced-motion: reduce) {
-      .pixel-cell { transition: none !important; }
-      .animate-desc-fade { animation: none !important; opacity: 1 !important; transform: none !important; }
-    }
-  `;
-
   const maxDelay = PIXEL_META.flat().reduce((m, pm) => pm ? Math.max(m, pm.delay) : m, 0);
 
   return (
@@ -538,7 +486,6 @@ export const BraceRcePixelArt: React.FC = () => {
       ref={containerRef}
       className="z-10 flex min-h-[90vh] w-full max-w-7xl flex-col items-center justify-center py-12 font-mono text-slate-200 select-none px-4 sm:px-8 border-b border-white/10"
     >
-      <style dangerouslySetInnerHTML={{ __html: styles }} />
 
       {/* Blueprint grid canvas */}
       <div

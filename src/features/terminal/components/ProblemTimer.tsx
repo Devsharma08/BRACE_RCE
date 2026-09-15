@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "re
 import { Timer, History, Play, Pause, RotateCcw } from "lucide-react";
 
 interface ProblemTimerProps {
-  problemId: string | null;
+  problemId?: string | null;
   submissionTrigger: number;
   initialSubmissionTimes?: string[];
 }

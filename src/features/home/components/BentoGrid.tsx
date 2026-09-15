@@ -14,26 +14,6 @@ const BentoGrid = () => {
 
   return (
     <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none overflow-hidden border-b border-white/10">
-      {/* Keyframe Styles for Dual Infinite Marquee Ticker */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes marqueeLeft {
-          0% { transform: translateX(0%); }
-          100% { transform: translateX(-33.333%); }
-        }
-        @keyframes marqueeRight {
-          0% { transform: translateX(-33.333%); }
-          100% { transform: translateX(0%); }
-        }
-        .animate-marquee-left {
-          animation: marqueeLeft 35s linear infinite;
-        }
-        .animate-marquee-right {
-          animation: marqueeRight 35s linear infinite;
-        }
-        .animate-marquee-left:hover, .animate-marquee-right:hover {
-          animation-play-state: paused;
-        }
-      ` }} />
 
       {/* Header Section */}
       <div className="mb-12 sm:mb-16 text-center max-w-3xl mx-auto px-4">
