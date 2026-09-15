@@ -124,8 +124,25 @@ export default function FriendsDashboard() {
         data.status === "ONLINE" ? [...new Set([...prev, data.userId])] : prev.filter((id) => id !== data.userId)
       );
     };
+    // Batch answer to requestPresence() below — without this the server's reply
+    // was dropped and friends never showed as online.
+    const handleSnapshot = (snapshot: { userId: string; status: string }[]) => {
+      if (!Array.isArray(snapshot) || snapshot.length === 0) return;
+      setOnlineIds((prev) => {
+        const next = new Set(prev);
+        for (const entry of snapshot) {
+          if (entry.status === "ONLINE") next.add(entry.userId);
+          else next.delete(entry.userId);
+        }
+        return [...next];
+      });
+    };
     socket.on("user_online_status", handlePresence);
-    return () => { socket.off("user_online_status", handlePresence); };
+    socket.on("presence_snapshot", handleSnapshot);
+    return () => {
+      socket.off("user_online_status", handlePresence);
+      socket.off("presence_snapshot", handleSnapshot);
+    };
   }, [socket]);
 
   useEffect(() => {

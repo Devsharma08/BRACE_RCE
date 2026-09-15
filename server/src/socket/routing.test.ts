@@ -29,10 +29,11 @@ const EXPECTED_SOCKET_EVENTS = [
     "provide_player_code",
     "broadcast_player_code",
     "terminate_group",
+    "request_presence",
 ];
 
 describe("Socket routing (refactor lock)", () => {
-    test("registers all 28 domain events plus central disconnect", () => {
+    test("registers all 29 domain events plus central disconnect", () => {
         const socketOn = jest.fn();
         const fakeSocket: any = {
             id: "socket-1",
