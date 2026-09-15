@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { api } from "../config/api";
+import { useSocket } from "../context/SocketContext";
 
 export interface LeaderboardEntry {
   rank: number;
@@ -24,8 +26,35 @@ export interface MyRating {
   winRate: number;
 }
 
+/**
+ * Keep ratings live: when a battle finishes the server drops its cached
+ * leaderboard and emits `leaderboard:invalidate`.
+ *
+ * `invalidateQueries` (never `setQueryData`) is the right tool here — the new
+ * rating is a server-side fold over match history, so the client cannot derive
+ * the fresh rows, it can only ask for them again.
+ */
+function useLeaderboardSocketSync() {
+  const queryClient = useQueryClient();
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+    const onInvalidate = () => {
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["my-rating"] });
+    };
+    socket.on("leaderboard:invalidate", onInvalidate);
+    return () => {
+      socket.off("leaderboard:invalidate", onInvalidate);
+    };
+  }, [socket, queryClient]);
+}
+
 /** Global ELO leaderboard (ROADMAP §1). */
 export function useLeaderboard(limit = 25, enabled = true) {
+  useLeaderboardSocketSync();
+
   return useQuery<LeaderboardEntry[]>({
     queryKey: ["leaderboard", limit],
     enabled,
@@ -38,6 +67,8 @@ export function useLeaderboard(limit = 25, enabled = true) {
 }
 
 export function useMyRating(enabled = true) {
+  useLeaderboardSocketSync();
+
   return useQuery<MyRating>({
     queryKey: ["my-rating"],
     enabled,

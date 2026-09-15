@@ -47,6 +47,11 @@ export const Problems: React.FC = () => {
 
   const { data: problems = [], isLoading: loading, isError: isProblemsError, refetch: refetchProblems } = useQuery<any[]>({
     queryKey: ["system-problems"],
+    // Problem definitions never change during a session — fetch once per mount
+    // window instead of on every visit. Progress changes (solved/attempts) are
+    // handled by invalidateProblemQueries() at the write sites.
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const res = await api.get("/problems/system");
       return res.data?.problems || [];

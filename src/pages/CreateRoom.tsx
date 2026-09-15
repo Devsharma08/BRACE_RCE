@@ -3,6 +3,7 @@ import { ShieldAlert, CheckCircle2, Lock, Unlock, Globe, EyeOff, Swords, Activit
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
+import { invalidateProblemQueries } from "../utils/problemCache";
 import { toast } from "sonner";
 import { TestCaseGeneratorPanel, type CreatorSignature } from "../components/features/TestCaseGeneratorPanel";
 
@@ -51,6 +52,10 @@ const CreateRoom = () => {
 
   const { data: availableProblems = [] } = useQuery({
     queryKey: ["all-available-problems"],
+    // Static problem definitions — see invalidateProblemQueries() for the
+    // progress-driven refreshes.
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const [sysRes, customRes] = await Promise.all([
         api.get("/problems/system"),
@@ -129,8 +134,7 @@ const CreateRoom = () => {
       const newProb = res.data.problem;
       
       // Refetch available problems query
-      queryClient.invalidateQueries({ queryKey: ["all-available-problems"] });
-      queryClient.invalidateQueries({ queryKey: ["system-problems"] });
+      invalidateProblemQueries(queryClient);
       
       // Auto-select it in the queue
       setSelectedProblemIds(prev => [...prev, newProb.id]);

@@ -25,11 +25,16 @@ export function ChallengeModal({ friend, open, onClose }: {
   const { data: systemProblems = [] } = useQuery<ProblemOption[]>({
     queryKey: ["challenge-system-problems", difficulty],
     enabled: open && mode === "RANDOM",
+    // Static problem definitions — refreshed only when progress changes.
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => (await api.get("/problems/system")).data?.problems ?? [],
   });
   const { data: customProblems = [] } = useQuery<ProblemOption[]>({
     queryKey: ["challenge-custom-problems"],
     enabled: open && mode === "CUSTOM",
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => (await api.get("/problems/custom")).data?.problems ?? [],
   });
 

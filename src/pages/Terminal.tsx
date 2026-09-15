@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
@@ -14,6 +15,7 @@ import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout"
 import type { ExecutionMode, SupportedLanguage } from "../features/terminal/types";
 import type { ProblemTimerRef } from "../features/terminal/components/ProblemTimer";
 import { NotesPanel } from "../components/ui/NotesPanel";
+import { invalidateProblemQueries } from "../utils/problemCache";
 
 // ─────────────────────────────────────────────────────────────
 // Language / Snippet Helpers
@@ -97,6 +99,9 @@ const Terminal = () => {
   } = useContext(CodeContext);
 
   const { setStatus } = useContext(UserResponseContext);
+
+  // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
+  const queryClient = useQueryClient();
 
   // ── Layout ─────────────────────────────────────────────────
   const {
@@ -265,6 +270,9 @@ const Terminal = () => {
         if (mode === "SUBMIT" || !isCustomExecution) setIsCustomInputRun(false);
         if (mode === "SUBMIT") {
           setSubmissionTrigger((prev) => prev + 1);
+          // A practice SUBMIT writes progress (solved/attempts), so the problem
+          // payloads cached with staleTime: Infinity are stale now.
+          invalidateProblemQueries(queryClient);
         }
       }
     },

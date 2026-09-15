@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -19,6 +19,7 @@ import { SpectatorReplayPanel } from "../components/features/SpectatorReplayPane
 import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
+import { invalidateProblemQueries } from "../utils/problemCache";
 
 
 interface BattleMessage {
@@ -280,6 +281,9 @@ export const Battle = () => {
 
   // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
   const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading);
+
+  // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
+  const queryClient = useQueryClient();
 
   // terminal
   const [isTerminal, setIsTerminal] = useState<boolean>(true);
@@ -730,6 +734,9 @@ export const Battle = () => {
       );
     } finally {
       setIsSubmitting(false);
+      // A battle SUBMIT writes the user's problem progress, so the cached
+      // problem payloads that embed it are stale now.
+      invalidateProblemQueries(queryClient);
     }
   };
 
