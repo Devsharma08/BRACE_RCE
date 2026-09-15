@@ -1,6 +1,7 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { invalidateUserProblemsCache } from "./problems.js";
 
 class Profile {
 
@@ -147,6 +148,9 @@ class Profile {
                 },
                 include: { test_cases: true, code_snippets: true }
             });
+
+            // The creator's cached problem lists no longer match the catalog.
+            invalidateUserProblemsCache(userId);
 
             return res.json({ status: "success", message: "Custom problem created!", problem: newProblem });
         } catch (error) {

@@ -3,12 +3,40 @@ import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { Level } from "../generated/prisma/client.js";
 import { WrapperGenerator } from "../utils/wrapperGenerator.js";
+import { deleteCachedByPrefix, getCached, setCached } from "../lib/cache.js";
+
+// Problem payloads embed the caller's OWN progress (isSolved / attempts /
+// lastCode), so the cache namespace is per user — a shared key would leak one
+// user's progress to another. Definitions are static, so a 10-minute TTL is
+// safe and the namespace is dropped explicitly on any progress write.
+const PROBLEMS_CACHE_PREFIX = "problems:";
+const PROBLEMS_CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
+
+const systemKey = (userId: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:system`;
+const customKey = (userId: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:custom`;
+const detailKey = (userId: string, id: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:detail:${id}`;
+
+/** Drop every cached problem payload for one user (call after a progress write). */
+export function invalidateUserProblemsCache(userId: string): void {
+    deleteCachedByPrefix(`${PROBLEMS_CACHE_PREFIX}${userId}:`);
+}
+
+/** Drop every user's cached problem payloads (the problem catalog changed). */
+export function invalidateAllProblemsCache(): void {
+    deleteCachedByPrefix(PROBLEMS_CACHE_PREFIX);
+}
 
 class Problems {
     // GET ALL SYSTEM PROBLEMS (enriched with solved status for the current user)
     async getSystemProblems(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
+            const cacheKey = systemKey(userId);
+
+            const cached = getCached<any[]>(cacheKey);
+            if (cached) {
+                return res.json({ status: "success", problems: cached, cached: true });
+            }
 
             const problems = await prisma.problem.findMany({
                 where: { isCustom: false },
@@ -59,7 +87,9 @@ class Problems {
                 };
             });
 
-            return res.json({ status: "success", problems: enriched });
+            setCached(cacheKey, enriched, PROBLEMS_CACHE_TTL_SECONDS);
+
+            return res.json({ status: "success", problems: enriched, cached: false });
         } catch (error) {
             console.error("Fetch system problems error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -71,6 +101,12 @@ class Problems {
         try {
             const userId = req.userId as string;
             const id = req.params.id as string;
+            const cacheKey = detailKey(userId, id);
+
+            const cached = getCached<any>(cacheKey);
+            if (cached) {
+                return res.json({ status: "success", problem: cached, cached: true });
+            }
 
             const problem = await prisma.problem.findFirst({
                 where: {
@@ -107,17 +143,22 @@ class Problems {
             const progress = (problem as any).userProgress?.[0] ?? null;
             const { userProgress, ...rest } = problem as any;
 
+            const payload = {
+                ...rest,
+                isSolved: progress?.isSolved ?? false,
+                solvedAt: progress?.solvedAt ?? null,
+                attempts: progress?.attempts ?? 0,
+                lastCode: progress?.lastCode ?? null,
+                lastLanguage: progress?.lastLanguage ?? "javascript",
+                submissionTimes: progress?.submissionTimes ?? [],
+            };
+
+            setCached(cacheKey, payload, PROBLEMS_CACHE_TTL_SECONDS);
+
             return res.json({
                 status: "success",
-                problem: {
-                    ...rest,
-                    isSolved: progress?.isSolved ?? false,
-                    solvedAt: progress?.solvedAt ?? null,
-                    attempts: progress?.attempts ?? 0,
-                    lastCode: progress?.lastCode ?? null,
-                    lastLanguage: progress?.lastLanguage ?? "javascript",
-                    submissionTimes: progress?.submissionTimes ?? [],
-                }
+                problem: payload,
+                cached: false,
             });
         } catch (error) {
             console.error("Fetch problem by ID error:", error);
@@ -129,12 +170,22 @@ class Problems {
     async getMyCustomProblems(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
+            const cacheKey = customKey(userId);
+
+            const cached = getCached<any[]>(cacheKey);
+            if (cached) {
+                return res.json({ status: "success", problems: cached, cached: true });
+            }
+
             const problems = await prisma.problem.findMany({
                 where: { creatorId: userId, isCustom: true },
                 include: { test_cases: true, code_snippets: true },
                 orderBy: { createdAt: 'desc' }
             });
-            return res.json({ status: "success", problems });
+
+            setCached(cacheKey, problems, PROBLEMS_CACHE_TTL_SECONDS);
+
+            return res.json({ status: "success", problems, cached: false });
         } catch (error) {
             console.error("Fetch custom problems error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -186,6 +237,9 @@ class Problems {
                 },
                 include: { test_cases: true, code_snippets: true }
             });
+
+            // The creator's cached lists/detail no longer match the catalog.
+            invalidateUserProblemsCache(userId);
 
             return res.json({ status: "success", message: "Custom problem created!", problem: newProblem });
         } catch (error) {
@@ -255,6 +309,9 @@ class Problems {
 
                 results.push({ id: problem.id, name: problem.name });
             }
+
+            // System problems changed for every user.
+            invalidateAllProblemsCache();
 
             return res.json({ status: "success", message: `Seeded ${results.length} system problems!`, seeded: results });
         } catch (error) {

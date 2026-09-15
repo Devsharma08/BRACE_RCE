@@ -2,36 +2,23 @@ import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { outcomeFromStatus } from "../utils/elo.js";
+import { deleteCached, deleteCachedByPrefix, getCached, setCached } from "../lib/cache.js";
 
-// ── In-memory cache for analytics (5-minute TTL) ──────────────────────────────
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const analyticsCache = new Map<string, CacheEntry<any>>();
+// ── Analytics cache (shared in-process cache — see lib/cache.ts) ──────────────
+const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
+const ANALYTICS_CACHE_PREFIX = "analytics:";
 
 class Analytics {
   private getCacheKey(userId: string): string {
-    return `analytics:${userId}`;
+    return `${ANALYTICS_CACHE_PREFIX}${userId}`;
   }
 
   private getCachedAnalytics(userId: string) {
-    const key = this.getCacheKey(userId);
-    const entry = analyticsCache.get(key);
-
-    if (entry && Date.now() - entry.timestamp < CACHE_TTL_MS) {
-      return entry.data;
-    }
-
-    if (entry) analyticsCache.delete(key);
-    return null;
+    return getCached<any>(this.getCacheKey(userId)) ?? null;
   }
 
   private setCachedAnalytics(userId: string, data: any) {
-    const key = this.getCacheKey(userId);
-    analyticsCache.set(key, { data, timestamp: Date.now() });
+    setCached(this.getCacheKey(userId), data, CACHE_TTL_SECONDS);
   }
 
   getUserAnalytics = async (req: AuthRequest, res: Response) => {
@@ -318,13 +305,13 @@ class Analytics {
 
   // Clear cache for a user (call after data updates)
   invalidateCache(userId: string) {
-    const key = this.getCacheKey(userId);
-    analyticsCache.delete(key);
+    deleteCached(this.getCacheKey(userId));
   }
 
-  // Clear all analytics cache (for admin/maintenance)
+  // Clear all analytics cache (for admin/maintenance). Scoped to the analytics
+  // namespace so it cannot evict unrelated entries (leaderboard, problems, ...).
   clearAllCache() {
-    analyticsCache.clear();
+    deleteCachedByPrefix(ANALYTICS_CACHE_PREFIX);
   }
 }
 

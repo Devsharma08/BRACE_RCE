@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import { createApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
+import { internalCache } from "../lib/cache.js";
 import jwt from "jsonwebtoken";
 
 // Assign mocks directly to Prisma delegate methods
@@ -21,6 +22,10 @@ describe("Problems Controller Routes (/api/problems)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Problem payloads are cached per user in the shared node-cache, which
+    // persists across tests — flush it so every test exercises the DB path it
+    // just mocked instead of a previous test's cached response.
+    internalCache.flushAll();
   });
 
   describe("GET /api/problems/system", () => {

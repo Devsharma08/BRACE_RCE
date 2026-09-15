@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { deleteCachedByPrefix } from "../../lib/cache.js";
 import type { HandlerCtx } from "../types.js";
 
 interface BattleActionPayload {
@@ -104,6 +105,13 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
             winnerId: currentUserId,
             performances
         });
+
+        // Every rating on the leaderboard is a fold over match history, so this
+        // battle just invalidated the cached copies. Drop them and tell all
+        // clients to re-fetch — the new ELO can only be derived server-side.
+        deleteCachedByPrefix("leaderboard:");
+        deleteCachedByPrefix("my-rating:");
+        io.emit("leaderboard:invalidate");
 
         // Tell the rest of the room who actually won, derived from the database.
         socket.to(roomId).emit("battle_update", {

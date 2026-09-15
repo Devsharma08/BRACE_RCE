@@ -156,6 +156,10 @@ export async function saveSubmisssion(params: SaveSubmisssionParams) {
                 },
             });
             invalidateUserAnalyticsCache(ownerId);
+            // Problem payloads embed this user's progress, so their cached
+            // copies are stale now too.
+            const { invalidateUserProblemsCache } = await import("../controllers/problems.js");
+            invalidateUserProblemsCache(ownerId);
         }
     } catch (e) {
         console.error("Failed to mirror battle submission to progress:", e);

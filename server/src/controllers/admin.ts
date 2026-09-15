@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { AuthRequest } from '../middleware/authentication.js';
 import { prisma } from '../lib/prisma.js';
+import { invalidateAllProblemsCache } from './problems.js';
 
 // Prisma client does not expose Feedback / QuestionReport / Setting models yet;
 // callers in routes/admin.ts still register these endpoints. Keep behavior
@@ -167,6 +168,9 @@ export const createQuestion = async (req: Request, res: Response) => {
     data: { name, difficulty_level, problem_definition, problem_hints: hints, timeLimitMs },
   });
 
+  // Admin question edits change what every user sees in their problem lists.
+  invalidateAllProblemsCache();
+
   return res.status(201).json({ question });
 };
 
@@ -185,6 +189,8 @@ export const updateQuestion = async (req: Request, res: Response) => {
     data: { name, difficulty_level, problem_definition, problem_hints: hints, timeLimitMs },
   });
 
+  invalidateAllProblemsCache();
+
   return res.json({ question });
 };
 
@@ -194,6 +200,7 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 
   const questionId = String(req.params.questionId ?? "");
   await prisma.problem.delete({ where: { id: questionId } });
+  invalidateAllProblemsCache();
   return res.json({ status: 'ok', message: 'Question deleted' });
 };
 
