@@ -21,8 +21,8 @@ const StickyFeatureShowcase: React.FC = () => {
           <Cpu className="w-4 h-4 text-cyan-400" />
           <span>ARCHITECTURE // CAPABILITIES</span>
         </div>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
-          Engineered for <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-amber-400">Peak Performance</span>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4">
+          Engineered for <span className="text-cyan-400">Peak Performance</span>
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-slate-300 font-sans leading-relaxed max-w-xl mx-auto">
           A high-precision suite of browser-native development utilities built to execute, debug, and benchmark algorithms in real-time.

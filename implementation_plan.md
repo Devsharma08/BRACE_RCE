@@ -1,32 +1,49 @@
-# Implementation Plan — socket.ts Split First (Refactor-First Scope)
+# Implementation Plan — Unified Design Language Overhaul
 
-## [Overview]
+## Overview
 
-Split the 1259-line monolithic `server/src/services/socket.ts` into one orchestrator plus domain handler modules under `server/src/socket/`, preserving 100% of current runtime behavior. Strictly file organization: move each `socket.on` block verbatim, hoist shared Maps/helpers into singletons, keep `initSocketServer(io)` as sole entry so `server/src/index.ts` needs only an import-path change. No logic fixes here.
+Replace the app's three competing visual identities with one coherent language: sharp-edged, dark (`#050811` void / `#0b1021` surface), cyan-accented, monospaced labels, no text gradients, consistent spacing. Apply the arena aesthetic universally.
 
-[Types] `server/src/socket/types.ts` (new): CustomLobby { hostId, users, maxUsers, password?, targetDifficulty, problemsIds, expiresAt } moved verbatim from services/socket.ts:8-16. SocketState { activeLobbies, onlineUsers, activeSearchIntervals }. HandlerCtx { io, socket, userId, state, getActiveBattleForUser }. Level reuses generated prisma client. LOBBY_TTL_MS=15min + ROOM_DISSOLVE_AFTER_MS=30min move to gc.ts. No Prisma/REST/client type changes.
-[Files] NEW under server/src/socket/: types.ts (CustomLobby/SocketState/HandlerCtx); state.ts (singleton activeLobbies/onlineUsers/activeSearchIntervals + markOnline/markOffline/getSocketId); matchmakingUtils.ts (generateRoomCode + getAllowedDifficulties verbatim); activeBattle.ts (getActiveBattleForUser factory, body verbatim); gc.ts (TTL consts + initModuleGC verbatim); auth.ts (registerSocketAuth with io.use cookie block verbatim); handlers/messaging.ts (send_direct_message, send_battle_message); handlers/challenge.ts (send/accept/decline_challenge); handlers/matchmaking.ts (join/cancel/accept/decline matchmaking+match); handlers/lobby.ts (create/join/start/leave/delete custom room, leave_room, start_event); handlers/battle.ts (join_battle, check_active_battle, surrender x2, battle_action byte-for-byte incl. client-trusted result branch); handlers/spectator.ts (request/provide/broadcast code); handlers/host.ts (host_kick/end, terminate_group); index.ts (initSocketServer: initModuleGC + registerSocketAuth + io.on connection with central disconnect + 7 register calls). MODIFY server/src/index.ts:6 import to ./socket/index.js. REPLACE services/socket.ts with re-export shim then delete. No client/config/tsconfig changes (src/** already included; use .js-suffix imports).
-[Functions] NEW registrars registerMessaging/Challenge/Matchmaking/Lobby/Battle/Spectator/HostHandlers(ctx:HandlerCtx):void + registerSocketAuth(io) + initModuleGC(io) + markOnline/MarkOffline/getSocketId + getActiveBattleForUser + generateRoomCode + getAllowedDifficulties. MODIFY initSocketServer (move to socket/index.ts, shrink to GC+auth+fan-out) + disconnect (move central, body verbatim). REMOVE none (keep surrender_battle AND surrender_match; no renames). Migration: cut-paste bodies, only onlineUsers/activeLobbies/io refs rerouted via ctx/state.
+**Scope:** ~20 files, 92 design points across 9 phases.
 
-[Classes] No new/modified/removed classes. socket.ts uses no classes; new modules use functions + singleton Maps to minimize diff.
+## Phase 0 — Shared Primitives
+- Skeleton shimmer: `via-white/5` → `via-cyan-500/5`
+- Extract reusable `SectionLabel` and `Card` primitives
 
-[Dependencies] No new deps, no version changes. Reuse socket.io, prisma, verifyToken. No Redis/event-bus/Zustand in this phase.
+## Phase 1 — Layout Shell
+- Header.tsx: logo typography, notification separator
+- DashboardSidebar.tsx: link borders, active state, user card separator, collapse toggle
 
-[Testing] Existing socket.test.ts (getAllowedDifficulties mirror) must pass; optionally re-point import to ../socket/matchmakingUtils.js. jest + tsc --noEmit + build must pass. NEW server/src/socket/routing.test.ts: mock io/socket capture all 28 socket.on names (disconnect, send_direct_message, send_challenge, accept/decline_challenge, join/cancel_matchmaking, leave/delete_custom_room, leave_room, create/join/start_custom_room, start_event, join_battle, check_active_battle, accept/decline_match, surrender_battle/match, battle_action, host_kick/end, request/provide/broadcast code, send_battle_message, terminate_group) to catch drops/dupes. Manual: matchmaking pending/accept/decline/timeout, challenge on/offline, lobby CRUD, battle progress+finished, surrenders, host powers, spectator, DMs, disconnect cleanup, single GC timers. Non-goals: battle_action still trusts client result; presence still global io.emit; no new event names/payloads.
+## Phase 2 — Landing Page
+- Remove gap-10, pixel art wrapper, CTA radius
+- Eliminate text gradients from all section headings
+- BentoGrid: vignette color, card borders, card bg
+- CommunitySupportSection: star variety, focus, gap
 
-[Implementation Order] 1 shared modules (types/state/matchmakingUtils, tsc passes). 2 activeBattle+gc+auth moves. 3 all 7 handler files (messaging, challenge, matchmaking, lobby, battle, spectator, host) before switching entry. 4 socket/index.ts orchestrator + central disconnect. 5 switch index.ts import + shim services/socket.ts. 6 routing.test.ts + run jest/tsc/build + manual matrix. 7 log follow-ups unfixed: start_custom_match non-normalized key, dead generateRoomCode, audit double-handler claim.
+## Phase 3 — App Shell Pages
+- Dashboard: greeting, stats cards, find opponent banner, searching/accept states, recent battles header, problem badges
+- Problems: search, filters, rows, badges, pagination
+- Lobby: h1, tabs, cards, host avatar, JOIN button, empty state
+- CreateRoom: inputs, dividers, submit button
 
-[Execution Status] (phases 1-7 implemented; phase 8 deliberately skipped)
-- Phase 3/P0 (security) DONE — server/src/socket/handlers/battle-action.ts derives the winner from the DB (PASSED UserPersonalPerformance or PASSED CodeSubmission), ignores+logs client `result`, stops relaying `result` to peers, claims FINISHED via atomic updateMany (single battle_finished), adds winnerId, resolves roomCode rooms; src/pages/Battle.tsx no longer sends `result`; NEW battle-action.test.ts (6 cases).
-- Phase 6 (refactor) DONE at 2a3fcf1 — services/socket.ts (1259 lines) split into src/socket/{index,types,state,matchmakingUtils,activeBattle,gc,auth,presence}.ts + handlers/{messaging,challenge,matchmaking,lobby,battle*,spectator,host,presence}.ts; routing.test.ts locks every registration.
-- Phase 1 DONE — src/hooks/useNotifications.ts: notification:new now uses setQueryData to prepend into ["notifications","all"] + ["notifications","unread"] and bump ["notifications-unread-count"] with id-based dedupe (no cloned rows, no double-count); useUnreadCount refetchInterval 30s -> 5min safety net. NEW src/hooks/useNotifications.test.tsx (5 cases incl. asserting zero extra network calls).
-- Phase 2 DONE — server/src/lib/cache.ts exports getCached/setCached/deleteCached/deleteCachedByPrefix over the single node-cache instance; server/src/controllers/leaderboard.ts caches the FULL ranking under leaderboard:global (120s) and per-user my-rating:<userId> (120s) and returns cached:true|false (every `limit` served from one entry); analytics.ts ad-hoc Map + CacheEntry replaced by the shared cache under analytics:<userId> (300s, clearAllCache scoped by prefix). NEW cache.test.ts (7 cases), leaderboard.test.ts (6 cases).
-- Phase 4 DONE — battle-action.ts drops cached leaderboard/my-rating and emits io.emit("leaderboard:invalidate") after battle_finished; src/hooks/useLeaderboard.ts adds useLeaderboardSocketSync() (used by useLeaderboard + useMyRating) which invalidateQueries(["leaderboard"],["my-rating"]).
-- Phase 5 DONE — client staleTime:Infinity + gcTime 30min on system-problems (Problems.tsx), all-available-problems (CreateRoom.tsx), challenge-system-problems + challenge-custom-problems (ChallengeModal.tsx), with NEW src/utils/problemCache.ts invalidateProblemQueries() called at every progress write: Terminal.tsx (practice SUBMIT), Battle.tsx (battle SUBMIT), CreateRoom.tsx (custom problem created). Server problems.ts caches per-user namespace problems:<userId>:system|custom|detail:<id> (600s) and exports invalidateUserProblemsCache/invalidateAllProblemsCache, called from submissionEvaluator.ts, problems.ts (create/seed), admin.ts (question create/update/delete) and profile.ts (custom problem).
-- Phase 7 DONE — NEW server/src/socket/presence.ts (getFriendIds, emitPresenceToFriends) + handlers/presence.ts (request_presence -> presence_snapshot, friends-only so presence cannot be probed); socket/index.ts ON LINE/OFFLINE presence is now friend-scoped instead of io.emit to everyone; state.ts tracks per-user live-socket counts so closing one of two tabs no longer reports the user OFFLINE; src/components/features/FriendDashboard.tsx now consumes presence_snapshot (it was previously dropped, so online dots could never light up).
-- Phase 8 SKIPPED on purpose — no measured re-render pressure; SocketContext stays the socket-instance + action-emitter provider.
+## Phase 4 — Profile + History
+- ProfileScoreCard: flat bg, XP bar, rank badge
+- HistoryLedgerSection: emerald→cyan, table header, outcome badges
 
-[Verification] server: 25 suites / 125 tests pass, npx tsc --noEmit exit 0. client: npx tsc -b exit 0, vitest 37 passed with only the 5 pre-existing failures in DashboardSidebar.test.tsx (1) and EditorToolbar.test.tsx (4), which fail identically at the preceding HEAD (verified by stashing all src/ changes).
+## Phase 5 — Leaderboard + Analytics
+- Leaderboard: rank colors, medal colors, card bg
+- AnalyticsPanels: heatmap cells, bar height, battle trend hero, streak pulse, dividers, language dots
 
-[Known follow-ups not fixed here] Google OAuth renders <GoogleLogin> with clientId "not-configured" when VITE_GOOGLE_CLIENT_ID is empty (src/Root.tsx:42, Login.tsx:107, Signup.tsx:154); server/src/routes/github.ts is never mounted in app.ts (dead endpoints, all behind apiLimiter); start_custom_match roomCode key normalization; jest reports a leaked handle ("worker process failed to exit gracefully") in the server suite.
+## Phase 6 — Social + Notifications
+- FriendDashboard: divider, presence label, message bubbles, requests badge, tooltip
+- NotificationCenter: bell container, dropdown bg, icons, unread rows
+- ChallengeModal: backdrop blur, toggles, search input
 
+## Phase 7 — Auth Pages
+- Login/Signup: stat values, form card, inputs, submit button, error banner rose
+
+## Phase 8 — Output + Notes + About + Admin
+- OutputPanel tabs, TestCaseCard, status badges
+- NotesPanel: position, header, textarea
+- About: directional borders, roadmap badges
+- Admin pages: border-r-4/border-b-4 → border-t accent

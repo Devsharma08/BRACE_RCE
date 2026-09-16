@@ -38,7 +38,7 @@ export const CommunitySupportSection: React.FC = () => {
 
   return (
     <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-14 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-10 w-full">
 
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto">
@@ -47,7 +47,7 @@ export const CommunitySupportSection: React.FC = () => {
             <span>COMMUNITY // FEEDBACK & SUPPORT</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
-            Developer Voice & <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-amber-400">Reviews</span>
+            Developer Voice & <span className="text-cyan-400">Reviews</span>
           </h2>
           <p className="text-xs sm:text-sm md:text-base text-slate-300 font-sans leading-relaxed max-w-xl mx-auto">
             Direct telemetry from our global network of engineers, competitive coders, and algorithm enthusiasts.
@@ -59,12 +59,12 @@ export const CommunitySupportSection: React.FC = () => {
           {reviews.map((rev, idx) => (
             <div
               key={rev.name}
-              className={`group relative overflow-hidden rounded-none border border-white/20 bg-[#06080e] p-6 sm:p-7 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.18)] transition-all duration-300 ${
+              className={`group relative overflow-hidden rounded-none border border-cyan-500/15 bg-[#06080e] p-6 sm:p-7 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.18)] transition-all duration-300 ${
                 idx === 0
-                  ? "border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70"
+                  ? "border-t-2 border-t-cyan-500/40 border border-cyan-500/15"
                   : idx === 1
-                  ? "border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70"
-                  : "border-t-4 border-r-4 border-t-cyan-500/70 border-r-cyan-500/70"
+                  ? "border-t-2 border-t-cyan-500/40 border border-cyan-500/15"
+                  : "border-t-2 border-t-cyan-500/40 border border-cyan-500/15"
               }`}
             >
               <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
@@ -97,9 +97,9 @@ export const CommunitySupportSection: React.FC = () => {
         </div>
 
         {/* Bottom Split Grid: Support & Feedback Forms */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+        <div className="border-t border-cyan-500/10 pt-10 grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
           {/* Support Info */}
-          <div className="md:col-span-5 rounded-none border border-white/20 border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+          <div className="md:col-span-5 rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
             <div>
@@ -128,7 +128,7 @@ export const CommunitySupportSection: React.FC = () => {
           </div>
 
           {/* Interactive Form */}
-          <div className="md:col-span-7 rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-7 sm:p-8 relative overflow-hidden">
+          <div className="md:col-span-7 rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-7 sm:p-8 relative overflow-hidden">
             <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
             <div className="relative z-10">
@@ -157,7 +157,7 @@ export const CommunitySupportSection: React.FC = () => {
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                     placeholder="Enter your suggestion, feature request, or review here..."
-                    className="w-full p-4 rounded-none border border-white/20 bg-black/60 text-slate-200 text-xs sm:text-sm font-sans focus:outline-none focus:border-cyan-400/80 focus:ring-1 focus:ring-cyan-400/50 transition-all resize-none placeholder:text-slate-500"
+                    className="w-full p-4 rounded-none border border-cyan-500/15 bg-black/60 text-slate-200 text-xs sm:text-sm font-sans focus:outline-none focus:border-cyan-400/80 focus:ring-1 focus:ring-cyan-400/50 transition-all resize-none placeholder:text-slate-500"
                   />
                   <button
                     type="submit"

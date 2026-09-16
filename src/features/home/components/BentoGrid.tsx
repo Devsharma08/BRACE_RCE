@@ -21,8 +21,8 @@ const BentoGrid = () => {
           <Database className="w-4 h-4 text-cyan-400" />
           <span>DATA STRUCTURES // CATEGORIES</span>
         </div>
-        <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight leading-tight">
-          Master Every <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-amber-400">Structure</span>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 tracking-tight leading-tight">
+          Master Every <span className="text-cyan-400">Structure</span>
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-slate-300 font-sans max-w-xl mx-auto leading-relaxed">
           Dive deep into categorized data structure concepts directly from the repository.
@@ -32,8 +32,8 @@ const BentoGrid = () => {
       {/* Dual Row Infinite Moving Carousel Container */}
       <div className="relative w-full flex flex-col gap-8 overflow-hidden py-4">
         {/* Left & Right Fade Vignette Overlay */}
-        <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-r from-[#02040a] to-transparent z-20 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-l from-[#02040a] to-transparent z-20 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-r from-[#050811] to-transparent z-20 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-l from-[#050811] to-transparent z-20 pointer-events-none" />
 
         {/* Row 1: Leftward Moving Ticker */}
         <div className="flex w-max gap-6 animate-marquee-left">
@@ -41,12 +41,12 @@ const BentoGrid = () => {
             <Link
               key={`row1-${item.slug}-${idx}`}
               to={`/ds/${item.slug}`}
-              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
+              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
             >
               <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
               <div className="flex-1 flex flex-col justify-center relative z-20">
-                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight transition-colors duration-300 group-hover:text-cyan-300 mb-2">
+                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight transition-colors duration-300 group-hover:text-cyan-300 mb-2">
                   {item.title}
                 </h3>
                 <p className="text-slate-300 text-xs sm:text-sm font-sans font-normal leading-relaxed line-clamp-2">
@@ -67,12 +67,12 @@ const BentoGrid = () => {
             <Link
               key={`row2-${item.slug}-${idx}`}
               to={`/ds/${item.slug}`}
-              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-white/20 border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
+              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
             >
               <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
               <div className="flex-1 flex flex-col justify-center relative z-20">
-                <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight transition-colors duration-300 group-hover:text-cyan-300 mb-2">
+                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight transition-colors duration-300 group-hover:text-cyan-300 mb-2">
                   {item.title}
                 </h3>
                 <p className="text-slate-300 text-xs sm:text-sm font-sans font-normal leading-relaxed line-clamp-2">

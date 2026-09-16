@@ -18,7 +18,7 @@ const Home: React.FC = () => {
   return (
     <div className="flex flex-col w-full items-center">
       {/* Constrained hero area */}
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pt-24 flex flex-col gap-10 items-center">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 pt-24 flex flex-col items-center">
         <HeroSection />
         <StickyFeatureShowcase />
       </div>

@@ -489,7 +489,7 @@ export const BraceRcePixelArt: React.FC = () => {
 
       {/* Blueprint grid canvas */}
       <div
-        className="relative w-full pt-16 pb-12 px-4 sm:pt-20 sm:pb-12 sm:px-12 flex justify-center items-center overflow-hidden"
+        className="relative w-full pt-16 pb-12 px-4 sm:pt-20 sm:pb-12 sm:px-12 flex flex-col justify-center items-center overflow-hidden"
         style={{
           backgroundImage: `
             linear-gradient(to right,  rgba(6,182,212,0.025) 1px, transparent 1px),
@@ -508,7 +508,8 @@ export const BraceRcePixelArt: React.FC = () => {
         />
 
         {/* ── Pixel matrix ──────────────────────────────────────────── */}
-        <div className="pixel-grid" ref={gridRef}>
+        <div className="border border-cyan-500/10 bg-cyan-950/5 p-8">
+          <div className="pixel-grid" ref={gridRef}>
           {MATRIX_DATA.map((row, ri) => (
             <div key={`row-${ri}`} className="pixel-row">
               {row.map((pixel, ci) => {
@@ -549,7 +550,8 @@ export const BraceRcePixelArt: React.FC = () => {
               })}
             </div>
           ))}
-        </div>
+          </div>
+        {/* </div> */}
 
         {/* Status lines — boot animation only plays on first screen load per tab */}
         {!bootAlreadyPlayed && (
@@ -618,8 +620,9 @@ export const BraceRcePixelArt: React.FC = () => {
             <span>[ 1V1 BATTLE ARENA ]</span>
           </Link>
         </div>
+        </div>
       </div>
-    </div>
+    // </div>
   );
 };
 

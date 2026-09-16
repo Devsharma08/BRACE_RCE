@@ -19,8 +19,9 @@ describe('DashboardSidebar Component', () => {
     );
 
     expect(screen.getByText('BRACE')).toBeDefined();
-    // The brand is rendered stylised as "BRACE // RCE".
-    expect(screen.getByText('// RCE')).toBeDefined();
+    // The brand is rendered stylised as "BRACE // RCE" with // and RCE as separate spans.
+    expect(screen.getByText((content, element) => element?.tagName === 'SPAN' && content === '//')).toBeDefined();
+    expect(screen.getByText('RCE')).toBeDefined();
     expect(screen.getByText('CYBER ARENA v2.0')).toBeDefined();
   });
 

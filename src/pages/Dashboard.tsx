@@ -187,28 +187,28 @@ export const Dashboard: React.FC = () => {
         <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,243,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
 
         {/* ── HEADER BAR ──────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-white/6">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-cyan-500/10">
           <div className="min-w-0">
             <h1
-              className="text-xl sm:text-2xl font-extrabold text-white tracking-widest uppercase truncate"
+              className="text-xl sm:text-2xl font-black text-white tracking-widest uppercase truncate font-mono"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
               Dashboard
             </h1>
-            <p className="text-xs text-[#8892A4] mt-1">
+            <p className="text-xs text-slate-400 mt-1 font-mono">
               Good {timeOfDay}, operative. System nominal.
             </p>
           </div>
-          <span className="flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-[#0c0f18] shrink-0">
+          <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-[#0b1021] shrink-0">
             <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
-            <span className="text-xs text-white font-bold max-w-[120px] truncate" title={username}>
+            <span className="text-xs text-white font-mono font-bold max-w-[120px] truncate" title={username}>
               {username}
             </span>
           </span>
         </div>
 
         {/* ── FIND OPPONENT ────────────────────────────────────────────── */}
-        <div className="mb-8 border border-white/8 border-l-2 border-l-[#00D4FF] bg-[#0c0f18] p-6 shadow-[0_0_20px_rgba(0,212,255,0.08)]">
+        <div className="mb-8 border border-cyan-500/20 border-t-2 border-t-cyan-400/50 bg-[#0b1021] p-6 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-white mb-1">Find Opponent</h2>
@@ -233,10 +233,18 @@ export const Dashboard: React.FC = () => {
             { icon: Flame,      label: "Win Rate",    value: stats ? `${Math.round(stats.winRate)}%` : "—"    },
             { icon: Percent,    label: "Submissions", value: analytics?.summary?.totalAttempts ?? "—" },
           ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="border border-cyan-500/15 bg-[#0c0f18] p-4 sm:p-6 min-w-0">
+            <div key={label} className="border border-cyan-500/15 bg-[#0b1021] p-4 sm:p-6 min-w-0">
               <Icon className="w-5 h-5 text-cyan-500/40 mb-2" />
-              <div className="text-xl sm:text-2xl font-extrabold text-white truncate">{value}</div>
-              <div className="text-[10px] text-[#8892A4] uppercase tracking-widest mt-1 whitespace-nowrap">
+              <div className="text-xl sm:text-2xl font-black font-mono truncate">
+                {label === 'ELO Rating' ? (
+                  <span className="text-cyan-400" style={{ filter: 'drop-shadow(0 0 6px rgba(0,212,255,0.4))' }}>{value}</span>
+                ) : label === 'Win Rate' ? (
+                  <span className="text-emerald-400">{value}</span>
+                ) : (
+                  <span className="text-white">{value}</span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 whitespace-nowrap font-mono">
                 {label}
               </div>
             </div>
@@ -246,16 +254,16 @@ export const Dashboard: React.FC = () => {
         {/* ── RECOMMENDED PROBLEMS ──────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="recommended-heading">
           <div className="flex items-center gap-2 mb-4">
-            <Code2 className="w-4 h-4 text-[#3D4657]" />
+            <Code2 className="w-4 h-4 text-cyan-500/30" />
             <span
               id="recommended-heading"
-              className="text-[11px] text-[#8892A4] font-medium uppercase tracking-wide"
+              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
             >
               Recommended Problems
             </span>
-            <hr className="flex-1 border-white/6" />
+            <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-white/6 bg-[#0c0f18]">
+          <div className="border border-cyan-500/15 bg-[#0b1021]">
             {recommendedProblems.length > 0 ? (
               recommendedProblems.map((problem: any) => {
                 const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
@@ -293,21 +301,21 @@ export const Dashboard: React.FC = () => {
         {/* ── RECENT BATTLES ────────────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="battles-heading">
           <div className="flex items-center gap-2 mb-4">
-            <Activity className="w-4 h-4 text-[#3D4657]" />
+            <Activity className="w-4 h-4 text-cyan-500/30" />
             <span
               id="battles-heading"
-              className="text-[11px] text-[#8892A4] font-medium uppercase tracking-wide"
+              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
             >
               Recent Battles
             </span>
-            <hr className="flex-1 border-white/6" />
+            <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-white/6 bg-[#0c0f18]">
+          <div className="border border-cyan-500/15 bg-[#0b1021]">
             {recentBattles.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px] font-mono min-w-[480px]">
                   <thead>
-                    <tr className="border-b border-white/6 text-[#8892A4]">
+                    <tr className="border-b border-cyan-500/10">
                       {["Problem", "Opponent", "Result", "Score", "Date"].map(h => (
                         <th
                           key={h}
@@ -335,12 +343,12 @@ export const Dashboard: React.FC = () => {
                       return (
                         <tr
                           key={perf.id || i}
-                          className="border-b border-white/5 hover:bg-[#111520] transition-colors"
+                          className="border-b border-cyan-500/10 hover:bg-cyan-500/5 transition-colors"
                         >
-                          <td className="p-3 text-white max-w-[160px] truncate" title={problemName}>
+                          <td className="p-3 text-white max-w-[160px] truncate font-mono text-[11px]" title={problemName}>
                             {problemName}
                           </td>
-                          <td className="p-3 text-[#8892A4]">{opponentName}</td>
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">{opponentName}</td>
                           <td
                             className={`p-3 font-medium ${
                               isWin ? "text-[#00FF87]" : "text-[#FF3B5C]"
@@ -348,8 +356,8 @@ export const Dashboard: React.FC = () => {
                           >
                             {isWin ? "WIN" : "LOSS"}
                           </td>
-                          <td className="p-3 text-[#8892A4]">{perf.score ?? 0}</td>
-                          <td className="p-3 text-[#8892A4] whitespace-nowrap">
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">{perf.score ?? 0}</td>
+                          <td className="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">
                             {perf.createdAt
                               ? new Date(perf.createdAt).toLocaleDateString()
                               : "—"}
@@ -362,9 +370,9 @@ export const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="p-8 flex flex-col items-center gap-3">
-                <Swords className="w-10 h-10 text-[#3D4657]" />
-                <p className="text-xs text-[#8892A4]">No recent battles</p>
-                <p className="text-[10px] text-[#3D4657]">
+                <Swords className="w-10 h-10 text-slate-700" />
+                <p className="text-xs text-slate-400 font-mono">No recent battles</p>
+                <p className="text-[10px] text-slate-600 font-mono">
                   Complete a battle to start building your record
                 </p>
               </div>
@@ -375,14 +383,14 @@ export const Dashboard: React.FC = () => {
         {/* ── GLOBAL RANKINGS ───────────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="rankings-heading">
           <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-[#3D4657]" />
+            <BarChart2 className="w-4 h-4 text-cyan-500/30" />
             <span
               id="rankings-heading"
-              className="text-[11px] text-[#8892A4] font-medium uppercase tracking-wide"
+              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
             >
               Global Rankings
             </span>
-            <hr className="flex-1 border-white/6" />
+            <hr className="flex-1 border-cyan-500/10" />
           </div>
           <AnalyticsErrorBoundary>
             <LeaderboardTable limit={10} />
@@ -392,20 +400,20 @@ export const Dashboard: React.FC = () => {
         {/* ── PERFORMANCE ANALYTICS ─────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="analytics-heading">
           <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-[#3D4657]" />
+            <BarChart2 className="w-4 h-4 text-cyan-500/30" />
             <span
               id="analytics-heading"
               className="text-[11px] text-[#8892A4] font-medium uppercase tracking-wide"
             >
               Performance Analytics
             </span>
-            <hr className="flex-1 border-white/6" />
+            <hr className="flex-1 border-cyan-500/10" />
           </div>
           <AnalyticsErrorBoundary>
             {analytics ? (
               <AnalyticsPanels analytics={analytics} compact={true} />
             ) : (
-              <div className="border border-white/6 bg-[#0c0f18] p-8 text-center text-xs text-[#8892A4]">
+              <div className="border border-cyan-500/15 bg-[#0b1021] p-8 text-center text-xs text-[#8892A4]">
                 Analytics data unavailable
               </div>
             )}
@@ -421,8 +429,8 @@ export const Dashboard: React.FC = () => {
           aria-label="Searching for opponent"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
         >
-          <div className="w-full max-w-md bg-[#0c0f18] border border-white/10 border-l-2 border-l-[#00D4FF] p-8 flex flex-col items-center gap-6">
-            <span className="text-[11px] font-mono text-[#8892A4] uppercase tracking-widest">
+          <div className="w-full max-w-md bg-[#0b1021] border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
+            <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.2em] font-bold">
               Finding opponent
             </span>
             <span
@@ -438,7 +446,7 @@ export const Dashboard: React.FC = () => {
             </div>
             <button
               onClick={cancelMatch}
-              className="w-full py-3 border border-[#FF3B5C]/30 text-[#FF3B5C] font-bold text-xs tracking-wide uppercase transition-all hover:bg-[#FF3B5C]/10 flex items-center justify-center gap-2"
+              className="w-full py-3 border border-rose-500/30 text-rose-400 font-mono font-bold text-xs tracking-wider uppercase transition-all hover:bg-rose-500/10 hover:border-rose-400 flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" />
               Cancel Queue
@@ -455,12 +463,12 @@ export const Dashboard: React.FC = () => {
           aria-label="Match found"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
         >
-          <div className="w-full max-w-xl bg-[#06080e] border border-white/10 border-l-2 border-l-[#00D4FF] p-8 flex flex-col items-center gap-6">
+          <div className="w-full max-w-xl bg-[#0b1021] border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
 
             {/* VS Cards */}
             <div className="w-full grid grid-cols-5 items-center gap-3">
-              <div className="col-span-2 border border-white/8 bg-[#080a10] p-4 flex flex-col items-center text-center min-w-0">
-                <span className="text-[10px] text-[#8892A4] font-bold uppercase tracking-wide mb-1">
+              <div className="col-span-2 border border-cyan-500/15 bg-[#0b1021] p-4 flex flex-col items-center text-center min-w-0">
+                <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
                   YOU
                 </span>
                 <span
@@ -473,11 +481,11 @@ export const Dashboard: React.FC = () => {
               </div>
 
               <div className="col-span-1 flex items-center justify-center">
-                <span className="text-sm font-bold text-[#FF3B5C] font-mono">VS</span>
+                <span className="text-sm font-black text-rose-400 font-mono">VS</span>
               </div>
 
-              <div className="col-span-2 border border-white/8 bg-[#080a10] p-4 flex flex-col items-center text-center min-w-0">
-                <span className="text-[10px] text-[#8892A4] font-bold uppercase tracking-wide mb-1">
+              <div className="col-span-2 border border-cyan-500/15 bg-[#0b1021] p-4 flex flex-col items-center text-center min-w-0">
+                <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
                   OPPONENT
                 </span>
                 <span

@@ -98,11 +98,11 @@ const Header = () => {
             className="w-7 h-7 transition-transform duration-300 group-hover:scale-110"
           />
           <span
-            className="hidden sm:inline text-sm uppercase tracking-widest text-white font-bold"
+            className="hidden sm:inline text-sm uppercase tracking-widest text-white font-black font-mono"
             style={{ fontFamily: "'Orbitron', sans-serif" }}
           >
             BRACE //{' '}
-            <span className="text-[#00D4FF] font-bold">RCE</span>
+            <span className="text-[#00D4FF] font-black drop-shadow-[0_0_6px_rgba(0,212,255,0.4)]">RCE</span>
           </span>
         </Link>
 
@@ -140,9 +140,11 @@ const Header = () => {
 
           {isAuthenticated ? (
             <>
-              <NotificationCenter />
+              <div className="relative w-8 h-8 flex items-center justify-center border-l border-cyan-500/10 pl-3 ml-1">
+                <NotificationCenter />
+              </div>
               <Link to="/profile" className="ml-1">
-                <span className="flex items-center gap-2 px-3 py-1.5 border border-white/10 bg-[#0c0f18] text-[#00D4FF] font-bold text-xs transition-all hover:border-[#00D4FF]/50 hover:bg-[#0c0f18]">
+                <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-[#0b1021] text-[#00D4FF] font-mono font-bold text-xs transition-all hover:border-cyan-400 hover:bg-cyan-500/10">
                   <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
                   <span className="max-w-[120px] truncate" title={user?.username}>
                     {user?.username || 'PROFILE'}

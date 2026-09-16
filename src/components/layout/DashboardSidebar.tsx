@@ -59,7 +59,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
 
         {/* ── BRAND HEADER ───────────────────────────────────────────── */}
         <div
-          className={`flex items-center border-b border-white/8 ${
+          className={`flex items-center border-b border-cyan-500/10 ${
             collapsed ? "justify-center p-3" : "justify-between gap-2 px-3 py-3"
           }`}
         >
@@ -78,7 +78,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                   style={{ fontFamily: "'Orbitron', sans-serif" }}
                 >
                   <span>BRACE</span>
-                  <span className="text-cyan-400 text-xs">// RCE</span>
+                  <span className="text-cyan-500/40 mx-1">//</span>
+                   <span className="text-cyan-400">RCE</span>
                 </h1>
                 <p className="text-[10px] text-cyan-500/30 tracking-wider uppercase whitespace-nowrap">
                   CYBER ARENA v2.0
@@ -94,7 +95,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={`${
               collapsed ? "absolute top-3 right-1.5" : "shrink-0"
-            } p-1 border border-white/10 bg-[#06080e] text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-all cursor-pointer`}
+            } p-1 border border-cyan-500/15 bg-transparent text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-all cursor-pointer`}
           >
             {collapsed
               ? <ChevronRight className="w-3 h-3" />
@@ -148,7 +149,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                 } ${
                   isActive
                     ? "border-l-2 border-l-cyan-500 border-y-cyan-500/20 border-r-cyan-500/20 bg-cyan-500/10 text-cyan-400 shadow-[inset_0_0_8px_rgba(0,243,255,0.04)]"
-                    : "border border-white/5 bg-[#06080e] text-slate-500 hover:text-cyan-400 hover:border-white/15 hover:bg-cyan-950/8"
+                    : "bg-transparent text-slate-500 hover:text-cyan-400 hover:border-white/15 hover:bg-cyan-950/8"
                 }`
               }
             >
@@ -179,7 +180,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
 
       {/* ── USER CARD / FOOTER ───────────────────────────────────────────── */}
       <div
-        className={`relative z-10 border-t border-white/8 ${
+        className={`relative z-10 border-t border-cyan-500/10 pt-3 mt-3 ${
           collapsed ? "flex flex-col items-center gap-2 p-2" : "p-3"
         }`}
       >
@@ -189,7 +190,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
               to="/profile"
               aria-label={`Profile — ${displayName}`}
               title={`Profile — ${displayName}`}
-              className="p-2.5 border border-white/10 bg-[#06080e] text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all"
+              className="p-2.5 border border-cyan-500/15 bg-[#0b1021] text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all"
             >
               <User className="w-4 h-4" />
             </NavLink>
@@ -203,10 +204,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             </button>
           </>
         ) : (
-          <div className="border border-white/15 border-l-4 border-l-cyan-500/60 bg-[#06080e] p-3 flex flex-col gap-2">
+          <div className="border border-cyan-500/15 bg-[#0b1021] p-3 flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2 min-w-0">
               <span
-                className="text-xs font-bold text-white tracking-wide truncate"
+                className="text-xs font-mono font-bold text-white tracking-wide truncate"
                 title={displayName}
               >
                 {displayName}
@@ -220,7 +221,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/8 pt-1.5">
+            <div className="flex items-center justify-between text-xs text-slate-400 border-t border-cyan-500/10 pt-1.5">
               <span>Rating:</span>
               <span
                 className="font-black font-mono text-sm text-cyan-400"
