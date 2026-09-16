@@ -15,13 +15,26 @@ import roadmapRouter from "./routes/roadmap.js";
 import { adminRouter } from "./routes/admin.js";
 import { notificationsRouter } from "./routes/notifications.js";
 
-// Read allowed origins from env (ALLOWED_ORIGINS is a comma-separated list)
-const getAllowedOrigins = () => {
+/**
+ * Read allowed origins from env (ALLOWED_ORIGINS is a comma-separated list).
+ * Values are normalised (quotes stripped, trimmed, trailing slashes removed,
+ * duplicates removed) because browsers send the `Origin` header bare — e.g.
+ * `http://localhost:5173` — so a configured `"http://localhost:5173/"` would
+ * otherwise never match and every preflight would fail silently.
+ */
+export const getAllowedOrigins = (): string[] => {
   const envOrigins = process.env.ALLOWED_ORIGINS;
-  if (envOrigins) {
-    return envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
-  }
-  return ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"];
+  const origins = envOrigins
+    ? envOrigins.split(",")
+    : ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"];
+
+  return Array.from(
+    new Set(
+      origins
+        .map((o) => o.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, ""))
+        .filter(Boolean)
+    )
+  );
 };
 
 export const createApp = (): Express => {
@@ -30,16 +43,24 @@ export const createApp = (): Express => {
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
   const allowedOrigins = getAllowedOrigins();
+  // With `withCredentials: true` on the client (see src/config/api.ts) the auth
+  // cookie must ride along, and browsers reject a `*` wildcard
+  // Access-Control-Allow-Origin for credentialed requests. So instead of a
+  // wildcard we echo the caller's origin back, but only when it is on the
+  // allow-list. Requests with no Origin header (same-origin, curl, server to
+  // server) are not CORS requests and are always let through.
   // @ts-ignore - Bypass faulty TS definition for cors in ESM
   app.use((cors as any)({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // Deny gracefully: no CORS headers are attached, but the request itself
+        // is not turned into a 500. The browser still blocks the response.
+        callback(null, false);
       }
     },
-    credentials: true
+    credentials: true,
   }));
   app.use("/api/execute", executeRouter);
   app.use("/api/auth",authRouter);

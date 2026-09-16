@@ -1,5 +1,5 @@
 import "./env.js";
-import { createApp } from "./app.js";
+import { createApp, getAllowedOrigins } from "./app.js";
 import { assertRuntimeEnv } from "./config/runtime.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -14,10 +14,11 @@ const port = process.env.PORT || 5000;
 // Create raw Node HTTP server for socket.io
 const httpServer = createServer(app);
 
-// Init socket.io on that server with CORS
+// Init socket.io on that server with CORS. Reuse the same allow-list as the
+// HTTP API so ALLOWED_ORIGINS is the single source of truth for both.
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: getAllowedOrigins(),
     credentials: true,
   }
 });
