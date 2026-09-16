@@ -103,8 +103,8 @@ export const Root = () => {
               }
             />
             <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-              <AuthProvider>
-                <SocketProvider>
+              <SocketProvider>
+                <AuthProvider>
                   <Routes>
                     <Route path="/" element={<App />}>
                       {/* Public Routes */}
@@ -168,8 +168,8 @@ export const Root = () => {
                       </Route>
                     </Route>
                   </Routes>
-                </SocketProvider>
               </AuthProvider>
+            </SocketProvider>
             </GoogleOAuthProvider>
           </Suspense>
         </Router>
