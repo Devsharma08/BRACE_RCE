@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -52,6 +53,10 @@ interface SocketContextType {
   isClicked: boolean;
   waitingTime: number;
   requestPresence: (userIds: string[]) => void;
+  /** Escape hatch for logout (AuthContext): tear down the app socket so the
+   *  next login re-handshakes with a fresh identity. Prefer `socket` for
+   *  everything else — this ref is intentionally low-level. */
+  rawSocketRef: React.MutableRefObject<Socket | null>;
 }
 
 export interface CustomLobbyState {
@@ -64,8 +69,32 @@ export interface CustomLobbyState {
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
+// How long the socket may be down before its cached pages are considered
+// stale: sub-5s blips replayed every missed server emit is overkill — the
+// per-page invalidations already cover them.
+const RESYNC_GAP_MS = 5000;
+
+// App-lifetime socket singleton — one connection per browser session, created
+// lazily on the provider's first render so consumers never see a null socket
+// frame, and reused across remounts (React StrictMode double-mount safe).
+let socketSingleton: Socket | null = null;
+
+function getOrCreateSocket(): Socket {
+  if (socketSingleton) return socketSingleton;
+  const rawSocketUrl =
+    import.meta.env.VITE_SOCKET_URL ||
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    "http://localhost:3000";
+  const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+  socketSingleton = io(socketUrl, { withCredentials: true });
+  return socketSingleton;
+}
+
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  if (!socketRef.current) socketRef.current = getOrCreateSocket();
+  const socket = socketRef.current;
   const [isConnected, setIsConnected] = useState(false);
   const [matchmakingStatus, setMatchmakingStatus] = useState<
     "IDLE" | "SEARCHING" | "FOUND_PENDING"
@@ -78,7 +107,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     problemId: string;
   } | null>(null);
   const [customLobby, setCustomLobby] = useState<CustomLobbyState | null>(null);
-  const [incomingChallenge, setIncomingChallenge] = useState<{ challengerId: string, challengerUsername?: string } | null>(null);
+  // Challenge queue: a second challenge arriving while one is open is queued,
+  // not silently overwritten. Consumers render the head of the queue; accept or
+  // decline removes exactly that challenger's entry.
+  const [challengeQueue, setChallengeQueue] = useState<IncomingChallenge[]>([]);
+  const incomingChallenge = challengeQueue[0] ?? null;
   const [isClicked,setIsClicked] = useState<boolean>(false);
   const [waitingTime,setWaitingTime] = useState<number>(0);
   
@@ -104,20 +137,37 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     queueDifficultyRef.current = queueDifficulty;
   }, [queueDifficulty]);
 
+  // Reconnect recovery: remember what matchmaking was doing so a reconnect can
+  // re-enqueue instead of silently dropping the user out of the queue.
+  const matchmakingStatusRef = useRef(matchmakingStatus);
+  useEffect(() => {
+    matchmakingStatusRef.current = matchmakingStatus;
+  }, [matchmakingStatus]);
+  const reconnectStatusRef = useRef<"IDLE" | "SEARCHING">("IDLE");
+
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const disconnectedAtRef = useRef(0);
 
   useEffect(() => {
-    const rawSocketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-    const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
-    const newSocket = io(socketUrl, { withCredentials: true });
-    setSocket(newSocket);
+    const newSocket = getOrCreateSocket();
+    // Every listener this effect registers is tracked so a remount (React
+    // StrictMode double-invoke) removes exactly its own handlers instead of
+    // duplicating them on the shared singleton.
+    const cleanupFns: Array<() => void> = [];
+    const bind = (event: string, handler: (...args: any[]) => void) => {
+      newSocket.on(event, handler);
+      cleanupFns.push(() => newSocket.off(event, handler));
+    };
 
-    newSocket.on("custom_room_created", (data: CustomLobbyState) => {
+    bind("custom_room_created", (data: CustomLobbyState) => {
       setCustomLobby(data);
     });
 
-    newSocket.on("incoming_challenge", (data: IncomingChallenge) => {
-      setIncomingChallenge(data);
+    bind("incoming_challenge", (data: IncomingChallenge) => {
+      setChallengeQueue((prev) =>
+        prev.some((c) => c.challengerId === data.challengerId) ? prev : [...prev, data],
+      );
       setIsClicked(false);
       toast.info(`Challenge from ${data.challengerUsername ?? "a friend"}`, {
         description: data.mode === "CUSTOM"
@@ -126,24 +176,23 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       });
     });
 
-
-    newSocket.on(
+    bind(
       "lobby_updated",
       (data: { currentUsers: number; maxUsers: number }) => {
         setCustomLobby((prev) => (prev ? { ...prev, ...data } : null));
       },
     );
 
-    newSocket.on("lobby_error", (msg: string) => {
+    bind("lobby_error", (msg: string) => {
       toast.error(msg);
     });
 
-    newSocket.on("lobby_ended", () => {
+    bind("lobby_ended", () => {
       setCustomLobby(null);
       toast.info("Lobby has ended.");
     });
 
-    newSocket.on(
+    bind(
       "custom_match_started",
       (data: { roomId: string; problemId: string; timeLimitMs: number }) => {
         setCustomLobby(null);
@@ -153,42 +202,67 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       },
     );
 
-    newSocket.on("connect", () => {
-      console.log("Connected to Socket.IO server!");
+    bind("connect", () => {
       setIsConnected(true);
       newSocket.emit("check_active_battle");
+
+      // Full resync after a meaningful outage: per-page invalidations only
+      // cover events the client was actually connected for, so after a long
+      // gap every socket-driven query (leaderboard, analytics, notifications,
+      // friends) is refetched at once. The auth-me cache survives on purpose —
+      // a network blip is not a logout.
+      if (disconnectedAtRef.current && Date.now() - disconnectedAtRef.current > RESYNC_GAP_MS) {
+        queryClient.invalidateQueries({
+          predicate: (q) => q.queryKey[0] !== "auth-me",
+        });
+      }
+      disconnectedAtRef.current = 0;
+
+      // A drop longer than a heartbeat cancels our server-side queue row (the
+      // server clears it in its own disconnect handler). If we were searching
+      // before the drop, re-enqueue from the seconds already waited instead of
+      // silently kicking the user out of matchmaking.
+      if (reconnectStatusRef.current === "SEARCHING") {
+        reconnectStatusRef.current = "IDLE";
+        setMatchmakingStatus("SEARCHING");
+        newSocket.emit("join_matchmaking", {
+          difficulty: queueDifficultyRef.current,
+          waitingSeconds: waitingTimeRef.current,
+        });
+      }
     });
 
-    newSocket.on("active_battle_found", (data) => {
+    bind("active_battle_found", (data) => {
       setActiveBattleRoom(data);
     });
 
-    newSocket.on("disconnect", () => {
+    bind("disconnect", () => {
       setIsConnected(false);
-      setMatchmakingStatus("IDLE");
+      disconnectedAtRef.current = Date.now();
+      // A pending match cannot survive the drop (the offer was one-shot), but an
+      // in-progress search can be re-enqueued on reconnect.
+      const prev = matchmakingStatusRef.current;
+      reconnectStatusRef.current = prev === "SEARCHING" ? "SEARCHING" : "IDLE";
+      if (prev !== "SEARCHING") setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
     });
 
-    newSocket.on("presence_snapshot", (data: { userId: string; status: string }[]) => {
-      // This will be handled by FriendDashboard's own socket listener
-      // We just need to forward the event via a custom event bus
-    });
-
     // Both players found, waiting for accept
-    newSocket.on("match_found_pending", (data) => {
-      console.log("⚔️ MATCH FOUND PENDING!", data);
+    bind("match_found_pending", (data) => {
       setIsClicked(false);
       setPendingOpponent(data.opponent);
       setPendingMatchId(data.matchId);
       setMatchmakingStatus("FOUND_PENDING");
     });
 
-    newSocket.on("matchmaking_search_state", (data) => {
+    bind("matchmaking_search_state", (data) => {
+      // Authoritative value from the server's 3s polling loop; the 1s client
+      // ticker only interpolates between these events.
       setWaitingTime(data.waitingSeconds);
     });
 
     // Both players accepted, match is actually starting!
-    newSocket.on("match_starting", (data) => {
+    bind("match_starting", (data) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
@@ -197,7 +271,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
 
     // timed out
-    newSocket.on("match_declined", () => {
+    bind("match_declined", () => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
@@ -205,21 +279,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setWaitingTime(0);
     });
 
-    newSocket.on("challenge_declined", () => {
+    bind("challenge_declined", () => {
       toast.info("Challenge was declined.");
       setIsClicked(false);
     });
 
     // opponent declined
-    newSocket.on("match_opponent_declined",()=>{
+    bind("match_opponent_declined", () => {
       setPendingMatchId(null);
       setMatchmakingStatus("SEARCHING");
       setIsClicked(false);
-      newSocket.emit("join_matchmaking",{difficulty:queueDifficultyRef.current,waitingSeconds:waitingTimeRef.current});
+      newSocket.emit("join_matchmaking", { difficulty: queueDifficultyRef.current, waitingSeconds: waitingTimeRef.current });
     });
 
+    // The singleton is app-lifetime: never disconnect it on unmount (a
+    // StrictMode remount would otherwise kill the connection for the whole
+    // app). Only the listeners registered by THIS mount are removed.
     return () => {
-      newSocket.disconnect();
+      for (const fn of cleanupFns) fn();
     };
   }, [navigate]);
 
@@ -228,7 +305,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
   const declineChallenge = (targetUserId: string) => {
     socket?.emit("decline_challenge", { targetUserId });
-    setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
+    // Remove exactly this challenger's entry — any other queued challenges stay.
+    setChallengeQueue((prev) => prev.filter((c) => c.challengerId !== targetUserId));
   };
 
   const sendChallenge = (targetUserId: string, opts?: ChallengeOpts | string) => {
@@ -243,7 +321,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setWaitingTime(0);
     setIsClicked(true);
     socket?.emit("accept_challenge", { challengerId, ...(opts ?? {}) });
-    setIncomingChallenge(null); // later - only removes current challenge, empty all challenges will be done by another handler here from the queue of challenges we'll only be removing the current one  
+    // Remove exactly this challenger's entry — any other queued challenges stay.
+    setChallengeQueue((prev) => prev.filter((c) => c.challengerId !== challengerId));
   };
 
   const cancelMatch = () => {
@@ -354,6 +433,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         isClicked,
         waitingTime,
         requestPresence,
+        rawSocketRef: socketRef,
       }}
     >
       {children}

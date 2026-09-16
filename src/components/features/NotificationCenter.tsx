@@ -48,11 +48,37 @@ export const NotificationCenter = memo(function NotificationCenter() {
   const unreadCount = unread?.unreadCount ?? 0;
 
   const handleDelete = async (id: string) => {
+    const snapshotAll = queryClient.getQueryData<{
+      notifications: NotificationItem[];
+    }>(["notifications", "all"]);
+    const wasUnread =
+      snapshotAll?.notifications.find((n) => n.id === id)?.status === "UNREAD";
+
+    const removeItem = (
+      old?: { notifications: NotificationItem[] },
+    ): { notifications: NotificationItem[] } | undefined =>
+      old
+        ? { notifications: old.notifications.filter((n) => n.id !== id) }
+        : old;
+
+    // Optimistic removal — the row disappears instantly.
+    queryClient.setQueryData(["notifications", "all"], removeItem);
+    queryClient.setQueryData(["notifications", "unread"], removeItem);
+    if (wasUnread) {
+      queryClient.setQueryData<{ unreadCount: number }>(
+        ["notifications-unread-count"],
+        (old) => ({ unreadCount: Math.max(0, (old?.unreadCount ?? 1) - 1) }),
+      );
+    }
+
     try {
       await api.delete(`/notifications/${id}`);
+    } catch {
+      toast.error("Failed to delete notification");
+      // Rollback by refetching the authoritative state.
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-    } catch { toast.error("Failed to delete notification"); }
+    }
   };
 
   return (

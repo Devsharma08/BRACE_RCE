@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LayoutTemplate,
   Swords,
@@ -15,6 +15,7 @@ import { CardSkeletonGrid } from "../components/ui/Skeleton";
 import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
 import { toast } from "sonner";
+import { useSocket } from "../context/SocketContext";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { useMyRating } from "../hooks/useLeaderboard";
@@ -34,6 +35,7 @@ interface Room {
 
 const Lobby = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: myRating } = useMyRating(true);
   const [activeTab, setActiveTab] = useState<"ROOMS" | "TEMPLATES" | "MY_ARCHIVES">("ROOMS");
   const [cloningId, setCloningId] = useState<string | null>(null);
@@ -43,7 +45,7 @@ const Lobby = () => {
     roomName: string;
   }>({ isOpen: false, roomCode: "", roomName: "" });
 
-  const { data, isLoading: loading, refetch: fetchLobby } = useQuery({
+  const { data, isLoading: loading } = useQuery({
     queryKey: ["lobby-data"],
     queryFn: async () => {
       const [roomsRes, templatesRes, myEventsRes] = await Promise.all([
@@ -59,10 +61,22 @@ const Lobby = () => {
     },
   });
 
+  // Custom DB-backed rooms bypass the in-memory lobby Map, so the server has
+  // no emit hook for their changes — poll lightly until a realtime source
+  // exists. invalidateQueries is correct here (not setQueryData): the list is
+  // a multi-row server aggregation the client cannot derive.
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+    const id = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
+    }, 15000);
+    return () => clearInterval(id);
+  }, [socket, queryClient]);
+
   const rooms: Room[] = data?.rooms || [];
   const templates: Room[] = data?.templates || [];
   const myEvents: Room[] = data?.myEvents || [];
-  const queryClient = useQueryClient();
 
   const handleJoinRoom = (room: Room) => {
     if (room.password) {
@@ -100,7 +114,6 @@ const Lobby = () => {
     try {
       await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-      fetchLobby();
       toast.success("Operation deleted");
     } catch (error) {
       console.error(error);

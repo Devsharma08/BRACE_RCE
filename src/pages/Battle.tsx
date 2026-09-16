@@ -356,71 +356,103 @@ export const Battle = () => {
   }, [activeProblem, code, language]);
 
 
+  const joinedRoomRef = useRef<string | null>(null);
+  const myUserIdRef = useRef("");
+
+  // Point 35: the room fetch goes through the query cache so navigating away
+  // and back within gcTime re-seeds instantly instead of refetching.
+  const { data: fetchedRoom, error: roomError } = useQuery({
+    queryKey: ["battle-room", roomId, isSpectateMode],
+    enabled: Boolean(roomId),
+    staleTime: Infinity,
+    retry: false,
+    queryFn: async () => {
+      // Pass spectate flag so server won't auto-create a performance for spectators
+      const spectateParam = isSpectateMode ? "?spectate=true" : "";
+      const [roomRes, profileRes] = await Promise.all([
+        api.get(`/rooms/live/${roomId}${spectateParam}`),
+        api.get("/profile"),
+      ]);
+      return { room: roomRes.data.room, myId: profileRes.data.data.id as string };
+    },
+  });
+
+  // A failed room load navigates back to the lobby (query-level error handling).
   useEffect(() => {
-    const fetchRoom = async () => {
-      try {
-        // Pass spectate flag so server won't auto-create a performance for spectators
-        const spectateParam = isSpectateMode ? "?spectate=true" : "";
-        const [roomRes, profileRes] = await Promise.all([
-          api.get(`/rooms/live/${roomId}${spectateParam}`),
-          api.get("/profile"),
-        ]);
+    if (!roomError) return;
+    const err: any = roomError;
+    console.error("Failed to load room", err);
+    toast.error(`Could not join room: ${err.response?.data?.message || err.message}`);
+    setLoading(false);
+    navigate("/lobby");
+  }, [roomError, navigate]);
 
-        const roomData = roomRes.data.room;
-        setRoom(roomData);
-        const myId = profileRes.data.data.id;
-        setMyUserId(myId);
-        setIsHost(myId === roomData.hostId);
+  // Seed all local state from the fetched room (runs on every cache hit too).
+  useEffect(() => {
+    if (!fetchedRoom) return;
+    const roomData = fetchedRoom.room;
+    const myId = fetchedRoom.myId;
 
-        // Store all participants for host panel
-        setRoomParticipants(roomData.performances || []);
+    setRoom(roomData);
+    setMyUserId(myId);
+    myUserIdRef.current = myId;
+    setIsHost(myId === roomData.hostId);
 
-        // find and store current performance ID
-        // Server auto-creates a performance for the host on first visit (non-spectate)
-        const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
-        if (myPerf) setMyPerformanceId(myPerf.id);
+    // Store all participants for host panel
+    setRoomParticipants(roomData.performances || []);
 
-        let targetProblems = [];
-        if (roomData.type === "ONE_VS_ONE") {
-          targetProblems = [roomData.commonProblem];
-          setProblems(targetProblems);
-          const oppPerf = roomData.performances?.find(
-            (p: any) => p.user.id !== myId,
-          );
-          setOpponent(oppPerf?.user || null);
-        } else {
-          targetProblems = roomData.problems;
-          setProblems(targetProblems);
-        }
+    // find and store current performance ID
+    // Server auto-creates a performance for the host on first visit (non-spectate)
+    const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
+    if (myPerf) setMyPerformanceId(myPerf.id);
 
-        // Initialize codes
-        const initialCodes: Record<string, string> = {};
-        targetProblems.forEach((p: any) => {
-          if (!p) return;
-          const jsSnip = p.code_snippets?.find(
-            (s: any) => s.language === "javascript",
-          );
-          initialCodes[p.id] = jsSnip ? jsSnip.code : "// Write your code here";
-        });
-        setCodes(initialCodes);
-      } catch (err: any) {
-        console.error("Failed to load room", err);
-        toast.error(
-          `Could not join room: ${err.response?.data?.message || err.message}`,
-        );
-        navigate("/lobby");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchRoom();
-  }, [roomId, navigate]);
+    // Seed live telemetry so a mid-battle joiner/reconnector sees the last
+    // known status instead of blank bars until the next battle_update.
+    const initialProgress: Record<string, { status: any; progress: number; linesWritten: number }> = {};
+    (roomData.performances || []).forEach((p: any) => {
+      initialProgress[p.userId] = { status: p.status, progress: 0, linesWritten: 0 };
+    });
+    setPlayerProgress(initialProgress);
+
+    let targetProblems = [];
+    if (roomData.type === "ONE_VS_ONE") {
+      targetProblems = [roomData.commonProblem];
+      setProblems(targetProblems);
+      const oppPerf = roomData.performances?.find(
+        (p: any) => p.user.id !== myId,
+      );
+      setOpponent(oppPerf?.user || null);
+    } else {
+      targetProblems = roomData.problems;
+      setProblems(targetProblems);
+    }
+
+    // Initialize codes
+    const initialCodes: Record<string, string> = {};
+    targetProblems.forEach((p: any) => {
+      if (!p) return;
+      const jsSnip = p.code_snippets?.find(
+        (s: any) => s.language === "javascript",
+      );
+      initialCodes[p.id] = jsSnip ? jsSnip.code : "// Write your code here";
+    });
+    setCodes(initialCodes);
+    setLoading(false);
+  }, [fetchedRoom]);
 
   // Setup Sockets
   useEffect(() => {
     if (!socket || !roomId) return;
 
-    socket.emit("join_battle", roomId);
+    // Join exactly once per connection. socket.io rooms are per-connection, so
+    // a mid-battle reconnect (new socket id) must rejoin or the client silently
+    // stops receiving battle events — the connect handler below covers that.
+    const joinRoom = () => {
+      joinedRoomRef.current = roomId;
+      socket.emit("join_battle", roomId);
+    };
+    if (socket.connected) joinRoom();
+    socket.on("connect", joinRoom);
 
     socket.on("battle_starting", (data: { countdownSeconds?: number }) => {
       setCountDown(data?.countdownSeconds || 3);
@@ -428,19 +460,9 @@ export const Battle = () => {
     });
 
     socket.on("battle_state", (data) => {
-      setBattleState((prev: any) => {
-        if (prev.status === "WAITING" && data.status === "IN_PROGRESS") {
-          setCountDown(3);
-        }
-        return data;
-      });
-      if (
-        data.status === "FINISHED" ||
-        (data.remainingSeconds !== undefined && data.remainingSeconds <= 0)
-      ) {
-        setBattleResult("LOST"); // Default to lost if time's up
-        setIsBattleMenuOpen(true);
-      }
+      // Countdown values come exclusively from battle_starting; no verdict is
+      // set here — battle_state carries no per-player outcome.
+      setBattleState(data);
     });
 
     socket.on("receive_battle_message", (msg) => {
@@ -492,16 +514,44 @@ export const Battle = () => {
       }
     });
 
-    socket.on("match_completed", (data: { status?: string; reason?: string; performances?: any[] }) => {
+    // Server-confirmed end of battle — the winner was derived from the database
+    // server-side, so this is the authoritative verdict for this client.
+    socket.on("battle_finished", (data: { winnerId?: string; performances?: any[] }) => {
       if (data?.performances) {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
       }
+      const myPerf = data?.performances?.find(
+        (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+      );
+      const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+      setBattleResult(won ? "WON" : "LOST");
       setIsBattleMenuOpen(true);
+      // A won battle wrote progress — cached problem payloads are stale now.
+      invalidateProblemQueries(queryClient);
+    });
+
+    socket.on("match_completed", (data: { status?: string; reason?: string; performances?: any[] }) => {
+      if (data?.performances) {
+        setRoomParticipants(data.performances);
+        setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
+        // Derive this client's verdict from the server's authoritative statuses.
+        const myPerf = data.performances.find(
+          (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+        );
+        if (myPerf) {
+          const won = ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+          setBattleResult(won ? "WON" : "LOST");
+        }
+      }
+      setIsBattleMenuOpen(true);
+      invalidateProblemQueries(queryClient);
     });
 
     return () => {
+      joinedRoomRef.current = null;
       socket.emit("leave_room", roomId);
+      socket.off("connect");
       socket.off("battle_starting");
       socket.off("battle_state");
       socket.off("receive_battle_message");
@@ -511,8 +561,9 @@ export const Battle = () => {
       socket.off("participants_updated");
       socket.off("group_terminated");
       socket.off("match_completed");
+      socket.off("battle_finished");
     };
-  }, [socket, roomId, navigate]);
+  }, [socket, roomId, navigate, queryClient]);
 
   // Handle 3-second Get Ready Countdown before event begins
   useEffect(() => {
@@ -584,7 +635,19 @@ export const Battle = () => {
     } catch { /* ignore */ }
     // Custom group battles: stamp FINISHED + COMPLETED/TIMEOUT verdicts server-side.
     if (roomId && problems.length > 1) {
-      api.post("/rooms/expire", { roomId }).catch(() => { /* best-effort */ });
+      // The room MUST be stamped finished server-side, otherwise the next
+      // session reports active_battle_found for a dead room. Retry with
+      // backoff, then surface the failure instead of silently dropping it.
+      const expireAttempt = (attempt = 0): void => {
+        api.post("/rooms/expire", { roomId }).catch(() => {
+          if (attempt < 2) {
+            setTimeout(() => expireAttempt(attempt + 1), 1000 * (attempt + 1));
+          } else {
+            toast.error("Could not sync the expired room — please reload this page.");
+          }
+        });
+      };
+      expireAttempt();
     }
     // Clear notes for this event when time expires
     if (room?.id) {
@@ -615,7 +678,8 @@ export const Battle = () => {
 
   const handleConfirmSurrender = () => {
     if (!socket || !roomId) return;
-    socket.emit("surrender_match", { roomId });
+    // One emit only: surrender_match and surrender_battle are identical
+    // handlers server-side — emitting both stamped the room FINISHED twice.
     socket.emit("surrender_battle", roomId);
     playBattleSound("surrender");
     try {
@@ -697,9 +761,6 @@ export const Battle = () => {
         setTerminalOutput("SUCCESS: All test cases passed!");
         playBattleSound("submit-success");
         if (isBattleActive) {
-          setTimeout(() => {
-            setIsBattleMenuOpen(true);
-          }, 1000);
           socket?.emit("battle_action", {
             roomId,
             status: "Passed tests!",
@@ -708,8 +769,9 @@ export const Battle = () => {
             // persisted submission and ignores any client-claimed result.
             linesWritten: code.split("\n").length,
           });
-          setBattleResult("WON");
-          // Clear notes on win
+          // The WIN verdict arrives via the server's battle_finished broadcast
+          // (performances + winnerId) — it is never set from the client's own
+          // submission assumption.
           if (room?.id) {
             clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
           }

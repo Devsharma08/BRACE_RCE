@@ -1,6 +1,7 @@
 import { useContext, createContext, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../config/api'
+import { useSocket } from './SocketContext';
 
 interface User {
     id: string;
@@ -21,6 +22,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({children}:{children:ReactNode}) => {
     const queryClient = useQueryClient();
+    // Socket identity is attached at handshake time, so the stale connection
+    // must be torn down on logout — otherwise it keeps the old user's id.
+    const { rawSocketRef } = useSocket();
 
     const { data: user = null, isLoading, refetch } = useQuery<User | null>({
         queryKey: ["auth-me"],
@@ -45,10 +49,16 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
     async function logout() {
         try {
             await api.post("/auth/signout");
-            queryClient.setQueryData(["auth-me"], null);
-            queryClient.invalidateQueries();
         } catch (error) {
             console.error("Logout failed:", error);
+        } finally {
+            // Fresh socket on next login gets the new identity at handshake.
+            rawSocketRef.current?.disconnect();
+            rawSocketRef.current = null;
+            queryClient.setQueryData(["auth-me"], null);
+            // Full-slate reset — the next login belongs to a different user,
+            // so no socket- or user-scoped cache may survive.
+            queryClient.invalidateQueries();
         }
     }
 

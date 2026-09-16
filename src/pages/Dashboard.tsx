@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { api } from "../config/api";
@@ -40,58 +41,112 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [acceptTimer, setAcceptTimer] = useState<number>(10);
 
+  // After any finished battle the server emits leaderboard:invalidate — one
+  // wave refreshes the whole dashboard (stats, recent battles, problems).
+  useSocketInvalidation("leaderboard:invalidate", [
+    ["dashboard-profile"],
+    ["dashboard-stats"],
+    ["dashboard-problems"],
+  ]);
+
   // Time of day greeting
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "MORNING" : hour < 18 ? "AFTERNOON" : "EVENING";
 
-  const { data: dashboardData } = useQuery({
-    queryKey: ["dashboard-data", user?.id],
-    enabled: Boolean(isAuthenticated || user),
+  // Profile card data — identity rarely changes, so it is long-lived and is
+  // deliberately NOT part of the post-battle refresh wave.
+  const { data: profile } = useQuery({
+    queryKey: ["dashboard-profile", user?.id],
+    enabled: Boolean(user?.id),
+    staleTime: 1000 * 60 * 15,
     queryFn: async () => {
-      const [profRes, statsRes, probRes] = await Promise.all([
-        api.get("/profile").catch(() => null),
-        api.get("/profile/stats").catch(() => null),
-        api.get("/problems/system").catch(() => null),
-      ]);
-      return {
-        profile: profRes?.data?.data || null,
-        stats: statsRes?.data?.stats
-          ? {
-              totalMatches: statsRes.data.stats.totalMatches || 0,
-              wins: statsRes.data.stats.wins || 0,
-              losses: statsRes.data.stats.losses || 0,
-              winRate: statsRes.data.stats.winRate || 0,
-            }
-          : null,
-        recentBattles: statsRes?.data?.recentMatches || [],
-        recommendedProblems: (probRes?.data?.problems || []).slice(0, 4),
-      };
+      const res = await api.get("/profile").catch(() => null);
+      return res?.data?.data || null;
     },
   });
+
+  // Match stats + recent battles — refresh after every finished battle.
+  const { data: statsData } = useQuery({
+    queryKey: ["dashboard-stats", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      try {
+        const statsRes = await api.get("/profile/stats").catch(() => null);
+        return {
+          stats: statsRes?.data?.stats
+            ? {
+                totalMatches: statsRes.data.stats.totalMatches || 0,
+                wins: statsRes.data.stats.wins || 0,
+                losses: statsRes.data.stats.losses || 0,
+                winRate: statsRes.data.stats.winRate || 0,
+              }
+            : null,
+          recentBattles: statsRes?.data?.recentMatches || [],
+        };
+      } catch {
+        // Partial failure must not blank the whole dashboard — fall back to
+        // empty stats so the rest of the page still renders.
+        return { stats: null, recentBattles: [] };
+      }
+    },
+  });
+
+  // Recommended problems — also refreshed post-battle (isSolved flags change).
+  const { data: recommendedProblemsData = [] } = useQuery({
+    queryKey: ["dashboard-problems", user?.id],
+    enabled: Boolean(user?.id),
+    queryFn: async () => {
+      const probRes = await api.get("/problems/system").catch(() => null);
+      return (probRes?.data?.problems || []).slice(0, 4);
+    },
+  });
+
+  // Back-compat shape for the JSX below (was one combined query).
+  const dashboardData = {
+    profile,
+    stats: statsData?.stats ?? null,
+    recentBattles: statsData?.recentBattles ?? [],
+    recommendedProblems: recommendedProblemsData,
+  };
 
   const { data: analytics } = useAnalytics(Boolean(isAuthenticated || user));
   const { data: myRating } = useMyRating(Boolean(isAuthenticated || user));
 
   const stats = dashboardData?.stats || null;
   const recentBattles: any[] = dashboardData?.recentBattles || [];
+  // Renamed upstream (recommendedProblemsData) to avoid shadowing this alias.
   const recommendedProblems: any[] = dashboardData?.recommendedProblems || [];
 
+  // Guards the accept countdown so a stale interval tick queued before the
+  // cleanup runs cannot fire declineMatch() a second time. The ref flips to
+  // false on cleanup; any tick that wakes up afterwards exits immediately.
+  const timerActiveRef = useRef(false);
+
   useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (matchmakingStatus === "FOUND_PENDING") {
+    if (matchmakingStatus !== "FOUND_PENDING") {
+      // Leaving the pending state resets the dial so the next match starts at 10.
       setAcceptTimer(10);
-      interval = setInterval(() => {
-        setAcceptTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            declineMatch();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      return;
     }
-    return () => clearInterval(interval);
+    timerActiveRef.current = true;
+    const interval = setInterval(() => {
+      if (!timerActiveRef.current) return;
+      setAcceptTimer((prev) => {
+        if (!timerActiveRef.current) return prev;
+        if (prev <= 1) {
+          timerActiveRef.current = false;
+          clearInterval(interval);
+          declineMatch();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      timerActiveRef.current = false;
+      clearInterval(interval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchmakingStatus]);
 
   useEffect(() => {

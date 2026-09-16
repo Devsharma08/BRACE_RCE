@@ -1,7 +1,6 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
-import { useSocket } from "../context/SocketContext";
+import { useSocketInvalidation } from "./useSocketInvalidation";
 
 export interface LeaderboardEntry {
   rank: number;
@@ -35,20 +34,9 @@ export interface MyRating {
  * the fresh rows, it can only ask for them again.
  */
 function useLeaderboardSocketSync() {
-  const queryClient = useQueryClient();
-  const { socket } = useSocket();
-
-  useEffect(() => {
-    if (!socket) return;
-    const onInvalidate = () => {
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["my-rating"] });
-    };
-    socket.on("leaderboard:invalidate", onInvalidate);
-    return () => {
-      socket.off("leaderboard:invalidate", onInvalidate);
-    };
-  }, [socket, queryClient]);
+  // Socket event is the authoritative freshness signal; staleTime below is
+  // only a fallback ceiling for mounts that happen with no battle in between.
+  useSocketInvalidation("leaderboard:invalidate", [["leaderboard"], ["my-rating"]]);
 }
 
 /** Global ELO leaderboard (ROADMAP §1). */
@@ -58,7 +46,7 @@ export function useLeaderboard(limit = 25, enabled = true) {
   return useQuery<LeaderboardEntry[]>({
     queryKey: ["leaderboard", limit],
     enabled,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 10,
     queryFn: async () => {
       const res = await api.get("/leaderboard", { params: { limit } });
       return res.data.leaderboard as LeaderboardEntry[];
@@ -72,7 +60,7 @@ export function useMyRating(enabled = true) {
   return useQuery<MyRating>({
     queryKey: ["my-rating"],
     enabled,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 10,
     queryFn: async () => {
       const res = await api.get("/leaderboard/me");
       return res.data.rating as MyRating;

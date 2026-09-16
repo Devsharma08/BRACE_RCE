@@ -114,25 +114,112 @@ export function useUnreadCount() {
   });
 }
 
+interface MutationCtx {
+    snapshotAll?: { notifications: NotificationItem[] };
+    snapshotUnread?: { unreadCount: number };
+    wasUnread: boolean;
+}
+
 export function useMarkRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-    },
-  });
+    const queryClient = useQueryClient();
+    return useMutation<unknown, Error, string, MutationCtx>({
+        mutationFn: async (id: string) => api.patch(`/notifications/${id}/read`),
+        // We know exactly which row changed — patch the cache directly instead
+        // of refetching the whole list.
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+            const snapshotAll = queryClient.getQueryData<{
+                notifications: NotificationItem[];
+            }>(["notifications", "all"]);
+            const snapshotUnread = queryClient.getQueryData<{
+                unreadCount: number;
+            }>(["notifications-unread-count"]);
+            const wasUnread =
+                snapshotAll?.notifications.find((n) => n.id === id)?.status === "UNREAD";
+
+            const markRead = (
+                old?: { notifications: NotificationItem[] },
+            ): { notifications: NotificationItem[] } | undefined =>
+                old
+                    ? {
+                          notifications: old.notifications.map((n) =>
+                              n.id === id
+                                  ? {
+                                        ...n,
+                                        status: "READ" as const,
+                                        readAt: new Date().toISOString(),
+                                    }
+                                  : n,
+                          ),
+                      }
+                    : old;
+
+            queryClient.setQueryData(["notifications", "all"], markRead);
+            queryClient.setQueryData(["notifications", "unread"], markRead);
+            if (wasUnread) {
+                queryClient.setQueryData<{ unreadCount: number }>(
+                    ["notifications-unread-count"],
+                    (old) => ({
+                        unreadCount: Math.max(0, (old?.unreadCount ?? 1) - 1),
+                    }),
+                );
+            }
+
+            return { snapshotAll, snapshotUnread, wasUnread };
+        },
+        onError: (_err, _id, ctx) => {
+            // Rollback by refetching the authoritative state.
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+            void ctx;
+        },
+    });
 }
 
 export function useMarkAllRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => api.patch("/notifications/read-all"),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-      toast.success("All notifications marked as read");
-    },
-  });
+    const queryClient = useQueryClient();
+    return useMutation<unknown, Error, void, MutationCtx>({
+        mutationFn: async () => api.patch("/notifications/read-all"),
+        // Every row flips to READ and the badge zeroes in one pass — no
+        // round-trip before the UI reflects it.
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+            const snapshotAll = queryClient.getQueryData<{
+                notifications: NotificationItem[];
+            }>(["notifications", "all"]);
+            const snapshotUnread = queryClient.getQueryData<{
+                unreadCount: number;
+            }>(["notifications-unread-count"]);
+
+            const markAllRead = (
+                old?: { notifications: NotificationItem[] },
+            ): { notifications: NotificationItem[] } | undefined =>
+                old
+                    ? {
+                          notifications: old.notifications.map((n) => ({
+                              ...n,
+                              status: "READ" as const,
+                              readAt: n.readAt ?? new Date().toISOString(),
+                          })),
+                      }
+                    : old;
+
+            queryClient.setQueryData(["notifications", "all"], markAllRead);
+            queryClient.setQueryData(["notifications", "unread"], markAllRead);
+            queryClient.setQueryData(["notifications-unread-count"], {
+                unreadCount: 0,
+            });
+
+            return { snapshotAll, snapshotUnread, wasUnread: false };
+        },
+        onSuccess: () => toast.success("All notifications marked as read"),
+        onError: (_err, _vars, ctx) => {
+            // Rollback by refetching the authoritative state.
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+            void ctx;
+        },
+    });
 }

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../config/api";
+import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
 import { useAuth } from "../context/AuthContext";
 import { PageSkeleton } from "../components/ui/Skeleton";
@@ -60,26 +61,41 @@ const Profile = () => {
   const { logout } = useAuth();
   const { data: myRating } = useMyRating(true);
 
-  const { data, isLoading: loading } = useQuery({
-    queryKey: ["user-profile-data"],
+  // Post-battle wave: stats + history refresh, identity stays cached.
+  useSocketInvalidation("leaderboard:invalidate", [
+    ["profile-stats"],
+    ["user-analytics"],
+  ]);
+
+  // Identity (username, avatar, email) — static per session.
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["profile"],
     queryFn: async () => {
-      const [profileRes, statsRes] = await Promise.all([
-        api.get("/profile"),
-        api.get("/profile/stats"),
-      ]);
+      const profileRes = await api.get("/profile");
+      return profileRes.data.data as UserProfile;
+    },
+    staleTime: Infinity,
+  });
+
+  // Stats + match history — change after every battle.
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ["profile-stats"],
+    queryFn: async () => {
+      const statsRes = await api.get("/profile/stats");
       return {
-        profile: profileRes.data.data as UserProfile,
         stats: statsRes.data.stats as MatchStats,
         history: (statsRes.data.recentMatches || []) as MatchRecord[],
       };
     },
   });
 
-  const { data: analytics } = useAnalytics();
+  // Users land here intentionally to see their latest numbers — always
+  // refetch analytics on mount even though the query is otherwise cached.
+  const { data: analytics } = useAnalytics(true, true);
 
-  const profile = data?.profile || null;
-  const stats = data?.stats || null;
-  const history = data?.history || [];
+  const loading = profileLoading || statsLoading;
+  const stats = statsData?.stats || null;
+  const history = statsData?.history || [];
 
   if (loading) return <PageSkeleton />;
 

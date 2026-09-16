@@ -52,6 +52,7 @@ type LeftNavTab = "INBOX" | "TEAMS" | "GROUPS" | "SETTINGS";
 
 export default function FriendsDashboard() {
   const { sendDirectMessage, socket, requestPresence } = useSocket();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -111,11 +112,38 @@ export default function FriendsDashboard() {
     const handleMessage = (data: { senderId: string; content: string; createdAt: string; id: string }) => {
       if (activeTab && data.senderId === activeTab.id) {
         setMessages((prev) => [...prev, { ...data, receiverId: "ME" }]);
+        // Also append into the query cache: the message currently lives only in
+        // local state, so navigating away and back would lose it (the REST cache
+        // is fetched before the DB-side message list refreshes).
+        queryClient.setQueryData<Message[]>(
+          ["direct-messages", activeTab.id],
+          (old) => [...(old ?? []), { ...data, receiverId: "ME" }],
+        );
       }
     };
     socket.on("direct_message", handleMessage);
     return () => { socket.off("direct_message", handleMessage); };
-  }, [socket, activeTab]);
+  }, [socket, activeTab, queryClient]);
+
+  // A friend request being accepted (or a new request arriving) must update the
+  // lists live — otherwise they only refresh on manual navigation.
+  useEffect(() => {
+    if (!socket) return;
+    const onNotification = (n: { type?: string }) => {
+      if (n?.type === "FRIEND_ACCEPT" || n?.type === "FRIEND_REQUEST") {
+        queryClient.invalidateQueries({ queryKey: ["friends-list"] });
+        queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      }
+    };
+    socket.on("notification:new", onNotification);
+    return () => { socket.off("notification:new", onNotification); };
+  }, [socket, queryClient]);
+
+  // Invariant: switching chats never carries the previous friend's optimistic
+  // messages (the chat-list click clears them too; this covers every path).
+  useEffect(() => {
+    setMessages([]);
+  }, [activeTab?.id]);
 
   useEffect(() => {
     if (!socket) return;
@@ -226,7 +254,6 @@ export default function FriendsDashboard() {
     }
   };
 
-  const queryClient = useQueryClient();
   const { data: myRating } = useMyRating(true);
 
   // ── LEFT NAV ITEMS ──

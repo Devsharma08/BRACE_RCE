@@ -38,6 +38,7 @@ import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import { wireAuthInvalidation } from "./config/api.ts";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "not-configured";
 
@@ -49,6 +50,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Instant auth invalidation (point 40/52): any 401 from a non-auth endpoint
+// flips auth-me to logged-out immediately, regardless of staleTime. Wired
+// once at module scope — safe under StrictMode remounts.
+wireAuthInvalidation(queryClient);
 
 export const Root = () => {
   // initial states for context

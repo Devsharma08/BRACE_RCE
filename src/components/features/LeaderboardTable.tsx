@@ -4,7 +4,9 @@ import { useLeaderboard, TIER_COLORS } from "../../hooks/useLeaderboard";
 import { hasBooted, markBooted } from "../../utils/sessionBoot";
 
 export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
-  const { data, isLoading } = useLeaderboard(limit);
+  const { data, isLoading, isFetching } = useLeaderboard(limit);
+  // Background refetch (post-battle socket invalidation) — first load stays a
+  // skeleton, refreshes show a non-blocking SYNCING dot instead.
 
   const bootAlreadyPlayedRef = useRef<boolean | null>(null);
   if (bootAlreadyPlayedRef.current === null) {
@@ -30,6 +32,12 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
       ` }} />
       <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-cyan-500/50 mb-4 flex items-center gap-2">
         <Trophy className="w-3.5 h-3.5 text-amber-400/70" /> // GLOBAL LEADERBOARD — ELO RANKINGS
+        {isFetching && !isLoading && (
+          <span className="ml-auto flex items-center gap-1.5 text-[9px] text-cyan-400/70 normal-case tracking-normal">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" aria-hidden="true" />
+            SYNCING…
+          </span>
+        )}
       </p>
       {isLoading ? (
         <p className="text-xs text-slate-500 font-mono">LOADING RANKINGS…</p>

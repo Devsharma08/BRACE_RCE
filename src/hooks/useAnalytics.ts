@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../config/api";
+import { useSocketInvalidation } from "./useSocketInvalidation";
 
 export interface AnalyticsSummary {
   totalSolved: number;
@@ -65,11 +66,17 @@ export interface UserAnalytics {
   weakAreas: WeakArea[];
 }
 
-export function useAnalytics(enabled = true) {
+export function useAnalytics(enabled = true, refetchOnMount?: boolean) {
+  // Analytics is a server-side aggregation the client cannot recompute, so a
+  // finished battle (leaderboard:invalidate) marks it stale; the socket event
+  // drives freshness, staleTime below is only a fallback ceiling.
+  useSocketInvalidation("leaderboard:invalidate", [["user-analytics"]]);
+
   return useQuery<UserAnalytics>({
     queryKey: ["user-analytics"],
     enabled,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 15,
+    refetchOnMount: refetchOnMount ?? true,
     queryFn: async () => {
       const res = await api.get("/analytics");
       return res.data.analytics as UserAnalytics;
