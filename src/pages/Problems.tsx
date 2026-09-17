@@ -88,9 +88,9 @@ export const Problems: React.FC = () => {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono relative select-none">
+    <div className="flex min-h-screen bg-void text-slate-100 font-mono relative select-none">
       {/* Dot-grid texture */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,243,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
       <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-cyan-500/4 rounded-full blur-3xl pointer-events-none z-0" />
 
       {/* Desktop sidebar */}
@@ -131,32 +131,34 @@ export const Problems: React.FC = () => {
         </header>
 
         {/* SEARCH & DIFFICULTY FILTER BAR */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border border-cyan-500/20 bg-slate-950/60 p-4 rounded">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border border-cyan-500/20 bg-raised p-4 rounded-none">
           {/* SEARCH INPUT */}
           <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-cyan-500/40 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label="Search problems"
               placeholder="Search by problem title or #..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full bg-black/60 border border-white/10 text-xs text-slate-200 pl-9 pr-4 py-2 rounded focus:outline-none focus:border-cyan-500/50 transition-colors"
+              className="w-full bg-raised border border-cyan-500/15 text-xs text-slate-200 pl-9 pr-4 py-2 rounded-none focus:outline-none focus:border-cyan-400 transition-colors"
             />
           </div>
 
           {/* DIFFICULTY FILTER TABS */}
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-            <span className="text-xs text-slate-500 font-bold mr-1 flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+            <span className="text-[10px] font-mono text-label uppercase tracking-[0.2em] mr-1 flex items-center gap-1">
               <Filter className="w-3.5 h-3.5" /> DIFFICULTY:
             </span>
             {["ALL", "EASY", "MEDIUM", "HARD"].map((d) => (
               <button
                 key={d}
                 onClick={() => handleDifficultyChange(d)}
-                className={`px-3 py-1 text-xs font-bold tracking-wider rounded border transition-all ${
+                aria-pressed={selectedDifficulty === d}
+                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider rounded-none border transition-all ${
                   selectedDifficulty === d
                     ? "bg-cyan-950/60 border-cyan-500/60 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
-                    : "bg-black/40 border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200"
+                    : "bg-raised border-cyan-500/15 text-slate-400 hover:border-cyan-400 hover:text-slate-200"
                 }`}
               >
                 {d}
@@ -189,10 +191,10 @@ export const Problems: React.FC = () => {
         {/* PROBLEMS TABLE — overflow-x-auto is intentional: table scrolls horizontally on
             narrow screens rather than breaking the page layout */}
         {!isProblemsError && (
-        <div className="border border-cyan-500/20 bg-slate-950/40 overflow-x-auto shadow-xl">
+        <div className="border border-cyan-500/15 bg-raised overflow-x-auto shadow-xl">
           <div className="min-w-[640px]">
           {/* TABLE HEADER */}
-          <div className="grid grid-cols-12 p-3.5 bg-black/80 border-b border-cyan-500/20 text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
+          <div className="grid grid-cols-12 p-3.5 bg-void border-b border-cyan-500/20 text-[10px] font-mono text-cyan-500/40 tracking-[0.2em] uppercase">
             <span className="col-span-1">#</span>
             <span className="col-span-5">PROBLEM TITLE</span>
             <span className="col-span-2">DIFFICULTY</span>
@@ -230,7 +232,7 @@ export const Problems: React.FC = () => {
                         `/terminal?id=${p.id || p.github_oid}`
                       )
                     }
-                    className="grid grid-cols-12 p-3.5 text-xs items-center hover:bg-cyan-950/20 hover:border-l-2 hover:border-l-cyan-400 transition-all cursor-pointer group"
+                    className="grid grid-cols-12 p-3.5 text-xs items-center border-l-2 border-l-transparent hover:bg-cyan-500/5 hover:border-l-cyan-500/40 transition-all cursor-pointer group"
                   >
                     {/* PROBLEM NUMBER & SOLVED STATUS */}
                     <div className="col-span-1 flex items-center gap-1.5 font-mono text-slate-500 font-bold">
@@ -249,7 +251,7 @@ export const Problems: React.FC = () => {
                         {p.name}
                       </span>
                       {p.isSolved && (
-                        <span className="text-[9px] px-1.5 py-0.2 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded font-bold uppercase shrink-0">
+                        <span className="text-[9px] px-1.5 py-0.5 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-none font-bold uppercase shrink-0">
                           SOLVED
                         </span>
                       )}
@@ -257,30 +259,30 @@ export const Problems: React.FC = () => {
 
                     {/* DIFFICULTY */}
                     <div className="col-span-2">
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded border font-bold uppercase ${diffColor}`}>
+                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-sm uppercase ${diffColor}`}>
                         {diff}
                       </span>
                     </div>
 
                     {/* LANGUAGES */}
                     <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-400">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-cyan-500/15 text-slate-400">
                         JS
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-400">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-cyan-500/15 text-slate-400">
                         PY
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-400">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-cyan-500/15 text-slate-400">
                         JAVA
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-400">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-cyan-500/15 text-slate-400">
                         C++
                       </span>
                     </div>
 
                     {/* ACTION BUTTON */}
                     <div className="col-span-2 text-right">
-                      <button className="px-3 py-1 bg-cyan-500/20 group-hover:bg-cyan-500 text-cyan-400 group-hover:text-black border border-cyan-500/40 font-bold rounded transition-all inline-flex items-center gap-1 cursor-pointer">
+                      <button className="px-3 py-1 bg-cyan-500/20 group-hover:bg-cyan-500 text-cyan-400 group-hover:text-black border border-cyan-500/40 font-bold rounded-none transition-all inline-flex items-center gap-1 cursor-pointer">
                         <span>[ {p.isSolved ? "PRACTICE" : "SOLVE"} ]</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
@@ -293,7 +295,7 @@ export const Problems: React.FC = () => {
 
           {/* PAGINATION FOOTER */}
           {!loading && filteredProblems.length > 0 && (
-            <div className="p-4 border-t border-cyan-500/20 bg-black/40 flex items-center justify-between text-xs">
+            <div className="p-4 border-t border-cyan-500/20 bg-raised flex items-center justify-between text-xs">
               <span className="text-slate-400">
                 Showing <strong className="text-white">{(currentPage - 1) * itemsPerPage + 1}</strong> to{" "}
                 <strong className="text-white">
@@ -306,20 +308,20 @@ export const Problems: React.FC = () => {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded border border-cyan-500/30 bg-cyan-950/20 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-none border border-cyan-500/20 bg-raised text-cyan-400/60 hover:border-cyan-500/40 hover:text-cyan-400 font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>PREV</span>
                 </button>
 
-                <span className="px-3 py-1.5 rounded border border-white/10 bg-black/40 text-slate-300 font-bold">
+                <span className="px-3 py-1.5 rounded-none border border-cyan-400 bg-cyan-500/10 text-cyan-400 font-bold">
                   {currentPage} / {totalPages}
                 </span>
 
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded border border-cyan-500/30 bg-cyan-950/20 text-cyan-400 hover:bg-cyan-500 hover:text-black font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-none border border-cyan-500/20 bg-raised text-cyan-400/60 hover:border-cyan-500/40 hover:text-cyan-400 font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <span>NEXT</span>
                   <ChevronRight className="w-3.5 h-3.5" />
