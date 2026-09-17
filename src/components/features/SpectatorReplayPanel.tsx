@@ -47,7 +47,7 @@ export const SpectatorReplayPanel = memo(({
   };
 
   return (
-    <div className="bg-[#06080e] border border-white/10 p-4">
+    <div className="bg-raised border border-white/10 p-4">
       <p className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] text-slate-500 mb-3 flex items-center gap-2">
         <Eye className="w-3.5 h-3.5 text-purple-400" />
         {isSpectator ? `SPECTATING // ${roomId}` : "REPLAY THEATER // SUBMISSION TIMELINE"}

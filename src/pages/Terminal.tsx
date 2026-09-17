@@ -353,7 +353,7 @@ const Terminal = () => {
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
-        <div className="w-full h-full bg-[#06080e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+        <div className="w-full h-full bg-raised border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             <PracticeSidebar
               problems={problems}
@@ -365,7 +365,7 @@ const Terminal = () => {
             />
             {/* ── Loader: full problems fetch overlay (blocks panels until databank syncs) ── */}
             {problemsLoading && (
-              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-[#06080e]/95 backdrop-blur-[1px]">
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-raised/95 backdrop-blur-[1px]">
                 <div className="w-10 h-10 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center">
                   <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
                 </div>
@@ -385,7 +385,7 @@ const Terminal = () => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className="absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
+          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
@@ -399,7 +399,7 @@ const Terminal = () => {
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] relative z-10 transition-all duration-300">
         {/* HEADER BAR */}
-        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-[#06080e] px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
+        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-raised px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
@@ -433,8 +433,8 @@ const Terminal = () => {
           {problemsLoading ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#05070c]">
               <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-6 w-6 animate-spin text-[#00D4FF]" />
-                <span className="text-xs font-mono text-[#8892A4] uppercase tracking-widest">Setting up environment...</span>
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
+                <span className="text-xs font-mono text-subtle uppercase tracking-widest">Setting up environment...</span>
               </div>
             </div>
           ) : (
@@ -506,7 +506,7 @@ const Terminal = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="p-8 text-center text-[#8892A4] font-mono text-sm">
+                  <div className="p-8 text-center text-subtle font-mono text-sm">
                     NO PROBLEMS FOUND. ADD PROBLEMS VIA SEED ENDPOINT.
                   </div>
                 )}

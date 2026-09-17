@@ -878,7 +878,7 @@ export const Battle = () => {
           </button>
 
           {isHostPanelOpen && (
-            <div className="bg-[#0a0b0e]/95 border border-amber-500/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
+            <div className="bg-raised/95 border border-amber-500/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
               {/* Panel Header */}
               <div className="px-4 py-3 border-b border-amber-500/20 bg-amber-950/30 flex items-center justify-between">
                 <span className="font-mono text-xs font-bold text-amber-400 tracking-widest flex items-center gap-2">
@@ -970,7 +970,7 @@ export const Battle = () => {
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
-        <div className="w-full h-full bg-[#0b0c0e] border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+        <div className="w-full h-full bg-raised border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             {/* HOST HEADER */}
             <div className="p-4 border-b border-cyan-500/20 bg-black/40">
@@ -1101,11 +1101,11 @@ export const Battle = () => {
                   <div className="border border-white/10 bg-black/40 p-4">
                     <p className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest mb-3">Opponent Status</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="border border-cyan-500/15 bg-[#0b1021]/60 p-3">
+                      <div className="border border-cyan-500/15 bg-raised/60 p-3">
                         <div className="text-[9px] text-slate-500 uppercase tracking-widest">Tests Passed</div>
                         <div className="text-lg font-mono font-bold text-white mt-1">4/5</div>
                       </div>
-                      <div className="border border-cyan-500/15 bg-[#0b1021]/60 p-3">
+                      <div className="border border-cyan-500/15 bg-raised/60 p-3">
                         <div className="text-[9px] text-slate-500 uppercase tracking-widest">Focus Alerts</div>
                         <div className="text-lg font-mono font-bold text-amber-400 mt-1">2</div>
                       </div>
@@ -1172,7 +1172,7 @@ export const Battle = () => {
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse panel" : "Expand panel"}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-[#0b0c0e] border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
@@ -1184,7 +1184,7 @@ export const Battle = () => {
 
       <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-cyan-500/20 bg-[#0b0c0e] font-mono text-xs z-30 shrink-0">
+        <div className="flex items-center justify-between px-6 py-2.5 border-b border-cyan-500/20 bg-raised font-mono text-xs z-30 shrink-0">
           <div className="flex items-center gap-3">
             <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-2">
               <Code className="w-4 h-4 text-cyan-400" />
@@ -1235,7 +1235,7 @@ export const Battle = () => {
           {/* CLEAR THIS LOGIC */}
           {battleState.status === "WAITING" && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-              <div className="bg-[#0a0b0e] border border-cyan-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
+              <div className="bg-raised border border-cyan-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
                 <Lock className="w-12 h-12 text-cyan-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-white tracking-widest mb-2 font-mono">
                   SYSTEM LOCKED
@@ -1250,7 +1250,7 @@ export const Battle = () => {
             battleResult === "LOST" &&
             !isBattleMenuOpen && (
               <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-                <div className="bg-[#0a0b0e] border border-rose-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
+                <div className="bg-raised border border-rose-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
                   <StopCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-white tracking-widest mb-2 font-mono">
                     TIME EXPIRED
@@ -1357,7 +1357,7 @@ export const Battle = () => {
 
       {isBattleMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
+          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
             <div
               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-cyan-400 to-emerald-500" : "from-rose-500 to-orange-500"}`}
             />
@@ -1424,7 +1424,7 @@ export const Battle = () => {
       {/* SURRENDER CONFIRMATION MODAL */}
       {isSurrenderModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-[#0b0c0e] border border-rose-500/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-rose-500/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
             <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-rose-500 to-amber-500" />
             <Flag className="w-12 h-12 text-rose-400 mb-4" />
             <h3 className="font-mono text-xl font-bold tracking-widest text-white mb-2 uppercase">

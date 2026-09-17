@@ -20,7 +20,7 @@ export default function GlobalModals() {
       {/* ----------------------------- */}
       {matchmakingStatus === "FOUND_PENDING" && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md">
-          <div className="flex flex-col items-center justify-center p-12 bg-[#0b0c0e] border border-cyan-500/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+          <div className="flex flex-col items-center justify-center p-12 bg-raised border border-cyan-500/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
             {/* Radar Sweep Effect */}
             <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,rgba(34,211,238,0)_0%,rgba(34,211,238,0.1)_100%)] animate-[spin_3s_linear_infinite]" />
             <div className="absolute inset-0 border-[40px] border-[#0b0c0e] rounded-full scale-150" />
@@ -75,7 +75,7 @@ export default function GlobalModals() {
       {/* ----------------------------- */}
       {incomingChallenge && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="p-8 border-2 border-rose-500/50 bg-[#0b0c0e] flex flex-col items-center rounded-2xl shadow-[0_0_50px_rgba(225,29,72,0.2)]">
+          <div className="p-8 border-2 border-rose-500/50 bg-raised flex flex-col items-center rounded-2xl shadow-[0_0_50px_rgba(225,29,72,0.2)]">
             <Swords className="w-16 h-16 text-rose-500 animate-bounce mb-4" />
             <h2 className="text-rose-400 font-mono text-xl font-bold mb-2">
               CHALLENGE RECEIVED

@@ -47,7 +47,7 @@ const completedSystems = [
     title: "Sandboxed RCE Engine",
     desc: "Isolated Docker runners for JS, Py, C++, Java & C with streaming telemetry.",
     colSpan: "md:col-span-2",
-    theme: "border-r-4 border-b-4 border-r-emerald-500/60 border-b-emerald-500/60",
+    theme: "border-t-2 border-t-emerald-500/40",
     badge: "text-emerald-300 bg-emerald-950/70 border-emerald-500/40",
     accentIcon: Cpu,
     accentColor: "text-emerald-400",
@@ -57,7 +57,7 @@ const completedSystems = [
     title: "1v1 PvP Battles",
     desc: "Real-time 1v1 matchmaking with instant winner validation.",
     colSpan: "md:col-span-1",
-    theme: "border-l-4 border-b-4 border-l-rose-500/60 border-b-rose-500/60",
+    theme: "border-t-2 border-t-rose-500/40",
     badge: "text-rose-300 bg-rose-950/70 border-rose-500/40",
     accentIcon: Zap,
     accentColor: "text-rose-400",
@@ -67,7 +67,7 @@ const completedSystems = [
     title: "Custom Room Lobbies",
     desc: "Private/public rooms with password protection and custom timers.",
     colSpan: "md:col-span-1",
-    theme: "border-t-4 border-r-4 border-t-purple-500/60 border-r-purple-500/60",
+    theme: "border-t-2 border-t-purple-500/40",
     badge: "text-purple-300 bg-purple-950/70 border-purple-500/40",
     accentIcon: Shield,
     accentColor: "text-purple-400",
@@ -77,7 +77,7 @@ const completedSystems = [
     title: "Battle Code Reviewer",
     desc: "Post-match side-by-side code diff analysis drawer.",
     colSpan: "md:col-span-1",
-    theme: "border-r-4 border-b-4 border-r-amber-500/60 border-b-amber-500/60",
+    theme: "border-t-2 border-t-amber-500/40",
     badge: "text-amber-300 bg-amber-950/70 border-amber-500/40",
     accentIcon: Code2,
     accentColor: "text-amber-400",
@@ -87,7 +87,7 @@ const completedSystems = [
     title: "Algorithm Databank",
     desc: "Searchable problem repository with hidden test cases.",
     colSpan: "md:col-span-1",
-    theme: "border-l-4 border-b-4 border-l-indigo-500/60 border-b-indigo-500/60",
+    theme: "border-t-2 border-t-indigo-500/40",
     badge: "text-indigo-300 bg-indigo-950/70 border-indigo-500/40",
     accentIcon: Database,
     accentColor: "text-indigo-400",
@@ -97,7 +97,7 @@ const completedSystems = [
     title: "Command Center & Time Sync",
     desc: "Centralized dossier with socket-persisted match timers across page refreshes.",
     colSpan: "md:col-span-2",
-    theme: "border-t-4 border-l-4 border-t-cyan-500/60 border-l-cyan-500/60",
+    theme: "border-t-2 border-t-cyan-500/40",
     badge: "text-cyan-300 bg-cyan-950/70 border-cyan-500/40",
     accentIcon: Clock,
     accentColor: "text-cyan-400",
@@ -117,7 +117,7 @@ const roadmapItems = [
     version: "V2.2",
     status: "BUILDING",
     progress: 85,
-    theme: "border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60",
+    theme: "border-t-2 border-t-cyan-500/40",
     badge: "text-cyan-300 bg-cyan-950/80 border-cyan-500/40",
     barColor: "from-cyan-600 to-cyan-400",
   },
@@ -129,7 +129,7 @@ const roadmapItems = [
     version: "V2.1",
     status: "BUILDING",
     progress: 75,
-    theme: "border-l-4 border-b-4 border-l-emerald-500/60 border-b-emerald-500/60",
+    theme: "border-t-2 border-t-emerald-500/40",
     badge: "text-emerald-300 bg-emerald-950/80 border-emerald-500/40",
     barColor: "from-emerald-600 to-emerald-400",
   },
@@ -141,7 +141,7 @@ const roadmapItems = [
     version: "V2.3",
     status: "DESIGNING",
     progress: 40,
-    theme: "border-t-4 border-r-4 border-t-amber-500/60 border-r-amber-500/60",
+    theme: "border-t-2 border-t-amber-500/40",
     badge: "text-amber-300 bg-amber-950/80 border-amber-500/40",
     barColor: "from-amber-600 to-amber-400",
   },
@@ -153,7 +153,7 @@ const roadmapItems = [
     version: "V2.1",
     status: "DESIGNING",
     progress: 55,
-    theme: "border-r-4 border-b-4 border-r-purple-500/60 border-b-purple-500/60",
+    theme: "border-t-2 border-t-purple-500/40",
     badge: "text-purple-300 bg-purple-950/80 border-purple-500/40",
     barColor: "from-purple-600 to-purple-400",
   },
@@ -165,7 +165,7 @@ const roadmapItems = [
     version: "V2.4",
     status: "PROTOTYPE",
     progress: 30,
-    theme: "border-l-4 border-b-4 border-l-rose-500/60 border-b-rose-500/60",
+    theme: "border-t-2 border-t-rose-500/40",
     badge: "text-rose-300 bg-rose-950/80 border-rose-500/40",
     barColor: "from-rose-600 to-rose-400",
   },
@@ -177,7 +177,7 @@ const roadmapItems = [
     version: "V2.5",
     status: "EXPLORING",
     progress: 25,
-    theme: "border-t-4 border-l-4 border-t-sky-500/60 border-l-sky-500/60",
+    theme: "border-t-2 border-t-sky-500/40",
     badge: "text-sky-300 bg-sky-950/80 border-sky-500/40",
     barColor: "from-sky-600 to-sky-400",
   },
@@ -217,12 +217,12 @@ const About = () => {
           {/* Stats Bento Row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-3xl">
             {[
-              { label: "LIVE SYSTEMS", val: "9 OPERATIONAL", borderClass: "border-r-4 border-b-4 border-r-emerald-500/60 border-b-emerald-500/60", color: "text-emerald-400" },
-              { label: "PIPELINE", val: "6 UPCOMING", borderClass: "border-l-4 border-b-4 border-l-amber-500/60 border-b-amber-500/60", color: "text-amber-400" },
-              { label: "RUNTIMES", val: "5 LANGUAGES", borderClass: "border-t-4 border-r-4 border-t-cyan-500/60 border-r-cyan-500/60", color: "text-cyan-400" },
-              { label: "ECOSYSTEM", val: "100% OPEN", borderClass: "border-t-4 border-l-4 border-t-purple-500/60 border-l-purple-500/60", color: "text-purple-400" },
+              { label: "LIVE SYSTEMS", val: "9 OPERATIONAL", borderClass: "border-t-2 border-t-emerald-500/40", color: "text-emerald-400" },
+              { label: "PIPELINE", val: "6 UPCOMING", borderClass: "border-t-2 border-t-amber-500/40", color: "text-amber-400" },
+              { label: "RUNTIMES", val: "5 LANGUAGES", borderClass: "border-t-2 border-t-cyan-500/40", color: "text-cyan-400" },
+              { label: "ECOSYSTEM", val: "100% OPEN", borderClass: "border-t-2 border-t-purple-500/40", color: "text-purple-400" },
             ].map((s) => (
-              <div key={s.label} className={`rounded-none border border-white/20 bg-[#06080e] px-3 py-3 relative overflow-hidden ${s.borderClass}`}>
+              <div key={s.label} className={`rounded-none border border-white/20 bg-raised px-3 py-3 relative overflow-hidden ${s.borderClass}`}>
                 <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
                 <span className="block text-[10px] text-slate-400 tracking-widest font-bold uppercase mb-1">{s.label}</span>
                 <span className={`block text-sm font-extrabold tracking-wider ${s.color}`}>{s.val}</span>
@@ -251,7 +251,7 @@ const About = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Creator Card */}
-            <div className="md:col-span-2 relative rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-6 flex flex-col justify-between gap-4 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all duration-300">
+            <div className="md:col-span-2 relative rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-6 flex flex-col justify-between gap-4 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] transition-all duration-300">
               <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
               <div className="flex items-start justify-between gap-4 relative z-10">
@@ -280,7 +280,7 @@ const About = () => {
             </div>
 
             {/* Open Source Card */}
-            <div className="md:col-span-1 relative rounded-none border border-white/20 border-l-4 border-b-4 border-l-rose-500/60 border-b-rose-500/60 bg-[#06080e] p-6 flex flex-col justify-between gap-4 hover:border-rose-400 hover:shadow-[0_0_30px_rgba(244,63,94,0.12)] transition-all duration-300">
+            <div className="md:col-span-1 relative rounded-none border border-cyan-500/15 border-t-2 border-t-rose-500/40 bg-raised p-6 flex flex-col justify-between gap-4 hover:border-rose-400 hover:shadow-[0_0_30px_rgba(244,63,94,0.12)] transition-all duration-300">
               <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
               <div className="flex items-center gap-3 relative z-10">
@@ -343,7 +343,7 @@ const About = () => {
               return (
                 <div
                   key={sys.title}
-                  className={`group relative rounded-none border border-white/20 bg-[#06080e] p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-[0_0_25px_rgba(6,182,212,0.12)] ${sys.colSpan} ${sys.theme}`}
+                  className={`group relative rounded-none border border-white/20 bg-raised p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-[0_0_25px_rgba(6,182,212,0.12)] ${sys.colSpan} ${sys.theme}`}
                 >
                   <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -396,7 +396,7 @@ const About = () => {
               return (
                 <div
                   key={item.title}
-                  className={`group relative rounded-none border border-white/20 bg-[#06080e] p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-[0_0_25px_rgba(6,182,212,0.10)] overflow-hidden ${item.colSpan} ${item.theme}`}
+                  className={`group relative rounded-none border border-white/20 bg-raised p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-[0_0_25px_rgba(6,182,212,0.10)] overflow-hidden ${item.colSpan} ${item.theme}`}
                 >
                   <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -438,7 +438,7 @@ const About = () => {
       {/* ── SECTION 5: CONTRIBUTE CTA ─────────────────────────── */}
       <section className="min-h-[60vh] flex flex-col justify-center items-center px-4 sm:px-6 py-16 sm:py-20">
         <div className="max-w-6xl w-full mx-auto">
-          <div className="relative rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 bg-[#06080e] p-8 sm:p-12">
+          <div className="relative rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-8 sm:p-12">
             <div className="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
             <div className="absolute top-20 right-20 w-64 h-64 bg-cyan-500/5 blur-[80px] pointer-events-none" />
 

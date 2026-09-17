@@ -58,7 +58,7 @@ export function ChallengeModal({ friend, open, onClose }: {
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg border border-rose-500/40 bg-[#0b0c0e] shadow-[0_0_50px_rgba(225,29,72,0.25)]">
+      <div className="w-full max-w-lg border border-rose-500/40 bg-raised shadow-[0_0_50px_rgba(225,29,72,0.25)]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-rose-500/20 bg-rose-950/20">
           <span className="flex items-center gap-2 text-sm font-bold tracking-[0.2em] text-rose-300 uppercase">
             <Swords className="w-4 h-4" /> Challenge // {friend.username}

@@ -82,7 +82,7 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-6 overflow-y-auto">
-      <div className="bg-[#0a0b0e] border border-cyan-500/30 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-raised border border-cyan-500/30 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* TOP METRICS HEADER */}
         <div className="p-6 border-b border-cyan-500/20 bg-black/60 flex items-center justify-between">

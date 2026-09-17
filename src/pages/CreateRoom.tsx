@@ -175,7 +175,7 @@ const CreateRoom = () => {
           
           {/* LEFT: ROOM SETTINGS */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-[#0a0b0e] border border-cyan-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="bg-raised border border-cyan-500/20 rounded-2xl p-6 shadow-2xl">
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <ShieldAlert className="w-5 h-5 text-cyan-400" />
                 SECURITY & COMMS
@@ -219,7 +219,7 @@ const CreateRoom = () => {
               </div>
             </div>
 
-            <div className="bg-[#0a0b0e] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="bg-raised border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
               <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors bg-black/30">
                 <div className="flex items-center gap-3">
                   {isPublic ? <Globe className="w-5 h-5 text-emerald-400" /> : <EyeOff className="w-5 h-5 text-rose-400" />}
@@ -235,7 +235,7 @@ const CreateRoom = () => {
 
           {/* RIGHT: PROBLEM PLAYLIST & CREATION */}
           <div className="lg:col-span-2">
-            <div className="bg-[#0a0b0e] border border-cyan-500/20 rounded-2xl flex flex-col h-full max-h-[800px]">
+            <div className="bg-raised border border-cyan-500/20 rounded-2xl flex flex-col h-full max-h-[800px]">
               
               <div className="p-4 border-b border-cyan-500/20 bg-cyan-950/10 flex items-center justify-between">
                 <div className="flex gap-4">
@@ -362,8 +362,8 @@ const CreateRoom = () => {
                               <span className="text-xs text-rose-400">HIDDEN EDGE CASE</span>
                             </label>
                             <div className="grid grid-cols-2 gap-3">
-                              <input value={tc.input} onChange={e => { const t = [...customTestCases]; t[i].input = e.target.value; setCustomTestCases(t); }} className="bg-[#0a0b0e] border border-slate-800 rounded p-2 text-cyan-400 outline-none text-sm" placeholder="Input" />
-                              <input value={tc.expectedOutput} onChange={e => { const t = [...customTestCases]; t[i].expectedOutput = e.target.value; setCustomTestCases(t); }} className="bg-[#0a0b0e] border border-slate-800 rounded p-2 text-emerald-400 outline-none text-sm" placeholder="Expected Output" />
+                              <input value={tc.input} onChange={e => { const t = [...customTestCases]; t[i].input = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-slate-800 rounded p-2 text-cyan-400 outline-none text-sm" placeholder="Input" />
+                              <input value={tc.expectedOutput} onChange={e => { const t = [...customTestCases]; t[i].expectedOutput = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-slate-800 rounded p-2 text-emerald-400 outline-none text-sm" placeholder="Expected Output" />
                             </div>
                           </div>
                         ))}
@@ -380,7 +380,7 @@ const CreateRoom = () => {
                         {customSnippets.map((snip, i) => (
                           <div key={i} className="bg-black/30 p-3 rounded-lg border border-slate-800 relative">
                             <button onClick={() => setCustomSnippets(customSnippets.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 text-slate-600 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
-                            <select value={snip.language} onChange={e => { const s = [...customSnippets]; s[i].language = e.target.value; setCustomSnippets(s); }} className="bg-[#0a0b0e] border border-slate-800 rounded text-xs text-cyan-400 p-1 mb-2 outline-none">
+                            <select value={snip.language} onChange={e => { const s = [...customSnippets]; s[i].language = e.target.value; setCustomSnippets(s); }} className="bg-raised border border-slate-800 rounded text-xs text-cyan-400 p-1 mb-2 outline-none">
                               <option value="javascript">JavaScript</option>
                               <option value="python">Python</option>
                               <option value="java">Java</option>
@@ -408,7 +408,7 @@ const CreateRoom = () => {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 w-full bg-[#080d1a]/95 backdrop-blur-xl border-t border-cyan-500/20 p-4 sm:p-6 z-50">
+        <div className="fixed bottom-0 left-0 w-full bg-panel/95 backdrop-blur-xl border-t border-cyan-500/20 p-4 sm:p-6 z-50">
           <div className="max-w-6xl w-full mx-auto flex justify-end">
              <button 
                 onClick={handleCreateRoom}
