@@ -13,7 +13,7 @@ const BentoGrid = () => {
   const row2Items = [...row2, ...row2, ...row2];
 
   return (
-    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none overflow-hidden border-b border-white/10">
+    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none overflow-hidden border-b border-cyan-500/15">
 
       {/* Header Section */}
       <div className="mb-12 sm:mb-16 text-center max-w-3xl mx-auto px-4">
@@ -32,16 +32,16 @@ const BentoGrid = () => {
       {/* Dual Row Infinite Moving Carousel Container */}
       <div className="relative w-full flex flex-col gap-8 overflow-hidden py-4">
         {/* Left & Right Fade Vignette Overlay */}
-        <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-r from-[#050811] to-transparent z-20 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-l from-[#050811] to-transparent z-20 pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-r from-void to-transparent z-20 pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-20 sm:w-40 bg-gradient-to-l from-void to-transparent z-20 pointer-events-none" />
 
         {/* Row 1: Leftward Moving Ticker */}
-        <div className="flex w-max gap-6 animate-marquee-left">
+        <div className="flex w-max gap-4 animate-marquee-left">
           {row1Items.map((item, idx) => (
             <Link
               key={`row1-${item.slug}-${idx}`}
               to={`/ds/${item.slug}`}
-              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
+              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
             >
               <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -62,12 +62,12 @@ const BentoGrid = () => {
         </div>
 
         {/* Row 2: Rightward Moving Ticker (Opposite Direction) */}
-        <div className="flex w-max gap-6 animate-marquee-right">
+        <div className="flex w-max gap-4 animate-marquee-right">
           {row2Items.map((item, idx) => (
             <Link
               key={`row2-${item.slug}-${idx}`}
               to={`/ds/${item.slug}`}
-              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 border border-cyan-500/15 bg-[#06080e] p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
+              className="group relative flex items-center justify-between gap-6 w-[360px] sm:w-[440px] h-[160px] shrink-0 overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-6 sm:p-7 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-300"
             >
               <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 

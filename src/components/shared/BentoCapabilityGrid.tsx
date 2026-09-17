@@ -12,12 +12,7 @@ interface BentoCapabilityGridProps {
   numbers?: string[];
 }
 
-const borderEdgeStyles = [
-  "border-r-4 border-b-4 border-r-cyan-500/70 border-b-cyan-500/70 hover:border-r-cyan-400 hover:border-b-cyan-400",
-  "border-l-4 border-b-4 border-l-cyan-500/70 border-b-cyan-500/70 hover:border-l-cyan-400 hover:border-b-cyan-400",
-  "border-t-4 border-r-4 border-t-cyan-500/70 border-r-cyan-500/70 hover:border-t-cyan-400 hover:border-r-cyan-400",
-  "border-t-4 border-l-4 border-t-cyan-500/70 border-l-cyan-500/70 hover:border-t-cyan-400 hover:border-l-cyan-400",
-];
+const cardAccent = "border-t-2 border-t-cyan-500/40 hover:border-t-cyan-400";
 
 const defaultNumbers = ["01", "02", "03", "04"];
 
@@ -26,10 +21,10 @@ const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
   numbers = defaultNumbers,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 w-full max-w-7xl mx-auto px-2 sm:px-6">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 w-full max-w-7xl mx-auto px-2 sm:px-6">
       {items.map((item, idx) => {
         const num = numbers[idx % numbers.length];
-        const edgeStyle = borderEdgeStyles[idx % borderEdgeStyles.length];
+        const edgeStyle = cardAccent;
 
         const gridSpanClass =
           idx === 0
@@ -43,7 +38,7 @@ const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
         return (
           <div
             key={idx}
-            className={`group relative overflow-hidden rounded-none border border-white/20 bg-[#06080e] p-6 sm:p-8 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all duration-300 ${edgeStyle} ${gridSpanClass}`}
+            className={`group relative overflow-hidden rounded-none border border-cyan-500/15 bg-raised p-6 sm:p-8 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all duration-300 ${edgeStyle} ${gridSpanClass}`}
           >
             {/* Full Card Background Image */}
             <img
@@ -53,7 +48,7 @@ const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
             />
 
             {/* High-Contrast Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#06080e] via-[#06080e]/90 to-[#06080e]/50 z-10 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/90 to-raised/50 z-10 pointer-events-none" />
 
             {/* Dot grid texture */}
             <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] z-10" />
@@ -62,7 +57,7 @@ const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
             <div className="absolute -right-14 -top-14 w-52 h-52 bg-cyan-500/0 rounded-full blur-[50px] pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-700 z-10" />
 
             {/* Watermark Number */}
-            <div className="absolute right-6 top-4 text-6xl sm:text-7xl font-extrabold text-cyan-400/20 pointer-events-none font-mono z-10 select-none">
+            <div className="absolute right-6 top-4 text-6xl sm:text-7xl font-black text-cyan-400/20 pointer-events-none font-mono z-10 select-none">
               {num}
             </div>
 
@@ -78,7 +73,7 @@ const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
             {/* Bottom Left Content */}
             <div className="relative z-20 flex flex-col justify-end translate-y-2 group-hover:translate-y-0 transition-transform duration-500 ease-out max-w-xl">
               <h3
-                className="text-xl sm:text-2xl font-extrabold text-white mb-2.5 leading-snug tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] group-hover:text-cyan-300 transition-colors font-mono"
+                className="text-xl sm:text-2xl font-black text-white mb-2.5 leading-snug tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] group-hover:text-cyan-300 transition-colors font-mono"
                 dangerouslySetInnerHTML={{ __html: item.title }}
               />
               <p

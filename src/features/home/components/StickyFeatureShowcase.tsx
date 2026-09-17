@@ -14,7 +14,7 @@ const StickyFeatureShowcase: React.FC = () => {
   }));
 
   return (
-    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none border-b border-white/10">
+    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none border-b border-cyan-500/15">
       {/* Header Section */}
       <div className="mb-12 sm:mb-16 text-center max-w-3xl mx-auto px-4">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_15px_rgba(6,182,212,0.2)]">

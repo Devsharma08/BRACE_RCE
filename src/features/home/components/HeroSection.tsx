@@ -607,14 +607,14 @@ export const BraceRcePixelArt: React.FC = () => {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <Link
             to="/terminal"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 hover:border-cyan-300 text-cyan-200 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 hover:border-cyan-300 text-cyan-200 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
           >
             <Terminal className="w-4 h-4 text-cyan-400" />
             <span>[ LAUNCH TERMINAL ]</span>
           </Link>
           <Link
             to="/lobby"
-            className="inline-flex items-center gap-2 px-6 py-3 border border-white/15 bg-black/40 hover:bg-white/5 hover:border-white/30 text-slate-300 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-cyan-500/15 bg-raised hover:bg-cyan-500/5 hover:border-cyan-400 text-slate-300 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
           >
             <Swords className="w-4 h-4 text-slate-400" />
             <span>[ 1V1 BATTLE ARENA ]</span>

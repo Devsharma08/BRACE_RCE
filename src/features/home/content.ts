@@ -13,22 +13,22 @@ export type BentoItem = {
 
 export const features: HomeFeature[] = [
   {
-    title: "Side-by-Side <span class=\"text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 font-extrabold font-mono\">Problem Workspace</span>",
+    title: "Side-by-Side <span class=\"text-cyan-400 font-black font-mono\">Problem Workspace</span>",
     desc: "Write solutions inside a premium <span class=\"text-cyan-400 font-bold font-mono\">Monaco Editor</span> while reviewing detailed problem definitions, constraints, and hints side-by-side in a unified <span class=\"text-teal-400 font-semibold font-mono\">Workspace Layout</span>.",
     img: "/ss-1-ide-with-prob-desc.png",
   },
   {
-    title: "Interactive <span class=\"text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 font-extrabold font-mono\">Custom Input Playground</span>",
+    title: "Interactive <span class=\"text-cyan-400 font-black font-mono\">Custom Input Playground</span>",
     desc: "Test your logic on arbitrary parameters. Input custom arguments on-the-fly and inspect <span class=\"text-cyan-400 font-bold font-mono\">stdout execution traces</span> and console diagnostics instantly.",
     img: "/ss-custom-inp.png",
   },
   {
-    title: "Precise <span class=\"text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 font-extrabold font-mono\">Telemetry Verification</span>",
+    title: "Precise <span class=\"text-cyan-400 font-black font-mono\">Telemetry Verification</span>",
     desc: "Execute complete test suites inside secure sandboxes, receiving detailed color-coded status badges, <span class=\"text-cyan-400 font-bold font-mono\">runtimes</span>, and expected output comparisons.",
     img: "/ss-dsa-que-with-desc-test-cases.png",
   },
   {
-    title: "Persistent <span class=\"text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-teal-400 font-extrabold font-mono\">Local Scratchpad</span>",
+    title: "Persistent <span class=\"text-cyan-400 font-black font-mono\">Local Scratchpad</span>",
     desc: "Create, save, and compile custom files stored directly in your local workspace. Experiment with <span class=\"text-cyan-400 font-bold font-mono\">custom algorithms</span> without standard problem bounds.",
     img: "/ss-localfile.png",
   }
