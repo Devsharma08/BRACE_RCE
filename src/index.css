@@ -16,23 +16,40 @@
   --danger:      #FF3B5C;
   --warn:        #FFB800;
 
-  /* ── Background Scale (darkest → lightest surface) ───────────────────── */
-  --bg-void:     #050608;   /* deepest background, body */
-  --bg-base:     #080a10;   /* page / layout background */
-  --bg-raised:   #0c0f18;   /* cards, panels */
-  --bg-float:    #111520;   /* elevated cards, hover states */
-  --bg-sidebar:  #080d1a;   /* sidebar specific */
-  --bg-nav:      #0b1021;   /* header nav */
+  /* ── Background Scale — arena palette, 4 stops ───────────────────────── */
+  /* RULE 1: one page background everywhere. `--bg-base` is now an alias of
+     `--bg-void`; both resolve to #050811. */
+  --bg-void:      #050811;  /* body + every page background */
+  --bg-base:      #050811;  /* legacy alias of --bg-void */
+  /* RULE 2: one surface for cards / panels / drawers / nav. */
+  --bg-raised:    #0b1021;  /* cards, panels, drawers, nav */
+  --bg-nav:       #0b1021;  /* legacy alias of --bg-raised */
+  --bg-sidebar:   #080d1a;  /* sidebar — one step above the void */
+  --bg-panel:     #080d1a;  /* alias of --bg-sidebar */
+  /* Elevated fills: chips, hover states, small badges. */
+  --bg-float:     #131b35;  /* elevated cards, hover states */
+  --bg-elevated:  #131b35;  /* alias of --bg-float */
+  --ink:          #050811;  /* text/icon colour that sits ON an accent fill */
 
   /* ── Border Scale ────────────────────────────────────────────────────── */
-  --border:      rgba(255, 255, 255, 0.06);
-  --border-mid:  rgba(255, 255, 255, 0.10);
-  --border-hi:   rgba(0, 212, 255, 0.30);
+  /* RULE 3: one structural border = cyan-500/15. White borders are reserved
+     for micro-dividers (separators *inside* a component); hover/focus stays
+     brighter so affordances keep working. */
+  --border:        rgba(255, 255, 255, 0.05);  /* micro-dividers only */
+  --border-mid:    rgba(255, 255, 255, 0.10);  /* legacy — prefer accent */
+  --border-accent: rgba(6, 182, 212, 0.15);    /* every structural border */
+  --border-hi:     rgba(6, 182, 212, 0.40);    /* hover / active borders */
 
   /* ── Text Scale ──────────────────────────────────────────────────────── */
   --text-primary:   #F0F4FF;
   --text-secondary: #8892A4;
   --text-muted:     #4A5568;  /* bumped from #3D4657 for better contrast */
+  --text-label:     rgba(6, 182, 212, 0.50);  /* RULE 6 section labels */
+
+  /* ── Layout Rhythm (RULE 7) ──────────────────────────────────────────── */
+  --gap-section: 24px;  /* gap-6 — between page sections */
+  --gap-card:    16px;  /* gap-4 — between cards */
+  --gap-item:    12px;  /* gap-3 — between items inside a card */
 
   /* ── Spacing Scale ───────────────────────────────────────────────────── */
   --space-1:  4px;
@@ -86,18 +103,41 @@
    TAILWIND THEME EXTENSION
    ═══════════════════════════════════════════════════════════════════════════ */
 @theme {
-  /* Background colors mapped to tokens */
-  --color-bg-void:      #050608;
-  --color-bg-base:      #080a10;
-  --color-bg-raised:    #0c0f18;
-  --color-bg-float:     #111520;
+  /* ── Surfaces ──────────────────────────────────────────────────────────────
+     Canonical utilities: bg-void / bg-raised / bg-panel / bg-elevated.
+     Values mirror the :root tokens above. */
+  --color-void:      #050811;  /* bg-void     — page + body            */
+  --color-raised:    #0b1021;  /* bg-raised   — cards, panels, nav     */
+  --color-panel:     #080d1a;  /* bg-panel    — sidebar                */
+  --color-elevated:  #131b35;  /* bg-elevated — chips, hover fills     */
+
+  /* ── Accent + ink ────────────────────────────────────────────────────────── */
+  --color-accent:    #00D4FF;  /* text-accent / bg-accent / border-accent */
+  --color-ink:       #050811;  /* text-ink — label ON an accent fill      */
+
+  /* ── Semantic ────────────────────────────────────────────────────────────── */
+  --color-success:   #00FF87;
+  --color-danger:    #FF3B5C;
+  --color-warn:      #FFB800;
+
+  /* ── Text ────────────────────────────────────────────────────────────────── */
+  --color-fg:        #F0F4FF;  /* text-fg     — primary                     */
+  --color-subtle:    #8892A4;  /* text-subtle — secondary                   */
+  --color-faint:     #4A5568;  /* text-faint  — tertiary                    */
+  --color-label:     rgba(6, 182, 212, 0.50);  /* text-label — RULE 6 labels */
+
+  /* Legacy aliases — retuned to the arena palette so any older utility keeps
+     resolving to the same colours as the canonical set above. */
+  --color-bg-void:      #050811;
+  --color-bg-base:      #050811;
+  --color-bg-raised:    #0b1021;
+  --color-bg-float:     #131b35;
   --color-bg-sidebar:   #080d1a;
   --color-bg-nav:       #0b1021;
 
-  /* Legacy aliases kept for backward compat */
-  --color-darkbg:       #050608;
-  --color-secondarybg:  #080a10;
-  --color-tertiarybg:   #0c0f18;
+  --color-darkbg:       #050811;
+  --color-secondarybg:  #0b1021;
+  --color-tertiarybg:   #131b35;
 
   /* Text */
   --color-textwhite:     #F0F4FF;
