@@ -184,7 +184,7 @@ export const Dashboard: React.FC = () => {
         "
       >
         {/* Dot-grid texture */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,243,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
+        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
 
         {/* ── HEADER BAR ──────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-cyan-500/10">
@@ -199,7 +199,7 @@ export const Dashboard: React.FC = () => {
               Good {timeOfDay}, operative. System nominal.
             </p>
           </div>
-          <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-[#0b1021] shrink-0">
+          <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-raised shrink-0">
             <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
             <span className="text-xs text-white font-mono font-bold max-w-[120px] truncate" title={username}>
               {username}
@@ -208,17 +208,17 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* ── FIND OPPONENT ────────────────────────────────────────────── */}
-        <div className="mb-8 border border-cyan-500/20 border-t-2 border-t-cyan-400/50 bg-[#0b1021] p-6 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
+        <div className="mb-8 border border-cyan-500/20 border-t-2 border-t-cyan-400/50 bg-raised p-6 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-white mb-1">Find Opponent</h2>
-              <p className="text-xs text-[#8892A4]">
+              <p className="text-xs text-subtle">
                 Enter matchmaking queue for a ranked 1v1 battle
               </p>
             </div>
             <button
               onClick={() => findMatch()}
-              className="flex-shrink-0 bg-[#00D4FF] text-[#050608] font-bold px-6 py-3 text-xs tracking-wider transition-all hover:bg-cyan-400 shadow-[0_0_16px_rgba(0,243,255,0.3)] uppercase whitespace-nowrap"
+              className="flex-shrink-0 bg-accent text-ink font-bold px-6 py-3 text-xs tracking-wider transition-all hover:bg-cyan-400 shadow-[0_0_16px_rgba(0,212,255,0.3)] uppercase whitespace-nowrap"
             >
               START MATCHMAKING
             </button>
@@ -233,7 +233,7 @@ export const Dashboard: React.FC = () => {
             { icon: Flame,      label: "Win Rate",    value: stats ? `${Math.round(stats.winRate)}%` : "—"    },
             { icon: Percent,    label: "Submissions", value: analytics?.summary?.totalAttempts ?? "—" },
           ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="border border-cyan-500/15 bg-[#0b1021] p-4 sm:p-6 min-w-0">
+            <div key={label} className="border border-cyan-500/15 bg-raised p-4 sm:p-6 min-w-0">
               <Icon className="w-5 h-5 text-cyan-500/40 mb-2" />
               <div className="text-xl sm:text-2xl font-black font-mono truncate">
                 {label === 'ELO Rating' ? (
@@ -263,19 +263,19 @@ export const Dashboard: React.FC = () => {
             </span>
             <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-cyan-500/15 bg-[#0b1021]">
+          <div className="border border-cyan-500/15 bg-raised">
             {recommendedProblems.length > 0 ? (
               recommendedProblems.map((problem: any) => {
                 const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
                 return (
                   <div
                     key={problem.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b border-white/6 hover:bg-[#111520] px-4 py-3 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-3 border-b border-white/6 hover:bg-elevated px-4 py-3 transition-colors"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="text-sm text-white font-medium truncate">{problem.name}</span>
                       <span
-                        className={`shrink-0 text-[10px] px-2 py-0.5 border whitespace-nowrap ${
+                        className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-sm whitespace-nowrap ${
                           diff === "EASY"
                             ? "border-[#00FF87]/30 text-[#00FF87]"
                             : diff === "MEDIUM"
@@ -286,13 +286,13 @@ export const Dashboard: React.FC = () => {
                         {diff}
                       </span>
                     </div>
-                    <span className="text-[#8892A4] text-xs shrink-0">→</span>
+                    <span className="text-subtle text-xs shrink-0">→</span>
                   </div>
                 );
               })
             ) : (
               <div className="px-5 py-4">
-                <span className="text-xs text-[#8892A4]">No recommended problems available</span>
+                <span className="text-xs text-subtle">No recommended problems available</span>
               </div>
             )}
           </div>
@@ -310,7 +310,7 @@ export const Dashboard: React.FC = () => {
             </span>
             <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-cyan-500/15 bg-[#0b1021]">
+          <div className="border border-cyan-500/15 bg-raised">
             {recentBattles.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px] font-mono min-w-[480px]">
@@ -403,7 +403,7 @@ export const Dashboard: React.FC = () => {
             <BarChart2 className="w-4 h-4 text-cyan-500/30" />
             <span
               id="analytics-heading"
-              className="text-[11px] text-[#8892A4] font-medium uppercase tracking-wide"
+              className="text-[11px] text-subtle font-medium uppercase tracking-wide"
             >
               Performance Analytics
             </span>
@@ -413,7 +413,7 @@ export const Dashboard: React.FC = () => {
             {analytics ? (
               <AnalyticsPanels analytics={analytics} compact={true} />
             ) : (
-              <div className="border border-cyan-500/15 bg-[#0b1021] p-8 text-center text-xs text-[#8892A4]">
+              <div className="border border-cyan-500/15 bg-raised p-8 text-center text-xs text-subtle">
                 Analytics data unavailable
               </div>
             )}
@@ -429,18 +429,18 @@ export const Dashboard: React.FC = () => {
           aria-label="Searching for opponent"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
         >
-          <div className="w-full max-w-md bg-[#0b1021] border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
+          <div className="w-full max-w-md bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
             <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.2em] font-bold">
               Finding opponent
             </span>
             <span
               className="text-5xl font-black font-mono text-cyan-400 tracking-wider tabular-nums"
-              style={{ filter: "drop-shadow(0 0 15px rgba(0,243,255,0.5))" }}
+              style={{ filter: "drop-shadow(0 0 15px rgba(0,212,255,0.5))" }}
             >
               {Math.floor(waitingTime / 60)}:
               {String(waitingTime % 60).padStart(2, "0")}
             </span>
-            <div className="flex items-center gap-2 text-xs text-[#8892A4]">
+            <div className="flex items-center gap-2 text-xs text-subtle">
               <span>Your rating:</span>
               <span className="text-white font-mono font-bold">{userRating}</span>
             </div>
@@ -463,11 +463,11 @@ export const Dashboard: React.FC = () => {
           aria-label="Match found"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
         >
-          <div className="w-full max-w-xl bg-[#0b1021] border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
+          <div className="w-full max-w-xl bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
 
             {/* VS Cards */}
             <div className="w-full grid grid-cols-5 items-center gap-3">
-              <div className="col-span-2 border border-cyan-500/15 bg-[#0b1021] p-4 flex flex-col items-center text-center min-w-0">
+              <div className="col-span-2 border border-cyan-500/15 bg-raised p-4 flex flex-col items-center text-center min-w-0">
                 <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
                   YOU
                 </span>
@@ -477,14 +477,14 @@ export const Dashboard: React.FC = () => {
                 >
                   {username}
                 </span>
-                <span className="text-xs text-[#8892A4] mt-1 font-mono">{userRating}</span>
+                <span className="text-xs text-subtle mt-1 font-mono">{userRating}</span>
               </div>
 
               <div className="col-span-1 flex items-center justify-center">
                 <span className="text-sm font-black text-rose-400 font-mono">VS</span>
               </div>
 
-              <div className="col-span-2 border border-cyan-500/15 bg-[#0b1021] p-4 flex flex-col items-center text-center min-w-0">
+              <div className="col-span-2 border border-cyan-500/15 bg-raised p-4 flex flex-col items-center text-center min-w-0">
                 <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
                   OPPONENT
                 </span>
@@ -494,18 +494,18 @@ export const Dashboard: React.FC = () => {
                 >
                   {pendingOpponent?.username || "Opponent"}
                 </span>
-                <span className="text-xs text-[#8892A4] mt-1 font-mono">1250</span>
+                <span className="text-xs text-subtle mt-1 font-mono">1250</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 text-sm font-bold text-white uppercase">
-              <Swords className="w-5 h-5 text-[#00D4FF]" />
+              <Swords className="w-5 h-5 text-accent" />
               Match Found
             </div>
 
             <button
               onClick={acceptMatch}
-              className="w-full py-4 border border-[#00FF87] bg-[#00FF87] text-[#050608] font-bold text-sm uppercase tracking-wide transition-all hover:opacity-85 flex items-center justify-center gap-2"
+              className="w-full py-4 border border-[#00FF87] bg-[#00FF87] text-ink font-bold text-sm uppercase tracking-wide transition-all hover:opacity-85 flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-5 h-5" />
               Accept
@@ -528,7 +528,7 @@ export const Dashboard: React.FC = () => {
                   style={{ width: `${(acceptTimer / 10) * 100}%` }}
                 />
               </div>
-              <p className="text-xs text-[#8892A4] font-mono">seconds remaining</p>
+              <p className="text-xs text-subtle font-mono">seconds remaining</p>
             </div>
           </div>
         </div>

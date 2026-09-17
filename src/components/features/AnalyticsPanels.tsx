@@ -34,7 +34,7 @@ const Card = ({
 
   return (
     <div
-      className={`bg-[#0b1021] border border-cyan-500/15 ${accentClass} p-5 ${className}`}
+      className={`bg-raised border border-cyan-500/15 ${accentClass} p-5 ${className}`}
     >
       {children}
     </div>
@@ -72,7 +72,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
   const max = Math.max(...days.map((d) => d.count), 1);
 
   const cellClass = (count: number) => {
-    if (count === 0) return "bg-white/[0.04] border-white/[0.04]";
+    if (count === 0) return "bg-elevated/40 border-cyan-500/5";
     const t = count / max;
     if (t < 0.25) return "bg-cyan-900/30 border-cyan-800/30";
     if (t < 0.5) return "bg-cyan-700/60 border-cyan-600/40";
@@ -113,7 +113,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
       </div>
       <div className="flex items-center gap-2 mt-3">
         <span className="text-[9px] text-slate-600 font-mono">Less</span>
-        {["bg-white/[0.04]", "bg-cyan-900/50", "bg-cyan-700/60", "bg-cyan-500/70", "bg-cyan-400/90"].map(
+        {["bg-elevated/40 border border-cyan-500/5", "bg-cyan-900/50", "bg-cyan-700/60", "bg-cyan-500/70", "bg-cyan-400/90"].map(
           (c, i) => (
             <div key={i} className={`w-2.5 h-2.5 rounded-[2px] ${c}`} />
           )
@@ -180,7 +180,7 @@ export const DifficultyBreakdown = memo(({
               </p>
             </div>
             {/* Vertical fill bar */}
-            <div className="h-24 bg-black/30 rounded-[2px] overflow-hidden flex flex-col justify-end">
+            <div className="h-28 bg-void rounded-[2px] overflow-hidden flex flex-col justify-end">
               <div
                 className={`${s.bar} w-full rounded-[2px] transition-all duration-700 opacity-80`}
                 style={{ height: `${s.pct}%` }}
@@ -234,7 +234,7 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
     <Card accent="none">
       <div className="flex items-start justify-between mb-4">
         <SectionLabel>Win Rate Trend</SectionLabel>
-        <span className="text-3xl font-black font-mono text-cyan-400" style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.4))' }}>{currentWR}%</span>
+        <span className="text-3xl font-black font-mono text-cyan-400" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.4))' }}>{currentWR}%</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20 overflow-visible">
         <defs>
@@ -320,7 +320,7 @@ export const LanguageBars = memo(({ data }: { data: LanguageUsage[] }) => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-sm shrink-0"
                     style={{ background: color }}
                   />
                   <span className="text-[11px] font-mono text-slate-300 capitalize">

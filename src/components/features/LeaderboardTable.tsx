@@ -23,7 +23,7 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
   };
 
   return (
-    <div className="bg-[#06080e] border border-white/10 p-5">
+    <div className="bg-raised border border-cyan-500/15 p-5">
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes rankRowReveal {
           from { opacity: 0; transform: translateY(6px); }
@@ -48,7 +48,7 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
           {data.map((entry, idx) => (
             <div
               key={entry.userId}
-              className="grid grid-cols-[2.5rem_2rem_1fr_6rem_5rem] items-center gap-3 px-3 py-2 bg-[#0b1021] border border-white/5 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-colors"
+              className="grid grid-cols-[2.5rem_2rem_1fr_6rem_5rem] items-center gap-3 px-3 py-2 bg-raised border border-white/5 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-colors"
               style={isFirstMount ? {
                 opacity: 0,
                 animation: `rankRowReveal 0.4s ease-out ${idx * 40}ms forwards`
@@ -57,14 +57,14 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
               <span className={`text-xs font-mono font-bold flex items-center gap-1 ${getRankColor(entry.rank)}`}>
                 {entry.rank <= 3 ? <Medal className="w-3.5 h-3.5" /> : null}#{entry.rank}
               </span>
-              <div className="w-7 h-7 rounded-full bg-[#131b35] border border-cyan-500/20 flex items-center justify-center text-[9px] font-mono font-bold text-cyan-400">
+              <div className="w-7 h-7 rounded-sm bg-elevated border border-cyan-500/15 flex items-center justify-center text-[9px] font-mono font-bold text-cyan-400">
                 {entry.username.slice(0, 2).toUpperCase()}
               </div>
               <span className="text-xs font-mono text-white truncate">{entry.username}</span>
               <span className={`text-[10px] font-mono font-bold ${TIER_COLORS[entry.tier] ?? "text-slate-400"}`}>
                 {entry.tier}
               </span>
-              <span className="text-xs font-mono font-bold text-cyan-400" style={{ filter: 'drop-shadow(0 0 6px rgba(0,243,255,0.4))' }}>
+              <span className="text-xs font-mono font-bold text-cyan-400" style={{ filter: 'drop-shadow(0 0 6px rgba(0,212,255,0.4))' }}>
                 {entry.rating}
               </span>
             </div>

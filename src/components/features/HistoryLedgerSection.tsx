@@ -16,21 +16,16 @@ export const HistoryLedgerSection: React.FC<HistoryLedgerSectionProps> = ({ hist
     : "text-emerald-400 border-emerald-500/30 bg-emerald-950/30";
 
   return (
-    <div className="relative w-full border border-emerald-500/20 bg-gradient-to-b from-emerald-950/10 via-slate-950/70 to-black font-mono shadow-xl shadow-emerald-950/5">
-      {/* L-bracket corners */}
-      <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-emerald-500" />
-      <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-emerald-500" />
-      <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-emerald-500" />
-      <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-emerald-500" />
+    <div className="relative w-full border border-cyan-500/15 bg-raised font-mono shadow-[0_0_30px_rgba(6,182,212,0.06)]">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between px-6 py-4.5 border-b border-white/10 bg-black/40">
+      <div className="flex items-center justify-between px-6 py-4.5 border-b border-cyan-500/10 bg-void">
         <h2 className="flex items-center gap-2 text-sm font-black text-white uppercase tracking-wider">
-          <BookOpen className="w-4 h-4 text-emerald-400" />
+          <BookOpen className="w-4 h-4 text-cyan-400" />
           Engagement History Ledger
-          <span className="text-xs text-emerald-400/80 font-normal tracking-widest">// RECENT BATTLES</span>
+          <span className="text-xs text-cyan-400/70 font-normal tracking-widest">// RECENT BATTLES</span>
         </h2>
-        <span className="text-xs text-slate-300 font-bold border border-emerald-500/30 bg-emerald-950/40 px-2.5 py-1 tracking-widest uppercase shadow-sm">
+        <span className="text-xs text-cyan-300 font-bold border border-cyan-500/30 bg-cyan-950/40 px-2.5 py-1 tracking-widest uppercase shadow-sm">
           {history.length} RECORDS LOGGED
         </span>
       </div>
@@ -46,11 +41,11 @@ export const HistoryLedgerSection: React.FC<HistoryLedgerSectionProps> = ({ hist
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5">
+              <tr className="border-b border-cyan-500/10 bg-void">
                 {["#", "PROBLEM NAME", "DIFFICULTY", "OUTCOME", "RUNTIME", "MEMORY", "SCORE", "ACTION"].map((h, i) => (
                   <th
                     key={i}
-                    className={`py-3.5 px-4 text-xs text-slate-300 font-bold tracking-[0.15em] uppercase text-left whitespace-nowrap ${
+                    className={`py-3.5 px-4 text-[10px] font-mono text-cyan-500/40 tracking-[0.2em] uppercase text-left whitespace-nowrap ${
                       i === 7 ? "text-right pr-6" : ""
                     }`}
                   >
@@ -140,7 +135,7 @@ export const HistoryLedgerSection: React.FC<HistoryLedgerSectionProps> = ({ hist
                               ];
                           setSelectedPerformances(perfs);
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-emerald-500/30 hover:border-emerald-400 bg-emerald-950/20 text-emerald-300 hover:text-white text-[10px] font-black tracking-widest uppercase transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-cyan-500/30 hover:border-cyan-400 bg-cyan-950/20 text-cyan-300 hover:text-white text-[10px] font-black tracking-widest uppercase transition-all shadow-sm"
                       >
                         <Code className="w-3 h-3" /> REVIEW CODE
                       </button>

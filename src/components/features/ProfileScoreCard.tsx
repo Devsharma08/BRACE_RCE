@@ -27,7 +27,7 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
   const xp = Math.min(100, Math.round(((score - prevThreshold) / (nextThreshold - prevThreshold)) * 100));
 
   return (
-    <div className="relative border border-cyan-500/20 bg-gradient-to-b from-cyan-950/20 via-slate-950/60 to-black flex flex-col h-full shadow-lg shadow-cyan-950/10">
+    <div className="relative border border-cyan-500/15 bg-raised flex flex-col h-full shadow-lg shadow-cyan-950/10">
       {/* L-bracket corners */}
       <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
       <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
@@ -40,7 +40,7 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
           <span className="flex items-center gap-1.5 text-[10px] text-cyan-400 font-bold tracking-[0.25em] uppercase">
             <Shield className="w-3.5 h-3.5" /> OPERATIVE DOSSIER
           </span>
-          <span className="text-[9px] border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 px-2 py-0.5 uppercase tracking-widest font-black shadow-sm">
+          <span className="text-[9px] font-mono font-black border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 px-2 py-0.5 uppercase tracking-[0.15em] shadow-sm">
             {rank}
           </span>
         </div>
@@ -77,7 +77,7 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
             <span className="text-cyan-400 font-bold">{xp}%</span>
           </div>
           <div className="h-1.5 bg-slate-900 border border-cyan-500/20 overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500 shadow-sm shadow-cyan-400/50" style={{ width: `${xp}%` }} />
+            <div className="h-full bg-cyan-400 transition-all duration-500 shadow-[0_0_8px_rgba(0,212,255,0.4)]" style={{ width: `${xp}%` }} />
           </div>
         </div>
 
