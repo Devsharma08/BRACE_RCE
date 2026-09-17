@@ -124,6 +124,7 @@ export const Root = () => {
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/battle/:roomId" element={<Battle />} />
                         <Route path="/rooms/create" element={<CreateRoom />} />
+                        <Route path="/create-room" element={<CreateRoom />} />
                         <Route path="/lobby" element={<Lobby />} />
                         <Route path="/problems" element={<Problems />} />
 

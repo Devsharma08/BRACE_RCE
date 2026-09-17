@@ -69,9 +69,17 @@ export function useMyRating(enabled = true) {
 }
 
 export const TIER_COLORS: Record<string, string> = {
-  Bronze: "text-amber-600",
-  Silver: "text-slate-300",
-  Gold: "text-amber-400",
-  Platinum: "text-cyan-300",
-  "Cyber-Master": "text-fuchsia-400",
+  Bronze: "text-accent-warning",
+  Silver: "text-subtle",
+  Gold: "text-accent-warning",
+  Platinum: "text-accent-primary",
+  "Cyber-Master": "text-accent-primary",
 };
+
+export function getDivision(rating: number): string {
+  if (rating >= 1800) return "Cyber-Master";
+  if (rating >= 1500) return "Platinum";
+  if (rating >= 1300) return "Gold";
+  if (rating >= 1100) return "Silver";
+  return "Bronze";
+}

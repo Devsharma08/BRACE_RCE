@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { useAuth } from "../context/AuthContext";
@@ -10,12 +10,10 @@ import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { api } from "../config/api";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
-import { LeaderboardTable } from "../components/features/LeaderboardTable";
-import { useMyRating } from "../hooks/useLeaderboard";
+import { getDivision, TIER_COLORS, useLeaderboard, useMyRating } from "../hooks/useLeaderboard";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 import {
   Swords,
-  TrendingUp,
   Trophy,
   Flame,
   Percent,
@@ -24,7 +22,20 @@ import {
   CheckCircle2,
   Activity,
   BarChart2,
+  Plus,
 } from "lucide-react";
+
+const formatRelativeTime = (value?: string | null) => {
+  if (!value) return "—";
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  return elapsedDays === 1 ? "Yesterday" : `${elapsedDays}d ago`;
+};
 
 export const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -37,7 +48,6 @@ export const Dashboard: React.FC = () => {
     waitingTime,
     pendingOpponent,
   } = useSocket();
-
   const navigate = useNavigate();
   const [acceptTimer, setAcceptTimer] = useState<number>(10);
 
@@ -111,6 +121,7 @@ export const Dashboard: React.FC = () => {
 
   const { data: analytics } = useAnalytics(Boolean(isAuthenticated || user));
   const { data: myRating } = useMyRating(Boolean(isAuthenticated || user));
+  const { data: leaderboardRows } = useLeaderboard(25, Boolean(isAuthenticated || user));
 
   const stats = dashboardData?.stats || null;
   const recentBattles: any[] = dashboardData?.recentBattles || [];
@@ -163,9 +174,15 @@ export const Dashboard: React.FC = () => {
 
   const username = user?.username || "OPERATIVE";
   const userRating = myRating?.rating ?? 1000;
+  const division = getDivision(userRating);
+  const globalRank = leaderboardRows?.find((row) => row.userId === user?.id)?.rank;
+  const matchesPlayed = stats?.totalMatches ?? myRating?.totalMatches ?? 0;
+  const winRate = stats ? Math.round(stats.winRate) : Math.round(myRating?.winRate ?? 0);
+  const winStreak = analytics?.summary?.currentStreak ?? 0;
+  const isQueued = matchmakingStatus === "SEARCHING";
 
   return (
-    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono">
+    <div className="flex min-h-screen bg-base text-fg font-mono">
 
       {/* Desktop sidebar */}
       <DashboardSidebar rating={myRating?.rating} />
@@ -186,108 +203,134 @@ export const Dashboard: React.FC = () => {
         {/* Dot-grid texture */}
         <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
 
-        {/* ── HEADER BAR ──────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-cyan-500/10">
-          <div className="min-w-0">
-            <h1
-              className="text-xl sm:text-2xl font-black text-white tracking-widest uppercase truncate font-mono"
-              style={{ fontFamily: "'Orbitron', sans-serif" }}
-            >
-              Dashboard
-            </h1>
-            <p className="text-xs text-slate-400 mt-1 font-mono">
-              Good {timeOfDay}, operative. System nominal.
-            </p>
-          </div>
-          <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-raised shrink-0">
-            <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
-            <span className="text-xs text-white font-mono font-bold max-w-[120px] truncate" title={username}>
-              {username}
-            </span>
-          </span>
-        </div>
-
-        {/* ── FIND OPPONENT ────────────────────────────────────────────── */}
-        <div className="mb-8 border border-cyan-500/20 border-t-2 border-t-cyan-400/50 bg-raised p-6 shadow-[0_0_30px_rgba(0,212,255,0.06)]">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* ── OPERATIVE BANNER ────────────────────────────────────────── */}
+        <div className="ds-card p-6 mb-6 flex flex-col lg:flex-row lg:items-center gap-6">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <img
+              src={user?.avatarUrl || dashboardData?.profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
+              alt=""
+              className="w-16 h-16 rounded-card border border-subtle-line object-cover"
+            />
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-white mb-1">Find Opponent</h2>
-              <p className="text-xs text-subtle">
-                Enter matchmaking queue for a ranked 1v1 battle
+              <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold">Operative profile</p>
+              <h1 className="text-2xl font-black text-fg tracking-widest uppercase truncate font-display">
+                {username}
+              </h1>
+              <p className="text-xs text-subtle mt-1">
+                Good {timeOfDay}. System nominal.
               </p>
             </div>
-            <button
-              onClick={() => findMatch()}
-              className="flex-shrink-0 bg-accent text-ink font-bold px-6 py-3 text-xs tracking-wider transition-all hover:bg-cyan-400 shadow-[0_0_16px_rgba(0,212,255,0.3)] uppercase whitespace-nowrap"
-            >
-              START MATCHMAKING
-            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-4 w-full lg:w-auto">
+            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+              <p className="text-[10px] text-muted uppercase tracking-widest">ELO</p>
+              <p className="text-xl font-black font-mono text-accent-primary tabular-nums">{userRating}</p>
+            </div>
+            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+              <p className="text-[10px] text-muted uppercase tracking-widest">Division</p>
+              <p className={`text-sm font-black font-mono mt-1 ${TIER_COLORS[division] ?? "text-fg"}`}>{division}</p>
+            </div>
+            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+              <p className="text-[10px] text-muted uppercase tracking-widest">Global rank</p>
+              <p className="text-xl font-black font-mono text-fg tabular-nums">{globalRank ? `#${globalRank}` : "—"}</p>
+            </div>
           </div>
         </div>
 
-        {/* ── STATS GRID ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        {/* ── KPI GRID ───────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {[
-            { icon: TrendingUp, label: "ELO Rating",  value: myRating?.rating ?? "—"             },
-            { icon: Trophy,     label: "Record",      value: stats ? `${stats.wins}W / ${stats.losses}L` : "—" },
-            { icon: Flame,      label: "Win Rate",    value: stats ? `${Math.round(stats.winRate)}%` : "—"    },
-            { icon: Percent,    label: "Submissions", value: analytics?.summary?.totalAttempts ?? "—" },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="border border-cyan-500/15 bg-raised p-4 sm:p-6 min-w-0">
-              <Icon className="w-5 h-5 text-cyan-500/40 mb-2" />
-              <div className="text-xl sm:text-2xl font-black font-mono truncate">
-                {label === 'ELO Rating' ? (
-                  <span className="text-cyan-400" style={{ filter: 'drop-shadow(0 0 6px rgba(0,212,255,0.4))' }}>{value}</span>
-                ) : label === 'Win Rate' ? (
-                  <span className="text-emerald-400">{value}</span>
-                ) : (
-                  <span className="text-white">{value}</span>
-                )}
-              </div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 whitespace-nowrap font-mono">
+            { icon: Trophy, label: "Matches Played", value: matchesPlayed, tone: "text-fg" },
+            { icon: Percent, label: "Win Rate %", value: `${winRate}%`, tone: "text-accent-success" },
+            { icon: Flame, label: "Current Win Streak", value: winStreak, tone: "text-accent-warning" },
+          ].map(({ icon: Icon, label, value, tone }) => (
+            <div key={label} className="ds-card p-4 sm:p-6 min-w-0">
+              <Icon className="w-5 h-5 text-accent-primary/40 mb-2" />
+              <div className={`text-xl sm:text-2xl font-black font-mono truncate tabular-nums ${tone}`}>{value}</div>
+              <div className="text-[10px] text-muted uppercase tracking-widest mt-1 whitespace-nowrap font-mono">
                 {label}
               </div>
             </div>
           ))}
         </div>
 
+        {/* ── ACTION HUB ─────────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          <div className={`ds-card p-6 ${isQueued ? "ds-pulse-ring" : ""}`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold mb-1">Ranked queue</p>
+                <h2 className="text-lg font-bold text-fg mb-1">Matchmaking</h2>
+                <p className="text-xs text-subtle">
+                  {isQueued ? "Searching for an opponent…" : "Enter ranked 1v1. Pulse ring arms when queued."}
+                </p>
+              </div>
+              {isQueued ? (
+                <button
+                  onClick={cancelMatch}
+                  className="ds-btn flex-shrink-0 border border-accent-danger/40 text-accent-danger font-bold px-6 py-3 text-xs tracking-wider uppercase whitespace-nowrap hover:bg-accent-danger/10"
+                >
+                  Cancel queue
+                </button>
+              ) : (
+                <button
+                  onClick={() => findMatch()}
+                  className="ds-btn flex-shrink-0 bg-accent-primary text-ink font-bold px-6 py-3 text-xs tracking-wider transition-all hover:opacity-90 uppercase whitespace-nowrap"
+                >
+                  START MATCHMAKING
+                </button>
+              )}
+            </div>
+          </div>
+          <Link to="/rooms/create" className="ds-card group p-6">
+            <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold mb-1">Custom room creator</p>
+            <h2 className="text-lg font-bold text-fg mb-1 flex items-center gap-2">
+              <Plus className="w-4 h-4 text-accent-primary" /> Problem & test generator
+            </h2>
+            <p className="text-xs text-subtle group-hover:text-fg transition-colors">
+              Build a private arena, seed a problem, and generate test cases.
+            </p>
+          </Link>
+        </div>
+
         {/* ── RECOMMENDED PROBLEMS ──────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="recommended-heading">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="mb-3 flex items-center gap-2">
             <Code2 className="w-4 h-4 text-cyan-500/30" />
             <span
               id="recommended-heading"
-              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
+              className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
             >
               Recommended Problems
             </span>
             <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-cyan-500/15 bg-raised">
+          <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
             {recommendedProblems.length > 0 ? (
               recommendedProblems.map((problem: any) => {
                 const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
                 return (
-                  <div
+                  <Link
                     key={problem.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b border-white/6 hover:bg-elevated px-4 py-3 transition-colors"
+                    to={`/battle/practice?oid=${problem.github_oid || problem.id}`}
+                    className="flex items-center justify-between gap-3 border-b border-subtle-line px-4 py-2.5 transition-colors last:border-b-0 hover:bg-surface-hover"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-sm text-white font-medium truncate">{problem.name}</span>
+                      <span className="truncate text-sm font-medium text-fg">{problem.name}</span>
                       <span
-                        className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-sm whitespace-nowrap ${
+                        className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-btn whitespace-nowrap ${
                           diff === "EASY"
-                            ? "border-[#00FF87]/30 text-[#00FF87]"
+                            ? "border-accent-success/30 text-accent-success"
                             : diff === "MEDIUM"
-                            ? "border-[#FFB800]/30 text-[#FFB800]"
-                            : "border-[#FF3B5C]/30 text-[#FF3B5C]"
+                            ? "border-accent-warning/30 text-accent-warning"
+                            : "border-accent-danger/30 text-accent-danger"
                         }`}
                       >
                         {diff}
                       </span>
                     </div>
-                    <span className="text-subtle text-xs shrink-0">→</span>
-                  </div>
+                    <span className="shrink-0 text-xs text-muted transition-colors group-hover:text-accent-primary">→</span>
+                  </Link>
                 );
               })
             ) : (
@@ -300,73 +343,48 @@ export const Dashboard: React.FC = () => {
 
         {/* ── RECENT BATTLES ────────────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="battles-heading">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="mb-3 flex items-center gap-2">
             <Activity className="w-4 h-4 text-cyan-500/30" />
             <span
               id="battles-heading"
-              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
+              className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
             >
               Recent Battles
             </span>
             <hr className="flex-1 border-cyan-500/10" />
           </div>
-          <div className="border border-cyan-500/15 bg-raised">
+          <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
             {recentBattles.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[11px] font-mono min-w-[480px]">
-                  <thead>
-                    <tr className="border-b border-cyan-500/10">
-                      {["Problem", "Opponent", "Result", "Score", "Date"].map(h => (
-                        <th
-                          key={h}
-                          scope="col"
-                          className="text-left p-3 font-mono text-[10px] tracking-widest uppercase"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="divide-y divide-subtle-line">
                     {recentBattles.slice(0, 5).map((perf: any, i: number) => {
                       const isWin =
                         perf.status === "PASSED" ||
                         perf.status === "WON" ||
                         perf.status === "COMPLETED";
-                      const opponents =
-                        perf.event?.performances?.filter(
-                          (p: any) => p.user?.id !== user?.id
-                        ) || [];
-                      const opponentName = opponents[0]?.user?.username || "—";
                       const problemName =
                         perf.event?.commonProblem?.name || "Unknown";
                       return (
-                        <tr
+                        <div
                           key={perf.id || i}
-                          className="border-b border-cyan-500/10 hover:bg-cyan-500/5 transition-colors"
+                          className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-hover"
                         >
-                          <td className="p-3 text-white max-w-[160px] truncate font-mono text-[11px]" title={problemName}>
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
                             {problemName}
-                          </td>
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">{opponentName}</td>
-                          <td
-                            className={`p-3 font-medium ${
-                              isWin ? "text-[#00FF87]" : "text-[#FF3B5C]"
+                          </span>
+                          <span
+                            className={`shrink-0 font-bold text-xs ${
+                              isWin ? "text-accent-success" : "text-accent-danger"
                             }`}
                           >
                             {isWin ? "WIN" : "LOSS"}
-                          </td>
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">{perf.score ?? 0}</td>
-                          <td className="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                            {perf.createdAt
-                              ? new Date(perf.createdAt).toLocaleDateString()
-                              : "—"}
-                          </td>
-                        </tr>
+                          </span>
+                          <span className="w-12 shrink-0 text-right font-mono text-[11px] text-subtle">{perf.score ?? 0}</span>
+                          <time className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-secondary" dateTime={perf.createdAt}>
+                            {formatRelativeTime(perf.createdAt)}
+                          </time>
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
               </div>
             ) : (
               <div className="p-8 flex flex-col items-center gap-3">
@@ -380,30 +398,13 @@ export const Dashboard: React.FC = () => {
           </div>
         </section>
 
-        {/* ── GLOBAL RANKINGS ───────────────────────────────────────────── */}
-        <section className="mb-8" aria-labelledby="rankings-heading">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-cyan-500/30" />
-            <span
-              id="rankings-heading"
-              className="text-[10px] text-cyan-500/50 font-mono font-bold uppercase tracking-[0.2em]"
-            >
-              Global Rankings
-            </span>
-            <hr className="flex-1 border-cyan-500/10" />
-          </div>
-          <AnalyticsErrorBoundary>
-            <LeaderboardTable limit={10} />
-          </AnalyticsErrorBoundary>
-        </section>
-
         {/* ── PERFORMANCE ANALYTICS ─────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="analytics-heading">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart2 className="w-4 h-4 text-cyan-500/30" />
+          <div className="mb-3 flex items-center gap-2">
+            <BarChart2 className="h-4 w-4 text-accent-primary/50" />
             <span
               id="analytics-heading"
-              className="text-[11px] text-subtle font-medium uppercase tracking-wide"
+              className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-muted"
             >
               Performance Analytics
             </span>
@@ -413,7 +414,7 @@ export const Dashboard: React.FC = () => {
             {analytics ? (
               <AnalyticsPanels analytics={analytics} compact={true} />
             ) : (
-              <div className="border border-cyan-500/15 bg-raised p-8 text-center text-xs text-subtle">
+              <div className="rounded-card border border-subtle-line bg-surface p-6 text-center text-xs text-muted">
                 Analytics data unavailable
               </div>
             )}
@@ -427,7 +428,7 @@ export const Dashboard: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="Searching for opponent"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
+          className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
           <div className="w-full max-w-md bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
             <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.2em] font-bold">
@@ -461,7 +462,7 @@ export const Dashboard: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label="Match found"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 select-none"
+          className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
           <div className="w-full max-w-xl bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
 
@@ -505,7 +506,7 @@ export const Dashboard: React.FC = () => {
 
             <button
               onClick={acceptMatch}
-              className="w-full py-4 border border-[#00FF87] bg-[#00FF87] text-ink font-bold text-sm uppercase tracking-wide transition-all hover:opacity-85 flex items-center justify-center gap-2"
+              className="w-full py-4 ds-btn border border-accent-success bg-accent-success text-ink font-bold text-sm uppercase tracking-wide transition-all hover:opacity-85 flex items-center justify-center gap-2"
             >
               <CheckCircle2 className="w-5 h-5" />
               Accept

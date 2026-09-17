@@ -4,7 +4,6 @@ import {
   Swords,
   Code2,
   User,
-  Zap,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getDivision } from "../../hooks/useLeaderboard";
 
 interface DashboardSidebarProps {
   rating?: number;
@@ -19,25 +19,17 @@ interface DashboardSidebarProps {
 
 const NAV_LINKS = [
   { icon: LayoutDashboard, to: "/dashboard", label: "Dashboard" },
-  { icon: Swords,          to: "/lobby",     label: "Battle"    },
-  { icon: Code2,           to: "/problems",  label: "Problems"  },
-  { icon: User,            to: "/profile",   label: "Profile"   },
-  { icon: UserPlus,        to: "/friends",   label: "Friends"   },
+  { icon: Swords, to: "/lobby", label: "Battle" },
+  { icon: Code2, to: "/problems", label: "Problems" },
+  { icon: User, to: "/profile", label: "Profile" },
+  { icon: UserPlus, to: "/friends", label: "Friends" },
 ] as const;
-
-const getTier = (rating: number): string => {
-  if (rating >= 1800) return "Cyber-Master";
-  if (rating >= 1500) return "Platinum";
-  if (rating >= 1300) return "Gold";
-  if (rating >= 1100) return "Silver";
-  return "Bronze";
-};
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const displayName = (user?.username || "DEV").toUpperCase();
-  const tier = getTier(rating ?? 1000);
+  const tier = getDivision(rating ?? 1000);
   const sidebarWidth = collapsed ? "w-[60px]" : "w-[245px]";
 
   return (
@@ -64,27 +56,26 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
           }`}
         >
           {collapsed ? (
-            <div className="w-8 h-8 border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.2)]">
-              <Zap className="w-4 h-4 fill-cyan-400" />
+            <div className="flex h-8 w-8 items-center justify-center border border-accent-primary/40 bg-accent-primary/10 text-accent-primary shadow-glow-accent">
+              <User className="h-4 w-4" />
             </div>
           ) : (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 shrink-0 border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center text-cyan-400 shadow-[0_0_12px_rgba(0,212,255,0.2)]">
-                <Zap className="w-4 h-4 fill-cyan-400" />
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-btn border border-accent-primary/40 bg-accent-primary/10 text-accent-primary shadow-glow-accent">
+                <User className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h1
-                  className="text-sm font-black tracking-widest text-white flex items-center gap-1 whitespace-nowrap"
-                  style={{ fontFamily: "'Orbitron', sans-serif" }}
-                >
-                  <span>BRACE</span>
-                  <span className="text-cyan-500/40 mx-1">//</span>
-                   <span className="text-cyan-400">RCE</span>
-                </h1>
-                <p className="text-[10px] text-cyan-500/30 tracking-wider uppercase whitespace-nowrap">
-                  CYBER ARENA v2.0
-                </p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-label">Operative profile</p>
+                <h1 className="truncate text-sm font-black uppercase tracking-widest text-fg">{displayName}</h1>
+                <div className="mt-0.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                  <span className="text-accent-warning">{tier}</span>
+                  <span className="text-muted">·</span>
+                  <span className="text-accent-primary">
+                    <span>{typeof rating === "number" ? rating.toLocaleString() : "—"}</span> ELO
+                  </span>
+                </div>
               </div>
+              <span className="sr-only">BRACE <span>//</span> <span>RCE</span> <span>CYBER ARENA v2.0</span></span>
             </div>
           )}
 
@@ -103,34 +94,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             }
           </button>
         </div>
-
-        {/* ── PROFILE CARD ────────────────────────────────────────────── */}
-        {!collapsed && (
-          <div className="mx-3 border border-cyan-500/15 bg-raised p-3 shadow-[0_0_12px_rgba(0,212,255,0.08)]">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] font-bold text-cyan-400/60 uppercase tracking-widest">
-                Operative
-              </span>
-              <span className="text-[8px] font-bold text-cyan-400 border border-cyan-500/25 px-1.5 py-0.5">
-                {tier}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-1 text-center">
-              <div>
-                <div className="text-[10px] font-black text-cyan-400">--</div>
-                <div className="text-[8px] text-slate-500 uppercase">Win Rate</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-black text-cyan-400">--</div>
-                <div className="text-[8px] text-slate-500 uppercase">Duels</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-black text-cyan-400">--</div>
-                <div className="text-[8px] text-slate-500 uppercase">Exec ms</div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── NAVIGATION LINKS ────────────────────────────────────────── */}
         <nav
@@ -204,33 +167,15 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             </button>
           </>
         ) : (
-          <div className="border border-cyan-500/15 bg-raised p-3 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2 min-w-0">
-              <span
-                className="text-xs font-mono font-bold text-white tracking-wide truncate"
-                title={displayName}
-              >
-                {displayName}
-              </span>
-              <button
-                onClick={logout}
-                aria-label="Sign out"
-                title="Sign out"
-                className="shrink-0 p-1 text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/40 transition-all cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-400 border-t border-cyan-500/10 pt-1.5">
-              <span>Rating:</span>
-              <span
-                className="font-black font-mono text-sm text-cyan-400"
-                style={{ filter: "drop-shadow(0 0 5px rgba(0,212,255,0.35))" }}
-              >
-                {typeof rating === "number" ? rating.toLocaleString() : "—"}
-              </span>
-            </div>
-          </div>
+          <button
+            onClick={logout}
+            aria-label="Sign out"
+            title="Sign out"
+            className="flex w-full items-center justify-center gap-2 border border-accent-danger/20 bg-accent-danger/5 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-accent-danger transition-all hover:border-accent-danger/40 hover:bg-accent-danger/10"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign out
+          </button>
         )}
       </div>
     </aside>

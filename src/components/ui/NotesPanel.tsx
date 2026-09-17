@@ -83,12 +83,12 @@ export const NotesPanel = ({
   };
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 z-[100] w-80 flex flex-col font-mono border-l border-cyan-500/30 bg-raised/96 backdrop-blur">
+    <div className="ds-drawer fixed right-0 top-[var(--header-height)] bottom-0 z-[100] flex w-[min(22rem,100vw)] flex-col border-l border-subtle-line bg-surface/95 font-mono shadow-card">
       <div className="w-full h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#090e1d] border-b border-cyan-500/15 select-none shrink-0">
-          <div className="flex items-center gap-2 text-cyan-400/70">
-            <StickyNote className="w-4 h-4 text-amber-400" />
+        <div className="flex shrink-0 select-none items-center justify-between border-b border-subtle-line bg-base px-4 py-3">
+          <div className="flex items-center gap-2 text-label">
+            <StickyNote className="h-4 w-4 text-accent-warning" />
             <span className="font-mono text-xs font-bold tracking-widest uppercase">
               {hasMultipleProblems ? "BATTLE NOTES" : "SCRATCHPAD"}
             </span>
@@ -96,7 +96,7 @@ export const NotesPanel = ({
           <button
             onClick={handleClose}
             title="Close Notes"
-            className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-white/5 cursor-pointer"
+            className="cursor-pointer rounded-btn p-1 text-subtle transition-colors hover:bg-surface-hover hover:text-fg"
           >
             <X className="w-4 h-4" />
           </button>
@@ -104,13 +104,13 @@ export const NotesPanel = ({
 
         {/* Tabs */}
         {hasMultipleProblems && (
-          <div className="flex border-b border-cyan-500/20 overflow-x-auto scrollbar-hide shrink-0 bg-black/30">
+          <div className="flex shrink-0 overflow-x-auto border-b border-subtle-line bg-base/70 scrollbar-hide">
             <button
               onClick={() => setActiveTab("COMMON")}
-              className={`px-3 py-2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap flex items-center gap-1.5 transition-all border-r border-cyan-500/10 ${
+              className={`flex items-center gap-1.5 whitespace-nowrap border-r border-subtle-line px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all ${
                 activeTab === "COMMON"
-                  ? "bg-cyan-500/20 text-cyan-300 border-b-2 border-b-cyan-400"
-                  : "text-slate-500 hover:text-cyan-400/70"
+                  ? "border-b-2 border-b-accent-primary bg-accent-primary/10 text-accent-primary"
+                  : "text-subtle hover:text-accent-primary"
               }`}
             >
               <BookOpen className="w-3 h-3" /> COMMON
@@ -119,10 +119,10 @@ export const NotesPanel = ({
               <button
                 key={p.id}
                 onClick={() => setActiveTab(p.id)}
-                className={`px-3 py-2 text-[10px] font-bold tracking-widest uppercase whitespace-nowrap transition-all border-r border-cyan-500/10 ${
+                className={`whitespace-nowrap border-r border-subtle-line px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all ${
                   activeTab === p.id
-                    ? "bg-cyan-500/20 text-cyan-300 border-b-2 border-b-cyan-400"
-                    : "text-slate-500 hover:text-cyan-400/70"
+                    ? "border-b-2 border-b-accent-primary bg-accent-primary/10 text-accent-primary"
+                    : "text-subtle hover:text-accent-primary"
                 }`}
                 title={p.name}
               >
@@ -133,8 +133,8 @@ export const NotesPanel = ({
         )}
 
         {hasMultipleProblems && (
-          <div className="px-4 py-1.5 bg-black/20 border-b border-cyan-500/10 shrink-0">
-            <p className="text-[9px] text-cyan-500/60 tracking-widest uppercase truncate">
+          <div className="shrink-0 border-b border-subtle-line bg-base/50 px-4 py-1.5">
+            <p className="truncate text-[9px] uppercase tracking-widest text-label">
               {activeTab === "COMMON"
                 ? "Shared across all problems"
                 : `→ ${problems!.find((p) => p.id === activeTab)?.name || "Problem"}`}
@@ -148,14 +148,15 @@ export const NotesPanel = ({
           value={currentNote}
           onChange={handleNotesChange}
           placeholder={getPlaceholder()}
-          className="flex-1 min-h-0 w-full bg-void text-cyan-200 text-xs font-mono p-4 resize-none focus:outline-none focus:border-cyan-400 border border-cyan-500/15 rounded-none placeholder:text-slate-500 custom-scrollbar leading-relaxed"
+          aria-label={hasMultipleProblems ? "Battle notes" : "Scratchpad notes"}
+          className="min-h-0 w-full flex-1 resize-none rounded-none border border-subtle-line bg-void p-4 font-mono text-xs leading-relaxed text-accent-primary focus:border-accent-primary focus:outline-none placeholder:text-muted custom-scrollbar"
           spellCheck={false}
           autoFocus
         />
 
         {/* Footer */}
-        <div className="px-4 py-2 bg-black/20 border-t border-cyan-500/10 shrink-0">
-          <p className="text-[9px] text-slate-600 tracking-widest">
+        <div className="shrink-0 border-t border-subtle-line bg-base/50 px-4 py-2">
+          <p className="text-[9px] tracking-widest text-muted">
             AUTO-SAVED · CLEARED AFTER MATCH ENDS
           </p>
         </div>

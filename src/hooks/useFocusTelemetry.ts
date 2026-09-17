@@ -10,9 +10,11 @@ export interface FocusTelemetryEvent {
   atMs: number;
 }
 
-export function useFocusTelemetry(active: boolean) {
+export function useFocusTelemetry(active: boolean, onLoss?: () => void) {
   const eventsRef = useRef<FocusTelemetryEvent[]>([]);
   const startRef = useRef<number>(Date.now());
+  const onLossRef = useRef(onLoss);
+  onLossRef.current = onLoss;
 
   useEffect(() => {
     if (!active) return;
@@ -21,13 +23,16 @@ export function useFocusTelemetry(active: boolean) {
 
     const onBlur = () => {
       eventsRef.current.push({ type: "blur", atMs: Date.now() });
+      onLossRef.current?.();
     };
     const onFocus = () => {
       eventsRef.current.push({ type: "focus", atMs: Date.now() });
     };
     const onVisibility = () => {
-      if (document.hidden) eventsRef.current.push({ type: "tab_hidden", atMs: Date.now() });
-      else eventsRef.current.push({ type: "focus", atMs: Date.now() });
+      if (document.hidden) {
+        eventsRef.current.push({ type: "tab_hidden", atMs: Date.now() });
+        onLossRef.current?.();
+      } else eventsRef.current.push({ type: "focus", atMs: Date.now() });
     };
 
     window.addEventListener("blur", onBlur);

@@ -25,10 +25,10 @@ type OutputPanelProps = {
 };
 
 const getTabClassName = (isActive: boolean) =>
-  `cursor-pointer rounded-none border-b-2 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 cursor-pointer ${
+  `cursor-pointer border-b-2 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 ${
     isActive
-      ? "border-b-cyan-400 text-cyan-400 bg-cyan-950/10"
-      : "border-b-transparent text-slate-500 hover:text-slate-300"
+      ? "border-b-accent-primary bg-accent-primary/10 text-accent-primary"
+      : "border-b-transparent text-subtle hover:text-fg"
   }`;
 
 const OutputPanel = ({
@@ -89,15 +89,15 @@ const OutputPanel = ({
   const [activeDiagTab, setActiveDiagTab] = useState<"LOGS" | "TESTS" | "METRICS">("LOGS");
 
   return (
-    <div className="flex flex-col h-full bg-[#070b16] border-t border-cyan-500/20">
+    <div className="flex h-full flex-col border-t border-subtle-line bg-terminal-bg">
       {/* Resizer handle */}
       <div
         onMouseDown={onResizeStart}
-        className="h-1 cursor-row-resize border-t border-cyan-500/20 hover:border-cyan-400 hover:bg-cyan-400/10 transition-all"
+        className="h-1 cursor-row-resize border-t border-subtle-line transition-all hover:border-accent-primary hover:bg-accent-primary/10"
       />
 
       {/* Diagnostic tabs */}
-      <div className="flex items-center gap-0 border-b border-cyan-500/20 bg-black/20 px-2">
+      <div className="flex items-center gap-0 border-b border-subtle-line bg-base/50 px-2">
         <button className={getTabClassName(activeDiagTab === "LOGS")} onClick={() => setActiveDiagTab("LOGS")}>
           Output Logs
         </button>
@@ -120,13 +120,13 @@ const OutputPanel = ({
 
         {!isExecuting && activeDiagTab === "METRICS" && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="border border-cyan-500/20 bg-[#070b16] p-4">
+            <div className="border border-subtle-line bg-surface p-4">
               <div className="text-[10px] text-subtle uppercase tracking-widest mb-1">Time</div>
-              <div className="text-lg font-mono font-bold text-white">{avgDuration.toFixed(0)}ms</div>
+              <div className="text-lg font-mono font-bold text-fg">{avgDuration.toFixed(0)}ms</div>
             </div>
-            <div className="border border-cyan-500/20 bg-[#070b16] p-4">
+            <div className="border border-subtle-line bg-surface p-4">
               <div className="text-[10px] text-subtle uppercase tracking-widest mb-1">Memory</div>
-              <div className="text-lg font-mono font-bold text-white">{(maxMemory / 1024).toFixed(1)}MB</div>
+              <div className="text-lg font-mono font-bold text-fg">{(maxMemory / 1024).toFixed(1)}MB</div>
             </div>
           </div>
         )}

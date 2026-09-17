@@ -100,7 +100,7 @@ const Profile = () => {
   if (loading) return <PageSkeleton />;
 
   return (
-    <div className="flex min-h-screen bg-[#050608] text-slate-100 font-mono">
+    <div className="flex min-h-screen bg-base text-fg font-mono">
 
       {/* Desktop sidebar */}
       <DashboardSidebar rating={myRating?.rating} />
@@ -113,17 +113,17 @@ const Profile = () => {
         className="
           flex-1 min-w-0 w-full
           ml-0 md:ml-[60px] lg:ml-[245px]
-          pt-20 px-4 py-6 md:px-8 md:py-8
+          pt-14 px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
         "
       >
         {/* Dot-grid texture */}
         <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
 
-        <div className="max-w-5xl mx-auto flex flex-col gap-6 relative z-10">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 relative z-10">
 
           {/* ── HEADER / BACK NAVIGATION ──────────────────────────────── */}
-          <div className="flex items-center justify-between border-b border-white/6 pb-5">
+          <div className="flex items-center justify-between border-b border-subtle-line pb-4">
             <Link
               to="/"
               className="flex items-center gap-2 text-subtle hover:text-accent text-xs transition-colors"
@@ -131,13 +131,13 @@ const Profile = () => {
               <ChevronLeft className="w-4 h-4" />
               Home
             </Link>
-            <div className="border border-white/8 bg-raised px-3 py-1.5 text-subtle text-xs font-medium uppercase tracking-wider">
+            <div className="rounded-btn border border-subtle-line bg-surface px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-subtle">
               Profile
             </div>
           </div>
 
           {/* ── IDENTITY CARD ───────────────────────────────────────────── */}
-          <div className="border border-cyan-500/15 border-t-2 border-t-accent/40 bg-raised p-5 sm:p-6">
+          <div className="ds-card border-t-2 border-t-accent-primary/50 p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-start gap-4">
               {/* Avatar */}
               <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -145,7 +145,7 @@ const Profile = () => {
                   <span className="text-lg font-mono text-accent">
                     {(profile?.username || "?").slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#00FF87] border-2 border-[#0c0f18] animate-pulse rounded-full" />
+                  <span className="absolute bottom-0 right-0 h-3 w-3 animate-pulse rounded-full border-2 border-surface bg-accent-success" />
                 </div>
 
                 {/* Info */}
@@ -169,10 +169,10 @@ const Profile = () => {
                       { label: "Score",    value: stats?.totalScore ?? 0    },
                     ].map(({ label, value }) => (
                       <div key={label} className="text-center">
-                        <div className="text-base font-black font-mono text-cyan-400">
+                        <div className="text-base font-black font-mono text-accent-primary">
                           {value}
                         </div>
-                        <div className="text-[9px] text-[#4A5568] uppercase tracking-widest">
+                        <div className="text-[9px] uppercase tracking-widest text-muted">
                           {label}
                         </div>
                       </div>
@@ -184,7 +184,7 @@ const Profile = () => {
               {/* Logout */}
               <button
                 onClick={logout}
-                className="flex items-center gap-2 px-3 py-2 border border-[#FF3B5C]/25 text-[#FF3B5C] hover:bg-[#FF3B5C]/8 text-xs font-medium transition-all self-start sm:self-auto shrink-0"
+                className="flex shrink-0 items-center gap-2 rounded-btn border border-accent-danger/30 px-3 py-2 text-xs font-medium text-accent-danger transition-all hover:bg-accent-danger/10 self-start sm:self-auto"
                 aria-label="Sign out of account"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -194,7 +194,7 @@ const Profile = () => {
           </div>
 
           {/* ── STATS METRICS ────────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
               { label: "Battles",   value: stats?.totalMatches ?? 0,   icon: Shield    },
               { label: "Wins",      value: stats?.wins ?? 0,           icon: Trophy    },
@@ -209,9 +209,9 @@ const Profile = () => {
                 icon: Clock,
               },
             ].map(({ label, value, icon: Icon }) => (
-              <div key={label} className="bg-raised p-4 flex flex-col gap-1">
-                <Icon className="w-3.5 h-3.5 text-[#4A5568]" />
-                <span className="text-base font-extrabold text-white font-mono">{value}</span>
+              <div key={label} className="ds-card flex flex-col gap-1 p-4">
+                <Icon className="h-3.5 w-3.5 text-muted" />
+                <span className="text-base font-extrabold font-mono text-fg">{value}</span>
                 <span className="text-[9px] text-subtle uppercase tracking-wider">{label}</span>
               </div>
             ))}
@@ -219,18 +219,18 @@ const Profile = () => {
 
           {/* ── BATTLE LEDGER ────────────────────────────────────────────── */}
           <section aria-labelledby="history-heading">
-            <div className="flex items-center gap-2 mb-4">
-              <Activity className="w-4 h-4 text-cyan-500/40" />
+            <div className="mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-accent-primary/50" />
               <span
                 id="history-heading"
-                className="text-[11px] text-subtle font-mono font-bold uppercase tracking-widest"
+                className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
               >
                 Battle history
               </span>
               <hr className="flex-1 border-white/6" />
             </div>
 
-            <div className="border border-cyan-500/15 border-t-2 border-t-accent/40 bg-raised">
+            <div className="overflow-hidden rounded-card border border-subtle-line border-t-2 border-t-accent-primary/50 bg-surface">
               {history.length > 0 ? (
                 <div className="flex flex-col">
                   {history.map(record => {
@@ -238,23 +238,23 @@ const Profile = () => {
                     return (
                       <div
                         key={record.id}
-                        className={`flex flex-wrap items-center justify-between gap-3 border-b border-white/5 hover:bg-elevated px-4 py-3 transition-colors ${
-                          isWin ? "bg-[#00FF87]/[0.015]" : "bg-[#FF3B5C]/[0.015]"
+                        className={`flex flex-wrap items-center justify-between gap-3 border-b border-subtle-line px-4 py-3 transition-colors hover:bg-surface-hover ${
+                          isWin ? "bg-accent-success/5" : "bg-accent-danger/5"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-[3px] h-8 shrink-0 ${
-                              isWin ? "bg-[#00FF87]" : "bg-[#FF3B5C]"
+                              <div
+                            className={`h-8 w-1 shrink-0 rounded-full ${
+                              isWin ? "bg-accent-success" : "bg-accent-danger"
                             }`}
                           />
                           <div className="min-w-0">
-                            <p className="text-sm text-white font-medium truncate">
+                            <p className="truncate text-sm font-medium text-fg">
                               {record.event?.commonProblem?.name ||
                                 record.problem?.name ||
                                 "Unknown Problem"}
                             </p>
-                            <p className="text-[10px] text-subtle font-mono mt-0.5">
+                            <p className="mt-0.5 text-[10px] font-mono text-subtle">
                               {new Date(record.createdAt).toLocaleDateString()} •{" "}
                               {record.status}
                             </p>
@@ -263,7 +263,7 @@ const Profile = () => {
                         <div className="flex items-center gap-3 shrink-0">
                           <span
                             className={`text-xs font-bold ${
-                              isWin ? "text-[#00FF87]" : "text-[#FF3B5C]"
+                              isWin ? "text-accent-success" : "text-accent-danger"
                             }`}
                           >
                             {isWin ? "VICTORY" : "DEFEAT"}
@@ -277,7 +277,7 @@ const Profile = () => {
                                   [];
                                 setSelectedPerformances(perfsToPass);
                               }}
-                              className="px-3 py-1.5 border border-white/10 text-subtle hover:border-accent hover:text-accent text-xs font-medium transition-all"
+                              className="rounded-btn border border-subtle-line px-3 py-1.5 text-xs font-medium text-subtle transition-all hover:border-accent-primary hover:text-accent-primary"
                               aria-label="Review code from this match"
                             >
                               <Code className="w-3 h-3 inline mr-1" />
@@ -290,10 +290,10 @@ const Profile = () => {
                   })}
                 </div>
               ) : (
-                <div className="p-10 flex flex-col items-center gap-3">
-                  <Shield className="w-10 h-10 text-[#3D4657]" />
+                <div className="flex flex-col items-center gap-3 p-10">
+                  <Shield className="h-10 w-10 text-muted" />
                   <p className="text-sm text-subtle">No match history yet</p>
-                  <p className="text-xs text-[#4A5568]">
+                  <p className="text-xs text-muted">
                     Complete a battle to start building your record
                   </p>
                   <Link
@@ -310,11 +310,11 @@ const Profile = () => {
           {/* ── ANALYTICS ─────────────────────────────────────────────────── */}
           {analytics && (
             <section aria-labelledby="analytics-heading">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart2 className="w-4 h-4 text-cyan-500/40" />
+              <div className="mb-3 flex items-center gap-2">
+                <BarChart2 className="h-4 w-4 text-accent-primary/50" />
                 <span
                   id="analytics-heading"
-                  className="text-[11px] text-subtle font-mono font-bold uppercase tracking-widest"
+                  className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
                 >
                   Analytics
                 </span>
@@ -322,7 +322,7 @@ const Profile = () => {
               </div>
 
               {/* Summary stat cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-white/5 mb-6">
+              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {[
                   { label: "SOLVED",   value: analytics.summary.totalSolved    },
                   { label: "BATTLES",  value: analytics.summary.totalMatches   },
@@ -339,12 +339,12 @@ const Profile = () => {
                 ].map(stat => (
                   <div
                     key={stat.label}
-                    className="bg-raised border border-cyan-500/10 p-3 flex flex-col gap-1"
+                    className="ds-card flex flex-col gap-1 p-3"
                   >
-                    <span className="text-[9px] text-[#4A5568] uppercase tracking-wider">
+                    <span className="text-[9px] uppercase tracking-wider text-muted">
                       {stat.label}
                     </span>
-                    <span className="text-base font-extrabold text-white font-mono">
+                    <span className="text-base font-extrabold font-mono text-fg">
                       {stat.value}
                     </span>
                   </div>

@@ -47,9 +47,9 @@ export const SpectatorReplayPanel = memo(({
   };
 
   return (
-    <div className="bg-raised border border-white/10 p-4">
-      <p className="text-[10px] font-mono font-bold uppercase tracking-[0.15em] text-slate-500 mb-3 flex items-center gap-2">
-        <Eye className="w-3.5 h-3.5 text-purple-400" />
+    <div className="rounded-card border border-subtle-line bg-surface p-4">
+      <p className="mb-3 flex items-center gap-2 text-[10px] font-mono font-bold uppercase tracking-[0.15em] text-secondary">
+        <Eye className="h-3.5 w-3.5 text-accent-primary" />
         {isSpectator ? `SPECTATING // ${roomId}` : "REPLAY THEATER // SUBMISSION TIMELINE"}
       </p>
 
@@ -59,7 +59,7 @@ export const SpectatorReplayPanel = memo(({
             <button
               key={p.userId || p.user?.id}
               onClick={() => onWatch(p.userId || p.user?.id)}
-              className="text-[10px] font-mono px-2 py-1 border border-purple-500/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
+              className="rounded-btn border border-accent-primary/30 px-2 py-1 text-[10px] font-mono text-accent-primary transition-colors hover:bg-accent-primary/10"
             >
               WATCH {p.user?.username || "PLAYER"}
             </button>
@@ -68,7 +68,7 @@ export const SpectatorReplayPanel = memo(({
       )}
 
       {timeline.length === 0 ? (
-        <p className="text-[10px] text-slate-600 font-mono">NO SUBMISSION EVENTS YET.</p>
+        <p className="text-[10px] font-mono text-muted">NO SUBMISSION EVENTS YET.</p>
       ) : (
         <div className="flex flex-col gap-1 max-h-40 overflow-auto">
           {timeline.map((t: any, i: number) => (
@@ -76,7 +76,7 @@ export const SpectatorReplayPanel = memo(({
               key={i}
               onClick={() => setReplayIdx(i)}
               className={`text-left text-[10px] font-mono px-2 py-1 border transition-colors ${
-                i === replayIdx ? "border-cyan-500/60 bg-cyan-950/30 text-cyan-200" : "border-white/5 text-slate-400 hover:border-white/20"
+                i === replayIdx ? "border-accent-primary/60 bg-accent-primary/10 text-accent-primary" : "border-subtle-line text-subtle hover:border-border-hi"
               }`}
             >
               #{i + 1} {t.user} — {t.status} ({t.passed})
@@ -85,12 +85,12 @@ export const SpectatorReplayPanel = memo(({
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
-        <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-        <button onClick={sendFocusReport} className="text-[10px] font-mono text-amber-300 flex items-center gap-1 hover:text-amber-200">
+      <div className="mt-3 flex items-center gap-2 border-t border-subtle-line pt-3">
+        <ShieldAlert className="h-3.5 w-3.5 text-accent-warning" />
+        <button onClick={sendFocusReport} className="flex items-center gap-1 text-[10px] font-mono text-accent-warning hover:text-fg">
           <Send className="w-3 h-3" /> SUBMIT FOCUS-LOSS REPORT
         </button>
-        {report && <span className="text-[10px] font-mono text-slate-400">{report}</span>}
+        {report && <span className="text-[10px] font-mono text-subtle">{report}</span>}
       </div>
     </div>
   );

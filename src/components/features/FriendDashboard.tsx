@@ -6,15 +6,11 @@ import {
   Send,
   UserPlus,
   Search,
-  Users,
-  Bell,
   Check,
   Trash2,
   X,
   Ban,
   MessageSquare,
-  RefreshCw,
-  Wifi,
   ChevronLeft,
   User,
   Shield,
@@ -27,6 +23,7 @@ import { ChallengeModal } from "./ChallengeModal";
 import DashboardSidebar from "../layout/DashboardSidebar";
 import MobileBottomNav from "../layout/MobileBottomNav";
 import { useMyRating } from "../../hooks/useLeaderboard";
+import { FriendsWorkspaceHeader } from "./FriendsWorkspaceHeader";
 
 interface Friend {
   id: string;
@@ -48,8 +45,6 @@ interface FriendRequest {
   sender: Friend;
 }
 
-type LeftNavTab = "INBOX" | "TEAMS" | "GROUPS" | "SETTINGS";
-
 export default function FriendsDashboard() {
   const { sendDirectMessage, socket, requestPresence } = useSocket();
   const queryClient = useQueryClient();
@@ -58,8 +53,6 @@ export default function FriendsDashboard() {
   const [newMessage, setNewMessage] = useState("");
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const [leftNavTab, setLeftNavTab] = useState<LeftNavTab>("INBOX");
-  const [leftPaneMode, setLeftPaneMode] = useState<"FRIENDS" | "SEARCH" | "REQUESTS" | "BLOCK">("FRIENDS");
   const [challengeFriend, setChallengeFriend] = useState<Friend | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
@@ -256,16 +249,8 @@ export default function FriendsDashboard() {
 
   const { data: myRating } = useMyRating(true);
 
-  // ── LEFT NAV ITEMS ──
-  const leftNavItems: { id: LeftNavTab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: "INBOX", label: "Inbox", icon: MessageSquare, count: friends.length },
-    { id: "TEAMS", label: "Teams", icon: Users, count: 0 },
-    { id: "GROUPS", label: "Groups", icon: Shield, count: 0 },
-    { id: "SETTINGS", label: "Settings", icon: User, count: 0 },
-  ];
-
   return (
-    <div className="flex min-h-screen bg-void text-slate-100 font-mono">
+    <div className="flex min-h-screen bg-base text-fg font-mono">
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* GLOBAL DASHBOARD SIDEBAR */}
       <DashboardSidebar rating={myRating?.rating} />
@@ -276,46 +261,23 @@ export default function FriendsDashboard() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex-1 ml-0 md:ml-[60px] lg:ml-[245px] flex h-[calc(100vh-3.5rem)] pb-14 md:pb-0 overflow-hidden pt-14">
+      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-14 pt-[var(--header-height)] md:ml-[60px] md:pb-0 lg:ml-[245px]">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
         <aside
-          className={`w-full md:w-64 border-r border-white/6 bg-panel flex flex-col shrink-0 min-w-0 ${
+          className={`flex w-full shrink-0 min-w-0 flex-col border-r border-subtle-line bg-panel md:w-64 ${
             activeTab ? "hidden md:flex" : "flex"
           }`}
         >
-          {/* Nav Tabs */}
-          <div className="flex border-b border-white/6">
-            {leftNavItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setLeftNavTab(item.id)}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 text-[9px] uppercase tracking-widest transition-all ${
-                  leftNavTab === item.id
-                    ? "text-cyan-400 border-b-2 border-cyan-400"
-                    : "text-subtle hover:text-white border-b-2 border-transparent"
-                }`}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-                {item.count ? <span className="text-[8px] text-cyan-400/60">{item.count}</span> : null}
-              </button>
-            ))}
-          </div>
-
-          {/* Search */}
-          <div className="p-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#3D4657]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full pl-8 pr-3 py-2 bg-raised border border-white/6 text-xs text-white focus:border-cyan-400 focus:outline-none"
-              />
-            </div>
-          </div>
+          <FriendsWorkspaceHeader
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            friendCount={friends.length}
+            requestCount={pendingRequests.length}
+            pendingRequests={pendingRequests}
+            onAcceptRequest={handleAcceptRequest}
+            onRejectRequest={handleRejectRequest}
+          />
 
           {/* Chat List */}
           <div className="flex-1 overflow-y-auto">
@@ -330,21 +292,21 @@ export default function FriendsDashboard() {
                   <button
                     key={friend.id}
                     onClick={() => { setActiveTab(friend); setMessages([]); }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 transition-all hover:bg-white/5 ${
-                      activeTab?.id === friend.id ? "bg-cyan-500/10 border-l-2 border-l-cyan-400" : "border-l-2 border-l-transparent"
+                    className={`flex w-full items-center gap-3 border-l-2 px-3 py-3 transition-all hover:bg-surface-hover ${
+                      activeTab?.id === friend.id ? "border-l-accent-primary bg-accent-primary/10" : "border-l-transparent"
                     }`}
                   >
                     <div className="relative shrink-0">
-                      <div className="w-8 h-8 bg-elevated border border-cyan-500/15 flex items-center justify-center">
-                        <span className="text-[9px] font-bold text-cyan-400">{friend.username.slice(0, 2).toUpperCase()}</span>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
+                        <span className="text-[9px] font-bold text-accent-primary">{friend.username.slice(0, 2).toUpperCase()}</span>
                       </div>
                       {onlineIds.includes(friend.id) && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#080a10]" />
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-panel bg-accent-success" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <div className="text-xs text-white truncate">{friend.username}</div>
-                      <div className="text-[9px] text-subtle truncate">Click to chat</div>
+                      <div className="truncate text-xs font-bold text-fg">{friend.username}</div>
+                      <div className="truncate text-[9px] text-subtle">{onlineIds.includes(friend.id) ? "Online now" : "Offline"}</div>
                     </div>
                   </button>
                 ))
@@ -354,14 +316,14 @@ export default function FriendsDashboard() {
 
         {/* ── MIDDLE COLUMN: CONVERSATION ─────────────────────────────────── */}
         <section
-          className={`flex-1 flex flex-col min-w-0 bg-void ${
+          className={`flex min-w-0 flex-1 flex-col bg-base ${
             !activeTab ? "hidden md:flex" : "flex"
           }`}
         >
           {activeTab ? (
             <>
               {/* Conversation Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/6 bg-panel">
+              <div className="flex items-center justify-between border-b border-subtle-line bg-surface px-4 py-3">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -371,8 +333,8 @@ export default function FriendsDashboard() {
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <div className="w-8 h-8 bg-elevated border border-cyan-500/15 flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-cyan-400">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
+                    <span className="text-[9px] font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
                   </div>
                   <div>
                     <div className="text-sm text-white font-bold">{activeTab.username}</div>
@@ -387,7 +349,7 @@ export default function FriendsDashboard() {
                 <button
                   onClick={() => setChallengeFriend(activeTab)}
                   title="Challenge to a Battle"
-                  className="flex items-center gap-1.5 px-3 py-1.5 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-[10px] uppercase tracking-widest transition-all"
+                    className="flex items-center gap-1.5 rounded-btn border border-accent-danger/40 px-3 py-1.5 text-[10px] uppercase tracking-widest text-accent-danger transition-all hover:bg-accent-danger/10"
                 >
                   <Swords className="w-3 h-3" />
                   Battle
@@ -395,7 +357,7 @@ export default function FriendsDashboard() {
               </div>
 
               {/* Messages */}
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+              <div ref={chatScrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
                 {displayedMessages.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-xs text-subtle">No messages yet. Say hello!</div>
                 ) : (
@@ -407,8 +369,8 @@ export default function FriendsDashboard() {
                       <div
                         className={`px-4 py-2 max-w-[70%] text-sm ${
                           msg.senderId === "ME"
-                            ? "bg-cyan-950/30 border border-cyan-500/20 text-white"
-                            : "bg-raised border border-cyan-500/10 text-slate-200"
+                            ? "rounded-card border border-accent-primary/20 bg-accent-primary/10 text-fg"
+                            : "rounded-card border border-subtle-line bg-surface text-fg"
                         }`}
                       >
                         {msg.content}
@@ -419,18 +381,18 @@ export default function FriendsDashboard() {
               </div>
 
               {/* Message Composer */}
-              <div className="p-3 border-t border-white/6 bg-panel">
+              <div className="border-t border-subtle-line bg-surface p-3">
                 <form onSubmit={handleSendMessage} className="flex gap-2">
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 bg-raised border border-white/6 px-4 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
+                    className="flex-1 rounded-btn border border-subtle-line bg-base px-4 py-2.5 text-sm text-fg focus:border-accent-primary focus:outline-none"
                   />
                   <button
                     type="submit"
-                    className="px-4 bg-cyan-500 text-ink hover:bg-cyan-400 transition-all"
+                    className="rounded-btn bg-accent-primary px-4 text-ink transition-all hover:opacity-90"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -448,7 +410,7 @@ export default function FriendsDashboard() {
         </section>
 
         {/* ── RIGHT COLUMN: FRIEND PROFILE + BATTLE HISTORY ───────────────── */}
-        <aside className="hidden xl:flex w-72 border-l border-white/6 bg-panel flex-col shrink-0 overflow-y-auto min-w-0">
+        <aside className="hidden w-72 min-w-0 shrink-0 flex-col overflow-y-auto border-l border-subtle-line bg-panel xl:flex">
           {activeTab ? (
             <>
               {/* Friend Profile Card */}

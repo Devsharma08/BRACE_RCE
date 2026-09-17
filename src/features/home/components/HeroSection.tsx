@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Terminal, Play, Swords } from 'lucide-react';
+import { Terminal, Swords } from 'lucide-react';
 import { hasBooted, markBooted } from '../../../utils/sessionBoot';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -484,12 +484,13 @@ export const BraceRcePixelArt: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="z-10 flex min-h-[90vh] w-full max-w-7xl flex-col items-center justify-center py-12 font-mono text-slate-200 select-none px-4 sm:px-8 border-b border-white/10"
+      className="home-hero z-10 flex w-full min-w-0 flex-col items-center justify-center py-8 sm:py-12 font-mono text-fg select-none border-b border-subtle-line"
     >
+      <h1 className="sr-only">BRACE RCE — coding playground and battle arena</h1>
 
       {/* Blueprint grid canvas */}
       <div
-        className="relative w-full pt-16 pb-12 px-4 sm:pt-20 sm:pb-12 sm:px-12 flex flex-col justify-center items-center overflow-hidden"
+        className="relative w-full min-w-0 pt-12 pb-12 sm:pt-16 flex flex-col justify-center items-center overflow-hidden"
         style={{
           backgroundImage: `
             linear-gradient(to right,  rgba(6,182,212,0.025) 1px, transparent 1px),
@@ -508,8 +509,8 @@ export const BraceRcePixelArt: React.FC = () => {
         />
 
         {/* ── Pixel matrix ──────────────────────────────────────────── */}
-        <div className="border border-cyan-500/10 bg-cyan-950/5 p-8">
-          <div className="pixel-grid" ref={gridRef}>
+        <div className="w-full min-w-0 border border-subtle-line bg-surface/30 p-3 sm:p-6">
+          <div className="pixel-grid" ref={gridRef} aria-hidden="true">
           {MATRIX_DATA.map((row, ri) => (
             <div key={`row-${ri}`} className="pixel-row">
               {row.map((pixel, ci) => {
@@ -551,7 +552,7 @@ export const BraceRcePixelArt: React.FC = () => {
             </div>
           ))}
           </div>
-        {/* </div> */}
+        </div>
 
         {/* Status lines — boot animation only plays on first screen load per tab */}
         {!bootAlreadyPlayed && (
@@ -589,12 +590,12 @@ export const BraceRcePixelArt: React.FC = () => {
 
       {/* Description subtext — no delayed fade on return visits */}
       <div
-        className={`mt-10 flex flex-col items-center text-center max-w-2xl px-4 ${
+        className={`mt-6 flex w-full min-w-0 flex-col items-center text-center max-w-2xl ${
           bootAlreadyPlayed ? "" : "animate-desc-fade opacity-0"
         }`}
       >
         <h2 className="text-xs sm:text-sm font-bold tracking-[0.35em] text-cyan-400/90 uppercase mb-3.5 select-none flex flex-wrap items-center justify-center gap-2">
-          <span>// CRX // REMOTE_CODE_EXECUTION_IDE</span>
+          <span className="break-words max-w-full tracking-wider">// CRX // REMOTE_CODE_EXECUTION_IDE</span>
           <span className="px-1.5 py-0.5 border border-cyan-500/25 text-[9px] font-bold tracking-wider rounded-none uppercase text-amber-500 bg-cyan-950/15 select-none">
             [ v1.0.0 ]
           </span>
@@ -620,9 +621,8 @@ export const BraceRcePixelArt: React.FC = () => {
             <span>[ 1V1 BATTLE ARENA ]</span>
           </Link>
         </div>
-        </div>
       </div>
-    // </div>
+    </div>
   );
 };
 

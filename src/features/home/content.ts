@@ -1,7 +1,7 @@
 export type HomeFeature = {
   title: string;
   desc: string;
-  img: string;
+  img?: string;
 };
 
 export type BentoItem = {
@@ -14,7 +14,7 @@ export type BentoItem = {
 export const features: HomeFeature[] = [
   {
     title: "Side-by-Side <span class=\"text-cyan-400 font-black font-mono\">Problem Workspace</span>",
-    desc: "Write solutions inside a premium <span class=\"text-cyan-400 font-bold font-mono\">Monaco Editor</span> while reviewing detailed problem definitions, constraints, and hints side-by-side in a unified <span class=\"text-teal-400 font-semibold font-mono\">Workspace Layout</span>.",
+    desc: "Browse and filter algorithm problems, then work through statements, hints, and test cases beside the Monaco editor. Write solutions in JavaScript, Python, Java, C++, or C.",
     img: "/ss-1-ide-with-prob-desc.png",
   },
   {
@@ -29,9 +29,25 @@ export const features: HomeFeature[] = [
   },
   {
     title: "Persistent <span class=\"text-cyan-400 font-black font-mono\">Local Scratchpad</span>",
-    desc: "Create, save, and compile custom files stored directly in your local workspace. Experiment with <span class=\"text-cyan-400 font-bold font-mono\">custom algorithms</span> without standard problem bounds.",
+    desc: "Create and save local workspace files to experiment beyond standard problem bounds. Keep common and problem-specific scratchpad notes alongside your work.",
     img: "/ss-localfile.png",
-  }
+  },
+  {
+    title: "Battle arena & rooms",
+    desc: "Join ranked matchmaking or create a custom room. Match acceptance, countdowns, synchronized progress, results, and battle audio bring the competition together.",
+  },
+  {
+    title: "Dashboard & rankings",
+    desc: "Follow your rating, division, leaderboard position, recent battles, and practice recommendations from one dashboard.",
+  },
+  {
+    title: "Friends & challenges",
+    desc: "Manage friend requests, see presence, exchange direct messages, and send coding challenges. The social workspace continues to evolve.",
+  },
+  {
+    title: "Match review & replay",
+    desc: "Compare submitted code, spectate a battle, and step through the submission timeline to learn from a match.",
+  },
 ];
 
 export const bentoItems: BentoItem[] = [

@@ -408,12 +408,12 @@ const CreateRoom = () => {
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 w-full bg-panel/95 backdrop-blur-xl border-t border-cyan-500/20 p-4 sm:p-6 z-50">
-          <div className="max-w-6xl w-full mx-auto flex justify-end">
+        <div className="mt-6 flex justify-end border-t border-subtle-line pt-6">
+          <div className="w-full sm:w-auto">
              <button 
                 onClick={handleCreateRoom}
                 disabled={loading || selectedProblemIds.length === 0}
-                className="w-full sm:w-auto bg-cyan-500 hover:bg-cyan-400 text-black font-bold tracking-widest px-8 py-3.5 rounded-none flex items-center justify-center gap-3 transition-all disabled:opacity-50 text-xs sm:text-sm uppercase shadow-[0_0_15px_rgba(0,212,255,0.3)]"
+                className="w-full rounded-btn bg-accent-primary px-8 py-3.5 text-xs font-bold uppercase tracking-widest text-ink shadow-glow-accent transition-all hover:opacity-90 disabled:opacity-50 sm:w-auto sm:text-sm"
               >
                 {loading ? <Activity className="w-4 h-4 animate-pulse" /> : <Swords className="w-4 h-4" />}
                 INITIALIZE OPERATION

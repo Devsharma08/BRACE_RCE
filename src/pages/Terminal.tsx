@@ -340,6 +340,12 @@ const Terminal = () => {
   );
 
   const handleCodeChange = useCallback((nextCode: string) => setCode(nextCode), [setCode]);
+  const handleClearOutput = useCallback(() => {
+    setOutput(null);
+    setOutputText("");
+    setIsCustomInputRun(false);
+    setIsOutputActive(false);
+  }, [setOutput]);
 
   // ── Derived values ────────────────────────────────────────
   const activeFileName = activeProblem?.name || "Practice Workspace";
@@ -347,7 +353,7 @@ const Terminal = () => {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-[#02040a] text-white font-mono select-none md:flex-row pt-14">
+    <div className="flex h-[calc(100dvh-var(--header-height))] min-h-0 flex-col overflow-hidden bg-[#02040a] pt-14 text-white font-mono select-none md:flex-row">
       {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ──────────────── */}
       <div
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
@@ -451,7 +457,7 @@ const Terminal = () => {
                       executingMode={executingMode}
                       language={language}
                       setLanguage={handleLanguageChange}
-                      sidebarWidth={sidebarWidth}
+                      sidebarWidth={0}
                       setSidebarWidth={setSidebarWidth}
                       setCode={setCode}
                       fileName={activeFileName}
@@ -463,6 +469,7 @@ const Terminal = () => {
                       isFileExplorerOpen={false}
                       onFormat={() => formatEditorRef.current?.()}
                       onReset={handleResetCode}
+                      onClearOutput={handleClearOutput}
                       onToggleNotes={() => setIsNotesOpen((p) => !p)}
                       isNotesOpen={isNotesOpen}
                       onExit={() => navigate("/dashboard")}
@@ -471,7 +478,10 @@ const Terminal = () => {
                       initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
                     />
 
-                    <div className="flex-1 min-h-0 grid" style={{ gridTemplateRows: "minmax(0, 1fr) auto" }}>
+                    <div
+                      className="grid min-h-0 flex-1"
+                      style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
+                    >
                       <div className="h-full min-h-0 overflow-hidden">
                         <MonacoIDE
                           handleRunCode={handleRunCode}

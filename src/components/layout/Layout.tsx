@@ -6,7 +6,7 @@ import GlobalModals from '../features/GlobalModals'
 /**
  * Shell layout wrapping all public-facing pages.
  *
- * Pages that are fullscreen experiences (terminal, battle, auth) skip
+ * Pages that are fullscreen experiences (battle, auth) skip
  * the header + footer entirely and render their own chrome.
  */
 const Layout = () => {
@@ -14,7 +14,6 @@ const Layout = () => {
 
   // These routes manage their own full-screen layout
   const isFullscreen =
-    pathname === '/terminal' ||
     pathname === '/signin' ||
     pathname === '/signup' ||
     pathname.startsWith('/battle')
@@ -23,7 +22,14 @@ const Layout = () => {
     <div className="flex flex-col min-h-screen w-full bg-[#050608] text-[#F0F4FF]">
       <GlobalModals />
 
-      {isFullscreen ? (
+      {pathname === '/terminal' ? (
+        <>
+          <Header />
+          <main className="h-screen w-full bg-[#050608]">
+            <Outlet />
+          </main>
+        </>
+      ) : isFullscreen ? (
         /* Full-screen routes: no header, no footer, no padding */
         <main className="flex-1 h-screen w-full bg-[#050608]">
           <Outlet />

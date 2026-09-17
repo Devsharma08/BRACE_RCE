@@ -106,16 +106,6 @@ const Header = () => {
           </span>
         </Link>
 
-        {/* CENTER MODE INDICATOR — desktop only */}
-        <div className="hidden md:flex items-center gap-4 absolute left-1/2 -translate-x-1/2 pointer-events-none select-none">
-          <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-cyan-400/70">
-            1v1 BATTLE ARENA
-          </span>
-          <span className="text-[10px] font-mono text-emerald-400/80">
-            PING: 14ms
-          </span>
-        </div>
-
         {/* DESKTOP NAV */}
         <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
           <Link to="/" className={desktopLinkClass('/')}>HOME</Link>

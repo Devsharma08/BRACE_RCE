@@ -41,6 +41,7 @@ type EditorToolbarProps = {
   onSubmit?: () => void;
   onFormat: () => void;
   onReset: () => void;
+  onClearOutput?: () => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
   onToggleNotes?: () => void;
@@ -65,6 +66,7 @@ const EditorToolbar = ({
   onSubmit,
   onFormat,
   onReset,
+  onClearOutput,
   language,
   executingMode,
   setLanguage,
@@ -142,8 +144,7 @@ const EditorToolbar = ({
   return (
     <div
       ref={toolbarRef}
-      className="flex items-center justify-between gap-2 px-3 py-1.5 bg-raised border-b border-cyan-500/20 select-none"
-      style={{ marginLeft: sidebarWidth }}
+      className="flex items-center justify-between gap-2 border-b border-subtle-line bg-surface px-3 py-1.5 select-none"
     >
       {/* LEFT ACTIONS */}
       <div className="flex items-center gap-1.5 min-w-0">
@@ -152,7 +153,7 @@ const EditorToolbar = ({
             type="button"
             onClick={onExit}
             title="Back to dashboard"
-            className="flex items-center justify-center rounded-none text-slate-500 hover:text-white hover:bg-white/5 p-1.5 transition-all duration-150 cursor-pointer"
+            className="flex items-center justify-center rounded-btn p-1.5 text-subtle transition-all duration-150 hover:bg-surface-hover hover:text-fg"
           >
             <Home className="w-3.5 h-3.5" />
           </button>
@@ -163,7 +164,7 @@ const EditorToolbar = ({
             type="button"
             onClick={onToggleFileExplorer}
             title={isFileExplorerOpen ? "Hide file explorer" : "Show file explorer"}
-            className="flex items-center justify-center rounded-none text-slate-500 hover:text-white hover:bg-white/5 p-1.5 transition-all duration-150 cursor-pointer"
+            className="flex items-center justify-center rounded-btn p-1.5 text-subtle transition-all duration-150 hover:bg-surface-hover hover:text-fg"
           >
             <FolderTree className="w-3.5 h-3.5" />
           </button>
@@ -185,7 +186,7 @@ const EditorToolbar = ({
           onClick={handleCopyCode}
           title="Copy code to clipboard"
           aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
-          className="flex items-center justify-center rounded-none border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/5 text-slate-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
         >
           {copied ? (
             <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -200,7 +201,7 @@ const EditorToolbar = ({
           onClick={onFormat}
           title="Format active code"
           aria-label="Format active code"
-          className="flex items-center justify-center rounded-none border border-white/5 bg-white/[0.02] hover:border-white/10 hover:bg-white/5 text-slate-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
         >
           <IndentationIcon className="w-3.5 h-3.5 text-slate-400" />
         </button>
@@ -213,8 +214,8 @@ const EditorToolbar = ({
             title={isNotesOpen ? "Close notes" : "Open notes"}
             className={`flex items-center justify-center rounded-none border px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
               isNotesOpen
-                ? "border-amber-500/60 bg-amber-950/30 text-amber-300"
-                : "border-cyan-500/20 bg-transparent text-cyan-400/60"
+                ? "border-accent-warning/60 bg-accent-warning/10 text-accent-warning"
+                : "border-accent-primary/20 bg-transparent text-accent-primary/60"
             }`}
           >
             <StickyNote className="w-3.5 h-3.5" />
@@ -224,10 +225,10 @@ const EditorToolbar = ({
         {/* CLEAR OUTPUT */}
         <button
           type="button"
-          onClick={() => {}}
+          onClick={onClearOutput}
           title="Clear output"
           aria-label="Clear output"
-          className="flex items-center justify-center rounded-none border border-cyan-500/40 hover:bg-cyan-950/15 text-cyan-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+          className="flex items-center justify-center rounded-btn border border-accent-primary/40 px-2 py-1.5 text-xs font-mono text-accent-primary transition-all duration-150 hover:bg-accent-primary/10 active:scale-95"
         >
           <Clear className="w-3.5 h-3.5 text-cyan-400" />
         </button>
@@ -239,7 +240,7 @@ const EditorToolbar = ({
             onClick={onReset}
             title="Reset to original problem template"
             aria-label="Reset to original problem template"
-            className="flex items-center justify-center rounded-none border border-rose-500/20 bg-rose-950/5 hover:border-rose-500/40 hover:bg-rose-950/15 text-rose-400 px-2 py-1.5 text-xs font-mono transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap"
+            className="flex items-center justify-center rounded-btn border border-accent-danger/20 bg-accent-danger/5 px-2 py-1.5 text-xs font-mono text-accent-danger transition-all duration-150 hover:border-accent-danger/40 hover:bg-accent-danger/10 active:scale-95"
           >
             <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
           </button>
@@ -247,13 +248,13 @@ const EditorToolbar = ({
 
         {/* LANGUAGE SELECTOR */}
         <select
-          className="min-w-0 rounded-none border border-cyan-500/20 bg-raised px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
+          className="min-w-0 rounded-btn border border-accent-primary/20 bg-surface px-2 py-1.5 text-[10px] font-mono text-accent-primary outline-none transition focus:border-accent-primary/40"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
           aria-label="Select programming language"
         >
           {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-raised text-cyan-400">
+            <option key={opt.value} value={opt.value} className="bg-surface text-accent-primary">
               {isCompact ? opt.shortLabel : opt.label}
             </option>
           ))}
@@ -266,7 +267,7 @@ const EditorToolbar = ({
           aria-busy={executingMode === "RUN"}
           title="Run solution (Ctrl+Enter)"
           aria-label="Run solution"
-          className={`flex items-center justify-center rounded-none border border-cyan-500/40 bg-slate-800/60 text-cyan-400 hover:bg-cyan-500/20 hover:border-cyan-400 px-4 py-1.5 text-xs font-mono font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center rounded-btn border border-accent-primary/40 bg-elevated px-4 py-1.5 text-xs font-mono font-bold tracking-wider text-accent-primary transition-all duration-150 hover:border-accent-primary hover:bg-accent-primary/10 active:scale-95 ${
             disabled ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
@@ -286,7 +287,7 @@ const EditorToolbar = ({
             aria-busy={executingMode === "SUBMIT"}
             title="Submit solution for full tests validation"
             aria-label="Submit solution"
-            className={`flex items-center justify-center rounded-none border border-emerald-500/30 bg-emerald-950/10 text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 hover:font-black px-4 py-1.5 text-xs font-mono font-bold tracking-wider transition-all duration-150 active:scale-95 cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(0,255,102,0.3)] ${
+            className={`flex items-center justify-center rounded-btn border border-accent-success/30 bg-accent-success/10 px-4 py-1.5 text-xs font-mono font-bold tracking-wider text-accent-success transition-all duration-150 hover:bg-accent-success hover:text-ink hover:font-black active:scale-95 shadow-glow-success ${
               disabled ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >

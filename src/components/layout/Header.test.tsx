@@ -43,6 +43,7 @@ describe('Header Component', () => {
   test('renders navigation links for desktop', () => {
     renderHeader(['/dashboard']);
 
+    expect(screen.queryByText(/PING:|1v1 BATTLE ARENA/i)).not.toBeInTheDocument();
     expect(screen.getByText('HOME')).toBeDefined();
     expect(screen.getByText('DASHBOARD')).toBeDefined();
     expect(screen.getByText('TERMINAL')).toBeDefined();

@@ -88,7 +88,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
       {/* Day-of-week headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
         {DOW.map((d, i) => (
-          <div key={i} className="text-[9px] text-slate-600 font-mono text-center">
+          <div key={i} className="text-[10px] font-bold text-subtle font-mono text-center">
             {d}
           </div>
         ))}
@@ -104,7 +104,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
               title={`${day.date}: ${day.count} activities`}
               className={`aspect-square rounded-[2px] border flex items-center justify-center cursor-default transition-colors ${cellClass(day.count)}`}
             >
-              <span className="text-[8px] font-mono text-white/40 leading-none">
+              <span className="text-[10px] font-bold font-mono text-fg/70 leading-none">
                 {day.dayNum}
               </span>
             </div>
@@ -112,13 +112,13 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
         )}
       </div>
       <div className="flex items-center gap-2 mt-3">
-        <span className="text-[9px] text-slate-600 font-mono">Less</span>
+        <span className="text-[10px] font-mono text-subtle">Less</span>
         {["bg-elevated/40 border border-cyan-500/5", "bg-cyan-900/50", "bg-cyan-700/60", "bg-cyan-500/70", "bg-cyan-400/90"].map(
           (c, i) => (
             <div key={i} className={`w-2.5 h-2.5 rounded-[2px] ${c}`} />
           )
         )}
-        <span className="text-[9px] text-slate-600 font-mono">More</span>
+        <span className="text-[10px] font-mono text-subtle">More</span>
       </div>
     </Card>
   );
@@ -459,10 +459,12 @@ export const CompletionMetrics = memo(({
   completionRate,
   growthRate,
   weakAreas,
+  difficultyBreakdown,
 }: {
   completionRate: number;
   growthRate: number;
   weakAreas: WeakArea[];
+  difficultyBreakdown?: { EASY: number; MEDIUM: number; HARD: number };
 }) => {
   const growthColor =
     growthRate > 50 ? "text-emerald-400" : growthRate > 0 ? "text-cyan-400" : "text-slate-500";
@@ -473,66 +475,63 @@ export const CompletionMetrics = memo(({
       <SectionLabel>Performance Metrics</SectionLabel>
       <div className="space-y-4">
         {/* Completion Rate */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-card border border-subtle-line bg-base/50 p-3">
+            <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-subtle">
               Completion Rate
             </span>
-            <span className="text-base font-bold font-mono text-cyan-400">
+            <span className="mt-1 block text-xl font-black font-mono text-accent-primary">
               {completionRate}%
             </span>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-base">
+              <div
+                className="h-full rounded-full bg-accent-primary transition-all duration-700"
+                style={{ width: `${completionRate}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-cyan-500/70 rounded-full transition-all duration-700"
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Growth Rate */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+          <div className="rounded-card border border-subtle-line bg-base/50 p-3">
+            <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-subtle">
               Monthly Growth
             </span>
-            <span className={`text-base font-bold font-mono ${growthColor}`}>
+            <span className={`mt-1 block text-xl font-black font-mono ${growthColor}`}>
               {growthTrend} {Math.abs(growthRate)}%
             </span>
+            <p className="mt-1 text-[9px] font-mono text-muted">
+              {growthRate > 0 ? "More solves this month" : growthRate < 0 ? "Fewer solves this month" : "No solves yet this month"}
+            </p>
           </div>
-          <p className="text-[9px] text-slate-600 font-mono">
-            {growthRate > 0
-              ? "Solving more problems this month"
-              : growthRate < 0
-                ? "Fewer solves this month"
-                : "No solves yet this month"}
-          </p>
         </div>
 
         {/* Weak Areas */}
-        {weakAreas.length > 0 && (
-          <div className="pt-2 border-t border-white/10">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">
-              Weak Areas
-            </span>
-            <div className="space-y-2">
-              {weakAreas.slice(0, 2).map((area) => (
-                <div key={area.difficulty} className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-400 capitalize">{area.difficulty}</span>
-                  <span
-                    className={`font-mono font-bold ${
-                      area.successRate >= 75
-                        ? "text-emerald-400"
-                        : area.successRate >= 50
-                          ? "text-amber-400"
-                          : "text-rose-400"
-                    }`}
-                  >
-                    {area.successRate}% ({area.solved}/{area.attempted})
-                  </span>
-                </div>
-              ))}
-            </div>
+        <div className="border-t border-subtle-line pt-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-subtle">Weak Areas</span>
+            <span className="text-[9px] font-mono uppercase tracking-wider text-muted">Solved by difficulty</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(weakAreas.length > 0
+              ? weakAreas.slice(0, 2)
+              : ["EASY", "HARD"].map((difficulty) => ({ difficulty, solved: 0, attempted: 0, successRate: 0 }))
+            ).map((area) => (
+              <div key={area.difficulty} className="flex items-center justify-between rounded-btn border border-subtle-line bg-base/50 px-3 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-fg">{area.difficulty}</span>
+                <span className={`font-mono text-[10px] font-bold ${area.successRate > 0 ? "text-accent-success" : "text-muted"}`}>
+                  {area.successRate}% ({area.solved}/{area.attempted})
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {difficultyBreakdown && (
+          <div className="grid grid-cols-3 gap-2 border-t border-subtle-line pt-3">
+            {(["EASY", "MEDIUM", "HARD"] as const).map((level) => (
+              <div key={level} className="text-center">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-muted">{level}</span>
+                <span className="block text-lg font-black font-mono text-fg">{difficultyBreakdown[level]}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -562,15 +561,17 @@ export const AnalyticsPanels = memo(({
   if (compact) {
     // Dashboard: 2-column layout, concise
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ActivityHeatmap data={activityData} />
-        <DifficultyBreakdown data={difficultyBreakdown} />
-        <StreakPanel streak={summary.currentStreak} />
-        <CompletionMetrics
-          completionRate={summary.completionRate}
-          growthRate={summary.growthRate}
-          weakAreas={weakAreas}
-        />
+        <div className="flex flex-col gap-4">
+          <StreakPanel streak={summary.currentStreak} />
+          <CompletionMetrics
+            completionRate={summary.completionRate}
+            growthRate={summary.growthRate}
+            weakAreas={weakAreas}
+            difficultyBreakdown={difficultyBreakdown}
+          />
+        </div>
       </div>
     );
   }

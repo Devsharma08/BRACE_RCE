@@ -3,7 +3,7 @@ import React from "react";
 export interface BentoCapabilityItem {
   title: string;
   desc: string;
-  img: string;
+  img?: string;
   badge: string;
 }
 
@@ -12,40 +12,34 @@ interface BentoCapabilityGridProps {
   numbers?: string[];
 }
 
-const cardAccent = "border-t-2 border-t-cyan-500/40 hover:border-t-cyan-400";
-
-const defaultNumbers = ["01", "02", "03", "04"];
+const cardAccent = "border-t-2 border-t-accent-primary/40 hover:border-accent-primary/50";
 
 const BentoCapabilityGrid: React.FC<BentoCapabilityGridProps> = ({
   items,
-  numbers = defaultNumbers,
+  numbers = [],
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 w-full max-w-7xl mx-auto px-2 sm:px-6">
       {items.map((item, idx) => {
-        const num = numbers[idx % numbers.length];
+        const num = numbers[idx] ?? String(idx + 1).padStart(2, "0");
         const edgeStyle = cardAccent;
-
-        const gridSpanClass =
-          idx === 0
-            ? "md:col-span-7 min-h-[320px] sm:min-h-[360px]"
-            : idx === 1
-              ? "md:col-span-5 min-h-[320px] sm:min-h-[360px]"
-              : idx === 2
-                ? "md:col-span-5 min-h-[320px] sm:min-h-[360px]"
-                : "md:col-span-7 min-h-[320px] sm:min-h-[360px]";
+        // Repeat paired 7/5 and 5/7 tracks as the capability list grows.
+        const gridSpanClass = [0, 3].includes(idx % 4)
+          ? "md:col-span-7 min-h-72 sm:min-h-80"
+          : "md:col-span-5 min-h-72 sm:min-h-80";
 
         return (
           <div
             key={idx}
-            className={`group relative overflow-hidden rounded-none border border-cyan-500/15 bg-raised p-6 sm:p-8 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all duration-300 ${edgeStyle} ${gridSpanClass}`}
+            className={`group relative min-w-0 overflow-hidden rounded-card border border-subtle-line bg-surface p-5 sm:p-8 flex flex-col gap-12 justify-between transition-colors duration-300 ${edgeStyle} ${gridSpanClass}`}
           >
             {/* Full Card Background Image */}
-            <img
+            {item.img && <img
               src={item.img}
-              alt={item.title.replace(/<[^>]*>/g, "")}
-              className="absolute inset-0 w-full h-full object-cover object-top opacity-25 group-hover:opacity-40 group-hover:scale-105 transition-all duration-700 select-none pointer-events-none"
-            />
+              alt=""
+              loading="lazy"
+              className="absolute inset-0 w-full h-full object-cover object-top opacity-25 group-hover:opacity-40 motion-safe:group-hover:scale-105 transition-all duration-700 select-none pointer-events-none"
+            />}
 
             {/* High-Contrast Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/90 to-raised/50 z-10 pointer-events-none" />

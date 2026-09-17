@@ -3,7 +3,7 @@ import { features } from "../content";
 import { Cpu } from "lucide-react";
 import BentoCapabilityGrid, { type BentoCapabilityItem } from "../../../components/shared/BentoCapabilityGrid";
 
-const featureBadges = ["IDE_WORKSPACE", "PLAYGROUND", "TELEMETRY", "SCRATCHPAD"];
+const featureBadges = ["IDE_WORKSPACE", "PLAYGROUND", "TELEMETRY", "SCRATCHPAD", "BATTLE_ARENA", "RANKINGS", "FRIENDS", "MATCH_REVIEW"];
 
 const StickyFeatureShowcase: React.FC = () => {
   const items: BentoCapabilityItem[] = features.map((f, idx) => ({
@@ -25,7 +25,7 @@ const StickyFeatureShowcase: React.FC = () => {
           Engineered for <span className="text-cyan-400">Peak Performance</span>
         </h2>
         <p className="text-xs sm:text-sm md:text-base text-slate-300 font-sans leading-relaxed max-w-xl mx-auto">
-          A high-precision suite of browser-native development utilities built to execute, debug, and benchmark algorithms in real-time.
+          A coding workspace, a practice habit, and a shared arena — built to help you learn, compete, and review your progress.
         </p>
       </div>
 

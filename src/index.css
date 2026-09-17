@@ -1,57 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — single source of truth for the entire application
+   DESIGN TOKENS — semantic CSS variables (no hardcoded colors in components)
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
-  /* ── Accent / Brand ─────────────────────────────────────────────────── */
-  --accent:      #00D4FF;
-  --accent-dim:  rgba(0, 212, 255, 0.10);
-  --accent-mid:  rgba(0, 212, 255, 0.30);
+  /* ── Base Layer (Backgrounds) ────────────────────────────────────────── */
+  --bg-base:           #050811;  /* core canvas — deep abyss void */
+  --bg-surface:        #0b1021;  /* cards, modals, elevated containers */
+  --bg-surface-hover:  #131b35;  /* hover fills for cards / rows */
+  --border-subtle:     rgba(6, 182, 212, 0.15); /* 1px structural lines */
 
-  /* ── Status Colors ───────────────────────────────────────────────────── */
-  --success:     #00FF87;
-  --danger:      #FF3B5C;
-  --warn:        #FFB800;
+  /* Legacy aliases — keep existing utilities resolving to the same tokens */
+  --bg-void:      var(--bg-base);
+  --bg-raised:    var(--bg-surface);
+  --bg-nav:       var(--bg-surface);
+  --bg-sidebar:   #080d1a;
+  --bg-panel:     var(--bg-sidebar);
+  --bg-float:     var(--bg-surface-hover);
+  --bg-elevated:  var(--bg-surface-hover);
+  --ink:          #050811;
 
-  /* ── Background Scale — arena palette, 4 stops ───────────────────────── */
-  /* RULE 1: one page background everywhere. `--bg-base` is now an alias of
-     `--bg-void`; both resolve to #050811. */
-  --bg-void:      #050811;  /* body + every page background */
-  --bg-base:      #050811;  /* legacy alias of --bg-void */
-  /* RULE 2: one surface for cards / panels / drawers / nav. */
-  --bg-raised:    #0b1021;  /* cards, panels, drawers, nav */
-  --bg-nav:       #0b1021;  /* legacy alias of --bg-raised */
-  --bg-sidebar:   #080d1a;  /* sidebar — one step above the void */
-  --bg-panel:     #080d1a;  /* alias of --bg-sidebar */
-  /* Elevated fills: chips, hover states, small badges. */
-  --bg-float:     #131b35;  /* elevated cards, hover states */
-  --bg-elevated:  #131b35;  /* alias of --bg-float */
-  --ink:          #050811;  /* text/icon colour that sits ON an accent fill */
+  /* ── Semantic Accents (Role-Based) ───────────────────────────────────── */
+  --accent-primary:  #00D4FF;  /* brand / main CTA — high-luminance cyan */
+  --accent-success:  #00FF87;  /* pass, wins, ELO gain, live telemetry */
+  --accent-danger:   #FF3B5C;  /* fail, losses, focus-loss, errors */
+  --accent-warning:  #FFB800;  /* exec delays, memory limits, warnings */
+
+  --accent:      var(--accent-primary);
+  --accent-dim:  color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  --accent-mid:  color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  --success:     var(--accent-success);
+  --danger:      var(--accent-danger);
+  --warn:        var(--accent-warning);
 
   /* ── Border Scale ────────────────────────────────────────────────────── */
-  /* RULE 3: one structural border = cyan-500/15. White borders are reserved
-     for micro-dividers (separators *inside* a component); hover/focus stays
-     brighter so affordances keep working. */
-  --border:        rgba(255, 255, 255, 0.05);  /* micro-dividers only */
-  --border-mid:    rgba(255, 255, 255, 0.10);  /* legacy — prefer accent */
-  --border-accent: rgba(6, 182, 212, 0.15);    /* every structural border */
-  --border-hi:     rgba(6, 182, 212, 0.40);    /* hover / active borders */
+  --border:        rgba(255, 255, 255, 0.05);
+  --border-mid:    rgba(255, 255, 255, 0.10);
+  --border-accent: var(--border-subtle);
+  --border-hi:     color-mix(in srgb, var(--accent-primary) 40%, transparent);
 
-  /* ── Text Scale ──────────────────────────────────────────────────────── */
+  /* ── Text & Hierarchy ────────────────────────────────────────────────── */
   --text-primary:   #F0F4FF;
   --text-secondary: #8892A4;
-  --text-muted:     #4A5568;  /* bumped from #3D4657 for better contrast */
-  --text-label:     rgba(6, 182, 212, 0.50);  /* RULE 6 section labels */
+  --text-muted:     #4A5568;
+  --text-label:     color-mix(in srgb, var(--accent-primary) 50%, transparent);
 
-  /* ── Layout Rhythm (RULE 7) ──────────────────────────────────────────── */
-  --gap-section: 24px;  /* gap-6 — between page sections */
-  --gap-card:    16px;  /* gap-4 — between cards */
-  --gap-item:    12px;  /* gap-3 — between items inside a card */
+  /* ── Layout Rhythm ───────────────────────────────────────────────────── */
+  --gap-section: 24px;
+  --gap-card:    16px;
+  --gap-item:    12px;
 
-  /* ── Spacing Scale ───────────────────────────────────────────────────── */
+  /* ── Spacing Scale (4px grid) ────────────────────────────────────────── */
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
@@ -64,36 +65,42 @@
   --space-16: 64px;
 
   /* ── Typography Scale ────────────────────────────────────────────────── */
-  --text-2xs: 0.625rem;  /* 10px — metadata, timestamps */
-  --text-xs:  0.75rem;   /* 12px — labels, captions */
-  --text-sm:  0.875rem;  /* 14px — body secondary */
-  --text-base: 1rem;     /* 16px — body primary */
-  --text-lg:  1.125rem;  /* 18px — subheadings */
-  --text-xl:  1.25rem;   /* 20px — section headings */
-  --text-2xl: 1.5rem;    /* 24px — page headings */
-  --text-3xl: 1.875rem;  /* 30px — display headings */
-  --text-4xl: 2.25rem;   /* 36px — hero display */
+  --text-2xs: 0.625rem;
+  --text-xs:  0.75rem;
+  --text-sm:  0.875rem;
+  --text-base: 1rem;
+  --text-lg:  1.125rem;
+  --text-xl:  1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
 
-  /* ── Shadows / Elevation ─────────────────────────────────────────────── */
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Orbitron", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* ── Elevation & Effects ─────────────────────────────────────────────── */
+  --radius-card: 12px;
+  --radius-btn:  8px;
+  --radius:      var(--radius-card);
+  --radius-sm:   6px;
+  --radius-full: 9999px;
+
   --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.7);
-  --shadow-accent: 0 0 20px rgba(0, 212, 255, 0.2);
-  --shadow-accent-lg: 0 0 40px rgba(0, 212, 255, 0.3);
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 0 24px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  --shadow-accent: 0 0 20px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  --shadow-accent-lg: 0 0 40px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 
-  /* ── Transitions ─────────────────────────────────────────────────────── */
+  --backdrop-blur: blur(12px);
+
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
   --transition-slow: 300ms ease;
 
-  /* ── Border Radius ───────────────────────────────────────────────────── */
-  /* This design uses sharp corners throughout — radius stays at 0 */
-  --radius: 0px;
-  --radius-sm: 2px;   /* only for tiny decorative elements */
-  --radius-full: 9999px;  /* for pills / avatars / pings */
-
-  /* ── Layout Constants ────────────────────────────────────────────────── */
-  --header-height: 3.5rem;      /* 56px / h-14 */
+  --header-height: 3.5rem;
   --sidebar-collapsed: 60px;
   --sidebar-expanded: 245px;
   --mobile-bottom-nav-height: 56px;
@@ -103,50 +110,89 @@
    TAILWIND THEME EXTENSION
    ═══════════════════════════════════════════════════════════════════════════ */
 @theme {
-  /* ── Surfaces ──────────────────────────────────────────────────────────────
-     Canonical utilities: bg-void / bg-raised / bg-panel / bg-elevated.
-     Values mirror the :root tokens above. */
-  --color-void:      #050811;  /* bg-void     — page + body            */
-  --color-raised:    #0b1021;  /* bg-raised   — cards, panels, nav     */
-  --color-panel:     #080d1a;  /* bg-panel    — sidebar                */
-  --color-elevated:  #131b35;  /* bg-elevated — chips, hover fills     */
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --font-display: "Orbitron", "Space Grotesk", sans-serif;
 
-  /* ── Accent + ink ────────────────────────────────────────────────────────── */
-  --color-accent:    #00D4FF;  /* text-accent / bg-accent / border-accent */
-  --color-ink:       #050811;  /* text-ink — label ON an accent fill      */
+  --radius-card: 12px;
+  --radius-btn: 8px;
 
-  /* ── Semantic ────────────────────────────────────────────────────────────── */
-  --color-success:   #00FF87;
-  --color-danger:    #FF3B5C;
-  --color-warn:      #FFB800;
+  --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 0 24px color-mix(in srgb, var(--accent-primary) 10%, transparent);
 
-  /* ── Text ────────────────────────────────────────────────────────────────── */
-  --color-fg:        #F0F4FF;  /* text-fg     — primary                     */
-  --color-subtle:    #8892A4;  /* text-subtle — secondary                   */
-  --color-faint:     #4A5568;  /* text-faint  — tertiary                    */
-  --color-label:     rgba(6, 182, 212, 0.50);  /* text-label — RULE 6 labels */
+  /* Canonical surfaces (bg-base, bg-surface, bg-surface-hover) */
+  --color-base:           var(--bg-base);
+  --color-surface:        var(--bg-surface);
+  --color-surface-hover:  var(--bg-surface-hover);
+  --color-subtle-line:    var(--border-subtle);
 
-  /* Legacy aliases — retuned to the arena palette so any older utility keeps
-     resolving to the same colours as the canonical set above. */
-  --color-bg-void:      #050811;
-  --color-bg-base:      #050811;
-  --color-bg-raised:    #0b1021;
-  --color-bg-float:     #131b35;
-  --color-bg-sidebar:   #080d1a;
-  --color-bg-nav:       #0b1021;
+  --color-void:      var(--bg-base);
+  --color-raised:    var(--bg-surface);
+  --color-panel:     var(--bg-panel);
+  --color-elevated:  var(--bg-surface-hover);
 
-  --color-darkbg:       #050811;
-  --color-secondarybg:  #0b1021;
-  --color-tertiarybg:   #131b35;
+  --color-accent:          var(--accent-primary);
+  --color-accent-primary:  var(--accent-primary);
+  --color-accent-success:  var(--accent-success);
+  --color-accent-danger:   var(--accent-danger);
+  --color-accent-warning:  var(--accent-warning);
+  --color-ink:             var(--ink);
 
-  /* Text */
-  --color-textwhite:     #F0F4FF;
-  --color-textgray:      #8892A4;
-  --color-textdimwhite:  rgba(248, 250, 252, 0.75);
-  --color-textlightwhite: #e2e8f0;
-  --color-textmuted:     #4A5568;
+  --color-success:   var(--accent-success);
+  --color-danger:    var(--accent-danger);
+  --color-warn:      var(--accent-warning);
 
-  /* Breakpoints */
+  --color-fg:        var(--text-primary);
+  --color-subtle:    var(--text-secondary);
+  --color-faint:     var(--text-muted);
+  --color-label:     var(--text-label);
+
+  --color-bg-void:      var(--bg-base);
+  --color-bg-base:      var(--bg-base);
+  --color-bg-raised:    var(--bg-surface);
+  --color-bg-float:     var(--bg-surface-hover);
+  --color-bg-sidebar:   var(--bg-panel);
+  --color-bg-nav:       var(--bg-surface);
+
+  --color-darkbg:       var(--bg-base);
+  --color-secondarybg:  var(--bg-surface);
+  --color-tertiarybg:   var(--bg-surface-hover);
+
+  --color-textwhite:     var(--text-primary);
+  --color-textgray:      var(--text-secondary);
+  --color-textdimwhite:  color-mix(in srgb, var(--text-primary) 75%, transparent);
+  --color-textlightwhite: var(--text-primary);
+  --color-textmuted:     var(--text-muted);
+
+  /* ── Neutral line tokens (structural dividers) ──────────────────────────── */
+  --color-line:      rgba(255, 255, 255, 0.10);
+  --color-line-mid:  rgba(255, 255, 255, 0.15);
+  --color-line-low:  rgba(255, 255, 255, 0.05);
+
+  /* ── Semantic text ramp (neutral grays) ─────────────────────────────────── */
+  --color-muted:     var(--text-muted);
+  --color-secondary: var(--text-secondary);
+  --color-heading:   var(--text-primary);
+
+  /* ── Glow shadow tokens ──────────────────────────────────────────────────── */
+  --shadow-glow-success: 0 0 12px color-mix(in srgb, var(--accent-success) 30%, transparent);
+  --shadow-glow-danger:  0 0 12px color-mix(in srgb, var(--accent-danger) 30%, transparent);
+  --shadow-glow-warning: 0 0 12px color-mix(in srgb, var(--accent-warning) 30%, transparent);
+  --shadow-glow-accent:  0 0 12px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+
+  /* ── Anti-cheat focus loss flash ─────────────────────────────────────────── */
+  --focus-loss-border: var(--accent-danger);
+  --focus-loss-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-danger) 40%, transparent);
+
+  /* ── Terminal / code surface ──────────────────────────────────────────────── */
+  --color-terminal-bg: #070b16;
+  --color-editor-bg:   #01050f;
+  --color-overlay-bg:  #05070c;
+
+  /* ── Spinner / loading accent ────────────────────────────────────────────── */
+  --color-spinner-accent: var(--accent-primary);
+
+  /* ── Breakpoints */
   --breakpoint-wxs:  320px;
   --breakpoint-wsm:  384px;
   --breakpoint-wmd:  448px;
@@ -174,10 +220,10 @@ html {
 }
 
 body {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-void);
+  background-color: var(--bg-base);
   color: var(--text-primary);
   /* Prevent body-level horizontal scroll */
   overflow-x: hidden;
@@ -187,9 +233,9 @@ body {
 /* ── Global Focus Visible Ring ───────────────────────────────────────────── */
 /* Replaces the browser default — consistent with the accent color */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-btn);
 }
 
 /* Remove default focus ring for mouse users (keeps it for keyboard) */
@@ -199,8 +245,87 @@ body {
 
 /* ── Selection ───────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(0, 212, 255, 0.25);
-  color: #e0f7ff;
+  background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  color: var(--text-primary);
+}
+
+.ds-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  transition: background var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+}
+.ds-card:hover {
+  background: var(--bg-surface-hover);
+  box-shadow: var(--shadow-card-hover);
+}
+.ds-btn {
+  border-radius: var(--radius-btn);
+}
+.ds-rank-row {
+  animation: rankRowReveal 0.4s ease-out var(--rank-row-delay, 0ms) both;
+}
+@keyframes rankRowReveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ds-overlay {
+  background: color-mix(in srgb, var(--bg-base) 90%, black);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+}
+.ds-drawer {
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+}
+.ds-pulse-ring {
+  position: relative;
+}
+.ds-pulse-ring::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 45%, transparent);
+  animation: dsPulseRing 1.8s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes dsPulseRing {
+  0%   { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(1.08); opacity: 0; }
+}
+@keyframes dsFocusFlash {
+  0%   { box-shadow: inset 0 0 0 3px var(--accent-danger); }
+  100% { box-shadow: inset 0 0 0 0 transparent; }
+}
+.ds-focus-flash {
+  animation: dsFocusFlash 0.65s ease-out;
+}
+@keyframes dsCountdownPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.ds-countdown-pop {
+  animation: dsCountdownPop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes dsGlitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+}
+.ds-glitch {
+  animation: dsGlitch 0.3s infinite;
+}
+.text-shadow-accent {
+  text-shadow: 0 0 30px color-mix(in srgb, var(--accent-primary) 70%, transparent);
+}
+
+.font-display {
+  font-family: var(--font-display);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -211,8 +336,8 @@ body {
 .fui-grid-bg {
   background-color: var(--bg-base);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    linear-gradient(color-mix(in srgb, var(--text-primary) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--text-primary) 4%, transparent) 1px, transparent 1px);
   background-size: 20px 20px;
   position: relative;
 }
@@ -221,18 +346,17 @@ body {
   position: absolute;
   content: "";
   inset: 0;
-  background-image: radial-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 0);
+  background-image: radial-gradient(color-mix(in srgb, var(--accent-primary) 3%, transparent) 1px, transparent 0);
   background-size: 8px 8px;
   pointer-events: none;
 }
 
-/* Futuristic bracket corner decorators */
 .fui-brackets-box {
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(10, 11, 13, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-surface) 60%, transparent);
+  backdrop-filter: var(--backdrop-blur);
+  border-radius: var(--radius-sm);
 }
 
 .fui-brackets-box::before,
@@ -243,7 +367,7 @@ body {
   height: 4px;
   border-style: solid;
   pointer-events: none;
-  border-color: rgba(0, 240, 255, 0.4);
+  border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
 }
 
 .fui-brackets-box::before {
@@ -411,16 +535,16 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 .themed-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(34, 211, 238, 0.45) rgba(2, 4, 10, 0.6);
+  scrollbar-color: color-mix(in srgb, var(--accent-primary) 45%, transparent) color-mix(in srgb, var(--bg-base) 60%, transparent);
 }
 .themed-scroll::-webkit-scrollbar        { width: 8px; height: 8px; }
-.themed-scroll::-webkit-scrollbar-track  { background: rgba(2, 4, 10, 0.6); }
+.themed-scroll::-webkit-scrollbar-track  { background: color-mix(in srgb, var(--bg-base) 60%, transparent); }
 .themed-scroll::-webkit-scrollbar-thumb  {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.55), rgba(34, 211, 238, 0.2));
-  border-radius: 4px;
-  border: 1px solid rgba(34, 211, 238, 0.25);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-primary) 55%, transparent), color-mix(in srgb, var(--accent-primary) 20%, transparent));
+  border-radius: var(--radius-btn);
+  border: 1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
-.themed-scroll::-webkit-scrollbar-thumb:hover { background: rgba(34, 211, 238, 0.75); }
+.themed-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent-primary) 75%, transparent); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PROBLEM CONTENT — word containment for user-generated HTML
@@ -491,31 +615,31 @@ body.dragging-active * {
   animation-delay: 2.4s;
 }
 
-/* Pixel cell sizing — responsive */
-.pixel-cell {
-  height: 1.6px;
-  width: 1.6px;
+/* Size the complete 100 × 15 matrix from its frame, not the viewport.
+   Square cells and proportional gaps preserve the artwork at every width. */
+.home-hero .pixel-grid {
+  display: grid;
+  grid-template-rows: repeat(15, minmax(0, 1fr));
+  gap: 1.74%;
+  width: 100%;
+  aspect-ratio: 100 / 15;
+}
+.home-hero .pixel-row {
+  display: grid;
+  grid-template-columns: repeat(100, minmax(0, 1fr));
+  gap: 0.261%;
+  min-width: 0;
+  min-height: 0;
+}
+.home-hero .pixel-cell {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   border-radius: 0.2px;
   transition: filter 0.12s ease, box-shadow 0.12s ease, transform 0.1s ease;
   will-change: filter, box-shadow, transform;
 }
-@media (min-width: 360px)  { .pixel-cell { height: 2.2px; width: 2.2px; } }
-@media (min-width: 440px)  { .pixel-cell { height: 3.2px; width: 3.2px; } }
-@media (min-width: 640px)  { .pixel-cell { height: 5.2px; width: 5.2px; border-radius: 0.5px; } }
-@media (min-width: 768px)  { .pixel-cell { height: 6.8px; width: 6.8px; } }
-@media (min-width: 1024px) { .pixel-cell { height: 8.5px; width: 8.5px; } }
-
-.pixel-row  { display: flex; gap: 0.8px; }
-@media (min-width: 360px)  { .pixel-row { gap: 1px; } }
-@media (min-width: 440px)  { .pixel-row { gap: 1.5px; } }
-@media (min-width: 640px)  { .pixel-row { gap: 2.5px; } }
-@media (min-width: 768px)  { .pixel-row { gap: 3px; } }
-
-.pixel-grid { display: flex; flex-direction: column; gap: 0.8px; }
-@media (min-width: 360px)  { .pixel-grid { gap: 1px; } }
-@media (min-width: 440px)  { .pixel-grid { gap: 1.5px; } }
-@media (min-width: 640px)  { .pixel-grid { gap: 2.5px; } }
-@media (min-width: 768px)  { .pixel-grid { gap: 3px; } }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    BENTO GRID — infinite marquee animations

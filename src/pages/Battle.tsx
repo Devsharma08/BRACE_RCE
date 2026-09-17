@@ -270,6 +270,9 @@ export const Battle = () => {
     Record<string, number>
   >({});
   const [countdown, setCountDown] = useState<number>(0);
+  const [commencing, setCommencing] = useState(false);
+  const [focusFlash, setFocusFlash] = useState(false);
+  const [focusLossCount, setFocusLossCount] = useState(0);
 
   // --- CHAT STATE ---
   const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
@@ -279,8 +282,18 @@ export const Battle = () => {
   );
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const battleActiveRef = useRef(false);
+  battleActiveRef.current = battleState.status === "IN_PROGRESS" && !isSpectateMode;
+
+  const handleFocusLoss = useCallback(() => {
+    if (!battleActiveRef.current) return;
+    setFocusLossCount((count) => count + 1);
+    setFocusFlash(true);
+    window.setTimeout(() => setFocusFlash(false), 650);
+  }, []);
+
   // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
-  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading);
+  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading, handleFocusLoss);
 
   // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
   const queryClient = useQueryClient();
@@ -572,13 +585,22 @@ export const Battle = () => {
       setCountDown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
+          setCommencing(true);
+          playBattleSound("tick");
           return 0;
         }
+        playBattleSound("tick");
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [countdown]);
+
+  useEffect(() => {
+    if (!commencing) return;
+    const timer = window.setTimeout(() => setCommencing(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [commencing]);
 
   // Update editor when active problem changes
   useEffect(() => {
@@ -668,6 +690,12 @@ export const Battle = () => {
   const isBattleActive =
     battleState.status === "IN_PROGRESS" &&
     battleResult === null;
+  const opponentParticipant = roomParticipants.find(
+    (participant: any) => (participant.user?.id || participant.userId) !== myUserId,
+  );
+  const opponentTelemetry = opponentParticipant
+    ? playerProgress[opponentParticipant.user?.id || opponentParticipant.userId]
+    : undefined;
 
   const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
@@ -821,48 +849,34 @@ export const Battle = () => {
   }
 
   return (
-    <div className="flex w-full h-screen bg-[#050505] overflow-hidden relative">
-      {countdown > 0 && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 backdrop-blur-xl animate-fade-in select-none">
-          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/40 bg-amber-950/40 text-amber-400 font-mono text-xs tracking-[0.3em] uppercase mb-6 shadow-[0_0_20px_rgba(245,158,11,0.3)]">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+    <div className={`relative flex h-screen w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
+      {(countdown > 0 || commencing) && (
+        <div className="ds-overlay fixed inset-0 z-[100] flex select-none flex-col items-center justify-center px-4 text-center">
+          <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
+            <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
             OPERATIVE ALERT // BATTLE COMMENCING
           </div>
-          <h2 className="text-3xl font-black text-white font-mono mb-6 tracking-[0.4em] uppercase">
-            GET READY
+          <h2 className="mb-6 font-mono text-3xl font-black uppercase tracking-[0.4em] text-fg">
+            {commencing ? "BATTLE COMMENCING" : "GET READY"}
           </h2>
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-3xl animate-pulse" />
-            <div
-              key={countdown}
-              className="text-9xl font-black font-mono text-transparent bg-clip-text bg-gradient-to-b from-white via-cyan-300 to-cyan-500 animate-bounce drop-shadow-[0_0_50px_rgba(34,211,238,0.9)]"
-            >
-              {countdown}
+          <div className="relative flex min-h-32 items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
+            <div key={countdown || "commencing"} className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl">
+              {commencing ? "01" : countdown}
             </div>
           </div>
-          <p className="mt-8 font-mono text-xs text-cyan-400/70 tracking-widest uppercase">
-            PREPARE YOUR EDITOR // INITIALIZING WORKSPACE
+          <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
+            {commencing ? "WORKSPACE UNLOCKING // ENTER THE ARENA" : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
           </p>
         </div>
       )}
 
       {/* FOCUS LOSS WARNING */}
       {focusTelemetry.snapshot().filter(e => e.type === "blur" || e.type === "tab_hidden").length > 0 && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[90] px-4 py-2 border border-amber-500/30 bg-amber-950/20 text-amber-400 font-mono text-xs tracking-widest uppercase animate-[glitch_0.3s_infinite]">
+        <div className="fixed left-1/2 top-16 z-[90] -translate-x-1/2 border border-accent-danger/40 bg-accent-danger/10 px-4 py-2 font-mono text-xs uppercase tracking-widest text-accent-danger ds-glitch">
           [WARNING: TELEMETRY ALERT - FOCUS LOST]
         </div>
       )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes glitch {
-          0% { transform: translate(0); }
-          20% { transform: translate(-2px, 2px); }
-          40% { transform: translate(-2px, -2px); }
-          60% { transform: translate(2px, 2px); }
-          80% { transform: translate(2px, -2px); }
-          100% { transform: translate(0); }
-        }
-      ` }} />
 
       {/* ─── HOST COMMAND PANEL (fixed overlay, host only) ─── */}
       {isHost && battleState.status === "IN_PROGRESS" && (
@@ -1103,17 +1117,19 @@ export const Battle = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="border border-cyan-500/15 bg-raised/60 p-3">
                         <div className="text-[9px] text-slate-500 uppercase tracking-widest">Tests Passed</div>
-                        <div className="text-lg font-mono font-bold text-white mt-1">4/5</div>
+                        <div className="mt-1 text-lg font-mono font-bold text-fg">
+                          {opponentTelemetry?.progress ?? 0}%
+                        </div>
                       </div>
                       <div className="border border-cyan-500/15 bg-raised/60 p-3">
                         <div className="text-[9px] text-slate-500 uppercase tracking-widest">Focus Alerts</div>
-                        <div className="text-lg font-mono font-bold text-amber-400 mt-1">2</div>
+                        <div className="mt-1 text-lg font-mono font-bold text-accent-warning">—</div>
                       </div>
                     </div>
                   </div>
                   <div className="border border-amber-500/20 bg-amber-950/10 p-3">
-                    <p className="text-[9px] font-mono text-amber-400 uppercase tracking-widest">⚠ Telemetry Notice</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Opponent focus blurred twice during this battle.</p>
+                    <p className="text-[9px] font-mono text-accent-warning uppercase tracking-widest">Telemetry Notice</p>
+                    <p className="mt-1 text-[10px] text-subtle">Focus-loss details are reported after the match.</p>
                   </div>
                 </div>
               ) : (
@@ -1297,7 +1313,10 @@ export const Battle = () => {
         />
 
         {/* monaco editor */}
-        <div className="flex-1 min-h-0">
+        <div
+          className="grid min-h-0 flex-1"
+          style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
+        >
           <MonacoIDE
             code={code}
             language={language}

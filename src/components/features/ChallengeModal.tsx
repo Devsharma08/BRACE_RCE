@@ -57,53 +57,53 @@ export function ChallengeModal({ friend, open, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg border border-rose-500/40 bg-raised shadow-[0_0_50px_rgba(225,29,72,0.25)]">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-rose-500/20 bg-rose-950/20">
-          <span className="flex items-center gap-2 text-sm font-bold tracking-[0.2em] text-rose-300 uppercase">
+    <div className="ds-overlay fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <div className="w-full max-w-lg overflow-hidden rounded-card border border-accent-danger/40 bg-surface shadow-glow-danger">
+        <div className="flex items-center justify-between border-b border-accent-danger/20 bg-accent-danger/10 px-5 py-4">
+          <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-accent-danger">
             <Swords className="w-4 h-4" /> Challenge // {friend.username}
           </span>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-rose-300 cursor-pointer"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="cursor-pointer rounded-btn p-1.5 text-subtle transition-colors hover:bg-accent-danger/10 hover:text-accent-danger"><X className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-2 gap-2 p-4">
           {(["RANDOM", "CUSTOM"] as ChallengeMode[]).map((m) => (
             <button key={m} onClick={() => setMode(m)}
-              className={`flex items-center justify-center gap-2 px-4 py-3 border text-xs font-bold tracking-widest cursor-pointer transition-all ${mode === m ? "border-rose-400 bg-rose-950/40 text-rose-200" : "border-white/10 text-slate-500 hover:border-rose-500/40 hover:text-rose-300"}`}>
+              className={`flex items-center justify-center gap-2 rounded-btn border px-4 py-3 text-xs font-bold tracking-widest transition-all ${mode === m ? "border-accent-danger bg-accent-danger/10 text-accent-danger" : "border-subtle-line text-subtle hover:border-accent-danger/40 hover:text-accent-danger"}`}>
               {m === "RANDOM" ? <Dices className="w-4 h-4" /> : <FileCode2 className="w-4 h-4" />} {m === "RANDOM" ? "RANDOM BY DIFFICULTY" : "CUSTOM PROBLEM"}
             </button>
           ))}
         </div>
         {mode === "RANDOM" ? (
           <div className="px-5 pb-2">
-            <p className="text-[10px] tracking-[0.2em] text-slate-500 mb-2">DIFFICULTY // SERVER PICKS A RANDOM PROBLEM</p>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">DIFFICULTY // SERVER PICKS A RANDOM PROBLEM</p>
             <div className="grid grid-cols-4 gap-2">
               {["EASY", "MEDIUM", "HARD", "ANY"].map((d) => (
                 <button key={d} onClick={() => setDifficulty(d)}
-                  className={`px-2 py-2.5 border text-[11px] font-bold tracking-widest cursor-pointer ${difficulty === d ? "border-cyan-400 bg-cyan-950/40 text-cyan-200" : "border-white/10 text-slate-500 hover:border-cyan-500/40 hover:text-cyan-300"}`}>{d}</button>
+                  className={`rounded-btn border px-2 py-2.5 text-[11px] font-bold tracking-widest transition-all ${difficulty === d ? "border-accent-primary bg-accent-primary/10 text-accent-primary" : "border-subtle-line text-subtle hover:border-accent-primary/40 hover:text-accent-primary"}`}>{d}</button>
               ))}
             </div>
-            <p className="mt-3 text-[11px] text-slate-500">{systemProblems.length} system problems available.</p>
+            <p className="mt-3 text-[11px] text-muted">{systemProblems.length} system problems available.</p>
           </div>
         ) : (
           <div className="px-5 pb-2">
-            <p className="text-[10px] tracking-[0.2em] text-slate-500 mb-2">CUSTOM PROBLEM // YOU PICK THE ARENA</p>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">CUSTOM PROBLEM // YOU PICK THE ARENA</p>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search problems..."
-              className="w-full bg-black/50 border border-white/10 p-2.5 text-xs text-white font-mono focus:border-rose-500/60 outline-none mb-2" />
-            <div className="max-h-56 overflow-y-auto themed-scroll border border-white/10">
+              className="mb-2 w-full rounded-btn border border-subtle-line bg-base p-2.5 text-xs text-fg font-mono outline-none focus:border-accent-danger/60" />
+            <div className="max-h-56 overflow-y-auto rounded-btn border border-subtle-line themed-scroll">
               {filtered.map((p) => (
                 <button key={p.id} onClick={() => setProblemId(p.id)}
-                  className={`w-full text-left px-3 py-2.5 border-b border-white/5 text-xs cursor-pointer ${problemId === p.id ? "bg-rose-950/40 text-rose-200" : "text-slate-300 hover:bg-white/5"}`}>
+                  className={`w-full cursor-pointer border-b border-subtle-line px-3 py-2.5 text-left text-xs transition-colors ${problemId === p.id ? "bg-accent-danger/10 text-accent-danger" : "text-subtle hover:bg-surface-hover"}`}>
                   <span className="font-bold">{p.name}</span>
-                  {p.difficulty_level && <span className="ml-2 text-[10px] text-slate-500">[{p.difficulty_level}]</span>}
+                  {p.difficulty_level && <span className="ml-2 text-[10px] text-muted">[{p.difficulty_level}]</span>}
                 </button>
               ))}
-              {filtered.length === 0 && <p className="px-3 py-6 text-center text-[11px] text-slate-600">NO PROBLEMS MATCH — TRY ANOTHER SEARCH</p>}
+              {filtered.length === 0 && <p className="px-3 py-6 text-center text-[11px] text-muted">NO PROBLEMS MATCH — TRY ANOTHER SEARCH</p>}
             </div>
           </div>
         )}
         <div className="flex gap-2 p-4">
-          <button onClick={onClose} className="flex-1 py-3 border border-white/10 text-slate-400 text-xs font-bold tracking-widest hover:bg-white/5 cursor-pointer">CANCEL</button>
-          <button onClick={handleSend} className="flex-1 py-3 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold tracking-widest shadow-[0_0_20px_rgba(225,29,72,0.4)] cursor-pointer">[ SEND CHALLENGE ]</button>
+          <button onClick={onClose} className="flex-1 rounded-btn border border-subtle-line py-3 text-xs font-bold tracking-widest text-subtle transition-colors hover:bg-surface-hover hover:text-fg">CANCEL</button>
+          <button onClick={handleSend} className="flex-1 rounded-btn bg-accent-danger py-3 text-xs font-bold tracking-widest text-fg transition-opacity hover:opacity-90">[ SEND CHALLENGE ]</button>
         </div>
       </div>
     </div>
