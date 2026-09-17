@@ -28,7 +28,7 @@ export const MobileBottomNav: React.FC = () => {
   return (
     <nav
       aria-label="Mobile bottom navigation"
-      className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-40 flex md:hidden h-14 items-stretch bg-[#080d1a]/95 backdrop-blur-xl border-t border-cyan-500/15"
+      className="mobile-bottom-nav fixed bottom-0 left-0 right-0 z-40 flex md:hidden h-14 items-stretch bg-panel/95 backdrop-blur-xl border-t border-cyan-500/15"
     >
       {NAV_ITEMS.map(({ icon: Icon, to, label }) => (
         <NavLink
@@ -39,8 +39,8 @@ export const MobileBottomNav: React.FC = () => {
           className={({ isActive }) =>
             `flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-mono font-bold uppercase tracking-wide transition-all ${
               isActive
-                ? "text-[#00D4FF] border-t-2 border-[#00D4FF] bg-cyan-500/8 -mt-px"
-                : "text-[#8892A4] hover:text-white border-t-2 border-transparent"
+                ? "text-accent border-t-2 border-accent bg-cyan-500/8 -mt-px"
+                : "text-subtle hover:text-white border-t-2 border-transparent"
             }`
           }
         >
@@ -48,7 +48,7 @@ export const MobileBottomNav: React.FC = () => {
             <>
               <Icon
                 className={`w-5 h-5 shrink-0 transition-colors ${
-                  isActive ? "text-[#00D4FF]" : "text-[#8892A4]"
+                  isActive ? "text-accent" : "text-subtle"
                 }`}
               />
               <span className="leading-none">{label}</span>

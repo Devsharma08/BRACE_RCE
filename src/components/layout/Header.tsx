@@ -63,22 +63,22 @@ const Header = () => {
   const desktopLinkClass = (path: string) =>
     `flex items-center px-4 py-2 font-mono text-xs uppercase tracking-wide font-semibold transition-all duration-200 ${
       isActive(path)
-        ? 'border-b-2 border-[#00D4FF] bg-cyan-500/8 text-[#00D4FF] pb-[6px]'
-        : 'text-[#8892A4] hover:text-white border-b-2 border-transparent hover:border-white/20'
+        ? 'border-b-2 border-accent bg-cyan-500/8 text-accent pb-[6px]'
+        : 'text-subtle hover:text-white border-b-2 border-transparent hover:border-white/20'
     }`
 
   const mobileLinkClass = (path: string) =>
     `flex items-center gap-3 w-full px-4 py-3.5 font-mono text-xs uppercase tracking-wide font-medium transition-all ${
       isActive(path)
-        ? 'border-l-2 border-[#00D4FF] text-[#00D4FF] bg-cyan-500/5'
-        : 'text-[#8892A4] hover:text-white border-l-2 border-transparent hover:bg-white/3'
+        ? 'border-l-2 border-accent text-accent bg-cyan-500/5'
+        : 'text-subtle hover:text-white border-l-2 border-transparent hover:bg-white/3'
     }`
 
   return (
     <nav
       ref={navRef}
       aria-label="Main navigation"
-      className={`fixed top-0 left-0 right-0 z-50 h-14 bg-[#0b1021]/92 backdrop-blur-xl border-b border-cyan-500/15 font-mono text-xs transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 h-14 bg-raised/92 backdrop-blur-xl border-b border-cyan-500/15 font-mono text-xs transition-all duration-300 ${
         visible
           ? 'opacity-100 translate-y-0'
           : 'opacity-0 -translate-y-14 pointer-events-none'
@@ -90,7 +90,7 @@ const Header = () => {
         <Link
           to="/"
           className="flex items-center gap-2.5 group shrink-0"
-          style={{ filter: 'drop-shadow(0 0 8px rgba(0,243,255,0.5))' }}
+          style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.5))' }}
         >
           <img
             src="/favicon.svg"
@@ -102,7 +102,7 @@ const Header = () => {
             style={{ fontFamily: "'Orbitron', sans-serif" }}
           >
             BRACE //{' '}
-            <span className="text-[#00D4FF] font-black drop-shadow-[0_0_6px_rgba(0,212,255,0.4)]">RCE</span>
+            <span className="text-accent font-black drop-shadow-[0_0_6px_rgba(0,212,255,0.4)]">RCE</span>
           </span>
         </Link>
 
@@ -144,7 +144,7 @@ const Header = () => {
                 <NotificationCenter />
               </div>
               <Link to="/profile" className="ml-1">
-                <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-[#0b1021] text-[#00D4FF] font-mono font-bold text-xs transition-all hover:border-cyan-400 hover:bg-cyan-500/10">
+                <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-raised text-accent font-mono font-bold text-xs transition-all hover:border-cyan-400 hover:bg-cyan-500/10">
                   <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
                   <span className="max-w-[120px] truncate" title={user?.username}>
                     {user?.username || 'PROFILE'}
@@ -154,7 +154,7 @@ const Header = () => {
             </>
           ) : (
             <Link to="/signin" className="ml-1">
-              <span className="flex items-center gap-2 bg-[#00D4FF] text-[#050608] font-bold px-4 py-2 text-xs transition-all hover:bg-cyan-300">
+              <span className="flex items-center gap-2 bg-accent text-ink font-bold px-4 py-2 text-xs transition-all hover:bg-cyan-300">
                 <LogIn className="w-4 h-4" />
                 LOGIN
               </span>
@@ -170,7 +170,7 @@ const Header = () => {
             aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-menu"
-            className="p-2 border border-white/10 text-[#8892A4] hover:text-white hover:border-[#00D4FF]/50 transition-all"
+            className="p-2 border border-white/10 text-subtle hover:text-white hover:border-accent/50 transition-all"
           >
             {mobileOpen
               ? <X className="w-5 h-5" />
@@ -187,7 +187,7 @@ const Header = () => {
         aria-label="Mobile navigation"
         className={`md:hidden overflow-hidden transition-all duration-200 ease-in-out ${
           mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-        } bg-[#0b1021]/98 backdrop-blur-xl border-b border-white/6`}
+        } bg-raised/98 backdrop-blur-xl border-b border-cyan-500/15`}
       >
         <div className="flex flex-col py-2">
           <Link to="/" className={mobileLinkClass('/')} role="menuitem">

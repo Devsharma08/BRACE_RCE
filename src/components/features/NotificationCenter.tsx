@@ -84,7 +84,7 @@ export const NotificationCenter = memo(function NotificationCenter() {
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} title="Notifications"
-        className="relative p-2 text-slate-400 hover:text-cyan-400 transition-colors border border-white/10 hover:border-cyan-500/40 bg-[#06080e] cursor-pointer">
+        className="relative p-2 text-slate-400 hover:text-cyan-400 transition-colors border border-white/10 hover:border-cyan-500/40 bg-raised cursor-pointer">
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 bg-rose-500 text-black text-[10px] font-bold flex items-center justify-center">
@@ -95,7 +95,7 @@ export const NotificationCenter = memo(function NotificationCenter() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-11 z-50 w-[22rem] max-w-[90vw] border border-cyan-500/30 bg-[#06080e] shadow-[0_0_40px_rgba(6,182,212,0.25)]">
+          <div className="absolute right-0 top-11 z-50 w-[22rem] max-w-[90vw] border border-cyan-500/30 bg-raised shadow-[0_0_40px_rgba(6,182,212,0.25)]">
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               <span className="text-xs font-bold tracking-[0.2em] text-white uppercase">Comms // Queue</span>
               <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export const NotificationCenter = memo(function NotificationCenter() {
               {isLoading && <p className="px-4 py-8 text-center text-[11px] tracking-widest text-slate-500">LOADING QUEUE…</p>}
               {!isLoading && items.length === 0 && <p className="px-4 py-8 text-center text-[11px] tracking-widest text-slate-500">QUEUE CLEAR — NOTHING IN THE LAST 3 DAYS</p>}
               {items.map((n) => (
-                <div key={n.id} className={`px-4 py-3 border-b border-white/5 hover:bg-white/[0.02] ${n.status === "UNREAD" ? "bg-cyan-950/10" : ""}`}>
+                <div key={n.id} className={`px-4 py-3 border-b border-white/5 hover:bg-white/[0.02] ${n.status === "UNREAD" ? "bg-cyan-500/5" : ""}`}>
                   <div className="flex items-start justify-between gap-2">
                     <span className={`text-[9px] font-bold tracking-widest px-1.5 py-0.5 border ${typeColor(n.type)}`}>{n.type.replace(/_/g, " ")}</span>
                     <span className="text-[10px] text-slate-600 font-mono">{new Date(n.createdAt).toLocaleString()}</span>
