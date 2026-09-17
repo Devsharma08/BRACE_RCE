@@ -83,11 +83,11 @@ export const NotesPanel = ({
   };
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 z-[100] w-80 flex flex-col font-mono border-l border-cyan-500/30 bg-[#0b0c0e]/96 backdrop-blur">
+    <div className="fixed right-0 top-14 bottom-0 z-[100] w-80 flex flex-col font-mono border-l border-cyan-500/30 bg-raised/96 backdrop-blur">
       <div className="w-full h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-[#090e1d] border-b border-cyan-500/20 select-none shrink-0">
-          <div className="flex items-center gap-2 text-cyan-400">
+        <div className="flex items-center justify-between px-4 py-3 bg-[#090e1d] border-b border-cyan-500/15 select-none shrink-0">
+          <div className="flex items-center gap-2 text-cyan-400/70">
             <StickyNote className="w-4 h-4 text-amber-400" />
             <span className="font-mono text-xs font-bold tracking-widest uppercase">
               {hasMultipleProblems ? "BATTLE NOTES" : "SCRATCHPAD"}
@@ -148,7 +148,7 @@ export const NotesPanel = ({
           value={currentNote}
           onChange={handleNotesChange}
           placeholder={getPlaceholder()}
-          className="flex-1 w-full bg-[#050811] text-cyan-200 text-xs font-mono p-4 resize-none focus:outline-none focus:border-cyan-400 border border-cyan-500/20 rounded p-3 placeholder:text-cyan-500/20 custom-scrollbar leading-relaxed"
+          className="flex-1 min-h-0 w-full bg-void text-cyan-200 text-xs font-mono p-4 resize-none focus:outline-none focus:border-cyan-400 border border-cyan-500/15 rounded-none placeholder:text-slate-500 custom-scrollbar leading-relaxed"
           spellCheck={false}
           autoFocus
         />

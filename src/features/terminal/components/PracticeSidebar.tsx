@@ -350,7 +350,7 @@ const PracticeSidebar = ({
 
   return (
     <aside
-      className="relative flex flex-col h-full bg-[#06080e] border-r border-white/10 overflow-hidden select-none shrink-0"
+      className="relative flex flex-col h-full bg-raised border-r border-white/10 overflow-hidden select-none shrink-0"
       style={{ width }}
     >
       {/* TAB BAR */}

@@ -22,7 +22,7 @@ export const TestCaseCard = ({
   const hasResult = match !== undefined;
 
   const statusColor = !hasResult
-    ? "border-cyan-500/10 bg-[#0b1021]/60"
+    ? "border-cyan-500/10 bg-raised/60"
     : passed
       ? "border-emerald-500/30 bg-emerald-950/10"
       : "border-rose-500/30 bg-rose-950/10";

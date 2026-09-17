@@ -112,7 +112,7 @@ const OutputPanel = ({
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 themed-scroll">
         {isExecuting && (
-          <div className="flex items-center gap-2 text-cyan-400 text-xs font-mono font-bold tracking-widest border border-cyan-500/20 bg-cyan-950/5 p-3 shadow-[inset_0_0_10px_rgba(0,243,255,0.04)]">
+          <div className="flex items-center gap-2 text-cyan-400 text-xs font-mono font-bold tracking-widest border border-cyan-500/20 bg-cyan-950/5 p-3 shadow-[inset_0_0_10px_rgba(0,212,255,0.04)]">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             EXECUTING...
           </div>
@@ -121,11 +121,11 @@ const OutputPanel = ({
         {!isExecuting && activeDiagTab === "METRICS" && (
           <div className="grid grid-cols-2 gap-4">
             <div className="border border-cyan-500/20 bg-[#070b16] p-4">
-              <div className="text-[10px] text-[#8892A4] uppercase tracking-widest mb-1">Time</div>
+              <div className="text-[10px] text-subtle uppercase tracking-widest mb-1">Time</div>
               <div className="text-lg font-mono font-bold text-white">{avgDuration.toFixed(0)}ms</div>
             </div>
             <div className="border border-cyan-500/20 bg-[#070b16] p-4">
-              <div className="text-[10px] text-[#8892A4] uppercase tracking-widest mb-1">Memory</div>
+              <div className="text-[10px] text-subtle uppercase tracking-widest mb-1">Memory</div>
               <div className="text-lg font-mono font-bold text-white">{(maxMemory / 1024).toFixed(1)}MB</div>
             </div>
           </div>

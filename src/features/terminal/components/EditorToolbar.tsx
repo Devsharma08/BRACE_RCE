@@ -142,7 +142,7 @@ const EditorToolbar = ({
   return (
     <div
       ref={toolbarRef}
-      className="flex items-center justify-between gap-2 px-3 py-1.5 bg-[#0b0c0e] border-b border-cyan-500/20 select-none"
+      className="flex items-center justify-between gap-2 px-3 py-1.5 bg-raised border-b border-cyan-500/20 select-none"
       style={{ marginLeft: sidebarWidth }}
     >
       {/* LEFT ACTIONS */}
@@ -247,13 +247,13 @@ const EditorToolbar = ({
 
         {/* LANGUAGE SELECTOR */}
         <select
-          className="min-w-0 rounded-none border border-cyan-500/20 bg-[#0b0c0e] px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
+          className="min-w-0 rounded-none border border-cyan-500/20 bg-raised px-2 py-1.5 text-[10px] font-mono text-cyan-400 outline-none transition focus:border-cyan-500/40 whitespace-nowrap cursor-pointer"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
           aria-label="Select programming language"
         >
           {LANGUAGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-[#0b0c0e] text-cyan-400">
+            <option key={opt.value} value={opt.value} className="bg-raised text-cyan-400">
               {isCompact ? opt.shortLabel : opt.label}
             </option>
           ))}

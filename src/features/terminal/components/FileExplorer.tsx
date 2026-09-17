@@ -133,7 +133,7 @@ const SidebarFilesMode = React.memo(({
   return (
     <>
       {/* ── ZONE 1: FILTERS ──────────────────────────────────────── */}
-      <div className="search-container border-b-2 border-cyan-500/20 bg-[#06080e]">
+      <div className="search-container border-b-2 border-cyan-500/20 bg-raised">
         {/* Search input */}
         <div className="px-3 pt-3 pb-2 relative flex items-center">
           <span className="absolute left-6 text-[10px] font-mono text-cyan-500/40 select-none">›</span>
@@ -263,7 +263,7 @@ const SidebarFilesMode = React.memo(({
         <div className={detailsPanelClass}>
 
           {/* File identity row */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[#06080e] border-b border-white/10">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-raised border-b border-white/10">
             <span className="text-[10px] font-bold text-white truncate font-mono">
               {activeFileEntry?.name || "—"}
             </span>
@@ -418,7 +418,7 @@ const SidebarTerminalMode = React.memo(({
   return (
     <>
       {/* ── ZONE 1: CREATE FILE ───────────────────────────────── */}
-      <div className="create-file-container border-b-2 border-amber-500/20 bg-[#06080e]">
+      <div className="create-file-container border-b-2 border-amber-500/20 bg-raised">
         <div className="px-3 py-2 text-[8px] font-bold uppercase tracking-widest text-amber-400/70 border-b border-amber-500/10">
           NEW SCRATCHPAD FILE
         </div>
@@ -799,7 +799,7 @@ const FileExplorer = ({
           <label htmlFor="mode-files" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "files-mode" 
               ? "border-l-2 border-l-cyan-500 border-cyan-500/30 bg-cyan-950/15 text-cyan-400" 
-              : "border border-white/10 bg-[#06080e] text-slate-500 hover:text-slate-300 hover:border-white/20"
+              : "border border-white/10 bg-raised text-slate-500 hover:text-slate-300 hover:border-white/20"
           }`}>
             <span className="mode-text-full">SYS // EXPLORER</span>
             <span className="mode-text-short">EXPLORER</span>
@@ -817,7 +817,7 @@ const FileExplorer = ({
           <label htmlFor="mode-terminal" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "terminal-mode" 
               ? "border-l-2 border-l-amber-500 border-amber-500/30 bg-amber-950/10 text-amber-400" 
-              : "border border-white/10 bg-[#06080e] text-slate-500 hover:text-slate-300 hover:border-white/20"
+              : "border border-white/10 bg-raised text-slate-500 hover:text-slate-300 hover:border-white/20"
           }`}>
             <span className="mode-text-full">SYS // TERMINAL</span>
             <span className="mode-text-short">TERMINAL</span>
