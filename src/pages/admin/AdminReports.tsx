@@ -41,7 +41,7 @@ const AdminReports = () => {
         </div>
 
         {/* Reports Table */}
-        <div className="rounded-none border border-white/20 border-r-4 border-b-4 border-r-rose-500/60 border-b-rose-500/60 bg-[#06080e] overflow-hidden">
+        <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-rose-500/40 bg-raised overflow-hidden">
           <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
           <div className="p-4 border-b border-white/10 relative z-10">
             <span className="text-xs text-slate-500 font-bold tracking-widest uppercase">REPORT DIRECTORY</span>

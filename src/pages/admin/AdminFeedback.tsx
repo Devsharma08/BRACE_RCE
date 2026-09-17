@@ -46,7 +46,7 @@ const AdminFeedback = () => {
           {isLoading ? (
             <div className="p-8 text-center text-slate-500 text-xs">LOADING FEEDBACK...</div>
           ) : !feedback || feedback.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-white/10 rounded-none bg-[#06080e]">
+            <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-white/10 rounded-none bg-raised">
               NO FEEDBACK YET
             </div>
           ) : (
@@ -55,7 +55,7 @@ const AdminFeedback = () => {
               return (
                 <div
                   key={item.id}
-                  className="rounded-none border border-white/20 border-l-4 border-l-cyan-500/60 bg-[#06080e] p-5 overflow-hidden"
+                  className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-5 overflow-hidden"
                 >
                   <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 

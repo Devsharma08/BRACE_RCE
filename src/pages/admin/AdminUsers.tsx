@@ -60,7 +60,7 @@ const AdminUsers = () => {
         </div>
 
         {/* Users Table */}
-        <div className="rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60 bg-[#06080e] overflow-hidden">
+        <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised overflow-hidden">
           <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
 
           <div className="p-4 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-400 tracking-widest relative z-10">

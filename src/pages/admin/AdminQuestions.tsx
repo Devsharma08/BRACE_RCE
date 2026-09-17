@@ -94,7 +94,7 @@ const AdminQuestions = () => {
 
         {/* Form */}
         {isFormOpen && (
-          <div className="rounded-none border border-white/20 border-l-4 border-l-cyan-500/60 bg-[#06080e] p-5 overflow-hidden">
+          <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-5 overflow-hidden">
             <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
             <div className="flex items-center justify-between mb-4 relative z-10">
               <h3 className="text-sm font-bold text-white tracking-widest uppercase">
@@ -141,7 +141,7 @@ const AdminQuestions = () => {
         )}
 
         {/* Table */}
-        <div className="rounded-none border border-white/20 border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60 bg-[#06080e] overflow-hidden">
+        <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised overflow-hidden">
           <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
           <div className="p-4 border-b border-white/10 text-xs font-bold text-slate-500 tracking-widest uppercase relative z-10">
             QUESTION DIRECTORY

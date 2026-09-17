@@ -24,7 +24,7 @@ export const AdminLayout = () => {
   return (
     <div className="flex min-h-screen bg-[#02040a] font-mono">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-white/10 bg-[#06080e] flex flex-col py-6 overflow-y-auto">
+      <aside className="w-64 border-r border-white/10 bg-raised flex flex-col py-6 overflow-y-auto">
         {/* Logo */}
         <div className="px-5 mb-8 flex items-center gap-3 border-b border-white/5 pb-5">
           <Shield className="w-6 h-6 text-cyan-400" />

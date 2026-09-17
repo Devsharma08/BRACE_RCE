@@ -12,7 +12,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, accent, borderClass }) => (
-  <div className={`relative rounded-none border border-white/20 bg-[#06080e] p-5 flex flex-col items-center text-center overflow-hidden ${borderClass}`}>
+  <div className={`relative rounded-none border border-white/20 bg-raised p-5 flex flex-col items-center text-center overflow-hidden ${borderClass}`}>
     <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
     <div className={`w-12 h-12 rounded-none border border-white/10 bg-black/40 flex items-center justify-center mb-3 ${accent}`}>
       <Icon className="w-6 h-6" />
@@ -66,33 +66,33 @@ const AdminDashboard = () => {
             value={usersLoading ? '...' : (usersData?.users?.length || 0)}
             icon={Users}
             accent="text-cyan-400"
-            borderClass="border-r-4 border-b-4 border-r-cyan-500/60 border-b-cyan-500/60"
+            borderClass="border-t-2 border-t-cyan-500/40"
           />
           <StatCard
             label="Pending Feedback"
             value={feedbackLoading ? '...' : (feedbackData?.feedback?.filter((f: any) => f.status === 'PENDING').length || 0)}
             icon={MessageSquare}
             accent="text-amber-400"
-            borderClass="border-l-4 border-b-4 border-l-amber-500/60 border-b-amber-500/60"
+            borderClass="border-t-2 border-t-amber-500/40"
           />
           <StatCard
             label="Open Reports"
             value={reportsLoading ? '...' : (reportsData?.reports?.filter((r: any) => r.status === 'FLAGGED').length || 0)}
             icon={Flag}
             accent="text-rose-400"
-            borderClass="border-t-4 border-r-4 border-t-rose-500/60 border-r-rose-500/60"
+            borderClass="border-t-2 border-t-rose-500/40"
           />
           <StatCard
             label="Total Questions"
             value={questionsLoading ? '...' : (questionsData?.questions?.length || 0)}
             icon={HelpCircle}
             accent="text-purple-400"
-            borderClass="border-t-4 border-l-4 border-t-purple-500/60 border-l-purple-500/60"
+            borderClass="border-t-2 border-t-purple-500/40"
           />
         </div>
 
         {/* Status Bar */}
-        <div className="rounded-none border border-white/10 bg-[#06080e] p-4 flex items-center justify-between text-xs">
+        <div className="rounded-none border border-white/10 bg-raised p-4 flex items-center justify-between text-xs">
           <div className="flex items-center gap-4 text-slate-400">
             <span className="flex items-center gap-1">
               <Server className="w-3 h-3 text-emerald-400" />
