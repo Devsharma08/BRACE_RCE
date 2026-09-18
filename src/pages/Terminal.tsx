@@ -353,7 +353,7 @@ const Terminal = () => {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100dvh-var(--header-height))] min-h-0 flex-col overflow-hidden bg-[#02040a] pt-14 text-white font-mono select-none md:flex-row">
+    <div className="flex h-[100vh] min-h-0 flex-col overflow-hidden bg-base pt-2 text-fg font-mono select-none md:flex-row">
       {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ──────────────── */}
       <div
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
@@ -391,8 +391,9 @@ const Terminal = () => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
+          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/10 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
+          aria-label={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
@@ -403,7 +404,7 @@ const Terminal = () => {
       </div>
 
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#02040a] relative z-10 transition-all duration-300">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-base relative z-10 transition-all duration-300">
         {/* HEADER BAR */}
         <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-raised px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
@@ -414,17 +415,17 @@ const Terminal = () => {
               <span
                 className={`text-[10px] px-2 py-0.5 border font-bold uppercase ${
                   activeProblem.difficulty_level.toUpperCase() === "EASY"
-                    ? "border-emerald-500/30 bg-emerald-950/30 text-emerald-400"
+                    ? "border-accent-success/30 bg-accent-success/10 text-accent-success"
                     : activeProblem.difficulty_level.toUpperCase() === "HARD"
-                    ? "border-rose-500/30 bg-rose-950/30 text-rose-400"
-                    : "border-amber-500/30 bg-amber-950/30 text-amber-400"
+                    ? "border-accent-danger/30 bg-accent-danger/10 text-accent-danger"
+                    : "border-accent-warning/30 bg-accent-warning/10 text-accent-warning"
                 }`}
               >
                 {activeProblem.difficulty_level.toUpperCase()}
               </span>
             )}
             {activeProblem?.isSolved && (
-              <span className="text-[10px] px-2 py-0.5 border border-emerald-500/40 bg-emerald-950/30 text-emerald-400 font-bold uppercase">
+              <span className="text-[10px] px-2 py-0.5 border border-accent-success/40 bg-accent-success/10 text-accent-success font-bold uppercase">
                 ✓ SOLVED
               </span>
             )}
@@ -437,7 +438,7 @@ const Terminal = () => {
         {/* EDITOR + OUTPUT */}
         <div className="flex-1 min-h-0 relative">
           {problemsLoading ? (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#05070c]">
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-overlay-bg">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-6 w-6 animate-spin text-accent" />
                 <span className="text-xs font-mono text-subtle uppercase tracking-widest">Setting up environment...</span>
@@ -447,7 +448,7 @@ const Terminal = () => {
             <>
               {loading && <LoadingOverlay label="Loading workspace..." />}
 
-              <div className="absolute inset-0 flex flex-col min-h-0">
+              <div className="absolute inset-0 flex flex-col min-h-0 ">
                 {activeFile ? (
                   <>
                     <EditorToolbar
