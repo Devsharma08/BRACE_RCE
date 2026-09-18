@@ -4,6 +4,7 @@ import StickyFeatureShowcase from "../features/home/components/StickyFeatureShow
 import BentoGrid from "../features/home/components/BentoGrid";
 import CommunitySupportSection from "../features/home/components/CommunitySupportSection";
 import LaunchRail from "../features/home/components/LaunchRail";
+import HomeMetricsStrip from "../features/home/components/HomeMetricsStrip";
 
 /**
  * Home page
@@ -18,6 +19,7 @@ const Home: React.FC = () => {
       <div className="w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 flex flex-col items-center">
         <HeroSection />
         <LaunchRail />
+        <HomeMetricsStrip />
         <StickyFeatureShowcase />
       </div>
 

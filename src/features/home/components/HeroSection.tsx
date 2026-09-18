@@ -493,14 +493,14 @@ export const BraceRcePixelArt: React.FC = () => {
         className="relative w-full min-w-0 pt-12 pb-12 sm:pt-16 flex flex-col justify-center items-center overflow-hidden"
         style={{
           backgroundImage: `
-            linear-gradient(to right,  rgba(6,182,212,0.025) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(6,182,212,0.025) 1px, transparent 1px)
+            linear-gradient(to right,  rgba(0,212,255,0.025) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,212,255,0.025) 1px, transparent 1px)
           `,
           backgroundSize: '20px 20px',
         }}
       >
         {/* CRT scanline overlay */}
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-cyan-500/[0.01] to-transparent bg-[length:100%_4px] opacity-80" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-accent-primary/[0.01] to-transparent bg-[length:100%_4px] opacity-80" />
 
         {/* Radial ambient glow behind logo */}
         <div
@@ -559,7 +559,7 @@ export const BraceRcePixelArt: React.FC = () => {
           <>
             {/* Initialization status — fades out before scan */}
             <div
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-400/30 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/30 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
               style={{
                 opacity: 0,
                 animation: `statusFade 0.6s ease-out 100ms forwards, statusFade 0.4s ease-in ${maxDelay + 600}ms reverse forwards`,
@@ -570,7 +570,7 @@ export const BraceRcePixelArt: React.FC = () => {
 
             {/* Online status — appears after boot */}
             <div
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-300/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
               style={{
                 opacity: 0,
                 animation: `statusFade 0.8s cubic-bezier(0.16,1,0.3,1) ${maxDelay + 1700}ms forwards`,
@@ -582,7 +582,7 @@ export const BraceRcePixelArt: React.FC = () => {
         )}
         {/* Static online status on return visits — no re-boot */}
         {bootAlreadyPlayed && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-cyan-300/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap">
             RCE CORE // ONLINE
           </div>
         )}
@@ -594,13 +594,13 @@ export const BraceRcePixelArt: React.FC = () => {
           bootAlreadyPlayed ? "" : "animate-desc-fade opacity-0"
         }`}
       >
-        <h2 className="text-xs sm:text-sm font-bold tracking-[0.35em] text-cyan-400/90 uppercase mb-3.5 select-none flex flex-wrap items-center justify-center gap-2">
+        <h2 className="text-xs sm:text-sm font-bold tracking-[0.35em] text-accent-primary/90 uppercase mb-3.5 select-none flex flex-wrap items-center justify-center gap-2">
           <span className="break-words max-w-full tracking-wider">// CRX // REMOTE_CODE_EXECUTION_IDE</span>
-          <span className="px-1.5 py-0.5 border border-cyan-500/25 text-[9px] font-bold tracking-wider rounded-none uppercase text-amber-500 bg-cyan-950/15 select-none">
+          <span className="px-1.5 py-0.5 border border-accent-primary/25 text-[9px] font-bold tracking-wider rounded-none uppercase text-accent-warning bg-accent-primary/10 select-none">
             [ v1.0.0 ]
           </span>
         </h2>
-        <p className="text-xs sm:text-sm text-slate-300 font-medium tracking-[0.05em] leading-relaxed max-w-xl">
+        <p className="text-xs sm:text-sm text-subtle font-medium tracking-[0.05em] leading-relaxed max-w-xl">
           A high-performance sandboxed playground to run, compile, and solve Data Structures and Algorithms challenges live with high-precision execution telemetry.
         </p>
 
@@ -608,16 +608,16 @@ export const BraceRcePixelArt: React.FC = () => {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <Link
             to="/terminal"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 hover:border-cyan-300 text-cyan-200 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(6,182,212,0.2)] active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-accent-primary/50 bg-accent-primary/10 hover:bg-accent-primary/15 hover:border-accent-primary text-accent-primary hover:text-fg font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(0,212,255,0.2)] active:scale-95"
           >
-            <Terminal className="w-4 h-4 text-cyan-400" />
+            <Terminal className="w-4 h-4 text-accent-primary" />
             <span>[ LAUNCH TERMINAL ]</span>
           </Link>
           <Link
             to="/lobby"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-cyan-500/15 bg-raised hover:bg-cyan-500/5 hover:border-cyan-400 text-slate-300 hover:text-white font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-subtle-line bg-raised hover:bg-accent-primary/5 hover:border-accent-primary text-subtle hover:text-fg font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
           >
-            <Swords className="w-4 h-4 text-slate-400" />
+            <Swords className="w-4 h-4 text-faint" />
             <span>[ 1V1 BATTLE ARENA ]</span>
           </Link>
         </div>

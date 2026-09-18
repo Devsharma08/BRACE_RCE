@@ -52,19 +52,19 @@ export const CommunitySupportSection: React.FC = () => {
   ];
 
   return (
-    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none border-b border-cyan-500/15">
+    <section className="w-full min-h-[100vh] py-16 sm:py-24 flex flex-col justify-center items-center font-mono select-none border-b border-subtle-line">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col gap-10 w-full">
 
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
-            <MessageCircle className="w-4 h-4 text-cyan-400" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-none border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-xs font-bold uppercase tracking-widest mb-4 shadow-[0_0_15px_rgba(0,212,255,0.2)]">
+            <MessageCircle className="w-4 h-4 text-accent-primary" />
             <span>COMMUNITY // FEEDBACK & SUPPORT</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4">
-            Developer Voice & <span className="text-cyan-400">Reviews</span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-fg tracking-tight leading-tight mb-4">
+            Developer Voice & <span className="text-accent-primary">Reviews</span>
           </h2>
-          <p className="text-xs sm:text-sm md:text-base text-slate-300 font-sans leading-relaxed max-w-xl mx-auto">
+          <p className="text-xs sm:text-sm md:text-base text-subtle font-sans leading-relaxed max-w-xl mx-auto">
             Direct telemetry from our global network of engineers, competitive coders, and algorithm enthusiasts.
           </p>
         </div>
@@ -74,81 +74,81 @@ export const CommunitySupportSection: React.FC = () => {
           {reviews.map((rev) => (
             <div
               key={rev.name}
-              className="group relative overflow-hidden rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-6 sm:p-7 flex flex-col justify-between hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.18)] transition-all duration-300"
+              className="group relative overflow-hidden rounded-none border border-subtle-line border-t-2 border-t-accent-primary/40 bg-raised p-6 sm:p-7 flex flex-col justify-between hover:border-accent-primary hover:shadow-[0_0_30px_rgba(0,212,255,0.18)] transition-all duration-300"
             >
-              <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+              <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
 
               <div>
-                <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-6 font-normal">
+                <p className="text-xs sm:text-sm text-subtle font-sans leading-relaxed mb-6 font-normal">
                   "{rev.comment}"
                 </p>
               </div>
 
-              <div className="relative z-10 pt-4 border-t border-cyan-500/15 flex items-center justify-between">
+              <div className="relative z-10 pt-4 border-t border-subtle-line flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-white tracking-wider group-hover:text-cyan-300 transition-colors">
+                  <h4 className="text-xs sm:text-sm font-bold text-fg tracking-wider group-hover:text-accent-primary transition-colors">
                     {rev.name}
                   </h4>
-                  <span className="text-[10px] text-slate-400 tracking-widest font-mono">
+                  <span className="text-[10px] text-faint tracking-widest font-mono">
                     {rev.role}
                   </span>
                 </div>
-                <Sparkles className="w-4 h-4 text-cyan-400/60" />
+                <Sparkles className="w-4 h-4 text-accent-primary/60" />
               </div>
             </div>
           ))}
         </div>
 
         {/* Bottom Split Grid: Support & Feedback Forms */}
-        <div className="border-t border-cyan-500/10 pt-10 grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+        <div className="border-t border-subtle-line pt-10 grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
           {/* Support Info */}
-          <div className="md:col-span-5 rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="md:col-span-5 rounded-none border border-subtle-line border-t-2 border-t-accent-primary/40 bg-raised p-7 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
 
             <div>
               <div className="flex items-center gap-2 text-label font-mono text-[10px] uppercase tracking-[0.2em] mb-4">
                 <HelpCircle className="w-4 h-4" />
                 <span>SUPPORT // HELPDESK</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white mb-3">
+              <h3 className="text-xl sm:text-2xl font-black text-fg mb-3">
                 Need Telemetry Support or Guidance?
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-6 font-normal">
+              <p className="text-xs sm:text-sm text-subtle font-sans leading-relaxed mb-6 font-normal">
                 Our support network is live 24/7. Whether you're encountering execution sandbox issues or looking for setup suggestions, our team is standing by.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 relative z-10">
-              <div className="flex items-center gap-3 p-3.5 rounded-none border border-cyan-500/15 bg-cyan-950/30 text-cyan-300 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+              <div className="flex items-center gap-3 p-3.5 rounded-none border border-subtle-line bg-accent-primary/10 text-accent-primary text-xs">
+                <CheckCircle2 className="w-4 h-4 text-accent-primary shrink-0" />
                 <span>24/7 Sandbox execution uptime monitoring</span>
               </div>
-              <div className="flex items-center gap-3 p-3.5 rounded-none border border-cyan-500/15 bg-cyan-950/30 text-cyan-300 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+              <div className="flex items-center gap-3 p-3.5 rounded-none border border-subtle-line bg-accent-primary/10 text-accent-primary text-xs">
+                <CheckCircle2 className="w-4 h-4 text-accent-primary shrink-0" />
                 <span>Direct repository issues & suggestions hotline</span>
               </div>
             </div>
           </div>
 
           {/* Interactive Form */}
-          <div className="md:col-span-7 rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-7 sm:p-8 relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="md:col-span-7 rounded-none border border-subtle-line border-t-2 border-t-accent-primary/40 bg-raised p-7 sm:p-8 relative overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
 
             <div className="relative z-10">
               <div className="flex items-center gap-2 text-label font-mono text-[10px] uppercase tracking-[0.2em] mb-3">
                 <MessageSquare className="w-4 h-4" />
                 <span>TRANSMIT // FEEDBACK & SUGGESTIONS</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+              <h3 className="text-xl sm:text-2xl font-black text-fg mb-2">
                 Submit Your Suggestion
               </h3>
-              <p className="text-xs sm:text-sm text-slate-300 font-sans mb-6 font-normal">
+              <p className="text-xs sm:text-sm text-subtle font-sans mb-6 font-normal">
                 Have ideas for new RCE telemetry tools, data structures, or UI tweaks? Send your feedback directly to the engineering log.
               </p>
 
               {submitted ? (
-                <div className="p-6 rounded-none border border-cyan-500/40 bg-cyan-950/30 text-cyan-300 flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
+                <div className="p-6 rounded-none border border-accent-primary/40 bg-accent-primary/10 text-accent-primary flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-accent-primary shrink-0" />
                   <span className="text-xs sm:text-sm font-bold tracking-wide">
                     TELEMETRY_LOGGED: Thank you for your feedback & suggestion!
                   </span>
@@ -156,7 +156,7 @@ export const CommunitySupportSection: React.FC = () => {
               ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   {error && (
-                    <div className="p-3 rounded-none border border-rose-500/40 bg-rose-950/20 text-rose-300 text-xs flex items-center gap-2" role="alert">
+                    <div className="p-3 rounded-none border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-xs flex items-center gap-2" role="alert">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                       <span>{error}</span>
                     </div>
@@ -167,12 +167,12 @@ export const CommunitySupportSection: React.FC = () => {
                     onChange={(e) => setFeedback(e.target.value)}
                     placeholder="Enter your suggestion, feature request, or review here..."
                     aria-label="Feedback and suggestions"
-                    className="w-full p-4 rounded-none border border-cyan-500/15 bg-void text-slate-200 text-xs sm:text-sm font-mono focus:outline-none focus:border-cyan-400 transition-colors resize-none placeholder:text-slate-500"
+                    className="w-full p-4 rounded-none border border-subtle-line bg-void text-subtle text-xs sm:text-sm font-mono focus:outline-none focus:border-accent-primary transition-colors resize-none placeholder:text-faint"
                   />
                   <button
                     type="submit"
                     disabled={submitting || !feedback.trim()}
-                    className="self-end px-6 py-3 rounded-none bg-cyan-950/70 hover:bg-cyan-900/90 border border-cyan-500/50 hover:border-cyan-300 text-cyan-300 hover:text-white font-mono text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.2)] disabled:opacity-40 disabled:pointer-events-none"
+                    className="self-end px-6 py-3 rounded-none bg-accent-primary/10 hover:bg-accent-primary/15 border border-accent-primary/50 hover:border-accent-primary text-accent-primary hover:text-fg font-mono text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(0,212,255,0.2)] disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>{submitting ? "[ TRANSMITTING… ]" : "[ TRANSMIT FEEDBACK ]"}</span>
