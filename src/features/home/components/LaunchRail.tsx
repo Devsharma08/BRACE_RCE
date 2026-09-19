@@ -30,10 +30,13 @@ const destinations = [
 
 export default function LaunchRail() {
   return (
-    <nav aria-label="Home launch rail" className="w-full py-8 sm:py-12">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-fg">Choose your workspace</h2>
-        <p className="text-xs text-subtle">Sign in to enter your workspace</p>
+    <nav aria-label="Home launch rail" className="w-full border-t border-subtle-line pt-8 sm:pt-10">
+      <div className="mb-5 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-label">01 // Start here</p>
+          <h2 className="font-mono text-lg font-bold tracking-tight text-fg sm:text-xl">Choose your workspace</h2>
+        </div>
+        <p className="max-w-xs text-xs leading-relaxed text-subtle sm:text-right">Sign in to enter your workspace and keep your progress in one place.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         {destinations.map(({ title, description, meta, to, icon: Icon, featured }) => (

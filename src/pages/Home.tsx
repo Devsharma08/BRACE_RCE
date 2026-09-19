@@ -18,9 +18,11 @@ const Home: React.FC = () => {
       {/* Constrained hero area */}
       <div className="w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 flex flex-col items-center">
         <HeroSection />
-        <LaunchRail />
-        <HomeMetricsStrip />
-        <StickyFeatureShowcase />
+        <div className="w-full space-y-8 sm:space-y-12">
+          <LaunchRail />
+          <HomeMetricsStrip />
+          <StickyFeatureShowcase />
+        </div>
       </div>
 
       {/* Full-bleed sections — these manage their own internal max-width */}

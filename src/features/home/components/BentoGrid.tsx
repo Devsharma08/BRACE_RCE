@@ -5,8 +5,9 @@ import { Database } from "lucide-react";
 
 const BentoGrid = () => {
   return (
-    <section aria-labelledby="home-categories-title" className="w-full overflow-hidden border-b border-subtle-line py-16 font-mono sm:py-24">
-      <div className="mx-auto mb-8 max-w-3xl px-4 text-center sm:mb-12">
+    <section aria-labelledby="home-categories-title" className="w-full overflow-hidden border-b border-subtle-line bg-surface/30 py-12 font-mono sm:py-16">
+      <div className="mx-auto mb-8 max-w-3xl px-4 text-left sm:mb-10 sm:text-center">
+        <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.24em] text-label">04 // Practice map</p>
         <div className="mb-4 inline-flex max-w-full items-center gap-2 rounded-btn border border-subtle-line bg-surface px-3 py-2 text-xs font-bold uppercase tracking-wider text-accent-primary">
           <Database className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span>Data structures // Categories</span>

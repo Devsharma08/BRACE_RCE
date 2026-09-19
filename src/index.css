@@ -48,9 +48,11 @@
   --text-label:     color-mix(in srgb, var(--accent-primary) 50%, transparent);
 
   /* ── Layout Rhythm ───────────────────────────────────────────────────── */
-  --gap-section: 24px;
+  --gap-section: 32px;
   --gap-card:    16px;
   --gap-item:    12px;
+  --section-rule: rgba(255, 255, 255, 0.08);
+  --section-wash: color-mix(in srgb, var(--bg-surface) 36%, transparent);
 
   /* ── Spacing Scale (4px grid) ────────────────────────────────────────── */
   --space-1:  4px;
@@ -573,7 +575,7 @@ body {
   height: auto !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
+/* ═════════════════════════════════════════════════════════════��═════════════
    DRAG PERFORMANCE BOOSTERS
    Disable pointer events and animations during active panel resizing
    ═══════════════════════════════════════════════════════════════════════════ */
