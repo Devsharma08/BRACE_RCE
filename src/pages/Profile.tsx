@@ -141,7 +141,7 @@ const Profile = () => {
             <div className="flex flex-col sm:flex-row sm:items-start gap-4">
               {/* Avatar */}
               <div className="flex items-start gap-4 min-w-0 flex-1">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-elevated border border-white/8 flex items-center justify-center relative">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 bg-elevated border border-subtle-line flex items-center justify-center relative">
                   <span className="text-lg font-mono text-accent">
                     {(profile?.username || "?").slice(0, 2).toUpperCase()}
                   </span>
@@ -151,7 +151,7 @@ const Profile = () => {
                 {/* Info */}
                 <div className="min-w-0">
                   <h1
-                    className="text-lg sm:text-xl font-bold text-white truncate"
+                    className="text-lg sm:text-xl font-bold text-fg truncate"
                     title={profile?.username}
                   >
                     {profile?.username || "Unknown"}
@@ -227,7 +227,7 @@ const Profile = () => {
               >
                 Battle history
               </span>
-              <hr className="flex-1 border-white/6" />
+              <hr className="flex-1 border-subtle-line" />
             </div>
 
             <div className="overflow-hidden rounded-card border border-subtle-line border-t-2 border-t-accent-primary/50 bg-surface">
@@ -318,7 +318,7 @@ const Profile = () => {
                 >
                   Analytics
                 </span>
-                <hr className="flex-1 border-white/6" />
+                <hr className="flex-1 border-subtle-line" />
               </div>
 
               {/* Summary stat cards */}

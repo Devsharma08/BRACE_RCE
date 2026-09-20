@@ -158,15 +158,15 @@ const CreateRoom = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050608] text-slate-300 px-4 py-8 pt-20 sm:pt-24 pb-32 font-mono relative">
+    <div className="min-h-screen bg-void text-fg px-4 py-8 pt-20 sm:pt-24 pb-32 font-mono relative">
       <div className="max-w-6xl mx-auto relative z-10">
         
         <div className="mb-8 sm:mb-10 text-center">
-          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-widest mb-2 flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
-            <ShieldAlert className="w-7 h-7 sm:w-8 h-8 text-cyan-400 shrink-0" />
+          <h1 className="text-2xl sm:text-4xl font-bold text-fg tracking-widest mb-2 flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
+            <ShieldAlert className="w-7 h-7 sm:w-8 h-8 text-accent-primary shrink-0" />
             <span>OPERATION DEPLOYMENT</span>
           </h1>
-          <p className="text-cyan-500/60 tracking-widest text-xs sm:text-sm">
+          <p className="text-accent-primary/60 tracking-widest text-xs sm:text-sm">
             CONFIGURE PARAMETERS AND ASSEMBLE MISSION QUEUE
           </p>
         </div>
@@ -175,85 +175,85 @@ const CreateRoom = () => {
           
           {/* LEFT: ROOM SETTINGS */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-raised border border-cyan-500/20 rounded-2xl p-6 shadow-2xl">
-              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-cyan-400" />
+            <div className="bg-raised border border-subtle-line rounded-2xl p-6 shadow-2xl">
+              <h2 className="text-lg font-bold text-fg mb-6 flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-accent-primary" />
                 SECURITY & COMMS
               </h2>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs tracking-widest text-slate-500 mb-2">ROOM DESIGNATION</label>
-                  <input required value={name} onChange={e => setName(e.target.value)} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Weekly Code Clash" />
+                  <label className="block text-xs tracking-widest text-faint mb-2">ROOM DESIGNATION</label>
+                  <input required value={name} onChange={e => setName(e.target.value)} className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none" placeholder="e.g. Weekly Code Clash" />
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest text-slate-500 mb-2">MISSION BRIEFING (OPTIONAL)</label>
-                  <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none font-sans" placeholder="Describe the room..." />
+                  <label className="block text-xs tracking-widest text-faint mb-2">MISSION BRIEFING (OPTIONAL)</label>
+                  <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none font-sans" placeholder="Describe the room..." />
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest text-slate-500 mb-2">ACCESS PASSWORD (OPTIONAL)</label>
+                  <label className="block text-xs tracking-widest text-faint mb-2">ACCESS PASSWORD (OPTIONAL)</label>
                   <div className="relative">
-                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 pl-10 text-white focus:border-cyan-500 outline-none" placeholder="Leave blank for open access" />
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-raised border border-subtle-line rounded-lg p-3 pl-10 text-fg focus:border-accent-primary outline-none" placeholder="Leave blank for open access" />
+                    <Lock className="w-4 h-4 text-faint absolute left-3 top-3.5" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest text-slate-500 mb-2">MAX OPERATIVES</label>
-                  <input type="number" min={2} max={10} value={maxUsers} onChange={e => setMaxUsers(Number(e.target.value))} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none" />
+                  <label className="block text-xs tracking-widest text-faint mb-2">MAX OPERATIVES</label>
+                  <input type="number" min={2} max={10} value={maxUsers} onChange={e => setMaxUsers(Number(e.target.value))} className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none" />
                 </div>
 
                 <div>
-                  <label className="block text-xs tracking-widest text-slate-500 mb-2">GLOBAL TIME LIMIT (MINUTES)</label>
+                  <label className="block text-xs tracking-widest text-faint mb-2">GLOBAL TIME LIMIT (MINUTES)</label>
                   <input 
                     type="number" 
                     min={5} 
                     max={180} 
                     value={totalTimeLimitMinutes} 
                     onChange={e => setTotalTimeLimitMinutes(Number(e.target.value))} 
-                    className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none" 
+                    className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-raised border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-              <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border border-slate-800 hover:border-cyan-500/50 transition-colors bg-black/30">
+            <div className="bg-raised border border-subtle-line rounded-2xl p-6 shadow-2xl space-y-4">
+              <label className="flex items-center justify-between cursor-pointer p-4 rounded-xl border border-subtle-line hover:border-accent-primary/50 transition-colors bg-raised">
                 <div className="flex items-center gap-3">
-                  {isPublic ? <Globe className="w-5 h-5 text-emerald-400" /> : <EyeOff className="w-5 h-5 text-rose-400" />}
+                  {isPublic ? <Globe className="w-5 h-5 text-accent-success" /> : <EyeOff className="w-5 h-5 text-accent-danger" />}
                   <div>
-                    <p className="text-white text-sm font-bold tracking-widest">PUBLIC LOBBY</p>
-                    <p className="text-xs text-slate-500">Visible to all operatives</p>
+                    <p className="text-fg text-sm font-bold tracking-widest">PUBLIC LOBBY</p>
+                    <p className="text-xs text-faint">Visible to all operatives</p>
                   </div>
                 </div>
-                <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} className="w-5 h-5 accent-cyan-500" />
+                <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} className="w-5 h-5 accent-[var(--accent-primary)]" />
               </label>
             </div>
           </div>
 
           {/* RIGHT: PROBLEM PLAYLIST & CREATION */}
           <div className="lg:col-span-2">
-            <div className="bg-raised border border-cyan-500/20 rounded-2xl flex flex-col h-full max-h-[800px]">
+            <div className="bg-raised border border-subtle-line rounded-2xl flex flex-col h-full max-h-[800px]">
               
-              <div className="p-4 border-b border-cyan-500/20 bg-cyan-950/10 flex items-center justify-between">
+              <div className="p-4 border-b border-subtle-line bg-accent-primary/10 flex items-center justify-between">
                 <div className="flex gap-4">
                   <button 
                     onClick={() => setActiveProblemTab("EXISTING")}
-                    className={`text-sm font-bold tracking-widest transition-colors ${activeProblemTab === "EXISTING" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1" : "text-slate-500 hover:text-slate-300 pb-1"}`}
+                    className={`text-sm font-bold tracking-widest transition-colors ${activeProblemTab === "EXISTING" ? "text-accent-primary border-b-2 border-accent-primary pb-1" : "text-faint hover:text-fg pb-1"}`}
                   >
                     MISSION QUEUE
                   </button>
                   <button 
                     onClick={() => setActiveProblemTab("CUSTOM")}
-                    className={`text-sm font-bold tracking-widest transition-colors ${activeProblemTab === "CUSTOM" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1" : "text-slate-500 hover:text-slate-300 pb-1"}`}
+                    className={`text-sm font-bold tracking-widest transition-colors ${activeProblemTab === "CUSTOM" ? "text-accent-primary border-b-2 border-accent-primary pb-1" : "text-faint hover:text-fg pb-1"}`}
                   >
                     + NEW CUSTOM PROBLEM
                   </button>
                 </div>
                 {activeProblemTab === "EXISTING" && (
-                  <span className="text-xs text-cyan-400 font-bold tracking-widest bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                  <span className="text-xs text-accent-primary font-bold tracking-widest bg-accent-primary/10 px-3 py-1 rounded-full border border-subtle-line">
                     {selectedProblemIds.length} SELECTED
                   </span>
                 )}
@@ -273,28 +273,28 @@ const CreateRoom = () => {
                         key={prob.id}
                         onClick={() => toggleProblemSelection(prob.id)}
                         className={`cursor-pointer flex items-center justify-between p-4 rounded-xl border transition-all
-                          ${isSelected ? "bg-cyan-500/10 border-cyan-500" : "bg-black/40 border-slate-800 hover:border-cyan-500/50"}
+                          ${isSelected ? "bg-accent-primary/10 border-accent-primary" : "bg-raised border-subtle-line hover:border-accent-primary/50"}
                         `}
                       >
                         <div className="flex items-center gap-4">
                           <div className={`w-5 h-5 rounded border flex items-center justify-center
-                            ${isSelected ? "bg-cyan-500 border-cyan-500 text-black" : "border-slate-600"}
+                            ${isSelected ? "bg-accent-primary border-accent-primary text-ink" : "border-subtle-line"}
                           `}>
                             {isSelected && <CheckCircle2 className="w-4 h-4" />}
                           </div>
                           <div>
-                            <p className={`font-bold tracking-wider text-sm ${isSelected ? "text-cyan-400" : "text-white"}`}>
+                            <p className={`font-bold tracking-wider text-sm ${isSelected ? "text-accent-primary" : "text-fg"}`}>
                               {prob.name}
                             </p>
                             {prob.isCustom && (
-                              <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">
+                              <span className="text-[10px] bg-accent-primary/20 text-accent-primary px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">
                                 Custom Problem
                               </span>
                             )}
                           </div>
                         </div>
                         <span className={`text-xs font-bold tracking-widest
-                          ${isHard ? "text-rose-400" : isMed ? "text-amber-400" : "text-emerald-400"}
+                          ${isHard ? "text-accent-danger" : isMed ? "text-accent-warning" : "text-accent-success"}
                         `}>
                           {prob.difficulty_level}
                         </span>
@@ -308,12 +308,12 @@ const CreateRoom = () => {
                   <div className="space-y-8 pb-10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-xs tracking-widest text-slate-500 mb-2">SCENARIO NAME</label>
-                        <input value={customName} onChange={e => setCustomName(e.target.value)} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none" placeholder="e.g. Invert Binary Tree" />
+                        <label className="block text-xs tracking-widest text-faint mb-2">SCENARIO NAME</label>
+                        <input value={customName} onChange={e => setCustomName(e.target.value)} className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none" placeholder="e.g. Invert Binary Tree" />
                       </div>
                       <div>
-                        <label className="block text-xs tracking-widest text-slate-500 mb-2">THREAT LEVEL</label>
-                        <select value={customDifficulty} onChange={e => setCustomDifficulty(e.target.value)} className="w-full bg-black/50 border border-slate-800 rounded-lg p-3 text-white focus:border-cyan-500 outline-none">
+                        <label className="block text-xs tracking-widest text-faint mb-2">THREAT LEVEL</label>
+                        <select value={customDifficulty} onChange={e => setCustomDifficulty(e.target.value)} className="w-full bg-raised border border-subtle-line rounded-lg p-3 text-fg focus:border-accent-primary outline-none">
                           <option value="EASY">EASY (15 min)</option>
                           <option value="MEDIUM">MEDIUM (20 min)</option>
                           <option value="HARD">HARD (30 min)</option>
@@ -322,21 +322,21 @@ const CreateRoom = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs tracking-widest text-slate-500 mb-2">PROBLEM DEFINITION (MARKDOWN)</label>
-                      <textarea rows={4} value={customDefinition} onChange={e => setCustomDefinition(e.target.value)} className="w-full bg-black/50 border border-slate-800 rounded-lg p-4 text-white focus:border-cyan-500 outline-none font-sans" placeholder="Write your problem description here..." />
+                      <label className="block text-xs tracking-widest text-faint mb-2">PROBLEM DEFINITION (MARKDOWN)</label>
+                      <textarea rows={4} value={customDefinition} onChange={e => setCustomDefinition(e.target.value)} className="w-full bg-raised border border-subtle-line rounded-lg p-4 text-fg focus:border-accent-primary outline-none font-sans" placeholder="Write your problem description here..." />
                     </div>
 
                     {/* HINTS */}
-                    <div className="border border-slate-800 rounded-xl p-4">
+                    <div className="border border-subtle-line rounded-xl p-4">
                       <div className="flex items-center justify-between mb-4">
-                        <label className="text-xs font-bold tracking-widest text-slate-500 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-amber-400" /> HINTS</label>
-                        <button type="button" onClick={() => setCustomHints([...customHints, ""])} className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
+                        <label className="text-xs font-bold tracking-widest text-faint flex items-center gap-2"><Lightbulb className="w-4 h-4 text-accent-warning" /> HINTS</label>
+                        <button type="button" onClick={() => setCustomHints([...customHints, ""])} className="text-xs text-accent-warning hover:text-accent-warning flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
                       </div>
                       <div className="space-y-3">
                         {customHints.map((hint, i) => (
                           <div key={i} className="flex items-center gap-2">
-                            <input value={hint} onChange={e => { const h = [...customHints]; h[i] = e.target.value; setCustomHints(h); }} className="flex-1 bg-black/50 border border-slate-800 rounded-lg p-2 text-sm text-white focus:border-amber-500 outline-none" placeholder="Hint text..." />
-                            <button onClick={() => setCustomHints(customHints.filter((_, idx) => idx !== i))} className="text-slate-600 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                            <input value={hint} onChange={e => { const h = [...customHints]; h[i] = e.target.value; setCustomHints(h); }} className="flex-1 bg-raised border border-subtle-line rounded-lg p-2 text-sm text-fg focus:border-accent-warning outline-none" placeholder="Hint text..." />
+                            <button onClick={() => setCustomHints(customHints.filter((_, idx) => idx !== i))} className="text-faint hover:text-accent-danger"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         ))}
                       </div>
@@ -348,22 +348,22 @@ const CreateRoom = () => {
                       setSignature={setCreatorSignature}
                       onGenerated={(generated) => setCustomTestCases(generated)}
                     />
-                    <div className="border border-slate-800 rounded-xl p-4">
+                    <div className="border border-subtle-line rounded-xl p-4">
                       <div className="flex items-center justify-between mb-4">
-                        <label className="text-xs font-bold tracking-widest text-slate-500 flex items-center gap-2"><Terminal className="w-4 h-4 text-rose-400" /> TEST CASES</label>
-                        <button type="button" onClick={() => setCustomTestCases([...customTestCases, { input: "", expectedOutput: "", is_public: true }])} className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
+                        <label className="text-xs font-bold tracking-widest text-faint flex items-center gap-2"><Terminal className="w-4 h-4 text-accent-danger" /> TEST CASES</label>
+                        <button type="button" onClick={() => setCustomTestCases([...customTestCases, { input: "", expectedOutput: "", is_public: true }])} className="text-xs text-accent-danger hover:text-accent-danger flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
                       </div>
                       <div className="space-y-4">
                         {customTestCases.map((tc, i) => (
-                          <div key={i} className="bg-black/30 p-3 rounded-lg border border-slate-800 relative group">
-                            <button onClick={() => setCustomTestCases(customTestCases.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 text-slate-600 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                          <div key={i} className="bg-raised p-3 rounded-lg border border-subtle-line relative group">
+                            <button onClick={() => setCustomTestCases(customTestCases.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 text-faint hover:text-accent-danger"><Trash2 className="w-4 h-4" /></button>
                             <label className="flex items-center gap-2 mb-3">
-                              <input type="checkbox" checked={!tc.is_public} onChange={e => { const t = [...customTestCases]; t[i].is_public = !e.target.checked; setCustomTestCases(t); }} className="accent-rose-500" />
-                              <span className="text-xs text-rose-400">HIDDEN EDGE CASE</span>
+                              <input type="checkbox" checked={!tc.is_public} onChange={e => { const t = [...customTestCases]; t[i].is_public = !e.target.checked; setCustomTestCases(t); }} className="accent-[var(--accent-danger)]" />
+                              <span className="text-xs text-accent-danger">HIDDEN EDGE CASE</span>
                             </label>
                             <div className="grid grid-cols-2 gap-3">
-                              <input value={tc.input} onChange={e => { const t = [...customTestCases]; t[i].input = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-slate-800 rounded p-2 text-cyan-400 outline-none text-sm" placeholder="Input" />
-                              <input value={tc.expectedOutput} onChange={e => { const t = [...customTestCases]; t[i].expectedOutput = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-slate-800 rounded p-2 text-emerald-400 outline-none text-sm" placeholder="Expected Output" />
+                              <input value={tc.input} onChange={e => { const t = [...customTestCases]; t[i].input = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-subtle-line rounded p-2 text-accent-primary outline-none text-sm" placeholder="Input" />
+                              <input value={tc.expectedOutput} onChange={e => { const t = [...customTestCases]; t[i].expectedOutput = e.target.value; setCustomTestCases(t); }} className="bg-raised border border-subtle-line rounded p-2 text-accent-success outline-none text-sm" placeholder="Expected Output" />
                             </div>
                           </div>
                         ))}
@@ -371,22 +371,22 @@ const CreateRoom = () => {
                     </div>
 
                     {/* SNIPPETS */}
-                    <div className="border border-slate-800 rounded-xl p-4">
+                    <div className="border border-subtle-line rounded-xl p-4">
                       <div className="flex items-center justify-between mb-4">
-                        <label className="text-xs font-bold tracking-widest text-slate-500 flex items-center gap-2"><Code2 className="w-4 h-4 text-cyan-400" /> SNIPPETS</label>
-                        <button type="button" onClick={() => setCustomSnippets([...customSnippets, { language: "python", code: "", wrapperCode: "" }])} className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
+                        <label className="text-xs font-bold tracking-widest text-faint flex items-center gap-2"><Code2 className="w-4 h-4 text-accent-primary" /> SNIPPETS</label>
+                        <button type="button" onClick={() => setCustomSnippets([...customSnippets, { language: "python", code: "", wrapperCode: "" }])} className="text-xs text-accent-primary hover:text-accent-primary flex items-center gap-1"><Plus className="w-3 h-3" /> ADD</button>
                       </div>
                       <div className="space-y-4">
                         {customSnippets.map((snip, i) => (
-                          <div key={i} className="bg-black/30 p-3 rounded-lg border border-slate-800 relative">
-                            <button onClick={() => setCustomSnippets(customSnippets.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 text-slate-600 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
-                            <select value={snip.language} onChange={e => { const s = [...customSnippets]; s[i].language = e.target.value; setCustomSnippets(s); }} className="bg-raised border border-slate-800 rounded text-xs text-cyan-400 p-1 mb-2 outline-none">
+                          <div key={i} className="bg-raised p-3 rounded-lg border border-subtle-line relative">
+                            <button onClick={() => setCustomSnippets(customSnippets.filter((_, idx) => idx !== i))} className="absolute top-3 right-3 text-faint hover:text-accent-danger"><Trash2 className="w-4 h-4" /></button>
+                            <select value={snip.language} onChange={e => { const s = [...customSnippets]; s[i].language = e.target.value; setCustomSnippets(s); }} className="bg-raised border border-subtle-line rounded text-xs text-accent-primary p-1 mb-2 outline-none">
                               <option value="javascript">JavaScript</option>
                               <option value="python">Python</option>
                               <option value="java">Java</option>
                               <option value="cpp">C++</option>
                             </select>
-                            <textarea rows={3} value={snip.code} onChange={e => { const s = [...customSnippets]; s[i].code = e.target.value; setCustomSnippets(s); }} className="w-full bg-[#050505] border border-slate-800 rounded p-2 text-slate-300 font-mono text-sm outline-none focus:border-cyan-500" placeholder="Starter code..." />
+                            <textarea rows={3} value={snip.code} onChange={e => { const s = [...customSnippets]; s[i].code = e.target.value; setCustomSnippets(s); }} className="w-full bg-void border border-subtle-line rounded p-2 text-fg font-mono text-sm outline-none focus:border-accent-primary" placeholder="Starter code..." />
                           </div>
                         ))}
                       </div>
@@ -396,7 +396,7 @@ const CreateRoom = () => {
                       type="button"
                       onClick={handleCreateCustomProblem}
                       disabled={customLoading}
-                      className="w-full bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/50 text-cyan-400 hover:text-black font-bold tracking-widest py-4 rounded-xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 mt-8"
+                      className="w-full bg-accent-primary/10 hover:bg-accent-primary border border-accent-primary/50 text-accent-primary hover:text-ink font-bold tracking-widest py-4 rounded-xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 mt-8"
                     >
                       {customLoading ? <Activity className="w-5 h-5 animate-pulse" /> : <Target className="w-5 h-5" />}
                       CREATE & ADD TO QUEUE

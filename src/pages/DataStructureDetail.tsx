@@ -156,11 +156,11 @@ const DataStructureDetail = () => {
 
   if (!dsData) {
     return (
-      <div className="min-h-screen bg-[#08090a] text-white flex flex-col items-center justify-center font-mono px-4">
-        <div className="border border-red-500/25 bg-red-950/5 px-6 py-8 rounded-none max-w-md text-center space-y-4 shadow-[0_0_15px_rgba(239,68,68,0.05)]">
-          <span className="text-red-400 font-bold tracking-widest text-xs uppercase">SYS // CONCEPT_NOT_FOUND</span>
-          <p className="text-slate-400 text-sm">The requested data structure category does not match our verified repository database schemas.</p>
-          <Link to="/" className="inline-block border border-white/10 hover:border-cyan-500/30 hover:text-cyan-400 hover:bg-cyan-950/10 px-4 py-2 text-xs transition duration-300">
+      <div className="min-h-screen bg-base text-fg flex flex-col items-center justify-center font-mono px-4">
+        <div className="border border-accent-danger/25 bg-accent-danger/5 px-6 py-8 rounded-none max-w-md text-center space-y-4 shadow-[0_0_15px_rgba(255,59,92,0.05)]">
+          <span className="text-accent-danger font-bold tracking-widest text-xs uppercase">SYS // CONCEPT_NOT_FOUND</span>
+          <p className="text-subtle text-sm">The requested data structure category does not match our verified repository database schemas.</p>
+          <Link to="/" className="inline-block border border-subtle-line hover:border-accent-primary/30 hover:text-accent-primary hover:bg-accent-primary/5 px-4 py-2 text-xs transition duration-300">
             [ RETURN TO HOME ]
           </Link>
         </div>
@@ -175,9 +175,9 @@ const DataStructureDetail = () => {
 
   const getDifficultyColor = (level?: string) => {
     const l = level?.toUpperCase() || "EASY";
-    if (l === "H" || l === "HARD") return "text-rose-400 border-rose-500/30 bg-rose-950/20";
-    if (l === "M" || l === "MEDIUM") return "text-amber-400 border-amber-500/30 bg-amber-950/20";
-    return "text-emerald-400 border-emerald-500/30 bg-emerald-950/20";
+    if (l === "H" || l === "HARD") return "text-accent-danger border-accent-danger/30 bg-accent-danger/5";
+    if (l === "M" || l === "MEDIUM") return "text-accent-warning border-accent-warning/30 bg-accent-warning/5";
+    return "text-accent-success border-accent-success/30 bg-accent-success/5";
   };
 
   const getDifficultyLabel = (level?: string) => {
@@ -188,77 +188,77 @@ const DataStructureDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#02040a] text-slate-100 font-mono relative pb-24">
+    <div className="min-h-screen bg-base text-fg font-mono relative pb-24">
       {/* Premium FUI L-Bracket Accents */}
       <div className="max-w-6xl mx-auto px-4 pt-32 relative">
         <Link
           to="/"
-          className="inline-flex items-center gap-2 border border-white/5 bg-black/40 hover:border-cyan-500/30 hover:text-cyan-400 hover:bg-cyan-950/10 px-4 py-2 text-xs uppercase tracking-wider text-slate-500 transition-all duration-300 mb-8 cursor-pointer select-none"
+          className="inline-flex items-center gap-2 border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:text-accent-primary hover:bg-accent-primary/5 px-4 py-2 text-xs uppercase tracking-wider text-faint transition-all duration-300 mb-8 cursor-pointer select-none"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>[ Back to Dashboard ]</span>
         </Link>
 
         {/* Header Block */}
-        <div className="border border-white/10 bg-black/30 p-8 rounded-none mb-8 relative overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)]">
-          <div className="absolute top-0 right-0 p-3 text-[9px] text-cyan-500/30 select-none tracking-widest uppercase">
+        <div className="border border-subtle-line bg-black/60 p-8 rounded-none mb-8 relative overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)]">
+          <div className="absolute top-0 right-0 p-3 text-[9px] text-accent-primary/30 select-none tracking-widest uppercase">
             CONCEPT // {slug?.replace("-", "_").toUpperCase()}
           </div>
           <div className="flex items-center gap-3 mb-2">
-            <LayoutGrid className="h-5 w-5 text-cyan-400/60" />
-            <span className="text-[10px] text-cyan-500/50 tracking-[0.2em] uppercase font-bold">Data Structure Classification</span>
+            <LayoutGrid className="h-5 w-5 text-accent-primary/60" />
+            <span className="text-[10px] text-accent-primary/50 tracking-[0.2em] uppercase font-bold">Data Structure Classification</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-4 hover:text-cyan-400 transition duration-300">
+          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-fg mb-4 hover:text-accent-primary transition duration-300">
             {dsData.title}
           </h1>
-          <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">{dsData.details}</p>
+          <p className="text-subtle text-sm max-w-3xl leading-relaxed">{dsData.details}</p>
         </div>
 
         {/* Info Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Complexity Card */}
-          <div className="lg:col-span-2 border border-white/10 bg-black/40 p-6 relative rounded-none flex flex-col justify-between">
-            <div className="absolute top-[-1px] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent"></div>
+          <div className="lg:col-span-2 border border-subtle-line bg-black/60 p-6 relative rounded-none flex flex-col justify-between">
+            <div className="absolute top-[-1px] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent"></div>
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-4 font-bold flex items-center gap-2">
-                <Terminal className="h-3.5 w-3.5 text-cyan-400/40" />
+              <div className="text-[10px] text-faint uppercase tracking-widest mb-4 font-bold flex items-center gap-2">
+                <Terminal className="h-3.5 w-3.5 text-accent-primary/40" />
                 <span>// COMPLEXITY_ANALYSIS_METRICS</span>
               </div>
-              <div className="grid grid-cols-3 border border-white/5 bg-black/60 text-center text-xs mb-4 select-none">
-                <div className="border-r border-b border-white/5 p-3 text-[9px] text-slate-500 uppercase font-bold">Operation</div>
-                <div className="border-r border-b border-white/5 p-3 text-[9px] text-slate-500 uppercase font-bold">Average Case</div>
-                <div className="border-b border-white/5 p-3 text-[9px] text-slate-500 uppercase font-bold">Worst Case</div>
+              <div className="grid grid-cols-3 border border-subtle-line bg-black/60 text-center text-xs mb-4 select-none">
+                <div className="border-r border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Operation</div>
+                <div className="border-r border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Average Case</div>
+                <div className="border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Worst Case</div>
 
-                <div className="border-r border-b border-white/5 p-3 text-slate-400">Search</div>
-                <div className="border-r border-b border-white/5 p-3 text-cyan-400 font-bold">{dsData.complexities.search.average}</div>
-                <div className="border-b border-white/5 p-3 text-amber-500">{dsData.complexities.search.worst}</div>
+                <div className="border-r border-b border-subtle-line p-3 text-subtle">Search</div>
+                <div className="border-r border-b border-subtle-line p-3 text-accent-primary font-bold">{dsData.complexities.search.average}</div>
+                <div className="border-b border-subtle-line p-3 text-accent-warning">{dsData.complexities.search.worst}</div>
 
-                <div className="border-r border-b border-white/5 p-3 text-slate-400">Insertion</div>
-                <div className="border-r border-b border-white/5 p-3 text-cyan-400 font-bold">{dsData.complexities.insert.average}</div>
-                <div className="border-b border-white/5 p-3 text-amber-500">{dsData.complexities.insert.worst}</div>
+                <div className="border-r border-b border-subtle-line p-3 text-subtle">Insertion</div>
+                <div className="border-r border-b border-subtle-line p-3 text-accent-primary font-bold">{dsData.complexities.insert.average}</div>
+                <div className="border-b border-subtle-line p-3 text-accent-warning">{dsData.complexities.insert.worst}</div>
 
-                <div className="border-r border-b border-white/5 p-3 text-slate-400">Deletion</div>
-                <div className="border-r border-white/5 p-3 text-cyan-400 font-bold">{dsData.complexities.delete.average}</div>
-                <div className="p-3 text-amber-500">{dsData.complexities.delete.worst}</div>
+                <div className="border-r border-b border-subtle-line p-3 text-subtle">Deletion</div>
+                <div className="border-r border-subtle-line p-3 text-accent-primary font-bold">{dsData.complexities.delete.average}</div>
+                <div className="p-3 text-accent-warning">{dsData.complexities.delete.worst}</div>
               </div>
             </div>
-            <div className="border-t border-white/5 pt-4 flex items-center justify-between text-[11px] select-none">
-              <span className="text-slate-500 uppercase tracking-wider">Auxiliary Space Complexity</span>
-              <span className="text-emerald-400 font-bold">{dsData.complexities.space}</span>
+            <div className="border-t border-subtle-line pt-4 flex items-center justify-between text-[11px] select-none">
+              <span className="text-faint uppercase tracking-wider">Auxiliary Space Complexity</span>
+              <span className="text-accent-success font-bold">{dsData.complexities.space}</span>
             </div>
           </div>
 
           {/* Use Cases Card */}
-          <div className="border border-white/10 bg-black/40 p-6 relative rounded-none flex flex-col">
-            <div className="absolute top-[-1px] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-cyan-500/30 to-transparent"></div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-4 font-bold flex items-center gap-2">
-              <Award className="h-3.5 w-3.5 text-cyan-400/40" />
+          <div className="border border-subtle-line bg-black/60 p-6 relative rounded-none flex flex-col">
+            <div className="absolute top-[-1px] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent"></div>
+            <div className="text-[10px] text-faint uppercase tracking-widest mb-4 font-bold flex items-center gap-2">
+              <Award className="h-3.5 w-3.5 text-accent-primary/40" />
               <span>// PRODUCTION_USE_CASES</span>
             </div>
             <ul className="space-y-3 flex-grow">
               {dsData.useCases.map((useCase, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-xs text-slate-400 font-mono">
-                  <span className="text-cyan-500/50 mt-0.5 select-none">&gt;</span>
+                <li key={idx} className="flex items-start gap-2 text-xs text-subtle font-mono">
+                  <span className="text-accent-primary/50 mt-0.5 select-none">&gt;</span>
                   <span>{useCase}</span>
                 </li>
               ))}
@@ -267,11 +267,11 @@ const DataStructureDetail = () => {
         </div>
 
         {/* Challenges Header */}
-        <div className="border-b border-white/10 pb-3 mb-6 flex items-center justify-between tracking-wider select-none">
-          <span className="text-xs uppercase tracking-widest text-slate-500 font-bold">
+        <div className="border-b border-subtle-line pb-3 mb-6 flex items-center justify-between tracking-wider select-none">
+          <span className="text-xs uppercase tracking-widest text-faint font-bold">
             SYS // COMPATIBLE_PRACTICE_CHALLENGES
           </span>
-          <span className="text-[10px] font-mono text-cyan-400/80 bg-cyan-950/15 border border-cyan-500/20 px-2 py-0.5">
+          <span className="text-[10px] font-mono text-accent-primary/80 bg-accent-primary/5 border border-accent-primary/20 px-2 py-0.5">
             {loading ? "SEARCHING..." : `${matchingProblems.length} CHALLENGES FOUND`}
           </span>
         </div>
@@ -280,7 +280,7 @@ const DataStructureDetail = () => {
         {loading ? (
           <TableSkeleton rows={4} />
         ) : error ? (
-          <div className="text-center py-16 border border-white/5 bg-black/20 text-rose-400 text-xs">
+          <div className="text-center py-16 border border-subtle-line bg-black/60 text-accent-danger text-xs">
             {error}
           </div>
         ) : matchingProblems.length > 0 ? (
@@ -289,17 +289,17 @@ const DataStructureDetail = () => {
               <Link
                 key={problem.id}
                 to={`/terminal?id=${problem.id}`}
-                className="group border border-white/5 bg-black/40 hover:border-cyan-500/30 hover:bg-cyan-950/10 p-4 rounded-none flex items-center justify-between transition-all duration-300 border-l-2 border-l-cyan-500/10 hover:border-l-cyan-400"
+                className="group border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:bg-accent-primary/5 p-4 rounded-none flex items-center justify-between transition-all duration-300 border-l-2 border-l-accent-primary/10 hover:border-l-accent-primary"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-8 w-8 flex items-center justify-center border border-white/10 bg-black/40 text-[10px] font-bold text-cyan-400/60 group-hover:text-cyan-400 group-hover:border-cyan-500/20 transition-all duration-300">
+                  <div className="h-8 w-8 flex items-center justify-center border border-subtle-line bg-black/60 text-[10px] font-bold text-accent-primary/60 group-hover:text-accent-primary group-hover:border-accent-primary/20 transition-all duration-300">
                     #{problem.problem_number || "•"}
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-xs font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
+                    <span className="block text-xs font-medium text-fg truncate group-hover:text-accent-primary transition-colors">
                       {problem.name}
                     </span>
-                    <span className="block text-[8px] text-slate-500 uppercase tracking-widest mt-0.5">
+                    <span className="block text-[8px] text-faint uppercase tracking-widest mt-0.5">
                       {problem.isSolved ? "Status: Solved" : "Status: Unsolved"}
                     </span>
                   </div>
@@ -313,7 +313,7 @@ const DataStructureDetail = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 border border-white/5 bg-black/20 rounded-none text-slate-500 text-xs">
+          <div className="text-center py-20 border border-subtle-line bg-black/60 rounded-none text-faint text-xs">
             // NO_ACTIVE_CHALLENGES_FOUND_IN_REPOSITORY
           </div>
         )}

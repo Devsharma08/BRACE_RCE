@@ -359,7 +359,7 @@ const Terminal = () => {
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
-        <div className="w-full h-full bg-raised border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+        <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             <PracticeSidebar
               problems={problems}
@@ -372,10 +372,10 @@ const Terminal = () => {
             {/* ── Loader: full problems fetch overlay (blocks panels until databank syncs) ── */}
             {problemsLoading && (
               <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-raised/95 backdrop-blur-[1px]">
-                <div className="w-10 h-10 rounded-none border border-cyan-500/40 bg-cyan-950/40 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                <div className="w-10 h-10 rounded-none border border-accent-primary/40 bg-accent-primary/10 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 text-accent-primary animate-spin" />
                 </div>
-                <p className="text-[11px] text-cyan-300 font-mono font-bold tracking-[0.25em] uppercase animate-pulse">
+                <p className="text-[11px] text-accent-primary font-mono font-bold tracking-[0.25em] uppercase animate-pulse">
                   SYNCING PROBLEM DATABANK…
                 </p>
               </div>
@@ -391,7 +391,7 @@ const Terminal = () => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/10 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
+          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/10 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
           aria-label={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
         >
@@ -406,7 +406,7 @@ const Terminal = () => {
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-base relative z-10 transition-all duration-300">
         {/* HEADER BAR */}
-        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-cyan-500/20 bg-raised px-3 py-2 text-xs font-mono text-cyan-400/80 sm:px-4">
+        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-3 py-2 text-xs font-mono text-accent-primary/80 sm:px-4">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
@@ -429,7 +429,7 @@ const Terminal = () => {
                 ✓ SOLVED
               </span>
             )}
-            <span className="truncate text-slate-500 uppercase">
+            <span className="truncate text-faint uppercase">
               {problemsLoading ? "LOADING..." : activeFileName}
             </span>
           </div>

@@ -54,7 +54,7 @@ const AdminSettings = () => {
             const event = new CustomEvent('settings-update', { detail: { key: field.key, value: boolVal } });
             window.dispatchEvent(event);
           }}
-          className="px-2 py-1 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500 font-bold"
+          className="px-2 py-1 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary font-bold"
         >
           <option value="true">true</option>
           <option value="false">false</option>
@@ -70,7 +70,7 @@ const AdminSettings = () => {
           const ev = new CustomEvent('settings-update', { detail: { key: field.key, value: newValue } });
           window.dispatchEvent(ev);
         }}
-        className="w-full px-2 py-1 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+        className="w-full px-2 py-1 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary font-mono"
       />
     );
   };
@@ -92,23 +92,23 @@ const AdminSettings = () => {
     <div className="p-6 md:p-8">
       <div className="max-w-5xl mx-auto flex flex-col gap-6 relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-white/10 pb-4">
-          <h1 className="text-2xl font-extrabold text-white tracking-widest uppercase">
+        <div className="flex items-center justify-between border-b-2 border-subtle-line pb-4">
+          <h1 className="text-2xl font-extrabold text-fg tracking-widest uppercase">
             APPLICATION SETTINGS
           </h1>
           <button
             onClick={() => refetch()}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-none border border-white/10 hover:border-cyan-500 text-slate-400 hover:text-cyan-300 font-bold text-xs"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-none border border-subtle-line hover:border-accent-primary text-subtle hover:text-accent-primary font-bold text-xs"
           >
             <RefreshCw className="w-3.5 h-3.5" /> REFRESH
           </button>
         </div>
 
         {/* Settings Grid */}
-        <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+        <div className="rounded-none border border-accent-primary/15 border-t-2 border-t-accent-primary/40 bg-raised overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
 
-          <div className="p-4 border-b border-white/10 text-xs font-bold text-slate-500 tracking-widest uppercase relative z-10">
+          <div className="p-4 border-b border-subtle-line text-xs font-bold text-faint tracking-widest uppercase relative z-10">
             GLOBAL CONFIGURATION
           </div>
 
@@ -116,15 +116,15 @@ const AdminSettings = () => {
             {settingFields.map((field) => (
               <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                 <div>
-                  <span className="text-sm font-bold text-white">{field.label}</span>
-                  <p className="text-xs text-slate-500 mt-0.5">{field.description}</p>
+                  <span className="text-sm font-bold text-fg">{field.label}</span>
+                  <p className="text-xs text-faint mt-0.5">{field.description}</p>
                 </div>
                 <div className="md:col-span-1">
                   {field.type === 'boolean' ? (
                     <select
                       value={String(getLocalOrStored(field))}
                       onChange={(e) => setLocal(field.key, e.target.value === 'true')}
-                      className="w-full px-2 py-1 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500 font-bold"
+                      className="w-full px-2 py-1 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary font-bold"
                     >
                       <option value="true">true</option>
                       <option value="false">false</option>
@@ -137,7 +137,7 @@ const AdminSettings = () => {
                         const v = field.type === 'number' ? parseInt(e.target.value) || 0 : e.target.value;
                         setLocal(field.key, v);
                       }}
-                      className="w-full px-2 py-1 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                      className="w-full px-2 py-1 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary font-mono"
                     />
                   )}
                 </div>
@@ -145,7 +145,7 @@ const AdminSettings = () => {
                   <button
                     onClick={() => handleSaveWith(field, getLocalOrStored(field))}
                     disabled={savingKey === field.key}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-none border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-300 disabled:opacity-50 font-bold text-xs"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-none border border-accent-success/40 bg-accent-success/10 hover:bg-accent-success/10 text-accent-success disabled:opacity-50 font-bold text-xs"
                   >
                     {savingKey === field.key ? 'SAVING...' : <><Save className="w-3.5 h-3.5" /> SAVE</>}
                   </button>

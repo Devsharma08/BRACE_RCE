@@ -57,16 +57,16 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   }, [hints]);
 
   return (
-    <div className="rounded-lg border border-amber-500/20 bg-amber-950/5 p-4 font-mono text-xs mt-6">
+    <div className="rounded-lg border border-accent-warning/20 bg-accent-warning/5 p-4 font-mono text-xs mt-6">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold flex items-center gap-1">
+        <span className="text-[10px] uppercase tracking-widest text-accent-warning font-bold flex items-center gap-1">
           ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
         </span>
         {unlockedCount < parsedHints.length && (
           <button
             type="button"
             onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
-            className="text-[9px] font-bold text-amber-300 border border-amber-500/30 bg-amber-950/20 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/50 transition-all cursor-pointer"
+            className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/10 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/20 transition-all cursor-pointer"
           >
             [ REVEAL HINT #{unlockedCount + 1} ]
           </button>
@@ -74,14 +74,14 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
       </div>
 
       {unlockedCount === 0 ? (
-        <div className="text-[10px] text-slate-500 italic">
+        <div className="text-[10px] text-faint italic">
           Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
         </div>
       ) : (
         <div className="space-y-2 mt-2">
           {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
-            <div key={`hint-${idx}`} className="border-l-2 border-amber-400 bg-black/40 p-2.5 text-[10px] text-amber-200/90 leading-relaxed">
-              <span className="font-bold text-amber-400 block mb-0.5">// HINT #{idx + 1}</span>
+            <div key={`hint-${idx}`} className="border-l-2 border-accent-warning bg-base/40 p-2.5 text-[10px] text-accent-warning/90 leading-relaxed">
+              <span className="font-bold text-accent-warning block mb-0.5">// HINT #{idx + 1}</span>
               {hintText}
             </div>
           ))}
@@ -130,33 +130,33 @@ const SpectateView = ({
   const navigate = useNavigate();
   const participants = room?.performances || [];
   return (
-    <div className="min-h-screen bg-[#050505] text-slate-300 font-mono flex flex-col items-center justify-center p-8 relative">
+    <div className="min-h-screen bg-void text-fg font-mono flex flex-col items-center justify-center p-8 relative">
       {/* bg grid */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(6,182,212,1) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,1) 1px, transparent 1px)`, backgroundSize: "60px 60px" }} />
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(0,212,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,1) 1px, transparent 1px)`, backgroundSize: "60px 60px" }} />
       <div className="relative z-10 w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-              <span className="text-[10px] text-rose-400/70 tracking-[0.3em] uppercase">LIVE SPECTATE MODE</span>
+              <span className="w-2 h-2 rounded-full bg-accent-danger animate-pulse" />
+              <span className="text-[10px] text-accent-danger/70 tracking-[0.3em] uppercase">LIVE SPECTATE MODE</span>
             </div>
-            <h1 className="text-2xl font-black text-white tracking-widest flex items-center gap-3">
-              <Eye className="w-6 h-6 text-rose-400" />
+            <h1 className="text-2xl font-black text-fg tracking-widest flex items-center gap-3">
+              <Eye className="w-6 h-6 text-accent-danger" />
               {room?.name || "LIVE MATCH"}
             </h1>
-            <p className="text-xs text-slate-500 mt-1 tracking-wider">CODE: {room?.roomCode}</p>
+            <p className="text-xs text-faint mt-1 tracking-wider">CODE: {room?.roomCode}</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={onJoin}
-              className="text-xs font-bold tracking-widest border border-cyan-500/40 bg-cyan-500/10 text-cyan-400 px-4 py-2 rounded-lg hover:bg-cyan-500 hover:text-black transition-all"
+              className="text-xs font-bold tracking-widest border border-accent-primary/40 bg-accent-primary/10 text-accent-primary px-4 py-2 rounded-lg hover:bg-accent-primary hover:text-ink transition-all"
             >
               JOIN MATCH
             </button>
             <button
               onClick={() => navigate("/lobby")}
-              className="text-xs font-bold tracking-widest border border-slate-700 bg-slate-800/60 text-slate-400 px-4 py-2 rounded-lg hover:bg-slate-700 transition-all"
+              className="text-xs font-bold tracking-widest border border-subtle-line bg-surface-hover/60 text-subtle px-4 py-2 rounded-lg hover:bg-surface-hover transition-all"
             >
               LOBBY
             </button>
@@ -165,9 +165,9 @@ const SpectateView = ({
 
         {/* Status banner */}
         <div className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${
-          battleState?.status === "IN_PROGRESS" ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-400" :
-          battleState?.status === "WAITING" ? "bg-amber-950/40 border border-amber-500/30 text-amber-400" :
-          "bg-slate-800/60 border border-slate-700 text-slate-400"
+          battleState?.status === "IN_PROGRESS" ? "bg-accent-success/15 border border-accent-success/30 text-accent-success" :
+          battleState?.status === "WAITING" ? "bg-accent-warning/15 border border-accent-warning/30 text-accent-warning" :
+          "bg-surface-hover/60 border border-subtle-line text-subtle"
         }`}>
           <span>STATUS: {battleState?.status || "LOADING"}</span>
           {battleState?.startedAt && battleState?.totalDurationMs && (
@@ -176,13 +176,13 @@ const SpectateView = ({
         </div>
 
         {/* Participants intel */}
-        <div className="bg-[#09090c] border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-slate-800 bg-black/40">
-            <p className="text-[10px] text-slate-500 tracking-widest">LIVE OPERATIVES ({participants.length})</p>
+        <div className="bg-void border border-subtle-line rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-subtle-line bg-base/40">
+            <p className="text-[10px] text-faint tracking-widest">LIVE OPERATIVES ({participants.length})</p>
           </div>
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y divide-subtle-line">
             {participants.length === 0 && (
-              <div className="py-12 text-center text-slate-600 text-xs tracking-widest">NO OPERATIVES REGISTERED</div>
+              <div className="py-12 text-center text-faint text-xs tracking-widest">NO OPERATIVES REGISTERED</div>
             )}
             {participants.map((p: any) => {
               const uid = p.user?.id || p.userId;
@@ -194,25 +194,25 @@ const SpectateView = ({
                     <img
                       src={p.user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user?.username}`}
                       alt=""
-                      className="w-9 h-9 rounded-full border border-slate-700"
+                      className="w-9 h-9 rounded-full border border-subtle-line"
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-white">{p.user?.username || "Unknown"}</p>
-                      <p className="text-[10px] text-slate-500 tracking-widest">
+                      <p className="text-sm font-bold text-fg">{p.user?.username || "Unknown"}</p>
+                      <p className="text-[10px] text-faint tracking-widest">
                         {intel?.status || "STANDBY"}{intel?.linesWritten !== undefined ? ` · ${intel.linesWritten} LINES` : ""}
                       </p>
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded ${
-                      prog >= 100 ? "bg-emerald-500/20 text-emerald-400" :
-                      prog > 0 ? "bg-cyan-500/20 text-cyan-400" :
-                      "bg-slate-700/60 text-slate-500"
+                      prog >= 100 ? "bg-accent-success/20 text-accent-success" :
+                      prog > 0 ? "bg-accent-primary/20 text-accent-primary" :
+                      "bg-surface-hover/60 text-faint"
                     }`}>{prog}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${
-                        prog >= 100 ? "bg-gradient-to-r from-emerald-400 to-emerald-500" :
-                        "bg-gradient-to-r from-cyan-500 to-cyan-400"
+                        prog >= 100 ? "bg-gradient-to-r from-accent-success to-accent-success" :
+                        "bg-gradient-to-r from-accent-primary to-accent-primary"
                       }`}
                       style={{ width: `${prog}%` }}
                     />
@@ -223,7 +223,7 @@ const SpectateView = ({
           </div>
         </div>
 
-        <p className="text-center text-[10px] text-slate-700 tracking-widest mt-6">SPECTATE MODE · READ-ONLY · UPDATES IN REAL-TIME</p>
+        <p className="text-center text-[10px] text-faint tracking-widest mt-6">SPECTATE MODE · READ-ONLY · UPDATES IN REAL-TIME</p>
       </div>
     </div>
   );
@@ -885,32 +885,32 @@ export const Battle = () => {
           <button
             onClick={() => setIsHostPanelOpen((v) => !v)}
             title="Host Command Center"
-            className="flex items-center gap-2 px-3 py-2 bg-amber-900/80 border border-amber-500/60 text-amber-300 font-mono text-xs font-bold rounded-lg shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:bg-amber-800/80 transition-all backdrop-blur"
+            className="flex items-center gap-2 px-3 py-2 bg-accent-warning/20 border border-accent-warning/60 text-accent-warning font-mono text-xs font-bold rounded-lg shadow-[0_0_20px_rgba(255,184,0,0.3)] hover:bg-accent-warning/30 transition-all backdrop-blur"
           >
             <ShieldAlert className="w-4 h-4" />
             HOST CMD
           </button>
 
           {isHostPanelOpen && (
-            <div className="bg-raised/95 border border-amber-500/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
+            <div className="bg-raised/95 border border-accent-warning/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
               {/* Panel Header */}
-              <div className="px-4 py-3 border-b border-amber-500/20 bg-amber-950/30 flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-amber-400 tracking-widest flex items-center gap-2">
+              <div className="px-4 py-3 border-b border-accent-warning/20 bg-accent-warning/10 flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-accent-warning tracking-widest flex items-center gap-2">
                   <ShieldAlert className="w-3.5 h-3.5" /> HOST COMMAND CENTER
                 </span>
-                <button onClick={() => setIsHostPanelOpen(false)} className="text-slate-500 hover:text-white">
+                <button onClick={() => setIsHostPanelOpen(false)} className="text-faint hover:text-fg">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
               {/* Participant List */}
               <div className="p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
-                <p className="text-[10px] text-slate-500 tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
+                <p className="text-[10px] text-faint tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
                 {loading && roomParticipants.length === 0 ? (
                   // ── Loader: operative telemetry syncing
-                  <div className="flex items-center justify-center gap-2 py-6 border border-white/10 bg-black/40 rounded-none">
-                    <Loader2 className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-                    <span className="text-[10px] text-cyan-300 font-mono font-bold tracking-[0.2em] uppercase animate-pulse">
+                  <div className="flex items-center justify-center gap-2 py-6 border border-line bg-base/40 rounded-none">
+                    <Loader2 className="w-3.5 h-3.5 text-accent-primary animate-spin" />
+                    <span className="text-[10px] text-accent-primary font-mono font-bold tracking-[0.2em] uppercase animate-pulse">
                       SYNCING OPERATIVES…
                     </span>
                   </div>
@@ -921,40 +921,40 @@ export const Battle = () => {
                   const intel = playerProgress[participantId];
                   const isMe = participantId === myUserId;
                   return (
-                    <div key={participantId} className="bg-black/40 border border-white/5 rounded-lg p-2.5 flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-[10px] font-mono font-bold text-slate-300">
+                    <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-2.5 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[10px] font-mono font-bold text-fg">
                         {uname[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono text-white truncate">{uname}{isMe ? " (you)" : ""}</span>
+                          <span className="text-xs font-mono text-fg truncate">{uname}{isMe ? " (you)" : ""}</span>
                           {intel && (
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                              intel.progress >= 100 ? "bg-emerald-500/20 text-emerald-400" :
-                              intel.progress > 0 ? "bg-cyan-500/20 text-cyan-400" :
-                              "bg-slate-700 text-slate-400"
+                              intel.progress >= 100 ? "bg-accent-success/20 text-accent-success" :
+                              intel.progress > 0 ? "bg-accent-primary/20 text-accent-primary" :
+                              "bg-surface-hover text-subtle"
                             }`}>{intel.progress}%</span>
                           )}
                         </div>
                         {intel && (
-                          <div className="mt-1 w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                          <div className="mt-1 w-full h-1 bg-surface-hover rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                intel.progress >= 100 ? "bg-emerald-400" : "bg-cyan-400"
+                                intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
                               }`}
                               style={{ width: `${intel.progress}%` }}
                             />
                           </div>
                         )}
                         {intel?.linesWritten !== undefined && (
-                          <p className="text-[9px] text-slate-500 mt-0.5">{intel.linesWritten} lines written</p>
+                          <p className="text-[9px] text-faint mt-0.5">{intel.linesWritten} lines written</p>
                         )}
                       </div>
                       {!isMe && (
                         <button
                           onClick={() => handleKickUser(participantId)}
                           title={`Kick ${uname}`}
-                          className="p-1 border border-rose-500/30 bg-rose-950/30 hover:bg-rose-900/50 text-rose-400 rounded transition-all"
+                          className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -969,7 +969,7 @@ export const Battle = () => {
               <div className="px-3 pb-3">
                 <button
                   onClick={handleHostEndMatch}
-                  className="w-full py-2 border border-rose-500/50 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 font-mono text-xs font-bold tracking-widest rounded-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger font-mono text-xs font-bold tracking-widest rounded-lg transition-all flex items-center justify-center gap-2"
                 >
                   <StopCircle className="w-3.5 h-3.5" /> TERMINATE MATCH
                 </button>
@@ -984,24 +984,24 @@ export const Battle = () => {
         style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
-        <div className="w-full h-full bg-raised border-r border-cyan-500/20 shadow-2xl overflow-hidden relative">
+        <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             {/* HOST HEADER */}
-            <div className="p-4 border-b border-cyan-500/20 bg-black/40">
+            <div className="p-4 border-b border-subtle-line bg-base/40">
               {battleState.status === "WAITING" && (
                 <div className="text-center py-2">
-                  <p className="text-amber-400 font-mono text-xs tracking-widest mb-3">
+                  <p className="text-accent-warning font-mono text-xs tracking-widest mb-3">
                     WAITING FOR OPERATIVES
                   </p>
                   {isHost ? (
                     <button
                       onClick={handleStartOperation}
-                      className="w-full bg-cyan-500/20 hover:bg-cyan-500 border border-cyan-500 text-cyan-400 hover:text-black font-bold tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
+                      className="w-full bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary text-accent-primary hover:text-ink font-bold tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
                     >
                       <Play className="w-4 h-4" /> START OPERATION
                     </button>
                   ) : (
-                    <p className="text-slate-500 text-xs">
+                    <p className="text-faint text-xs">
                       Waiting for host to begin...
                     </p>
                   )}
@@ -1011,27 +1011,27 @@ export const Battle = () => {
 
             {/* PROBLEM NAV GRID OR OPPONENT PROFILE */}
             {room?.type === "ONE_VS_ONE" && opponent ? (
-              <div className="p-4 border-b border-rose-500/20 bg-rose-950/10 flex items-center gap-4">
+              <div className="p-4 border-b border-accent-danger/20 bg-accent-danger/5 flex items-center gap-4">
                 <img
                   src={opponent.avatarUrl}
                   alt="Opponent"
-                  className="w-12 h-12 rounded-full border border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                  className="w-12 h-12 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
                 />
                 <div>
-                  <p className="text-[10px] text-rose-500 tracking-widest font-bold">
+                  <p className="text-[10px] text-accent-danger tracking-widest font-bold">
                     VS OPPONENT
                   </p>
-                  <p className="font-mono text-white text-sm font-bold">
+                  <p className="font-mono text-fg text-sm font-bold">
                     {opponent.username}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-subtle mt-1">
                     Rating: {opponent.rating || "N/A"}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="p-4 border-b border-cyan-500/20 bg-cyan-950/10">
-                <p className="text-xs text-slate-500 tracking-widest mb-3">
+              <div className="p-4 border-b border-subtle-line bg-accent-primary/5">
+                <p className="text-xs text-faint tracking-widest mb-3">
                   MISSION PLAYLIST ({problems.length})
                 </p>
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
@@ -1040,7 +1040,7 @@ export const Battle = () => {
                       key={p.id}
                       onClick={() => setCurrentIndex(idx)}
                       className={`shrink-0 w-10 h-10 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
-                      ${currentIndex === idx ? "bg-cyan-500 border-cyan-400 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]" : "bg-black/50 border-slate-700 text-slate-400 hover:border-cyan-500/50"}
+                      ${currentIndex === idx ? "bg-accent-primary border-accent-primary text-ink shadow-[0_0_10px_rgba(0,212,255,0.5)]" : "bg-base/50 border-subtle-line text-subtle hover:border-accent-primary/50"}
                     `}
                     >
                       {idx + 1}
@@ -1051,22 +1051,22 @@ export const Battle = () => {
             )}
 
             {/* TAB HEADERS */}
-            <div className="flex border-b border-cyan-500/20 bg-black/40">
+            <div className="flex border-b border-subtle-line bg-base/40">
               <button
                 onClick={() => setActivePanelTab("PROBLEM")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "PROBLEM" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "PROBLEM" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
               >
                 <Code className="w-4 h-4 mx-auto mb-1" /> PROBLEM
               </button>
               <button
                 onClick={() => setActivePanelTab("CHAT")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "CHAT" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "CHAT" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
               >
                 <MessageSquare className="w-4 h-4 mx-auto mb-1" /> CHAT
               </button>
               <button
                 onClick={() => setActivePanelTab("OPPONENT_TELEMETRY")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "OPPONENT_TELEMETRY" ? "bg-cyan-500/20 border-b-2 border-cyan-400 text-cyan-300" : "text-slate-500 hover:bg-white/5"}`}
+                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "OPPONENT_TELEMETRY" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
               >
                 <Activity className="w-4 h-4 mx-auto mb-1" /> OPPONENT
               </button>
@@ -1075,22 +1075,22 @@ export const Battle = () => {
             {/* TAB CONTENT — themed scrollbar + contained text */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 themed-scroll flex flex-col min-w-0">
               {activePanelTab === "PROBLEM" ? (
-                <div className="border border-white/10 w-full max-w-full min-w-0 rounded-lg p-5 bg-black/40 shadow-inner h-max overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 border-b border-white/5 pb-3 mb-4 min-w-0">
-                    <h3 className="font-mono text-sm text-cyan-400 flex items-center gap-2 uppercase tracking-wider min-w-0 truncate">
+                <div className="border border-line w-full max-w-full min-w-0 rounded-lg p-5 bg-base/40 shadow-inner h-max overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 border-b border-line-low pb-3 mb-4 min-w-0">
+                    <h3 className="font-mono text-sm text-accent-primary flex items-center gap-2 uppercase tracking-wider min-w-0 truncate">
                       <Code className="w-4 h-4 shrink-0" />{" "}
                       <span className="truncate">{activeProblem?.name || "Select Problem"}</span>
                     </h3>
                     <span
                       className={`shrink-0 text-[10px] tracking-widest px-2 py-0.5 rounded font-bold
-                    ${activeProblem?.difficulty_level === "HARD" ? "bg-[#ff0055]/10 text-[#ff0055]" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-amber-500/20 text-amber-400" : "bg-emerald-500/20 text-emerald-400"}
+                    ${activeProblem?.difficulty_level === "HARD" ? "bg-accent-danger/10 text-accent-danger" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-accent-warning/20 text-accent-warning" : "bg-accent-success/20 text-accent-success"}
                   `}
                     >
                       {activeProblem?.difficulty_level}
                     </span>
                   </div>
                   <div
-                    className="problem-contain text-sm text-slate-300 leading-relaxed font-sans prose prose-invert max-w-full min-w-0 break-words overflow-hidden [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
+                    className="problem-contain text-sm text-fg leading-relaxed font-sans prose prose-invert max-w-full min-w-0 break-words overflow-hidden [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
                     dangerouslySetInnerHTML={{
                       __html:
                         stripDuplicateExamples(activeProblem?.problem_definition) || "No definition.",
@@ -1102,8 +1102,8 @@ export const Battle = () => {
 
                   {/* Examples already ship inside the problem statement — no separate render. */}
                   {activeProblem?.test_cases && activeProblem.test_cases.length > 0 && (
-                    <div className="mt-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-center min-w-0">
-                      <p className="text-amber-500/80 font-mono text-xs tracking-widest font-bold break-words">
+                    <div className="mt-6 p-3 bg-accent-warning/10 border border-accent-warning/20 rounded text-center min-w-0">
+                      <p className="text-accent-warning/80 font-mono text-xs tracking-widest font-bold break-words">
                         TOTAL TEST CASES TO PASS:{" "}
                         {activeProblem.test_cases.length}
                       </p>
@@ -1112,22 +1112,22 @@ export const Battle = () => {
                 </div>
               ) : activePanelTab === "OPPONENT_TELEMETRY" ? (
                 <div className="flex flex-col gap-4">
-                  <div className="border border-white/10 bg-black/40 p-4">
-                    <p className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest mb-3">Opponent Status</p>
+                  <div className="border border-line bg-base/40 p-4">
+                    <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-3">Opponent Status</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="border border-cyan-500/15 bg-raised/60 p-3">
-                        <div className="text-[9px] text-slate-500 uppercase tracking-widest">Tests Passed</div>
+                      <div className="border border-subtle-line bg-raised/60 p-3">
+                        <div className="text-[9px] text-faint uppercase tracking-widest">Tests Passed</div>
                         <div className="mt-1 text-lg font-mono font-bold text-fg">
                           {opponentTelemetry?.progress ?? 0}%
                         </div>
                       </div>
-                      <div className="border border-cyan-500/15 bg-raised/60 p-3">
-                        <div className="text-[9px] text-slate-500 uppercase tracking-widest">Focus Alerts</div>
+                      <div className="border border-subtle-line bg-raised/60 p-3">
+                        <div className="text-[9px] text-faint uppercase tracking-widest">Focus Alerts</div>
                         <div className="mt-1 text-lg font-mono font-bold text-accent-warning">—</div>
                       </div>
                     </div>
                   </div>
-                  <div className="border border-amber-500/20 bg-amber-950/10 p-3">
+                  <div className="border border-accent-warning/20 bg-accent-warning/5 p-3">
                     <p className="text-[9px] font-mono text-accent-warning uppercase tracking-widest">Telemetry Notice</p>
                     <p className="mt-1 text-[10px] text-subtle">Focus-loss details are reported after the match.</p>
                   </div>
@@ -1138,7 +1138,7 @@ export const Battle = () => {
                     {battleMessages.map((msg) => (
                       <div
                         key={msg.id}
-                        className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.socketId === socket?.id ? "bg-cyan-900/40 border border-cyan-500/30 text-cyan-100 self-end" : "bg-slate-800/50 border border-slate-700 text-slate-300 self-start"}`}
+                        className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.socketId === socket?.id ? "bg-accent-primary/10 border border-accent-primary/30 text-fg self-end" : "bg-surface-hover/50 border border-subtle-line text-fg self-start"}`}
                       >
                         {msg.content}
                       </div>
@@ -1147,18 +1147,18 @@ export const Battle = () => {
                   </div>
                   <form
                     onSubmit={handleBattleMessage}
-                    className="mt-auto flex gap-2 pt-2 border-t border-cyan-500/20"
+                    className="mt-auto flex gap-2 pt-2 border-t border-subtle-line"
                   >
                     <input
                       type="text"
                       value={newBattleMessage}
                       onChange={(e) => setNewBattleMessage(e.target.value)}
                       placeholder="TRANSMIT..."
-                      className="flex-1 bg-black/50 border border-slate-700 p-3 rounded-lg text-white font-mono text-xs focus:border-cyan-500 focus:outline-none"
+                      className="flex-1 bg-base/50 border border-subtle-line p-3 rounded-lg text-fg font-mono text-xs focus:border-accent-primary focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="p-3 bg-cyan-950/40 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 rounded-lg transition-all"
+                      className="p-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all"
                     >
                       <Send className="w-4 h-4" />
                     </button>
@@ -1172,10 +1172,10 @@ export const Battle = () => {
           {isPanelOpen && !isSidebarCollapsed && (
             <div
               onMouseDown={startSidebarDragging}
-              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-cyan-400/50 active:bg-cyan-400 z-40 transition-colors group flex items-center justify-center"
+              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center"
               title="Drag to resize panel (drag below ~220px to auto-close)"
             >
-              <div className="w-0.5 h-12 bg-cyan-500/40 group-hover:bg-cyan-300 rounded" />
+              <div className="w-0.5 h-12 bg-accent-primary/40 group-hover:bg-accent-primary rounded" />
             </div>
           )}
         </div>
@@ -1188,7 +1188,7 @@ export const Battle = () => {
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse panel" : "Expand panel"}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-cyan-500/30 text-cyan-400 p-2 rounded-r-lg hover:bg-cyan-900/40 hover:text-cyan-300 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/20 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
@@ -1200,14 +1200,14 @@ export const Battle = () => {
 
       <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-cyan-500/20 bg-raised font-mono text-xs z-30 shrink-0">
+        <div className="flex items-center justify-between px-6 py-2.5 border-b border-subtle-line bg-raised font-mono text-xs z-30 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-cyan-400 font-bold uppercase tracking-wider flex items-center gap-2">
-              <Code className="w-4 h-4 text-cyan-400" />
+            <span className="text-accent-primary font-bold uppercase tracking-wider flex items-center gap-2">
+              <Code className="w-4 h-4 text-accent-primary" />
               {activeProblem?.name || "BATTLE ARENA"}
             </span>
             {problems.length > 1 && (
-              <span className="text-[10px] text-slate-500 border border-white/10 bg-black/40 px-2 py-0.5">
+              <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5">
                 PROBLEM {currentIndex + 1} OF {problems.length}
               </span>
             )}
@@ -1226,7 +1226,7 @@ export const Battle = () => {
             {isHost && battleState.status === "IN_PROGRESS" && (
               <button
                 onClick={() => setIsHostPanelOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-2 py-1 border border-amber-500/30 bg-amber-950/20 text-amber-400 text-[10px] font-mono font-bold rounded hover:bg-amber-900/30 transition-all"
+                className="flex items-center gap-1.5 px-2 py-1 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[10px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all"
               >
                 <ShieldAlert className="w-3 h-3" /> HOST
               </button>
@@ -1239,7 +1239,7 @@ export const Battle = () => {
                     socket?.emit("terminate_group", { roomId });
                   }
                 }}
-                className="flex items-center gap-1.5 px-2 py-1 border border-rose-500/40 bg-rose-950/20 text-rose-400 text-[10px] font-mono font-bold rounded hover:bg-rose-900/30 transition-all"
+                className="flex items-center gap-1.5 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[10px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all"
               >
                 <StopCircle className="w-3 h-3" /> END GROUP
               </button>
@@ -1250,13 +1250,13 @@ export const Battle = () => {
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
           {/* CLEAR THIS LOGIC */}
           {battleState.status === "WAITING" && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-              <div className="bg-raised border border-cyan-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
-                <Lock className="w-12 h-12 text-cyan-500 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white tracking-widest mb-2 font-mono">
+            <div className="absolute inset-0 bg-base/60 backdrop-blur-[2px] flex items-center justify-center">
+              <div className="bg-raised border border-accent-primary/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
+                <Lock className="w-12 h-12 text-accent-primary mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-fg tracking-widest mb-2 font-mono">
                   SYSTEM LOCKED
                 </h3>
-                <p className="text-slate-400 text-sm font-sans mb-6">
+                <p className="text-subtle text-sm font-sans mb-6">
                   Editor will unlock when the host initiates the operation.
                 </p>
               </div>
@@ -1265,19 +1265,19 @@ export const Battle = () => {
           {battleState.status === "FINISHED" &&
             battleResult === "LOST" &&
             !isBattleMenuOpen && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
-                <div className="bg-raised border border-rose-500/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
-                  <StopCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-white tracking-widest mb-2 font-mono">
+              <div className="absolute inset-0 bg-base/60 backdrop-blur-[2px] flex items-center justify-center">
+                <div className="bg-raised border border-accent-danger/30 p-8 rounded-2xl shadow-2xl text-center pointer-events-auto max-w-sm">
+                  <StopCircle className="w-12 h-12 text-accent-danger mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-fg tracking-widest mb-2 font-mono">
                     TIME EXPIRED
                   </h3>
-                  <p className="text-slate-400 text-sm font-sans">
+                  <p className="text-subtle text-sm font-sans">
                     You failed to crack this problem in time. Move to the next
                     one.
                   </p>
                   <button
                     onClick={() => navigate("/")}
-                    className="bg-transparent border-3 border-dashed border-rose-500/30 mt-3 hover:bg-rose-500 border border-rose-500/30 trasnition-color duration-300 text-white px-2 py-1 rounded-xl font-mono font-bold"
+                    className="bg-transparent border-3 border-dashed border-accent-danger/30 mt-3 hover:bg-accent-danger border border-accent-danger/30 trasnition-color duration-300 text-fg px-2 py-1 rounded-xl font-mono font-bold"
                   >
                     Home
                   </button>
@@ -1375,29 +1375,29 @@ export const Battle = () => {
       />
 
       {isBattleMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] pointer-events-none p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-white/10 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/60 backdrop-blur-[2px] pointer-events-none p-4">
+          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
             <div
-              className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-cyan-400 to-emerald-500" : "from-rose-500 to-orange-500"}`}
+              className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-accent-primary to-accent-success" : "from-accent-danger to-accent-warning"}`}
             />
             <div className="relative mb-6">
               <div
-                className={`absolute inset-0 blur-xl ${battleResult === "WON" ? "bg-cyan-500/30" : "bg-rose-500/30"}`}
+                className={`absolute inset-0 blur-xl ${battleResult === "WON" ? "bg-accent-primary/30" : "bg-accent-danger/30"}`}
               />
               {battleResult === "WON" ? (
-                <Trophy className="w-16 h-16 text-cyan-400 relative z-10" />
+                <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
               ) : (
-                <Skull className="w-16 h-16 text-rose-500 relative z-10" />
+                <Skull className="w-16 h-16 text-accent-danger relative z-10" />
               )}
             </div>
             <h2
-              className={`font-mono text-3xl font-bold tracking-widest mb-3 ${battleResult === "WON" ? "text-cyan-400" : "text-rose-500"}`}
+              className={`font-mono text-3xl font-bold tracking-widest mb-3 ${battleResult === "WON" ? "text-accent-primary" : "text-accent-danger"}`}
             >
               {battleResult === "WON"
                 ? "OPERATION SUCCESSFUL"
                 : "SYSTEM FAILURE"}
             </h2>
-            <p className="text-slate-400 text-sm mb-4 font-sans">
+            <p className="text-subtle text-sm mb-4 font-sans">
               {battleResult === "WON"
                 ? "You completed the operation."
                 : "Time expired or opponent optimized faster."}
@@ -1410,12 +1410,12 @@ export const Battle = () => {
                 const passedCount = subs.filter((s: any) => (s.status || "").toUpperCase() === "PASSED").length;
                 const bestRuntime = subs.reduce((m: number | null, s: any) => s.runtimeMs != null ? Math.min(m ?? s.runtimeMs, s.runtimeMs) : m, null as number | null);
                 return (
-                  <div key={p.userId || p.user?.id || p.id} className="flex items-center gap-2 p-2 border border-white/10 bg-black/50 min-w-0">
-                    <span className="text-xs font-bold text-white truncate flex-1 min-w-0">{p.user?.username || "Player"}</span>
+                  <div key={p.userId || p.user?.id || p.id} className="flex items-center gap-2 p-2 border border-line bg-base/50 min-w-0">
+                    <span className="text-xs font-bold text-fg truncate flex-1 min-w-0">{p.user?.username || "Player"}</span>
                     <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold shrink-0 ${verdictStyle(verdict)}`}>
                       {verdict === "COMPLETED" ? "✓ COMPLETED" : verdict === "TIMEOUT" ? "✗ TIMEOUT" : "● IN PROGRESS"}
                     </span>
-                    <span className="text-[9px] text-slate-400 font-mono shrink-0">
+                    <span className="text-[9px] text-subtle font-mono shrink-0">
                       {passedCount}/{subs.length}{bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
                     </span>
                   </div>
@@ -1425,13 +1425,13 @@ export const Battle = () => {
             <div className="flex-1 flex justify-between gap-4 w-full">
               <button
                 onClick={() => navigate("/")}
-                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-cyan-500/50 bg-cyan-900/40 text-cyan-100 hover:bg-cyan-600"
+                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-accent-primary/50 bg-accent-primary/10 text-fg hover:bg-accent-primary/80"
               >
                 [ RETURN TO MAINFRAME ]
               </button>
               <button
                 onClick={() => setIsBattleMenuOpen(false)}
-                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
+                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-subtle-line bg-surface-hover/60 text-fg hover:bg-surface-hover"
               >
                 [ CLOSE MENU ]
               </button>
@@ -1442,26 +1442,26 @@ export const Battle = () => {
 
       {/* SURRENDER CONFIRMATION MODAL */}
       {isSurrenderModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-rose-500/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-rose-500 to-amber-500" />
-            <Flag className="w-12 h-12 text-rose-400 mb-4" />
-            <h3 className="font-mono text-xl font-bold tracking-widest text-white mb-2 uppercase">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm p-4">
+          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-accent-danger/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-accent-danger to-accent-warning" />
+            <Flag className="w-12 h-12 text-accent-danger mb-4" />
+            <h3 className="font-mono text-xl font-bold tracking-widest text-fg mb-2 uppercase">
               CONFIRM SURRENDER
             </h3>
-            <p className="text-slate-400 text-xs font-sans mb-6 leading-relaxed">
+            <p className="text-subtle text-xs font-sans mb-6 leading-relaxed">
               Are you sure you want to forfeit this battle? Your opponent will be declared the victor.
             </p>
             <div className="flex items-center gap-3 w-full font-mono text-xs">
               <button
                 onClick={handleConfirmSurrender}
-                className="flex-1 py-3 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+                className="flex-1 py-3 bg-accent-danger/30 hover:bg-accent-danger/20 border border-accent-danger/40 text-accent-danger font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
               >
                 [ SURRENDER ]
               </button>
               <button
                 onClick={() => setIsSurrenderModalOpen(false)}
-                className="flex-1 py-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
+                className="flex-1 py-3 bg-surface-hover/80 hover:bg-surface-hover border border-subtle-line text-fg font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
               >
                 [ CANCEL ]
               </button>

@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
+import { MetricCard, MetricCardSkeleton } from "../components/ui/MetricCard";
+import { StatusPill } from "../components/ui/StatusPill";
+import { EmptyState } from "../components/ui/EmptyState";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
@@ -65,7 +68,7 @@ export const Dashboard: React.FC = () => {
 
   // Profile card data — identity rarely changes, so it is long-lived and is
   // deliberately NOT part of the post-battle refresh wave.
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["dashboard-profile", user?.id],
     enabled: Boolean(user?.id),
     staleTime: 1000 * 60 * 15,
@@ -76,7 +79,7 @@ export const Dashboard: React.FC = () => {
   });
 
   // Match stats + recent battles — refresh after every finished battle.
-  const { data: statsData } = useQuery({
+  const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
@@ -102,7 +105,7 @@ export const Dashboard: React.FC = () => {
   });
 
   // Recommended problems — also refreshed post-battle (isSolved flags change).
-  const { data: recommendedProblemsData = [] } = useQuery({
+  const { data: recommendedProblemsData = [], isLoading: recommendedLoading } = useQuery({
     queryKey: ["dashboard-problems", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
@@ -119,9 +122,9 @@ export const Dashboard: React.FC = () => {
     recommendedProblems: recommendedProblemsData,
   };
 
-  const { data: analytics } = useAnalytics(Boolean(isAuthenticated || user));
-  const { data: myRating } = useMyRating(Boolean(isAuthenticated || user));
-  const { data: leaderboardRows } = useLeaderboard(25, Boolean(isAuthenticated || user));
+  const { data: analytics, isLoading: analyticsLoading } = useAnalytics(Boolean(isAuthenticated || user));
+  const { data: myRating, isLoading: ratingLoading } = useMyRating(Boolean(isAuthenticated || user));
+  const { data: leaderboardRows, isLoading: leaderboardLoading } = useLeaderboard(25, Boolean(isAuthenticated || user));
 
   const stats = dashboardData?.stats || null;
   const recentBattles: any[] = dashboardData?.recentBattles || [];
@@ -181,6 +184,11 @@ export const Dashboard: React.FC = () => {
   const winStreak = analytics?.summary?.currentStreak ?? 0;
   const isQueued = matchmakingStatus === "SEARCHING";
 
+  // Skeleton gates: blink while a value is still in flight; render the real
+  // (possibly zero) value only once its query has settled.
+  const kpiLoading = statsLoading || analyticsLoading || ratingLoading;
+  const rankLoading = ratingLoading || leaderboardLoading;
+
   return (
     <div className="flex min-h-screen bg-base text-fg font-mono">
 
@@ -222,36 +230,49 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4 w-full lg:w-auto">
-            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-              <p className="text-[10px] text-muted uppercase tracking-widest">ELO</p>
-              <p className="text-xl font-black font-mono text-accent-primary tabular-nums">{userRating}</p>
-            </div>
-            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-              <p className="text-[10px] text-muted uppercase tracking-widest">Division</p>
-              <p className={`text-sm font-black font-mono mt-1 ${TIER_COLORS[division] ?? "text-fg"}`}>{division}</p>
-            </div>
-            <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-              <p className="text-[10px] text-muted uppercase tracking-widest">Global rank</p>
-              <p className="text-xl font-black font-mono text-fg tabular-nums">{globalRank ? `#${globalRank}` : "—"}</p>
-            </div>
+            {rankLoading ? (
+              <>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} aria-hidden="true" className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+                    <span className="block h-2.5 w-14 rounded-none bg-surface-hover animate-pulse" />
+                    <span className="mt-2 block h-5 w-16 rounded-none bg-surface-hover animate-pulse" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">ELO</p>
+                  <p className="text-xl font-black font-mono text-accent-primary tabular-nums">{userRating}</p>
+                </div>
+                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Division</p>
+                  <p className={`text-sm font-black font-mono mt-1 ${TIER_COLORS[division] ?? "text-fg"}`}>{division}</p>
+                </div>
+                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
+                  <p className="text-[10px] text-muted uppercase tracking-widest">Global rank</p>
+                  <p className="text-xl font-black font-mono text-fg tabular-nums">{globalRank ? `#${globalRank}` : "—"}</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
         {/* ── KPI GRID ───────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {[
-            { icon: Trophy, label: "Matches Played", value: matchesPlayed, tone: "text-fg" },
-            { icon: Percent, label: "Win Rate %", value: `${winRate}%`, tone: "text-accent-success" },
-            { icon: Flame, label: "Current Win Streak", value: winStreak, tone: "text-accent-warning" },
-          ].map(({ icon: Icon, label, value, tone }) => (
-            <div key={label} className="ds-card p-4 sm:p-6 min-w-0">
-              <Icon className="w-5 h-5 text-accent-primary/40 mb-2" />
-              <div className={`text-xl sm:text-2xl font-black font-mono truncate tabular-nums ${tone}`}>{value}</div>
-              <div className="text-[10px] text-muted uppercase tracking-widest mt-1 whitespace-nowrap font-mono">
-                {label}
-              </div>
-            </div>
-          ))}
+          {kpiLoading ? (
+            <>
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+            </>
+          ) : (
+            <>
+              <MetricCard label="Matches played" value={matchesPlayed} icon={Trophy} dotTone="active" />
+              <MetricCard label="Win rate" value={`${winRate}%`} icon={Percent} dotTone="live" valueTone="positive" />
+              <MetricCard label="Current win streak" value={winStreak} icon={Flame} dotTone="warning" valueTone="warning" />
+            </>
+          )}
         </div>
 
         {/* ── ACTION HUB ─────────────────────────────────────────────── */}
@@ -296,38 +317,39 @@ export const Dashboard: React.FC = () => {
         {/* ── RECOMMENDED PROBLEMS ──────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="recommended-heading">
           <div className="mb-3 flex items-center gap-2">
-            <Code2 className="w-4 h-4 text-cyan-500/30" />
+            <Code2 className="w-4 h-4 text-accent-primary/30" />
             <span
               id="recommended-heading"
               className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
             >
               Recommended Problems
             </span>
-            <hr className="flex-1 border-cyan-500/10" />
+            <hr className="flex-1 border-subtle-line" />
           </div>
           <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
-            {recommendedProblems.length > 0 ? (
+            {recommendedLoading ? (
+              <div aria-hidden="true" className="divide-y divide-subtle-line">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                    <span className="h-3.5 w-40 rounded-none bg-surface-hover animate-pulse" />
+                    <span className="h-4 w-12 rounded-btn bg-surface-hover animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : recommendedProblems.length > 0 ? (
               recommendedProblems.map((problem: any) => {
                 const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
                 return (
                   <Link
                     key={problem.id}
-                    to={`/battle/practice?oid=${problem.github_oid || problem.id}`}
+                    to={`/terminal?id=${problem.id || problem.github_oid}`}
                     className="flex items-center justify-between gap-3 border-b border-subtle-line px-4 py-2.5 transition-colors last:border-b-0 hover:bg-surface-hover"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="truncate text-sm font-medium text-fg">{problem.name}</span>
-                      <span
-                        className={`shrink-0 text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-btn whitespace-nowrap ${
-                          diff === "EASY"
-                            ? "border-accent-success/30 text-accent-success"
-                            : diff === "MEDIUM"
-                            ? "border-accent-warning/30 text-accent-warning"
-                            : "border-accent-danger/30 text-accent-danger"
-                        }`}
-                      >
+                      <StatusPill tone={diff === "EASY" ? "live" : diff === "MEDIUM" ? "warning" : "danger"} className="shrink-0">
                         {diff}
-                      </span>
+                      </StatusPill>
                     </div>
                     <span className="shrink-0 text-xs text-muted transition-colors group-hover:text-accent-primary">→</span>
                   </Link>
@@ -344,17 +366,27 @@ export const Dashboard: React.FC = () => {
         {/* ── RECENT BATTLES ────────────────────────────────────────────── */}
         <section className="mb-8" aria-labelledby="battles-heading">
           <div className="mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-cyan-500/30" />
+            <Activity className="w-4 h-4 text-accent-primary/30" />
             <span
               id="battles-heading"
               className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
             >
               Recent Battles
             </span>
-            <hr className="flex-1 border-cyan-500/10" />
+            <hr className="flex-1 border-subtle-line" />
           </div>
           <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
-            {recentBattles.length > 0 ? (
+            {statsLoading ? (
+              <div aria-hidden="true" className="divide-y divide-subtle-line">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                    <span className="h-3 w-full max-w-[220px] rounded-none bg-surface-hover animate-pulse" />
+                    <span className="ml-auto h-4 w-10 rounded-none bg-surface-hover animate-pulse" />
+                    <span className="h-3 w-12 rounded-none bg-surface-hover animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : recentBattles.length > 0 ? (
               <div className="divide-y divide-subtle-line">
                     {recentBattles.slice(0, 5).map((perf: any, i: number) => {
                       const isWin =
@@ -371,13 +403,9 @@ export const Dashboard: React.FC = () => {
                           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
                             {problemName}
                           </span>
-                          <span
-                            className={`shrink-0 font-bold text-xs ${
-                              isWin ? "text-accent-success" : "text-accent-danger"
-                            }`}
-                          >
+                          <StatusPill tone={isWin ? "live" : "danger"} className="shrink-0">
                             {isWin ? "WIN" : "LOSS"}
-                          </span>
+                          </StatusPill>
                           <span className="w-12 shrink-0 text-right font-mono text-[11px] text-subtle">{perf.score ?? 0}</span>
                           <time className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-secondary" dateTime={perf.createdAt}>
                             {formatRelativeTime(perf.createdAt)}
@@ -387,12 +415,20 @@ export const Dashboard: React.FC = () => {
                     })}
               </div>
             ) : (
-              <div className="p-8 flex flex-col items-center gap-3">
-                <Swords className="w-10 h-10 text-slate-700" />
-                <p className="text-xs text-slate-400 font-mono">No recent battles</p>
-                <p className="text-[10px] text-slate-600 font-mono">
-                  Complete a battle to start building your record
-                </p>
+              <div className="p-6">
+                <EmptyState
+                  icon={Swords}
+                  title="No recent battles"
+                  message="Complete a battle to start building your record."
+                  action={
+                    <Link
+                      to="/lobby"
+                      className="inline-flex items-center gap-2 border border-accent-primary/40 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:bg-accent-primary/10"
+                    >
+                      Enter the arena
+                    </Link>
+                  }
+                />
               </div>
             )}
           </div>
@@ -408,7 +444,7 @@ export const Dashboard: React.FC = () => {
             >
               Performance Analytics
             </span>
-            <hr className="flex-1 border-cyan-500/10" />
+            <hr className="flex-1 border-subtle-line" />
           </div>
           <AnalyticsErrorBoundary>
             {analytics ? (
@@ -430,12 +466,12 @@ export const Dashboard: React.FC = () => {
           aria-label="Searching for opponent"
           className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
-          <div className="w-full max-w-md bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
-            <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.2em] font-bold">
+          <div className="w-full max-w-md bg-raised border border-subtle-line border-t-2 border-t-accent-primary/40 p-8 flex flex-col items-center gap-6">
+            <span className="text-[10px] font-mono text-label uppercase tracking-[0.2em] font-bold">
               Finding opponent
             </span>
             <span
-              className="text-5xl font-black font-mono text-cyan-400 tracking-wider tabular-nums"
+              className="text-5xl font-black font-mono text-accent-primary tracking-wider tabular-nums"
               style={{ filter: "drop-shadow(0 0 15px rgba(0,212,255,0.5))" }}
             >
               {Math.floor(waitingTime / 60)}:
@@ -443,11 +479,11 @@ export const Dashboard: React.FC = () => {
             </span>
             <div className="flex items-center gap-2 text-xs text-subtle">
               <span>Your rating:</span>
-              <span className="text-white font-mono font-bold">{userRating}</span>
+              <span className="text-fg font-mono font-bold">{userRating}</span>
             </div>
             <button
               onClick={cancelMatch}
-              className="w-full py-3 border border-rose-500/30 text-rose-400 font-mono font-bold text-xs tracking-wider uppercase transition-all hover:bg-rose-500/10 hover:border-rose-400 flex items-center justify-center gap-2"
+              className="w-full py-3 border border-accent-danger/30 text-accent-danger font-mono font-bold text-xs tracking-wider uppercase transition-all hover:bg-accent-danger/10 hover:border-accent-danger flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" />
               Cancel Queue
@@ -464,16 +500,16 @@ export const Dashboard: React.FC = () => {
           aria-label="Match found"
           className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
-          <div className="w-full max-w-xl bg-raised border border-cyan-500/20 border-t-2 border-t-cyan-400/50 p-8 flex flex-col items-center gap-6">
+          <div className="w-full max-w-xl bg-raised border border-subtle-line border-t-2 border-t-accent-primary/40 p-8 flex flex-col items-center gap-6">
 
             {/* VS Cards */}
             <div className="w-full grid grid-cols-5 items-center gap-3">
-              <div className="col-span-2 border border-cyan-500/15 bg-raised p-4 flex flex-col items-center text-center min-w-0">
-                <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
+              <div className="col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
+                <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   YOU
                 </span>
                 <span
-                  className="text-base font-extrabold text-white tracking-wide truncate w-full"
+                  className="text-base font-extrabold text-fg tracking-wide truncate w-full"
                   title={username}
                 >
                   {username}
@@ -482,15 +518,15 @@ export const Dashboard: React.FC = () => {
               </div>
 
               <div className="col-span-1 flex items-center justify-center">
-                <span className="text-sm font-black text-rose-400 font-mono">VS</span>
+                <span className="text-sm font-black text-accent-danger font-mono">VS</span>
               </div>
 
-              <div className="col-span-2 border border-cyan-500/15 bg-raised p-4 flex flex-col items-center text-center min-w-0">
-                <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-widest mb-1">
+              <div className="col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
+                <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   OPPONENT
                 </span>
                 <span
-                  className="text-base font-extrabold text-white tracking-wide truncate w-full"
+                  className="text-base font-extrabold text-fg tracking-wide truncate w-full"
                   title={pendingOpponent?.username}
                 >
                   {pendingOpponent?.username || "Opponent"}
@@ -499,7 +535,7 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm font-bold text-white uppercase">
+            <div className="flex items-center gap-2 text-sm font-bold text-fg uppercase">
               <Swords className="w-5 h-5 text-accent" />
               Match Found
             </div>
@@ -513,11 +549,11 @@ export const Dashboard: React.FC = () => {
             </button>
 
             <div className="flex flex-col items-center gap-2 w-full">
-              <span className="text-4xl font-black font-mono text-amber-400 tabular-nums">
+              <span className="text-4xl font-black font-mono text-accent-warning tabular-nums">
                 {acceptTimer}
               </span>
               <div
-                className="w-full h-1 bg-white/10 overflow-hidden"
+                className="w-full h-1 bg-line overflow-hidden"
                 role="progressbar"
                 aria-valuenow={acceptTimer}
                 aria-valuemin={0}
@@ -525,7 +561,7 @@ export const Dashboard: React.FC = () => {
                 aria-label="Time remaining to accept"
               >
                 <div
-                  className="h-full bg-amber-400 transition-all duration-1000"
+                  className="h-full bg-accent-warning transition-all duration-1000"
                   style={{ width: `${(acceptTimer / 10) * 100}%` }}
                 />
               </div>

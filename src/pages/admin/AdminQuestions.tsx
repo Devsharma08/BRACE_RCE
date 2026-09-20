@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
 
 const difficultyColors: Record<string, string> = {
-  EASY: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
-  MEDIUM: 'text-amber-400 border-amber-500/30 bg-amber-950/40',
-  HARD: 'text-rose-400 border-rose-500/30 bg-rose-950/40',
+  EASY: 'text-accent-success border-accent-success/30 bg-accent-success/10',
+  MEDIUM: 'text-accent-warning border-accent-warning/30 bg-accent-warning/10',
+  HARD: 'text-accent-danger border-accent-danger/30 bg-accent-danger/10',
 };
 
 interface QuestionForm {
@@ -83,10 +83,10 @@ const AdminQuestions = () => {
     <div className="p-6 md:p-8">
       <div className="max-w-5xl mx-auto flex flex-col gap-6 relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-white/10 pb-4">
-          <h1 className="text-2xl font-extrabold text-white tracking-widest uppercase">QUESTION BANK</h1>
+        <div className="flex items-center justify-between border-b-2 border-subtle-line pb-4">
+          <h1 className="text-2xl font-extrabold text-fg tracking-widest uppercase">QUESTION BANK</h1>
           {!isFormOpen && (
-            <button onClick={startCreate} className="flex items-center gap-2 px-4 py-2 rounded-none border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-200 hover:text-white font-bold text-xs tracking-widest">
+            <button onClick={startCreate} className="flex items-center gap-2 px-4 py-2 rounded-none border border-accent-primary/50 bg-accent-primary/10 hover:bg-accent-primary/15 text-accent-primary hover:text-fg font-bold text-xs tracking-widest">
               <Plus className="w-4 h-4" /> ADD QUESTION
             </button>
           )}
@@ -94,46 +94,46 @@ const AdminQuestions = () => {
 
         {/* Form */}
         {isFormOpen && (
-          <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised p-5 overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="rounded-none border border-accent-primary/15 border-t-2 border-t-accent-primary/40 bg-raised p-5 overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
             <div className="flex items-center justify-between mb-4 relative z-10">
-              <h3 className="text-sm font-bold text-white tracking-widest uppercase">
+              <h3 className="text-sm font-bold text-fg tracking-widest uppercase">
                 {isEditing ? 'EDIT QUESTION' : 'NEW QUESTION'}
               </h3>
-              <button onClick={cancelForm} className="p-1.5 rounded-none border border-white/10 hover:border-cyan-500 text-slate-400 hover:text-cyan-300">
+              <button onClick={cancelForm} className="p-1.5 rounded-none border border-subtle-line hover:border-accent-primary text-subtle hover:text-accent-primary">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
               <input type="text" placeholder="Question Name" value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="px-3 py-2 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500" />
+                className="px-3 py-2 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary" />
               <select value={form.difficulty_level}
                 onChange={(e) => setForm({ ...form, difficulty_level: e.target.value as any })}
-                className="px-3 py-2 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500 font-bold">
+                className="px-3 py-2 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary font-bold">
                 <option value="EASY">EASY</option>
                 <option value="MEDIUM">MEDIUM</option>
                 <option value="HARD">HARD</option>
               </select>
               <input type="number" placeholder="Time Limit (ms)" value={form.timeLimitMs}
                 onChange={(e) => setForm({ ...form, timeLimitMs: parseInt(e.target.value) || 0 })}
-                className="px-3 py-2 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-200 focus:outline-none focus:border-cyan-500" />
+                className="px-3 py-2 rounded-none border border-subtle-line bg-base text-sm text-fg focus:outline-none focus:border-accent-primary" />
               <div className="md:col-span-2">
                 <textarea placeholder="Problem Definition + Constraints" value={form.problem_definition}
                   onChange={(e) => setForm({ ...form, problem_definition: e.target.value })}
-                  className="w-full px-3 py-2 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-300 resize-none focus:outline-none focus:border-cyan-500" rows={4} />
+                  className="w-full px-3 py-2 rounded-none border border-subtle-line bg-base text-sm text-subtle resize-none focus:outline-none focus:border-accent-primary" rows={4} />
               </div>
               <div className="md:col-span-2">
                 <textarea placeholder="Hints (one per line)" value={form.hints}
                   onChange={(e) => setForm({ ...form, hints: e.target.value })}
-                  className="w-full px-3 py-2 rounded-none border border-white/10 bg-[#02040a] text-sm text-slate-300 resize-none focus:outline-none focus:border-cyan-500" rows={3} />
+                  className="w-full px-3 py-2 rounded-none border border-subtle-line bg-base text-sm text-subtle resize-none focus:outline-none focus:border-accent-primary" rows={3} />
               </div>
             </div>
             <div className="mt-4 flex gap-2 relative z-10">
-              <button onClick={handleSubmit} className="flex items-center gap-2 px-4 py-2 rounded-none border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-300 font-bold text-xs">
+              <button onClick={handleSubmit} className="flex items-center gap-2 px-4 py-2 rounded-none border border-accent-success/40 bg-accent-success/10 hover:bg-accent-success/10 text-accent-success font-bold text-xs">
                 <Save className="w-3.5 h-3.5" /> SAVE
               </button>
-              <button onClick={cancelForm} className="flex items-center gap-2 px-4 py-2 rounded-none border border-white/20 hover:border-rose-400 text-slate-400 hover:text-rose-300 font-bold text-xs">
+              <button onClick={cancelForm} className="flex items-center gap-2 px-4 py-2 rounded-none border border-subtle-line hover:border-accent-danger text-subtle hover:text-accent-danger font-bold text-xs">
                 <X className="w-3.5 h-3.5" /> CANCEL
               </button>
             </div>
@@ -141,44 +141,44 @@ const AdminQuestions = () => {
         )}
 
         {/* Table */}
-        <div className="rounded-none border border-cyan-500/15 border-t-2 border-t-cyan-500/40 bg-raised overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-          <div className="p-4 border-b border-white/10 text-xs font-bold text-slate-500 tracking-widest uppercase relative z-10">
+        <div className="rounded-none border border-accent-primary/15 border-t-2 border-t-accent-primary/40 bg-raised overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
+          <div className="p-4 border-b border-subtle-line text-xs font-bold text-faint tracking-widest uppercase relative z-10">
             QUESTION DIRECTORY
           </div>
           <div className="overflow-y-auto relative z-10">
             {isLoading ? (
-              <div className="p-8 text-center text-slate-500 text-xs">LOADING PROBLEMS...</div>
+              <div className="p-8 text-center text-faint text-xs">LOADING PROBLEMS...</div>
             ) : !questions || questions.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs">NO QUESTIONS FOUND</div>
+              <div className="p-8 text-center text-faint text-xs">NO QUESTIONS FOUND</div>
             ) : (
               <table className="w-full text-xs font-mono">
                 <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="px-4 py-2 text-left text-slate-500">Name</th>
-                    <th className="px-4 py-2 text-left text-slate-500">Difficulty</th>
-                    <th className="px-4 py-2 text-left text-slate-500">TestCases</th>
-                    <th className="px-4 py-2 text-left text-slate-500">Created</th>
-                    <th className="px-4 py-2 text-right text-slate-500">Actions</th>
+                  <tr className="border-b border-subtle-line">
+                    <th className="px-4 py-2 text-left text-faint">Name</th>
+                    <th className="px-4 py-2 text-left text-faint">Difficulty</th>
+                    <th className="px-4 py-2 text-left text-faint">TestCases</th>
+                    <th className="px-4 py-2 text-left text-faint">Created</th>
+                    <th className="px-4 py-2 text-right text-faint">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {questions.map((q) => (
-                    <tr key={q.id} className="border-b border-white/5 hover:bg-black/40">
-                      <td className="px-4 py-3 text-white font-bold">{q.name}</td>
+                    <tr key={q.id} className="border-b border-subtle-line hover:bg-black/60">
+                      <td className="px-4 py-3 text-fg font-bold">{q.name}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold border ${difficultyColors[q.difficulty_level]}`}>
                           {q.difficulty_level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-500">{q.test_cases?.length || 0}</td>
-                      <td className="px-4 py-3 text-slate-500">{new Date(q.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-faint">{q.test_cases?.length || 0}</td>
+                      <td className="px-4 py-3 text-faint">{new Date(q.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-1 justify-end">
-                          <button onClick={() => startEdit(q)} className="p-1.5 rounded-none border border-cyan-500/40 bg-cyan-950/30 hover:bg-cyan-900/40 text-cyan-300">
+                          <button onClick={() => startEdit(q)} className="p-1.5 rounded-none border border-accent-primary/40 bg-accent-primary/10 hover:bg-accent-primary/10 text-accent-primary">
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => handleDelete(q)} className="p-1.5 rounded-none border border-rose-500/40 bg-rose-950/30 hover:bg-rose-900/40 text-rose-300">
+                          <button onClick={() => handleDelete(q)} className="p-1.5 rounded-none border border-accent-danger/40 bg-accent-danger/10 hover:bg-accent-danger/10 text-accent-danger">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>

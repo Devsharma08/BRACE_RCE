@@ -510,7 +510,7 @@ const About = () => {
                 ))}
               </ul>
               <div className="mt-10 flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-accent-success">
-                <span className="h-2 w-2 rounded-full bg-accent-success shadow-[0_0_12px_#00FF87]" /> five runtimes online
+                <span className="h-2 w-2 rounded-full bg-accent-success shadow-[0_0_12px_var(--accent-success)]" /> five runtimes online
               </div>
             </div>
 

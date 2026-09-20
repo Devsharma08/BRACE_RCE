@@ -12,12 +12,12 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, accent, borderClass }) => (
-  <div className={`relative rounded-none border border-white/20 bg-raised p-5 flex flex-col items-center text-center overflow-hidden ${borderClass}`}>
-    <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]" />
-    <div className={`w-12 h-12 rounded-none border border-white/10 bg-black/40 flex items-center justify-center mb-3 ${accent}`}>
+  <div className={`relative rounded-none border border-subtle-line bg-raised p-5 flex flex-col items-center text-center overflow-hidden ${borderClass}`}>
+    <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
+    <div className={`w-12 h-12 rounded-none border border-subtle-line bg-black/60 flex items-center justify-center mb-3 ${accent}`}>
       <Icon className="w-6 h-6" />
     </div>
-    <span className="text-[10px] text-slate-500 tracking-widest font-bold uppercase mb-1">{label}</span>
+    <span className="text-[10px] text-faint tracking-widest font-bold uppercase mb-1">{label}</span>
     <span className={`text-2xl font-extrabold ${accent}`}>{value}</span>
   </div>
 );
@@ -49,11 +49,11 @@ const AdminDashboard = () => {
     <div className="p-6 md:p-8">
       <div className="max-w-7xl mx-auto flex flex-col gap-6 relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-white/10 pb-4">
-          <h1 className="text-2xl font-extrabold text-white tracking-widest uppercase">
+        <div className="flex items-center justify-between border-b-2 border-subtle-line pb-4">
+          <h1 className="text-2xl font-extrabold text-fg tracking-widest uppercase">
             ADMIN DASHBOARD
           </h1>
-          <div className={`flex items-center gap-2 text-xs ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <div className={`flex items-center gap-2 text-xs ${isConnected ? 'text-accent-success' : 'text-accent-danger'}`}>
             <Activity className="w-3 h-3" />
             <span>{isConnected ? 'SOCKET ONLINE' : 'SOCKET OFFLINE'}</span>
           </div>
@@ -65,45 +65,45 @@ const AdminDashboard = () => {
             label="Total Users"
             value={usersLoading ? '...' : (usersData?.users?.length || 0)}
             icon={Users}
-            accent="text-cyan-400"
-            borderClass="border-t-2 border-t-cyan-500/40"
+            accent="text-accent-primary"
+            borderClass="border-t-2 border-t-accent-primary/40"
           />
           <StatCard
             label="Pending Feedback"
             value={feedbackLoading ? '...' : (feedbackData?.feedback?.filter((f: any) => f.status === 'PENDING').length || 0)}
             icon={MessageSquare}
-            accent="text-amber-400"
-            borderClass="border-t-2 border-t-amber-500/40"
+            accent="text-accent-warning"
+            borderClass="border-t-2 border-t-accent-warning/40"
           />
           <StatCard
             label="Open Reports"
             value={reportsLoading ? '...' : (reportsData?.reports?.filter((r: any) => r.status === 'FLAGGED').length || 0)}
             icon={Flag}
-            accent="text-rose-400"
-            borderClass="border-t-2 border-t-rose-500/40"
+            accent="text-accent-danger"
+            borderClass="border-t-2 border-t-accent-danger/40"
           />
           <StatCard
             label="Total Questions"
             value={questionsLoading ? '...' : (questionsData?.questions?.length || 0)}
             icon={HelpCircle}
-            accent="text-purple-400"
-            borderClass="border-t-2 border-t-purple-500/40"
+            accent="text-accent-primary"
+            borderClass="border-t-2 border-t-accent-primary/40"
           />
         </div>
 
         {/* Status Bar */}
-        <div className="rounded-none border border-white/10 bg-raised p-4 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-4 text-slate-400">
+        <div className="rounded-none border border-subtle-line bg-raised p-4 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-4 text-subtle">
             <span className="flex items-center gap-1">
-              <Server className="w-3 h-3 text-emerald-400" />
+              <Server className="w-3 h-3 text-accent-success" />
               API SERVER // HEALTHY
             </span>
             <span className="flex items-center gap-1">
-              <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
+              <Activity className="w-3 h-3 text-accent-primary animate-pulse" />
               RCE SANDBOX // ACTIVE
             </span>
           </div>
-          <span className="text-slate-500">
+          <span className="text-faint">
             Socket ID: {socket?.id?.slice(0, 8) || 'disconnected'}
           </span>
         </div>
