@@ -25,7 +25,7 @@ describe('DashboardSidebar Component', () => {
     expect(screen.getByText('CYBER ARENA v2.0')).toBeDefined();
   });
 
-  test('renders navigation sidebar links (Dashboard, Battle, Problems, Profile)', () => {
+  test('renders navigation sidebar links (Dashboard, Battle, Problems, Profile, Friends)', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <DashboardSidebar rating={1450} />
@@ -36,6 +36,7 @@ describe('DashboardSidebar Component', () => {
     expect(screen.getByText('Battle')).toBeDefined();
     expect(screen.getByText('Problems')).toBeDefined();
     expect(screen.getByText('Profile')).toBeDefined();
+    expect(screen.getByText('Friends')).toBeDefined();
   });
 
   test('renders user display name and formatted rating badge', () => {

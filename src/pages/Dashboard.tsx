@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { MetricCard, MetricCardSkeleton } from "../components/ui/MetricCard";
@@ -8,25 +8,47 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { api } from "../config/api";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { getDivision, TIER_COLORS, useLeaderboard, useMyRating } from "../hooks/useLeaderboard";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 import {
   Swords,
   Trophy,
   Flame,
-  Percent,
   Code2,
   X,
   CheckCircle2,
   Activity,
   BarChart2,
   Plus,
+  ArrowUpRight,
+  Bell,
+  UserRound,
+  Gauge,
+  ChevronRight,
+  LayoutDashboard,
 } from "lucide-react";
+
+// Loose shapes for the untyped server payloads this page consumes —
+// /problems/system and /profile/stats return plain JSON, not client models.
+type DashboardProblem = {
+  id?: string;
+  github_oid?: string;
+  name?: string;
+  difficulty_level?: string;
+};
+
+type DashboardMatch = {
+  id?: string;
+  status?: string;
+  score?: number;
+  createdAt?: string;
+  event?: { commonProblem?: { name?: string } | null } | null;
+};
 
 const formatRelativeTime = (value?: string | null) => {
   if (!value) return "—";
@@ -40,6 +62,12 @@ const formatRelativeTime = (value?: string | null) => {
   return elapsedDays === 1 ? "Yesterday" : `${elapsedDays}d ago`;
 };
 
+/** Compact duration label for solve/run timings (ms → "820ms" | "1.4s"). */
+const formatMs = (value?: number | null) => {
+  if (!value || value <= 0) return "—";
+  return value < 1000 ? `${Math.round(value)}ms` : `${(value / 1000).toFixed(1)}s`;
+};
+
 export const Dashboard: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const {
@@ -51,7 +79,6 @@ export const Dashboard: React.FC = () => {
     waitingTime,
     pendingOpponent,
   } = useSocket();
-  const navigate = useNavigate();
   const [acceptTimer, setAcceptTimer] = useState<number>(10);
 
   // After any finished battle the server emits leaderboard:invalidate — one
@@ -68,7 +95,7 @@ export const Dashboard: React.FC = () => {
 
   // Profile card data — identity rarely changes, so it is long-lived and is
   // deliberately NOT part of the post-battle refresh wave.
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const { data: profile } = useQuery({
     queryKey: ["dashboard-profile", user?.id],
     enabled: Boolean(user?.id),
     staleTime: 1000 * 60 * 15,
@@ -97,14 +124,13 @@ export const Dashboard: React.FC = () => {
           recentBattles: statsRes?.data?.recentMatches || [],
         };
       } catch {
-        // Partial failure must not blank the whole dashboard — fall back to
-        // empty stats so the rest of the page still renders.
+        // Partial failure must not blank the whole dashboard
         return { stats: null, recentBattles: [] };
       }
     },
   });
 
-  // Recommended problems — also refreshed post-battle (isSolved flags change).
+  // Recommended problems — also refreshed post-battle
   const { data: recommendedProblemsData = [], isLoading: recommendedLoading } = useQuery({
     queryKey: ["dashboard-problems", user?.id],
     enabled: Boolean(user?.id),
@@ -114,7 +140,6 @@ export const Dashboard: React.FC = () => {
     },
   });
 
-  // Back-compat shape for the JSX below (was one combined query).
   const dashboardData = {
     profile,
     stats: statsData?.stats ?? null,
@@ -127,18 +152,13 @@ export const Dashboard: React.FC = () => {
   const { data: leaderboardRows, isLoading: leaderboardLoading } = useLeaderboard(25, Boolean(isAuthenticated || user));
 
   const stats = dashboardData?.stats || null;
-  const recentBattles: any[] = dashboardData?.recentBattles || [];
-  // Renamed upstream (recommendedProblemsData) to avoid shadowing this alias.
-  const recommendedProblems: any[] = dashboardData?.recommendedProblems || [];
+  const recentBattles = dashboardData?.recentBattles || [];
+  const recommendedProblems = dashboardData?.recommendedProblems || [];
 
-  // Guards the accept countdown so a stale interval tick queued before the
-  // cleanup runs cannot fire declineMatch() a second time. The ref flips to
-  // false on cleanup; any tick that wakes up afterwards exits immediately.
   const timerActiveRef = useRef(false);
 
   useEffect(() => {
     if (matchmakingStatus !== "FOUND_PENDING") {
-      // Leaving the pending state resets the dial so the next match starts at 10.
       setAcceptTimer(10);
       return;
     }
@@ -171,8 +191,12 @@ export const Dashboard: React.FC = () => {
     } else {
       document.title = "Dashboard | BRACE RCE";
     }
+    return () => {
+      document.title = "Dashboard | BRACE RCE";
+    };
   }, [matchmakingStatus]);
 
+  if (isLoading) return <TableSkeleton />;
   if (!isLoading && !isAuthenticated && !user) return <Navigate to="/signin" />;
 
   const username = user?.username || "OPERATIVE";
@@ -183,282 +207,33 @@ export const Dashboard: React.FC = () => {
   const winRate = stats ? Math.round(stats.winRate) : Math.round(myRating?.winRate ?? 0);
   const winStreak = analytics?.summary?.currentStreak ?? 0;
   const isQueued = matchmakingStatus === "SEARCHING";
-
-  // Skeleton gates: blink while a value is still in flight; render the real
-  // (possibly zero) value only once its query has settled.
   const kpiLoading = statsLoading || analyticsLoading || ratingLoading;
   const rankLoading = ratingLoading || leaderboardLoading;
 
-  return (
-    <div className="flex min-h-screen bg-base text-fg font-mono">
+  // Live aggregates for the KPI grid. Every tile reads from one of these, so no
+  // tile ever falls back to a hardcoded placeholder. `/profile/stats` is the
+  // battle-scoped source of truth; `/analytics` covers solves + run timings.
+  const analyticsSummary = analytics?.summary;
+  const runtimeStats = analytics?.runtimeStats;
+  const totalSolved = analyticsSummary?.totalSolved ?? 0;
+  const totalAttempts = analyticsSummary?.totalAttempts ?? 0;
+  const completionRate = Math.round(analyticsSummary?.completionRate ?? 0);
+  const wins = stats?.wins ?? myRating?.wins ?? analyticsSummary?.wins ?? 0;
+  const losses = stats?.losses ?? myRating?.losses ?? 0;
+  const avgSolveLabel = formatMs(analyticsSummary?.avgSolveTimeMs);
 
-      {/* Desktop sidebar */}
+  return (
+    <div className="relative flex min-h-screen w-full bg-base text-fg font-mono selection:bg-accent-primary/30 selection:text-accent-primary">
+      {/* Dot-grid texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
+
+      {/* DESKTOP SIDEBAR — shared shell with /problems, /profile, /lobby */}
       <DashboardSidebar rating={myRating?.rating} />
 
-      {/* Mobile bottom nav */}
+      {/* MOBILE BOTTOM NAV */}
       <MobileBottomNav />
 
-      {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main
-        className="
-          flex-1 min-w-0 w-full
-          ml-0 md:ml-[60px] lg:ml-[245px]
-          pt-14
-          px-4 py-6 md:px-8 md:py-8
-          pb-20 md:pb-8
-        "
-      >
-        {/* Dot-grid texture */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
-
-        {/* ── OPERATIVE BANNER ────────────────────────────────────────── */}
-        <div className="ds-card p-6 mb-6 flex flex-col lg:flex-row lg:items-center gap-6">
-          <div className="flex items-center gap-4 min-w-0 flex-1">
-            <img
-              src={user?.avatarUrl || dashboardData?.profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
-              alt=""
-              className="w-16 h-16 rounded-card border border-subtle-line object-cover"
-            />
-            <div className="min-w-0">
-              <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold">Operative profile</p>
-              <h1 className="text-2xl font-black text-fg tracking-widest uppercase truncate font-display">
-                {username}
-              </h1>
-              <p className="text-xs text-subtle mt-1">
-                Good {timeOfDay}. System nominal.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 w-full lg:w-auto">
-            {rankLoading ? (
-              <>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} aria-hidden="true" className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-                    <span className="block h-2.5 w-14 rounded-none bg-surface-hover animate-pulse" />
-                    <span className="mt-2 block h-5 w-16 rounded-none bg-surface-hover animate-pulse" />
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">ELO</p>
-                  <p className="text-xl font-black font-mono text-accent-primary tabular-nums">{userRating}</p>
-                </div>
-                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Division</p>
-                  <p className={`text-sm font-black font-mono mt-1 ${TIER_COLORS[division] ?? "text-fg"}`}>{division}</p>
-                </div>
-                <div className="px-4 py-3 rounded-card border border-subtle-line bg-base">
-                  <p className="text-[10px] text-muted uppercase tracking-widest">Global rank</p>
-                  <p className="text-xl font-black font-mono text-fg tabular-nums">{globalRank ? `#${globalRank}` : "—"}</p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* ── KPI GRID ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {kpiLoading ? (
-            <>
-              <MetricCardSkeleton />
-              <MetricCardSkeleton />
-              <MetricCardSkeleton />
-            </>
-          ) : (
-            <>
-              <MetricCard label="Matches played" value={matchesPlayed} icon={Trophy} dotTone="active" />
-              <MetricCard label="Win rate" value={`${winRate}%`} icon={Percent} dotTone="live" valueTone="positive" />
-              <MetricCard label="Current win streak" value={winStreak} icon={Flame} dotTone="warning" valueTone="warning" />
-            </>
-          )}
-        </div>
-
-        {/* ── ACTION HUB ─────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          <div className={`ds-card p-6 ${isQueued ? "ds-pulse-ring" : ""}`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold mb-1">Ranked queue</p>
-                <h2 className="text-lg font-bold text-fg mb-1">Matchmaking</h2>
-                <p className="text-xs text-subtle">
-                  {isQueued ? "Searching for an opponent…" : "Enter ranked 1v1. Pulse ring arms when queued."}
-                </p>
-              </div>
-              {isQueued ? (
-                <button
-                  onClick={cancelMatch}
-                  className="ds-btn flex-shrink-0 border border-accent-danger/40 text-accent-danger font-bold px-6 py-3 text-xs tracking-wider uppercase whitespace-nowrap hover:bg-accent-danger/10"
-                >
-                  Cancel queue
-                </button>
-              ) : (
-                <button
-                  onClick={() => findMatch()}
-                  className="ds-btn flex-shrink-0 bg-accent-primary text-ink font-bold px-6 py-3 text-xs tracking-wider transition-all hover:opacity-90 uppercase whitespace-nowrap"
-                >
-                  START MATCHMAKING
-                </button>
-              )}
-            </div>
-          </div>
-          <Link to="/rooms/create" className="ds-card group p-6">
-            <p className="text-[10px] text-label uppercase tracking-[0.2em] font-bold mb-1">Custom room creator</p>
-            <h2 className="text-lg font-bold text-fg mb-1 flex items-center gap-2">
-              <Plus className="w-4 h-4 text-accent-primary" /> Problem & test generator
-            </h2>
-            <p className="text-xs text-subtle group-hover:text-fg transition-colors">
-              Build a private arena, seed a problem, and generate test cases.
-            </p>
-          </Link>
-        </div>
-
-        {/* ── RECOMMENDED PROBLEMS ──────────────────────────────────────── */}
-        <section className="mb-8" aria-labelledby="recommended-heading">
-          <div className="mb-3 flex items-center gap-2">
-            <Code2 className="w-4 h-4 text-accent-primary/30" />
-            <span
-              id="recommended-heading"
-              className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
-            >
-              Recommended Problems
-            </span>
-            <hr className="flex-1 border-subtle-line" />
-          </div>
-          <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
-            {recommendedLoading ? (
-              <div aria-hidden="true" className="divide-y divide-subtle-line">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                    <span className="h-3.5 w-40 rounded-none bg-surface-hover animate-pulse" />
-                    <span className="h-4 w-12 rounded-btn bg-surface-hover animate-pulse" />
-                  </div>
-                ))}
-              </div>
-            ) : recommendedProblems.length > 0 ? (
-              recommendedProblems.map((problem: any) => {
-                const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
-                return (
-                  <Link
-                    key={problem.id}
-                    to={`/terminal?id=${problem.id || problem.github_oid}`}
-                    className="flex items-center justify-between gap-3 border-b border-subtle-line px-4 py-2.5 transition-colors last:border-b-0 hover:bg-surface-hover"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="truncate text-sm font-medium text-fg">{problem.name}</span>
-                      <StatusPill tone={diff === "EASY" ? "live" : diff === "MEDIUM" ? "warning" : "danger"} className="shrink-0">
-                        {diff}
-                      </StatusPill>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted transition-colors group-hover:text-accent-primary">→</span>
-                  </Link>
-                );
-              })
-            ) : (
-              <div className="px-5 py-4">
-                <span className="text-xs text-subtle">No recommended problems available</span>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── RECENT BATTLES ────────────────────────────────────────────── */}
-        <section className="mb-8" aria-labelledby="battles-heading">
-          <div className="mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-accent-primary/30" />
-            <span
-              id="battles-heading"
-              className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
-            >
-              Recent Battles
-            </span>
-            <hr className="flex-1 border-subtle-line" />
-          </div>
-          <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
-            {statsLoading ? (
-              <div aria-hidden="true" className="divide-y divide-subtle-line">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                    <span className="h-3 w-full max-w-[220px] rounded-none bg-surface-hover animate-pulse" />
-                    <span className="ml-auto h-4 w-10 rounded-none bg-surface-hover animate-pulse" />
-                    <span className="h-3 w-12 rounded-none bg-surface-hover animate-pulse" />
-                  </div>
-                ))}
-              </div>
-            ) : recentBattles.length > 0 ? (
-              <div className="divide-y divide-subtle-line">
-                    {recentBattles.slice(0, 5).map((perf: any, i: number) => {
-                      const isWin =
-                        perf.status === "PASSED" ||
-                        perf.status === "WON" ||
-                        perf.status === "COMPLETED";
-                      const problemName =
-                        perf.event?.commonProblem?.name || "Unknown";
-                      return (
-                        <div
-                          key={perf.id || i}
-                          className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-hover"
-                        >
-                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
-                            {problemName}
-                          </span>
-                          <StatusPill tone={isWin ? "live" : "danger"} className="shrink-0">
-                            {isWin ? "WIN" : "LOSS"}
-                          </StatusPill>
-                          <span className="w-12 shrink-0 text-right font-mono text-[11px] text-subtle">{perf.score ?? 0}</span>
-                          <time className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-secondary" dateTime={perf.createdAt}>
-                            {formatRelativeTime(perf.createdAt)}
-                          </time>
-                        </div>
-                      );
-                    })}
-              </div>
-            ) : (
-              <div className="p-6">
-                <EmptyState
-                  icon={Swords}
-                  title="No recent battles"
-                  message="Complete a battle to start building your record."
-                  action={
-                    <Link
-                      to="/lobby"
-                      className="inline-flex items-center gap-2 border border-accent-primary/40 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:bg-accent-primary/10"
-                    >
-                      Enter the arena
-                    </Link>
-                  }
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── PERFORMANCE ANALYTICS ─────────────────────────────────────── */}
-        <section className="mb-8" aria-labelledby="analytics-heading">
-          <div className="mb-3 flex items-center gap-2">
-            <BarChart2 className="h-4 w-4 text-accent-primary/50" />
-            <span
-              id="analytics-heading"
-              className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-muted"
-            >
-              Performance Analytics
-            </span>
-            <hr className="flex-1 border-subtle-line" />
-          </div>
-          <AnalyticsErrorBoundary>
-            {analytics ? (
-              <AnalyticsPanels analytics={analytics} compact={true} />
-            ) : (
-              <div className="rounded-card border border-subtle-line bg-surface p-6 text-center text-xs text-muted">
-                Analytics data unavailable
-              </div>
-            )}
-          </AnalyticsErrorBoundary>
-        </section>
-      </main>
-
-      {/* ── MATCHMAKING: SEARCHING MODAL ──────────────────────────────────── */}
+      {/* DIALOG OVERLAYS (preserved) */}
       {matchmakingStatus === "SEARCHING" && (
         <div
           role="dialog"
@@ -467,7 +242,7 @@ export const Dashboard: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
           <div className="w-full max-w-md bg-raised border border-subtle-line border-t-2 border-t-accent-primary/40 p-8 flex flex-col items-center gap-6">
-            <span className="text-[10px] font-mono text-label uppercase tracking-[0.2em] font-bold">
+            <span className="text-[10px] text-label uppercase tracking-[0.2em] font-bold">
               Finding opponent
             </span>
             <span
@@ -492,7 +267,6 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* ── MATCHMAKING: MATCH FOUND MODAL ───────────────────────────────── */}
       {matchmakingStatus === "FOUND_PENDING" && (
         <div
           role="dialog"
@@ -501,17 +275,12 @@ export const Dashboard: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
           <div className="w-full max-w-xl bg-raised border border-subtle-line border-t-2 border-t-accent-primary/40 p-8 flex flex-col items-center gap-6">
-
-            {/* VS Cards */}
             <div className="w-full grid grid-cols-5 items-center gap-3">
               <div className="col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
                 <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   YOU
                 </span>
-                <span
-                  className="text-base font-extrabold text-fg tracking-wide truncate w-full"
-                  title={username}
-                >
+                <span className="text-base font-extrabold text-fg tracking-wide truncate w-full" title={username}>
                   {username}
                 </span>
                 <span className="text-xs text-subtle mt-1 font-mono">{userRating}</span>
@@ -525,10 +294,7 @@ export const Dashboard: React.FC = () => {
                 <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   OPPONENT
                 </span>
-                <span
-                  className="text-base font-extrabold text-fg tracking-wide truncate w-full"
-                  title={pendingOpponent?.username}
-                >
+                <span className="text-base font-extrabold text-fg tracking-wide truncate w-full" title={pendingOpponent?.username}>
                   {pendingOpponent?.username || "Opponent"}
                 </span>
                 <span className="text-xs text-subtle mt-1 font-mono">1250</span>
@@ -570,6 +336,409 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MAIN CONTENT AREA — left offset matches the fixed sidebar widths */}
+      <main className="relative z-10 w-full min-w-0 flex-1 ml-0 md:ml-[60px] lg:ml-[245px] px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
+        {/* ── HEADER ─────────────────────────────────────────────── */}
+        {/* Page title only. The app brand + route nav now come from Layout's
+            sticky Header and DashboardSidebar, so repeating them here would
+            render the BRACE lockup twice on the same screen. */}
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-subtle-line pb-5">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 text-xl font-bold tracking-wide text-fg">
+              <LayoutDashboard className="h-5 w-5 shrink-0 text-accent-primary" />
+              <span>OPERATIVE CONSOLE</span>
+            </h1>
+            <p className="mt-1 font-sans text-xs text-subtle">
+              Execution history, ranked standing, and your next challenge — in one operational view.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-lg border border-accent-success/20 bg-accent-success/[0.05] px-3 py-2 text-[9px] uppercase tracking-widest text-accent-success md:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-[0_0_9px_#00ff87]" />
+              session ready
+            </div>
+            <button
+              aria-label="Notifications"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-subtle-line text-subtle transition hover:border-accent-primary/40 hover:text-accent"
+            >
+              <Bell size={15} />
+            </button>
+            <Link
+              to="/profile"
+              className="grid h-9 w-9 place-items-center rounded-lg border border-subtle-line text-accent-primary transition hover:border-accent-primary/40"
+            >
+              <UserRound size={15} />
+            </Link>
+          </div>
+        </header>
+
+        {/* ── OPERATIVE BANNER ───────────────────────────────────── */}
+        <section className="relative isolate overflow-hidden border-y border-subtle-line py-12 md:py-16">
+          <div className="absolute -right-10 top-6 font-mono text-[10rem] font-black leading-none tracking-[-0.16em] text-fg/[0.025]">
+            01
+          </div>
+          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+            <div>
+              <div className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
+                <span className="h-2 w-2 rounded-full bg-accent-primary shadow-[0_0_10px_#00d4ff]" />
+                Control surface / 01
+              </div>
+              <h1 className="font-mono text-4xl font-black tracking-[-0.05em] text-fg md:text-6xl">
+                Good {timeOfDay.toLowerCase()},<br />
+                <span className="text-accent">{username}</span>
+              </h1>
+              <p className="mt-4 max-w-xl font-sans text-sm leading-6 text-subtle">
+                Your execution history, current rating, and next challenge — in one operational view.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 border-l border-subtle-line pl-5">
+              <div className="h-14 w-14 rounded-full border border-accent-primary/40 bg-accent-primary/10 p-1">
+                <div className="grid h-full place-items-center rounded-full bg-surface text-sm font-bold text-accent-primary">
+                  OP
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-bold tracking-widest text-fg">
+                  RANK /{" "}
+                  <span className={TIER_COLORS[division] ?? "text-fg"}>
+                    {division}
+                  </span>
+                </div>
+                <div className="mt-1 text-[9px] uppercase tracking-widest text-subtle">
+                  {rankLoading ? (
+                    <span className="text-muted">resolving global rank…</span>
+                  ) : (
+                    <>
+                      #{globalRank ?? "—"} — {userRating} ELO
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── KPI GRID ─────────────────────────────────────────────── */}
+        {/* Six tiles mirror the console reference row: battles, wins, losses,
+            win rate, score and average solve time — all from live queries. */}
+        <section className="grid gap-px border-y border-subtle-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          {kpiLoading ? (
+            <>
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+              <MetricCardSkeleton />
+            </>
+          ) : (
+            <>
+              <MetricCard
+                label="Rating"
+                value={userRating}
+                trend={`#${globalRank ?? "—"} global`}
+                icon={Trophy}
+                dotTone="active"
+              />
+              <MetricCard
+                label="Battles"
+                value={matchesPlayed}
+                trend={`${totalSolved} solved`}
+                icon={Swords}
+                dotTone="live"
+              />
+              <MetricCard
+                label="Wins"
+                value={wins}
+                trend={`${winRate}% win rate`}
+                icon={CheckCircle2}
+                dotTone="live"
+                valueTone="positive"
+              />
+              <MetricCard
+                label="Losses"
+                value={losses}
+                trend={`${totalAttempts} attempts`}
+                icon={X}
+                dotTone="danger"
+                valueTone="danger"
+              />
+              <MetricCard
+                label="Current streak"
+                value={winStreak}
+                trend={`completion ${completionRate}%`}
+                icon={Flame}
+                dotTone="warning"
+                valueTone="warning"
+              />
+              <MetricCard
+                label="Avg solve time"
+                value={avgSolveLabel}
+                trend={runtimeStats ? `best ${formatMs(runtimeStats.best)}` : "no runs yet"}
+                icon={Activity}
+                dotTone="muted"
+              />
+            </>
+          )}
+        </section>
+
+        {/* ── ACTION HUB ───────────────────────────────────────────── */}
+        <section className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
+          <div
+            className={`relative overflow-hidden rounded-card border p-6 transition ${
+              isQueued
+                ? "border-accent-primary/60 bg-accent-primary/[0.07] ds-pulse-ring"
+                : "border-subtle-line bg-surface"
+            }`}
+          >
+            <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" />
+            <div className="flex items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-accent-primary">
+                  <Swords size={14} /> Ranked queue
+                </div>
+                <h2 className="mt-4 text-2xl font-bold tracking-tight text-fg">
+                  Matchmaking
+                </h2>
+                <p className="mt-2 max-w-sm font-sans text-sm leading-6 text-subtle">
+                  {isQueued
+                    ? "Searching for an opponent in the ranked pool…"
+                    : "Enter a ranked 1v1 and test your execution under pressure."}
+                </p>
+              </div>
+              <Gauge
+                className={`${isQueued ? "animate-pulse text-accent-primary" : "text-subtle"} w-5 h-5 shrink-0`}
+              />
+            </div>
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-subtle-line pt-4">
+              <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-subtle">
+                {isQueued ? "queue armed / realtime" : "estimated session / 15 min"}
+              </div>
+              {isQueued ? (
+                <button
+                  onClick={cancelMatch}
+                  className="rounded-lg border border-accent-danger/40 bg-accent-danger/10 px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-accent-danger transition-all hover:bg-accent-danger/20"
+                >
+                  Cancel queue
+                </button>
+              ) : (
+                <button
+                  onClick={() => findMatch()}
+                  disabled={matchmakingStatus !== "IDLE"}
+                  className="rounded-lg bg-accent-primary px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-ink transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Start matchmaking
+                </button>
+              )}
+            </div>
+          </div>
+
+          <Link
+            to="/rooms/create"
+            className="group relative overflow-hidden rounded-card border border-subtle-line bg-surface p-6 transition hover:border-accent-success/30"
+          >
+            <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" />
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-accent-success">
+              <Plus size={14} /> Custom room
+            </div>
+            <h2 className="mt-8 text-xl font-bold tracking-tight text-fg">
+              Build an arena.
+            </h2>
+            <p className="mt-2 font-sans text-sm leading-6 text-subtle group-hover:text-fg transition-colors">
+              Seed a problem, generate tests, invite your network.
+            </p>
+            <ArrowUpRight
+              size={16}
+              className="absolute right-6 bottom-6 text-subtle transition group-hover:text-accent group-hover:-translate-y-1 group-hover:translate-x-1"
+            />
+          </Link>
+        </section>
+
+        {/* ── PROBLEM LIST + BATTLE LIST ─────────────────────────────── */}
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
+          {/* Recommended problems */}
+          <section aria-labelledby="recommended-heading">
+            <div className="mb-3 flex items-center gap-2">
+              <Code2 size={14} className="text-accent-primary/30" />
+              <h2
+                id="recommended-heading"
+                className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
+              >
+                Recommended problems
+              </h2>
+              <hr className="flex-1 border-subtle-line" />
+              <Link
+                to="/problems"
+                className="text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
+              >
+                Browse corpus
+              </Link>
+            </div>
+            <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
+              {recommendedLoading ? (
+                <div aria-hidden="true" className="divide-y divide-subtle-line">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                      <span className="h-3 w-40 rounded-none bg-surface-hover animate-pulse" />
+                      <span className="h-4 w-12 rounded-btn bg-surface-hover animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : recommendedProblems.length > 0 ? (
+                recommendedProblems.map((problem: DashboardProblem) => {
+                  const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
+                  return (
+                    <Link
+                      key={problem.id}
+                      to={`/terminal?id=${problem.id || problem.github_oid}`}
+                      className="group flex items-center justify-between gap-3 border-b border-subtle-line px-4 py-2.5 transition hover:bg-surface-hover last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="grid h-8 w-8 place-items-center rounded-lg border border-subtle-line text-[10px] text-subtle">
+                          ↗
+                        </span>
+                        <span className="min-w-0 truncate text-sm text-subtle group-hover:text-fg">
+                          {problem.name}
+                        </span>
+                        <StatusPill
+                          tone={diff === "EASY" ? "live" : diff === "MEDIUM" ? "warning" : "danger"}
+                        >
+                          {diff}
+                        </StatusPill>
+                      </div>
+                      <ChevronRight
+                        size={14}
+                        className="text-subtle group-hover:text-accent"
+                      />
+                    </Link>
+                  );
+                })
+              ) : (
+                <div className="px-5 py-4">
+                  <span className="text-xs text-subtle">No recommended problems available</span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Recent battles */}
+          <section aria-labelledby="battles-heading">
+            <div className="mb-3 flex items-center gap-2">
+              <Activity size={14} className="text-accent-primary/30" />
+              <h2
+                id="battles-heading"
+                className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
+              >
+                Recent battles
+              </h2>
+              <hr className="flex-1 border-subtle-line" />
+              <Link
+                to="/profile"
+                className="text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
+              >
+                View record
+              </Link>
+            </div>
+            <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
+              {statsLoading ? (
+                <div aria-hidden="true" className="divide-y divide-subtle-line">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+                      <span className="h-3 w-full max-w-[220px] rounded-none bg-surface-hover animate-pulse" />
+                      <span className="ml-auto h-4 w-10 rounded-none bg-surface-hover animate-pulse" />
+                      <span className="h-3 w-12 rounded-none bg-surface-hover animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : recentBattles.length > 0 ? (
+                <div className="divide-y divide-subtle-line">
+                  {recentBattles.slice(0, 5).map((perf: DashboardMatch, i: number) => {
+                    const isWin =
+                      perf.status === "PASSED" ||
+                      perf.status === "WON" ||
+                      perf.status === "COMPLETED";
+                    const problemName = perf.event?.commonProblem?.name || "Unknown";
+                    return (
+                      <div
+                        key={perf.id || i}
+                        className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-surface-hover"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
+                          {problemName}
+                        </span>
+                        <StatusPill tone={isWin ? "live" : "danger"} className="shrink-0">
+                          {isWin ? "WIN" : "LOSS"}
+                        </StatusPill>
+                        <span className="w-12 shrink-0 text-right font-mono text-[11px] text-subtle">
+                          {perf.score ?? 0}
+                        </span>
+                        <time
+                          className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-secondary"
+                          dateTime={perf.createdAt}
+                        >
+                          {formatRelativeTime(perf.createdAt)}
+                        </time>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-6">
+                  <EmptyState
+                    icon={Swords}
+                    title="No recent battles"
+                    message="Complete a battle to start building your record."
+                    action={
+                      <Link
+                        to="/lobby"
+                        className="inline-flex items-center gap-2 border border-accent-primary/40 px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:bg-accent-primary/10"
+                      >
+                        Enter the arena
+                      </Link>
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* ── PERFORMANCE ANALYTICS ───────────────────────────────────── */}
+        <section className="mt-8 grid gap-4 border-t border-subtle-line pt-8 md:grid-cols-[1fr_1.6fr]">
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <BarChart2 size={14} className="text-accent-primary/30" />
+              <h2 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-muted">
+                Performance Analytics
+              </h2>
+              <hr className="flex-1 border-subtle-line" />
+              <Link
+                to="/profile"
+                className="text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
+              >
+                Analytics
+              </Link>
+            </div>
+            <p className="mt-4 max-w-xs font-sans text-sm leading-6 text-subtle">
+              A compact view of your execution rhythm across the current cycle.
+            </p>
+          </div>
+          <div className="rounded-card border border-subtle-line bg-surface p-5">
+            <AnalyticsErrorBoundary>
+              {analytics ? (
+                <AnalyticsPanels analytics={analytics} compact={true} />
+              ) : (
+                <div className="rounded-card border border-subtle-line bg-surface p-6 text-center text-xs text-muted">
+                  Analytics data unavailable
+                </div>
+              )}
+            </AnalyticsErrorBoundary>
+          </div>
+        </section>
+      </main>
     </div>
   );
 };
+
+export default Dashboard;

@@ -12,11 +12,15 @@ import GlobalModals from '../features/GlobalModals'
 const Layout = () => {
   const { pathname } = useLocation()
 
-  // These routes manage their own full-screen layout
+  // These routes manage their own full-screen layout.
+  // /dashboard is NOT fullscreen: it renders the DashboardSidebar shell and
+  // needs to scroll past one viewport, so it flows through the standard branch
+  // below (which carries the header + footer and has no h-screen clamp).
   const isFullscreen =
     pathname === '/signin' ||
     pathname === '/signup' ||
-    pathname.startsWith('/battle') || pathname.startsWith('/terminal');
+    pathname.startsWith('/battle') ||
+    pathname.startsWith('/terminal');
 
   // Dense app views (e.g. /profile) keep the header but get a slim footer —
   // the full-size footer crowds their vertical layout.

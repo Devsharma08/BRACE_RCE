@@ -11,6 +11,10 @@ vi.mock("../hooks/useLeaderboard", () => ({ useMyRating: () => ({ data: { rating
 vi.mock("../components/layout/DashboardSidebar", () => ({ default: () => null }));
 vi.mock("../components/layout/MobileBottomNav", () => ({ default: () => null }));
 
+vi.mock("../hooks/useSocketInvalidation", () => ({
+  useSocketInvalidation: () => undefined,
+}));
+
 const problems = Array.from({ length: 16 }, (_, index) => ({
   id: `problem-${index + 1}`,
   name: `Challenge ${index + 1}`,

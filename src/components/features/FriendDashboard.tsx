@@ -22,7 +22,7 @@ import { api } from "../../config/api";
 import { ChallengeModal } from "./ChallengeModal";
 import DashboardSidebar from "../layout/DashboardSidebar";
 import MobileBottomNav from "../layout/MobileBottomNav";
-import { useMyRating } from "../../hooks/useLeaderboard";
+import { TIER_COLORS, useLeaderboard, useMyRating } from "../../hooks/useLeaderboard";
 import { FriendsWorkspaceHeader } from "./FriendsWorkspaceHeader";
 
 interface Friend {
@@ -249,6 +249,14 @@ export default function FriendsDashboard() {
 
   const { data: myRating } = useMyRating(true);
 
+  // A friend's ranked record lives only on the leaderboard — /friends returns
+  // identity, not stats. One cached fetch (10 min staleTime) serves every
+  // profile panel instead of a request per friend.
+  const { data: leaderboardRows = [] } = useLeaderboard(100);
+  const activeFriendRecord = activeTab
+    ? leaderboardRows.find((row) => row.userId === activeTab.id)
+    : undefined;
+
   return (
     <div className="flex min-h-screen bg-base text-fg font-mono">
       {/* ══════════════════════════════════════════════════════════════════════ */}
@@ -410,7 +418,10 @@ export default function FriendsDashboard() {
         </section>
 
         {/* ── RIGHT COLUMN: FRIEND PROFILE + BATTLE HISTORY ───────────────── */}
-        <aside className="hidden w-72 min-w-0 shrink-0 flex-col overflow-y-auto border-l border-subtle-line bg-panel xl:flex">
+        <aside
+          aria-label="Selected operative record"
+          className="hidden w-72 min-w-0 shrink-0 flex-col overflow-y-auto border-l border-subtle-line bg-panel xl:flex"
+        >
           {activeTab ? (
             <>
               {/* Friend Profile Card */}
@@ -429,26 +440,81 @@ export default function FriendsDashboard() {
                 </div>
               </div>
 
-              {/* Battle Stats / History */}
+              {/* Battle record — real leaderboard data. This block previously
+                  rendered hardcoded 0 / 0 / "--" for every friend, which read
+                  as a genuine losing record rather than absent data. */}
               <div className="p-4 border-b border-line-low">
                 <div className="flex items-center gap-2 mb-3">
                   <Trophy className="w-3.5 h-3.5 text-label" />
-                  <span className="text-[10px] text-subtle font-bold uppercase tracking-widest">Battle History</span>
+                  <span className="text-[10px] text-subtle font-bold uppercase tracking-widest">
+                    Battle record
+                  </span>
                 </div>
-                <div className="space-y-2">
+
+                <div className="grid grid-cols-3 divide-x divide-subtle-line border-y border-subtle-line">
+                  {[
+                    { label: "matches", value: activeFriendRecord?.totalMatches, tone: "text-fg" },
+                    { label: "wins", value: activeFriendRecord?.wins, tone: "text-accent-success" },
+                    {
+                      label: "rate",
+                      value: activeFriendRecord
+                        ? `${Math.round(activeFriendRecord.winRate)}%`
+                        : undefined,
+                      tone: "text-accent-primary",
+                    },
+                  ].map((metric) => (
+                    <div key={metric.label} className="px-1 py-3 text-center">
+                      <b
+                        className={`block font-mono text-sm font-bold tabular-nums ${metric.tone}`}
+                      >
+                        {metric.value ?? "—"}
+                      </b>
+                      <span className="mt-1 block text-[8px] uppercase tracking-widest text-muted">
+                        {metric.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 space-y-2">
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-subtle">Wins</span>
-                    <span className="text-accent-success font-bold">0</span>
+                    <span className="text-subtle">Division</span>
+                    <span
+                      className={`font-bold ${
+                        activeFriendRecord
+                          ? TIER_COLORS[activeFriendRecord.tier] ?? "text-fg"
+                          : "text-muted"
+                      }`}
+                    >
+                      {activeFriendRecord?.tier ?? "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-subtle">Rating</span>
+                    <span className="font-mono font-bold tabular-nums text-accent-primary">
+                      {activeFriendRecord?.rating ?? "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-subtle">Global rank</span>
+                    <span className="font-mono font-bold tabular-nums text-fg">
+                      {activeFriendRecord ? `#${activeFriendRecord.rank}` : "—"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-subtle">Losses</span>
-                    <span className="text-accent-danger font-bold">0</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-subtle">Win Rate</span>
-                    <span className="text-accent-primary font-bold">--</span>
+                    <span className="font-mono font-bold tabular-nums text-accent-danger">
+                      {activeFriendRecord?.losses ?? "—"}
+                    </span>
                   </div>
                 </div>
+
+                {!activeFriendRecord && (
+                  <p className="mt-3 text-[10px] leading-relaxed text-muted">
+                    No ranked record — this operative has not completed a ranked
+                    battle yet.
+                  </p>
+                )}
               </div>
 
               {/* Actions */}

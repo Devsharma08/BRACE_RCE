@@ -83,6 +83,7 @@
 
   /* ── Elevation & Effects ─────────────────────────────────────────────── */
   --radius-card: 12px;
+  --radius-panel: 28px;
   --radius-btn:  8px;
   --radius:      var(--radius-card);
   --radius-sm:   6px;

@@ -17,11 +17,17 @@ import {
   ListFilter,
   Sparkles,
   AlertTriangle,
+  Target,
+  BookOpen,
+  Flame,
+  ArrowUpRight,
 } from "lucide-react";
+import { useAnalytics } from "../hooks/useAnalytics";
 
 export const Problems: React.FC = () => {
   const { user } = useAuth();
   const { data: myRating } = useMyRating(true);
+  const { data: analytics } = useAnalytics(false);
   const navigate = useNavigate();
 
   const [isPending, startTransition] = useTransition();
