@@ -1,56 +1,62 @@
-import { describe, test, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { QuickNavHub } from './QuickNavHub';
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QuickNavHub } from "./QuickNavHub";
 
-describe('QuickNavHub Component', () => {
+afterEach(cleanup);
+
+describe("QuickNavHub", () => {
   const defaultProps = {
     onFindMatch: vi.fn(),
-    matchmakingStatus: 'IDLE',
+    matchmakingStatus: "IDLE" as const,
     onCancelMatch: vi.fn(),
     onCreateCustomRoom: vi.fn(),
     onJoinCustomRoom: vi.fn(),
     waitingTime: 0,
   };
 
-  test('renders 1V1 MATCHMAKING QUEUE title and online status', () => {
+  test("renders the battle arena panel with queue title and online status", () => {
     render(<QuickNavHub {...defaultProps} />);
-    expect(screen.getByText('1V1 MATCHMAKING QUEUE')).toBeDefined();
-    expect(screen.getByText('SYSTEM ONLINE')).toBeDefined();
+    expect(screen.getByText("PVP BATTLE ARENA")).toBeInTheDocument();
+    expect(screen.getByText("SYSTEM ONLINE")).toBeInTheDocument();
+    expect(screen.getByText("1V1 MATCHMAKING QUEUE")).toBeInTheDocument();
   });
 
-  test('renders difficulty selector buttons (ANY, EASY, MEDIUM, HARD)', () => {
+  test("renders all four difficulty selector buttons", () => {
     render(<QuickNavHub {...defaultProps} />);
-    expect(screen.getByText('ANY')).toBeDefined();
-    expect(screen.getByText('EASY')).toBeDefined();
-    expect(screen.getAllByText('MEDIUM').length).toBeGreaterThan(0);
-    expect(screen.getByText('HARD')).toBeDefined();
+    const buttons = screen.getAllByRole("button", {
+      name: /ANY|EASY|MEDIUM|HARD/i,
+    });
+    expect(buttons.length).toBe(4);
   });
 
-  test('calls onFindMatch with selected difficulty when match button is clicked', () => {
-    const handleFindMatch = vi.fn();
-    render(<QuickNavHub {...defaultProps} onFindMatch={handleFindMatch} />);
+  test("calls onFindMatch with selected difficulty when enter button is clicked", async () => {
+    const onFindMatch = vi.fn();
+    render(<QuickNavHub {...defaultProps} onFindMatch={onFindMatch} />);
 
-    // Select EASY difficulty
-    const easyBtn = screen.getByText('EASY');
-    fireEvent.click(easyBtn);
+    const user = userEvent.setup();
+    const easyButton = screen.getByRole("button", { name: "EASY" });
+    await user.click(easyButton);
 
-    // Click ENTER 1V1 MATCHMAKING BATTLE
-    const matchBtn = screen.getByText(/ENTER 1V1 MATCHMAKING BATTLE/i);
-    fireEvent.click(matchBtn);
+    const enterButton = screen.getByRole("button", {
+      name: /enter 1v1 matchmaking battle/i,
+    });
+    await user.click(enterButton);
 
-    expect(handleFindMatch).toHaveBeenCalledWith('EASY');
+    expect(onFindMatch).toHaveBeenCalledWith("EASY");
   });
 
-  test('shows IN QUEUE badge and cancel button when matchmakingStatus is SEARCHING', () => {
+  test("shows IN QUEUE badge and cancel button when matchmakingStatus is SEARCHING", () => {
     render(
       <QuickNavHub
         {...defaultProps}
         matchmakingStatus="SEARCHING"
         waitingTime={12}
-      />
+      />,
     );
-
-    expect(screen.getByText(/IN QUEUE \(12s\)/i)).toBeDefined();
-    expect(screen.getByText(/CANCEL MATCHMAKING QUEUE/i)).toBeDefined();
+    expect(screen.getByText(/IN QUEUE \(12s\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /cancel matchmaking queue/i }),
+    ).toBeInTheDocument();
   });
 });

@@ -45,28 +45,28 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
   };
 
   return (
-    <div className="border border-purple-500/20 rounded-xl p-4 bg-purple-950/10">
+    <div className="border border-accent-primary/20 rounded-xl p-4 bg-accent-primary/10">
       <div className="flex items-center gap-2 mb-4">
-        <FlaskConical className="w-4 h-4 text-purple-400" />
-        <span className="text-xs font-bold tracking-widest text-purple-300">SIGNATURE & AUTO TEST GENERATOR</span>
+        <FlaskConical className="w-4 h-4 text-accent-primary" />
+        <span className="text-xs font-bold tracking-widest text-accent-primary">SIGNATURE & AUTO TEST GENERATOR</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="block text-[10px] tracking-widest text-slate-500 mb-1">FUNCTION NAME</label>
+          <label className="block text-[10px] tracking-widest text-faint mb-1">FUNCTION NAME</label>
           <input
             value={signature.funcName}
             onChange={(e) => setSignature({ ...signature, funcName: e.target.value })}
-            className="w-full bg-black/50 border border-slate-800 rounded-lg p-2 text-white text-sm outline-none focus:border-purple-500 font-mono"
+            className="w-full bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
             placeholder="twoSum"
           />
         </div>
         <div>
-          <label className="block text-[10px] tracking-widest text-slate-500 mb-1">RETURN TYPE</label>
+          <label className="block text-[10px] tracking-widest text-faint mb-1">RETURN TYPE</label>
           <input
             value={signature.returnType}
             onChange={(e) => setSignature({ ...signature, returnType: e.target.value })}
-            className="w-full bg-black/50 border border-slate-800 rounded-lg p-2 text-white text-sm outline-none focus:border-purple-500 font-mono"
+            className="w-full bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
             placeholder="int[]"
           />
         </div>
@@ -78,13 +78,13 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
             <input
               value={arg.name}
               onChange={(e) => updateArg(i, { name: e.target.value })}
-              className="flex-1 bg-black/50 border border-slate-800 rounded-lg p-2 text-white text-sm outline-none focus:border-purple-500 font-mono"
+              className="flex-1 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
               placeholder="param name"
             />
             <select
               value={arg.type}
               onChange={(e) => updateArg(i, { type: e.target.value })}
-              className="bg-black/50 border border-slate-800 rounded-lg p-2 text-purple-300 text-sm outline-none"
+              className="bg-black/60 border border-subtle-line rounded-lg p-2 text-accent-primary text-sm outline-none"
             >
               {ARG_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -93,7 +93,7 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
             <button
               type="button"
               onClick={() => setSignature({ ...signature, args: signature.args.filter((_, idx) => idx !== i) })}
-              className="text-slate-600 hover:text-rose-500"
+              className="text-faint hover:text-accent-danger"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -102,7 +102,7 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
         <button
           type="button"
           onClick={() => setSignature({ ...signature, args: [...signature.args, { name: `arg${signature.args.length + 1}`, type: "int" }] })}
-          className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1"
+          className="text-xs text-accent-primary hover:text-accent-primary flex items-center gap-1"
         >
           <Plus className="w-3 h-3" /> ADD PARAMETER
         </button>
@@ -110,25 +110,25 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
 
       <div className="flex gap-2 items-end mb-3">
         <div>
-          <label className="block text-[10px] tracking-widest text-slate-500 mb-1">COUNT</label>
+          <label className="block text-[10px] tracking-widest text-faint mb-1">COUNT</label>
           <input type="number" min={1} max={20} value={count} onChange={(e) => setCount(Number(e.target.value))}
-            className="w-20 bg-black/50 border border-slate-800 rounded-lg p-2 text-white text-sm outline-none" />
+            className="w-20 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
         </div>
         <div>
-          <label className="block text-[10px] tracking-widest text-slate-500 mb-1">SEED</label>
+          <label className="block text-[10px] tracking-widest text-faint mb-1">SEED</label>
           <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))}
-            className="w-24 bg-black/50 border border-slate-800 rounded-lg p-2 text-white text-sm outline-none" />
+            className="w-24 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
         </div>
         <button
           type="button"
           onClick={handleGenerate}
           disabled={loading}
-          className="flex-1 bg-purple-500/20 hover:bg-purple-500 border border-purple-500/50 text-purple-300 hover:text-black font-bold tracking-widest py-2 rounded-lg transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs"
+          className="flex-1 bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary/50 text-accent-primary hover:text-black font-bold tracking-widest py-2 rounded-lg transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs"
         >
           <Dices className="w-4 h-4" /> {loading ? "GENERATING…" : "AUTO-GENERATE TESTS"}
         </button>
       </div>
-      {error && <p className="text-xs text-rose-400 font-mono">{error}</p>}
+      {error && <p className="text-xs text-accent-danger font-mono">{error}</p>}
     </div>
   );
 };

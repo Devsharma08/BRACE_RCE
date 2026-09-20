@@ -329,7 +329,7 @@ export default function FriendsDashboard() {
                     type="button"
                     onClick={() => setActiveTab(null)}
                     aria-label="Back to friend list"
-                    className="md:hidden p-1 -ml-1 text-subtle hover:text-white transition-colors"
+                    className="md:hidden p-1 -ml-1 text-subtle hover:text-fg transition-colors"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -337,10 +337,10 @@ export default function FriendsDashboard() {
                     <span className="text-[9px] font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
                   </div>
                   <div>
-                    <div className="text-sm text-white font-bold">{activeTab.username}</div>
+                    <div className="text-sm text-fg font-bold">{activeTab.username}</div>
                     <div className="text-[9px] flex items-center gap-1">
-                      <span className={`w-1.5 h-1.5 ${onlineIds.includes(activeTab.id) ? "bg-emerald-400" : "bg-slate-500"}`} />
-                      <span className={onlineIds.includes(activeTab.id) ? "text-emerald-400" : "text-slate-500"}>
+                      <span className={`w-1.5 h-1.5 ${onlineIds.includes(activeTab.id) ? "bg-accent-success" : "bg-faint"}`} />
+                      <span className={onlineIds.includes(activeTab.id) ? "text-accent-success" : "text-faint"}>
                         {onlineIds.includes(activeTab.id) ? "ONLINE" : "OFFLINE"}
                       </span>
                     </div>
@@ -402,7 +402,7 @@ export default function FriendsDashboard() {
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <MessageSquare className="w-12 h-12 text-[#3D4657] mx-auto mb-3" />
+                <MessageSquare className="w-12 h-12 text-faint mx-auto mb-3" />
                 <p className="text-sm text-subtle">Select a friend to start chatting</p>
               </div>
             </div>
@@ -414,12 +414,12 @@ export default function FriendsDashboard() {
           {activeTab ? (
             <>
               {/* Friend Profile Card */}
-              <div className="p-4 border-b border-white/6">
+              <div className="p-4 border-b border-line-low">
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-elevated border border-cyan-500/15 flex items-center justify-center mb-3">
-                    <span className="text-lg font-bold text-cyan-400">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                  <div className="w-16 h-16 bg-elevated border border-subtle-line flex items-center justify-center mb-3">
+                    <span className="text-lg font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
                   </div>
-                  <h3 className="text-sm font-bold text-white">{activeTab.username}</h3>
+                  <h3 className="text-sm font-bold text-fg">{activeTab.username}</h3>
                   <p className="text-[10px] text-subtle mt-1">
                     {onlineIds.includes(activeTab.id) ? "● Online" : "○ Offline"}
                   </p>
@@ -430,23 +430,23 @@ export default function FriendsDashboard() {
               </div>
 
               {/* Battle Stats / History */}
-              <div className="p-4 border-b border-white/6">
+              <div className="p-4 border-b border-line-low">
                 <div className="flex items-center gap-2 mb-3">
-                  <Trophy className="w-3.5 h-3.5 text-cyan-500/50" />
+                  <Trophy className="w-3.5 h-3.5 text-label" />
                   <span className="text-[10px] text-subtle font-bold uppercase tracking-widest">Battle History</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-subtle">Wins</span>
-                    <span className="text-emerald-400 font-bold">0</span>
+                    <span className="text-accent-success font-bold">0</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-subtle">Losses</span>
-                    <span className="text-rose-400 font-bold">0</span>
+                    <span className="text-accent-danger font-bold">0</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-subtle">Win Rate</span>
-                    <span className="text-cyan-400 font-bold">--</span>
+                    <span className="text-accent-primary font-bold">--</span>
                   </div>
                 </div>
               </div>
@@ -456,21 +456,21 @@ export default function FriendsDashboard() {
                 <button
                   onClick={() => setChallengeFriend(activeTab)}
                   title="Challenge to a Battle"
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-rose-500/10 border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 text-xs font-bold uppercase tracking-widest transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-danger/10 border border-accent-danger/40 text-accent-danger hover:bg-accent-danger/20 text-xs font-bold uppercase tracking-widest transition-all"
                 >
                   <Swords className="w-4 h-4" />
                   Challenge to Battle
                 </button>
                 <button
                   onClick={() => handleBlockUser(activeTab.id)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-white/10 text-subtle hover:text-rose-400 hover:border-rose-500/30 text-[10px] uppercase tracking-widest transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-line text-subtle hover:text-accent-danger hover:border-accent-danger/30 text-[10px] uppercase tracking-widest transition-all"
                 >
                   <Ban className="w-3 h-3" />
                   Block User
                 </button>
                 <button
                   onClick={() => handleRemoveFriend(activeTab.id)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-white/10 text-subtle hover:text-rose-400 hover:border-rose-500/30 text-[10px] uppercase tracking-widest transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-line text-subtle hover:text-accent-danger hover:border-accent-danger/30 text-[10px] uppercase tracking-widest transition-all"
                 >
                   <Trash2 className="w-3 h-3" />
                   Remove Friend
@@ -480,7 +480,7 @@ export default function FriendsDashboard() {
           ) : (
             <div className="flex-1 flex items-center justify-center p-4">
               <div className="text-center">
-                <User className="w-10 h-10 text-[#3D4657] mx-auto mb-2" />
+                <User className="w-10 h-10 text-faint mx-auto mb-2" />
                 <p className="text-[10px] text-subtle">Select a friend to view profile</p>
               </div>
             </div>

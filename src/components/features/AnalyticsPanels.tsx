@@ -10,7 +10,7 @@ import { memo } from "react";
 
 // ─── Shared primitives ───────────────────────────────────────────────────────
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-cyan-500/50 mb-4">
+  <p className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-accent-primary/50 mb-4">
     {children}
   </p>
 );
@@ -25,16 +25,16 @@ const Card = ({
   accent?: "left" | "right" | "top" | "bottom" | "none";
 }) => {
   const accentClass = {
-    left: "border-l-2 border-l-cyan-500/50",
-    right: "border-r-2 border-r-cyan-500/50",
-    top: "border-t-2 border-t-cyan-500/50",
-    bottom: "border-b-2 border-b-cyan-500/50",
+    left: "border-l-2 border-l-accent-primary/50",
+    right: "border-r-2 border-r-accent-primary/50",
+    top: "border-t-2 border-t-accent-primary/50",
+    bottom: "border-b-2 border-b-accent-primary/50",
     none: "",
   }[accent];
 
   return (
     <div
-      className={`bg-raised border border-cyan-500/15 ${accentClass} p-5 ${className}`}
+      className={`bg-raised border border-accent-primary/15 ${accentClass} p-5 ${className}`}
     >
       {children}
     </div>
@@ -72,12 +72,12 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
   const max = Math.max(...days.map((d) => d.count), 1);
 
   const cellClass = (count: number) => {
-    if (count === 0) return "bg-elevated/40 border-cyan-500/5";
+    if (count === 0) return "bg-elevated/40 border-accent-primary/5";
     const t = count / max;
-    if (t < 0.25) return "bg-cyan-900/30 border-cyan-800/30";
-    if (t < 0.5) return "bg-cyan-700/60 border-cyan-600/40";
-    if (t < 0.8) return "bg-cyan-500/70 border-cyan-400/50";
-    return "bg-cyan-400 border-cyan-400/60";
+    if (t < 0.25) return "bg-accent-primary/10 border-accent-primary/25";
+    if (t < 0.5) return "bg-accent-primary/30 border-accent-primary/40";
+    if (t < 0.8) return "bg-accent-primary/70 border-accent-primary/50";
+    return "bg-accent-primary border-accent-primary/60";
   };
 
   const DOW = ["S", "M", "T", "W", "T", "F", "S"];
@@ -113,7 +113,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
       </div>
       <div className="flex items-center gap-2 mt-3">
         <span className="text-[10px] font-mono text-subtle">Less</span>
-        {["bg-elevated/40 border border-cyan-500/5", "bg-cyan-900/50", "bg-cyan-700/60", "bg-cyan-500/70", "bg-cyan-400/90"].map(
+        {["bg-elevated/40 border border-accent-primary/5", "bg-accent-primary/15", "bg-accent-primary/30", "bg-accent-primary/70", "bg-accent-primary/90"].map(
           (c, i) => (
             <div key={i} className={`w-2.5 h-2.5 rounded-[2px] ${c}`} />
           )
@@ -137,28 +137,28 @@ export const DifficultyBreakdown = memo(({
       label: "Easy",
       value: data.EASY,
       pct: Math.round((data.EASY / total) * 100),
-      bar: "bg-emerald-500",
-      text: "text-emerald-400",
-      border: "border-emerald-500/20",
-      bg: "bg-emerald-950/20",
+      bar: "bg-accent-success",
+      text: "text-accent-success",
+      border: "border-accent-success/20",
+      bg: "bg-accent-success/5",
     },
     {
       label: "Medium",
       value: data.MEDIUM,
       pct: Math.round((data.MEDIUM / total) * 100),
-      bar: "bg-amber-500",
-      text: "text-amber-400",
-      border: "border-amber-500/20",
-      bg: "bg-amber-950/20",
+      bar: "bg-accent-warning",
+      text: "text-accent-warning",
+      border: "border-accent-warning/20",
+      bg: "bg-accent-warning/5",
     },
     {
       label: "Hard",
       value: data.HARD,
       pct: Math.round((data.HARD / total) * 100),
-      bar: "bg-rose-500",
-      text: "text-rose-400",
-      border: "border-rose-500/20",
-      bg: "bg-rose-950/20",
+      bar: "bg-accent-danger",
+      text: "text-accent-danger",
+      border: "border-accent-danger/20",
+      bg: "bg-accent-danger/5",
     },
   ];
 
@@ -172,7 +172,7 @@ export const DifficultyBreakdown = memo(({
             className={`flex flex-col gap-3 border ${s.border} ${s.bg} p-3`}
           >
             <div>
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+              <p className="text-[10px] font-mono text-faint uppercase tracking-wider">
                 {s.label}
               </p>
               <p className={`text-2xl font-bold font-mono mt-0.5 ${s.text}`}>
@@ -186,7 +186,7 @@ export const DifficultyBreakdown = memo(({
                 style={{ height: `${s.pct}%` }}
               />
             </div>
-            <p className="text-[10px] font-mono text-slate-500 text-right">
+            <p className="text-[10px] font-mono text-faint text-right">
               {s.pct}%
             </p>
           </div>
@@ -202,7 +202,7 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
     return (
       <Card accent="none">
         <SectionLabel>Battle Trend</SectionLabel>
-        <div className="h-24 flex items-center justify-center text-[11px] text-slate-600 font-mono">
+        <div className="h-24 flex items-center justify-center text-[11px] text-faint font-mono">
           No battles yet
         </div>
       </Card>
@@ -234,13 +234,13 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
     <Card accent="none">
       <div className="flex items-start justify-between mb-4">
         <SectionLabel>Win Rate Trend</SectionLabel>
-        <span className="text-3xl font-black font-mono text-cyan-400" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.4))' }}>{currentWR}%</span>
+        <span className="text-3xl font-black font-mono text-accent-primary" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.4))' }}>{currentWR}%</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20 overflow-visible">
         <defs>
           <linearGradient id="wr-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--accent-primary)" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="var(--accent-primary)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {/* 50% guide */}
@@ -249,7 +249,7 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
         <polyline
           points={polyline}
           fill="none"
-          stroke="#06b6d4"
+          stroke="var(--accent-primary)"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -261,7 +261,7 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
             cx={i * xStep}
             cy={H - (p.winRate / 100) * H}
             r="2"
-            fill={p.result === "WIN" ? "#10b981" : "#f43f5e"}
+            fill={p.result === "WIN" ? "var(--accent-success)" : "var(--accent-danger)"}
             opacity={0.7}
           />
         ))}
@@ -270,10 +270,10 @@ export const BattleTrendChart = memo(({ data }: { data: BattleTrendPoint[] }) =>
           cx={(points.length - 1) * xStep}
           cy={H - (points[points.length - 1].winRate / 100) * H}
           r="3"
-          fill="#06b6d4"
+          fill="var(--accent-primary)"
         />
       </svg>
-      <div className="flex justify-between mt-2 text-[9px] font-mono text-slate-600">
+      <div className="flex justify-between mt-2 text-[9px] font-mono text-faint">
         <span>Battle #1</span>
         <span>Last {points.length} battles</span>
       </div>
@@ -301,7 +301,7 @@ export const LanguageBars = memo(({ data }: { data: LanguageUsage[] }) => {
     return (
       <Card accent="none">
         <SectionLabel>Language Usage</SectionLabel>
-        <div className="h-24 flex items-center justify-center text-[11px] text-slate-600 font-mono">
+        <div className="h-24 flex items-center justify-center text-[11px] text-faint font-mono">
           No submissions yet
         </div>
       </Card>
@@ -323,15 +323,15 @@ export const LanguageBars = memo(({ data }: { data: LanguageUsage[] }) => {
                     className="w-2.5 h-2.5 rounded-sm shrink-0"
                     style={{ background: color }}
                   />
-                  <span className="text-[11px] font-mono text-slate-300 capitalize">
+                  <span className="text-[11px] font-mono text-subtle capitalize">
                     {d.language}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 font-bold">
+                <span className="text-[10px] font-mono text-subtle font-bold">
                   {d.count}
                 </span>
               </div>
-              <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-1 bg-surface-hover rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{ width: `${pct}%`, background: color, opacity: 0.75 }}
@@ -351,7 +351,7 @@ export const SolveVelocityChart = memo(({ data }: { data: SolveByMonth[] }) => {
     return (
       <Card accent="none">
         <SectionLabel>Monthly Solves</SectionLabel>
-        <div className="h-24 flex items-center justify-center text-[11px] text-slate-600 font-mono">
+        <div className="h-24 flex items-center justify-center text-[11px] text-faint font-mono">
           No solves yet
         </div>
       </Card>
@@ -370,14 +370,14 @@ export const SolveVelocityChart = memo(({ data }: { data: SolveByMonth[] }) => {
           const label = d.month.slice(5); // "MM"
           return (
             <div key={d.month} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[9px] font-mono text-slate-500">{d.count}</span>
-              <div className="w-full bg-white/5 rounded-[2px] overflow-hidden flex flex-col justify-end" style={{ height: 52 }}>
+              <span className="text-[9px] font-mono text-faint">{d.count}</span>
+              <div className="w-full bg-surface-hover rounded-[2px] overflow-hidden flex flex-col justify-end" style={{ height: 52 }}>
                 <div
-                  className="w-full bg-emerald-500/70 rounded-[2px] transition-all duration-700"
+                  className="w-full bg-accent-success/70 rounded-[2px] transition-all duration-700"
                   style={{ height: `${h}%` }}
                 />
               </div>
-              <span className="text-[9px] font-mono text-slate-500">{label}</span>
+              <span className="text-[9px] font-mono text-faint">{label}</span>
             </div>
           );
         })}
@@ -400,14 +400,14 @@ export const RuntimeStats = memo(({
   return (
     <Card accent="none">
       <SectionLabel>Execution Runtime</SectionLabel>
-      <div className="grid grid-cols-3 divide-x divide-cyan-500/15">
+      <div className="grid grid-cols-3 divide-x divide-accent-primary/15">
         {[
-          { label: "Best", value: data.best, color: "text-emerald-400" },
-          { label: "Average", value: data.avg, color: "text-cyan-400" },
-          { label: "Worst", value: data.worst, color: "text-rose-400" },
+          { label: "Best", value: data.best, color: "text-accent-success" },
+          { label: "Average", value: data.avg, color: "text-accent-primary" },
+          { label: "Worst", value: data.worst, color: "text-accent-danger" },
         ].map((m) => (
           <div key={m.label} className="flex flex-col items-center gap-1 px-3 first:pl-0 last:pr-0">
-            <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider">
+            <span className="text-[9px] font-mono text-faint uppercase tracking-wider">
               {m.label}
             </span>
             <span className={`text-xl font-black font-mono ${m.color}`}>
@@ -429,10 +429,10 @@ export const StreakPanel = memo(({ streak }: { streak: number }) => {
       <SectionLabel>Current Streak</SectionLabel>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-4xl font-bold font-mono text-amber-400 mb-2" style={{ filter: isActive ? 'drop-shadow(0 0 12px rgba(245,158,11,0.6))' : 'none' }}>
+          <p className="text-4xl font-bold font-mono text-accent-warning mb-2" style={{ filter: isActive ? 'drop-shadow(0 0 12px rgba(245,158,11,0.6))' : 'none' }}>
             {streak}
           </p>
-          <p className="text-[11px] text-slate-500 font-mono">
+          <p className="text-[11px] text-faint font-mono">
             {streak === 1
               ? "day active"
               : streak === 0
@@ -443,8 +443,8 @@ export const StreakPanel = memo(({ streak }: { streak: number }) => {
         <div
           className={`w-16 h-16 rounded-lg flex items-center justify-center font-bold text-2xl ${
             isActive
-              ? "bg-amber-500/20 border border-amber-500/50 text-amber-400 animate-pulse"
-              : "bg-white/5 border border-white/10 text-slate-600"
+              ? "bg-accent-warning/20 border border-accent-warning/40 text-accent-warning animate-pulse"
+              : "bg-surface-hover border border-subtle-line text-faint"
           }`}
         >
           🔥
@@ -467,7 +467,7 @@ export const CompletionMetrics = memo(({
   difficultyBreakdown?: { EASY: number; MEDIUM: number; HARD: number };
 }) => {
   const growthColor =
-    growthRate > 50 ? "text-emerald-400" : growthRate > 0 ? "text-cyan-400" : "text-slate-500";
+    growthRate > 50 ? "text-accent-success" : growthRate > 0 ? "text-accent-primary" : "text-faint";
   const growthTrend = growthRate > 0 ? "↑" : growthRate < 0 ? "↓" : "→";
 
   return (

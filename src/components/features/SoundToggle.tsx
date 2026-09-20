@@ -14,7 +14,7 @@ export const SoundToggle = memo(() => {
         setSoundMuted(next);
       }}
       title={muted ? "Unmute battle sounds" : "Mute battle sounds"}
-      className="p-1.5 border border-white/10 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 transition-colors"
+      className="p-1.5 border border-subtle-line text-subtle hover:text-accent-primary hover:border-accent-primary/40 transition-colors"
     >
       {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
     </button>

@@ -21,10 +21,10 @@ const services: Service[] = [
     description: "Invite online friends directly from the friends panel and enter a live 1v1 duel. Friend presence detection and real-time invite notifications.",
     progress: 70,
     statusLabel: "IN PROGRESS",
-    accentColor: "text-emerald-400",
-    borderColor: "border-emerald-500/20 hover:border-emerald-500/40",
-    glowColor: "rgba(16,185,129,0.08)",
-    badgeClass: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+    accentColor: "text-accent-success",
+    borderColor: "border-accent-success/20 hover:border-accent-success/40",
+    glowColor: "rgba(0, 255, 135, 0.08)",
+    badgeClass: "bg-accent-success/10 border-accent-success/30 text-accent-success",
     icon: UserPlus,
   },
   {
@@ -33,10 +33,10 @@ const services: Service[] = [
     description: "Offline algorithmic sandbox with pre-loaded problems, zero time pressure, and side-by-side solution hints. Perfect for learning and exploring edge cases.",
     progress: 55,
     statusLabel: "DESIGNING",
-    accentColor: "text-purple-400",
-    borderColor: "border-purple-500/20 hover:border-purple-500/40",
-    glowColor: "rgba(139,92,246,0.08)",
-    badgeClass: "bg-purple-500/10 border-purple-500/30 text-purple-400",
+    accentColor: "text-accent-primary",
+    borderColor: "border-accent-primary/20 hover:border-accent-primary/40",
+    glowColor: "rgba(0, 212, 255, 0.08)",
+    badgeClass: "bg-accent-primary/10 border-accent-primary/30 text-accent-primary",
     icon: Globe,
   },
   {
@@ -45,10 +45,10 @@ const services: Service[] = [
     description: "Automated intelligence providing Big-O time & space complexity breakdowns, edge-case vulnerability detection, and alternative approach suggestions after every submission.",
     progress: 85,
     statusLabel: "BUILDING",
-    accentColor: "text-cyan-400",
-    borderColor: "border-cyan-500/20 hover:border-cyan-500/40",
+    accentColor: "text-accent-primary",
+    borderColor: "border-accent-primary/20 hover:border-accent-primary/40",
     glowColor: "rgba(34,211,238,0.08)",
-    badgeClass: "bg-cyan-500/10 border-cyan-500/30 text-cyan-400",
+    badgeClass: "bg-accent-primary/10 border-accent-primary/30 text-accent-primary",
     icon: Bot,
   },
   {
@@ -57,10 +57,10 @@ const services: Service[] = [
     description: "Season 1 MMR ladder with 6 competitive tiers: Recruit → Initiate → Operative → Elite → Mainframe → Apex Architect. Weekly resets, exclusive badge cosmetics, and leaderboard rankings.",
     progress: 40,
     statusLabel: "DESIGNING",
-    accentColor: "text-amber-400",
-    borderColor: "border-amber-500/20 hover:border-amber-500/40",
-    glowColor: "rgba(245,158,11,0.08)",
-    badgeClass: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+    accentColor: "text-accent-warning",
+    borderColor: "border-accent-warning/20 hover:border-accent-warning/40",
+    glowColor: "rgba(255, 184, 0, 0.08)",
+    badgeClass: "bg-accent-warning/10 border-accent-warning/30 text-accent-warning",
     icon: Trophy,
   },
   {
@@ -69,10 +69,10 @@ const services: Service[] = [
     description: "Simultaneous 4-way elimination combat. After each round, the operative with the slowest accepted runtime is eliminated — last algorithm standing wins.",
     progress: 25,
     statusLabel: "PROTOTYPING",
-    accentColor: "text-rose-400",
-    borderColor: "border-rose-500/20 hover:border-rose-500/40",
-    glowColor: "rgba(239,68,68,0.08)",
-    badgeClass: "bg-rose-500/10 border-rose-500/30 text-rose-400",
+    accentColor: "text-accent-danger",
+    borderColor: "border-accent-danger/20 hover:border-accent-danger/40",
+    glowColor: "rgba(255, 59, 92, 0.08)",
+    badgeClass: "bg-accent-danger/10 border-accent-danger/30 text-accent-danger",
     icon: Swords,
   },
   {
@@ -81,26 +81,26 @@ const services: Service[] = [
     description: "Community problem builder with auto testcase generators, memory footprint constraints, spaced repetition scheduling, and shareable problem links.",
     progress: 30,
     statusLabel: "EXPLORING",
-    accentColor: "text-sky-400",
-    borderColor: "border-sky-500/20 hover:border-sky-500/40",
-    glowColor: "rgba(56,189,248,0.08)",
-    badgeClass: "bg-sky-500/10 border-sky-500/30 text-sky-400",
+    accentColor: "text-accent-primary",
+    borderColor: "border-accent-primary/20 hover:border-accent-primary/40",
+    glowColor: "rgba(0, 212, 255, 0.08)",
+    badgeClass: "bg-accent-primary/10 border-accent-primary/30 text-accent-primary",
     icon: FlaskConical,
   },
 ];
 
 export const UpcomingServicesSection: React.FC = () => {
   return (
-    <div className="relative w-full bg-[#080a0d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-2xl">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+    <div className="relative w-full bg-raised border border-subtle-line rounded-2xl overflow-hidden shadow-2xl">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-warning/40 to-transparent" />
 
       {/* HEADER */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05] bg-black/30">
-        <h2 className="font-mono text-sm font-black text-white tracking-[0.15em] flex items-center gap-2.5 uppercase">
-          <Rocket className="w-4 h-4 text-amber-400" /> Services & Operations
-          <span className="text-[10px] text-amber-500/60 font-normal ml-1">// COMING SOON</span>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05] bg-black/60">
+        <h2 className="font-mono text-sm font-black text-fg tracking-[0.15em] flex items-center gap-2.5 uppercase">
+          <Rocket className="w-4 h-4 text-accent-warning" /> Services & Operations
+          <span className="text-[10px] text-accent-warning/60 font-normal ml-1">// COMING SOON</span>
         </h2>
-        <span className="text-[9px] text-slate-600 font-mono tracking-widest">{services.length} IN PIPELINE</span>
+        <span className="text-[9px] text-faint font-mono tracking-widest">{services.length} IN PIPELINE</span>
       </div>
 
       {/* SERVICES GRID */}
@@ -110,7 +110,7 @@ export const UpcomingServicesSection: React.FC = () => {
           return (
             <div
               key={s.id}
-              className={`relative bg-black/40 border ${s.borderColor} rounded-xl p-5 flex flex-col gap-4 transition-all group overflow-hidden`}
+              className={`relative bg-black/60 border ${s.borderColor} rounded-xl p-5 flex flex-col gap-4 transition-all group overflow-hidden`}
               style={{ boxShadow: `0 0 30px ${s.glowColor}` }}
             >
               {/* SUBTLE BG GLOW */}
@@ -122,7 +122,7 @@ export const UpcomingServicesSection: React.FC = () => {
               {/* ICON + TITLE + BADGE */}
               <div className="flex items-start justify-between gap-3 relative z-10">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${s.borderColor} bg-black/40`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${s.borderColor} bg-black/60`}>
                     <Icon className={`w-4 h-4 ${s.accentColor}`} />
                   </div>
                   <span className={`font-mono text-xs font-black tracking-wide ${s.accentColor}`}>
@@ -135,13 +135,13 @@ export const UpcomingServicesSection: React.FC = () => {
               </div>
 
               {/* DESCRIPTION */}
-              <p className="text-[11px] text-slate-500 leading-relaxed font-sans relative z-10">
+              <p className="text-[11px] text-faint leading-relaxed font-sans relative z-10">
                 {s.description}
               </p>
 
               {/* PROGRESS BAR */}
               <div className="relative z-10">
-                <div className="flex justify-between text-[9px] font-mono text-slate-700 mb-1.5">
+                <div className="flex justify-between text-[9px] font-mono text-faint mb-1.5">
                   <span>COMPLETION</span>
                   <span className={s.accentColor}>{s.progress}%</span>
                 </div>
@@ -158,12 +158,12 @@ export const UpcomingServicesSection: React.FC = () => {
                       className="w-full h-full"
                       style={{
                         background: `linear-gradient(90deg, ${
-                          s.accentColor.includes("emerald") ? "#10b981, #34d399"
-                          : s.accentColor.includes("purple") ? "#8b5cf6, #a78bfa"
-                          : s.accentColor.includes("cyan") ? "#06b6d4, #22d3ee"
-                          : s.accentColor.includes("amber") ? "#f59e0b, #fbbf24"
-                          : s.accentColor.includes("rose") ? "#f43f5e, #fb7185"
-                          : "#38bdf8, #7dd3fc"
+                          s.accentColor.includes("emerald") ? "var(--accent-success), var(--accent-success)"
+                          : s.accentColor.includes("purple") ? "var(--accent-primary), var(--accent-primary)"
+                          : s.accentColor.includes("cyan") ? "var(--accent-primary), var(--accent-primary)"
+                          : s.accentColor.includes("amber") ? "var(--accent-warning), var(--accent-warning)"
+                          : s.accentColor.includes("rose") ? "var(--accent-danger), var(--accent-danger)"
+                          : "var(--accent-primary), var(--accent-primary)"
                         })`,
                       }}
                     />
