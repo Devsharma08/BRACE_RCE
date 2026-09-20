@@ -484,7 +484,7 @@ export const BraceRcePixelArt: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="home-hero z-10 flex w-full min-w-0 flex-col items-center justify-center py-8 sm:py-12 font-mono text-fg select-none border-b border-subtle-line"
+      className="home-hero z-10 flex min-h-screen w-full flex-col items-center justify-center bg-base text-fg select-none border-b border-subtle-line"
     >
       <h1 className="sr-only">BRACE RCE — coding playground and battle arena</h1>
 

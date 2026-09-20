@@ -1,31 +1,37 @@
-import React from "react";
-import HeroSection from "../features/home/components/HeroSection";
-import StickyFeatureShowcase from "../features/home/components/StickyFeatureShowcase";
-import BentoGrid from "../features/home/components/BentoGrid";
-import CommunitySupportSection from "../features/home/components/CommunitySupportSection";
-import LaunchRail from "../features/home/components/LaunchRail";
-import HomeMetricsStrip from "../features/home/components/HomeMetricsStrip";
+import type { FC } from "react";
+import { BraceRcePixelArt } from "../features/home/components/HeroSection";
+import { HomeMetricsStrip } from "../features/home/components/HomeMetricsStrip";
+import { QuickNavCards } from "../features/home/components/QuickNavCards";
+import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
+import WorkspaceDirectory from "../features/home/components/WorkspaceDirectory";
+import { CommunitySupport } from "../features/home/components/CommunitySupport";
 
 /**
- * Home page
+ * Home page — the full BRACE RCE operative system.
  *
- * The hero, launch rail, and feature showcase share a constrained container.
- * BentoGrid and CommunitySupportSection manage their own full-width sections.
+ * Six sections in vertical order:
+ * 1. Hero (pixel-art BRACE RCE — exempt from section uniformity)
+ * 2. HomeMetricsStrip (raw fact figures)
+ * 3. QuickNavCards (Battle / Terminal / Friends / Problems)
+ * 4. CategoryDirectory (tabular data-structure ledger)
+ * 5. WorkspaceDirectory (5-card bento service grid)
+ * 6. CommunitySupport (Built by operators + reviews + feedback)
  */
-const Home: React.FC = () => {
+const Home: FC = () => {
   return (
-    <div className="flex flex-col w-full items-center bg-void">
-      {/* Constrained hero area */}
-      <div className="w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 pt-20 sm:pt-24 flex flex-col items-center">
-        <HeroSection />
-        <LaunchRail />
-        <HomeMetricsStrip />
-        <StickyFeatureShowcase />
-      </div>
-
-      {/* Full-bleed sections — these manage their own internal max-width */}
-      <BentoGrid />
-      <CommunitySupportSection />
+    <div className="flex w-full min-w-0 flex-col bg-base text-fg">
+      {/* 1. Hero — pixel-art BRACE RCE (exempt from uniformity) */}
+      <BraceRcePixelArt />
+      {/* 2. Raw fact strip */}
+      <HomeMetricsStrip />
+      {/* 3. Four navigation cards */}
+      <QuickNavCards />
+      {/* 4. Learning — tabular data structures */}
+      <CategoryDirectory />
+      {/* 5. Bento — five service cards */}
+      <WorkspaceDirectory />
+      {/* 6. Built by operators + reviews + feedback */}
+      <CommunitySupport />
     </div>
   );
 };

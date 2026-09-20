@@ -35,8 +35,8 @@ const metrics = [
 ];
 
 const HomeMetricsStrip = () => (
-  <section aria-label="Home proof metrics" className="w-full py-2 sm:py-4">
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+  <section aria-label="Home proof metrics" className="w-full py-1">
+    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
       {metrics.map((metric) => (
         <MetricCard
           key={metric.label}
@@ -45,6 +45,7 @@ const HomeMetricsStrip = () => (
           unit={metric.unit}
           description={metric.description}
           dotTone={metric.dotTone}
+          className="p-2.5 pb-2 sm:p-3 sm:pb-2.5"
         />
       ))}
     </div>
@@ -54,4 +55,5 @@ const HomeMetricsStrip = () => (
   </section>
 );
 
+export { HomeMetricsStrip };
 export default HomeMetricsStrip;
