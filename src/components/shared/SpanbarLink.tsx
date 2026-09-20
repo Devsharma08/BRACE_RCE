@@ -23,8 +23,8 @@ export const SidebarLink: React.FC<SidebarLinkProps> = ({
       to={to}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded transition-all text-xs font-mono tracking-wider ${
         isActive
-          ? "bg-cyan-500/10 text-cyan-400 border-l-2 border-cyan-400 font-bold shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+          ? "bg-accent-primary/10 text-accent-primary border-l-2 border-accent-primary font-bold shadow-[0_0_15px_rgba(6,182,212,0.1)]"
+          : "text-subtle hover:text-fg hover:bg-surface-hover"
       } ${collapsed ? "justify-center" : "justify-start"}`}
       title={label}
     >

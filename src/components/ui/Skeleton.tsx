@@ -19,13 +19,13 @@ export const PageSkeleton = () => (
 
 export const RouteLoadingSkeleton = () => (
   <div className="min-h-screen bg-void flex items-center justify-center">
-    <span className="text-[10px] font-mono text-cyan-500/50 uppercase tracking-[0.2em] animate-pulse">LOADING…</span>
+    <span className="text-[10px] font-mono text-accent-primary/50 uppercase tracking-[0.2em] animate-pulse">LOADING…</span>
   </div>
 );
 
 // ─── Table Skeleton ──────────────────────────────────────────────────────────
 export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => (
-  <div className="bg-raised border border-cyan-500/15 p-4">
+  <div className="bg-raised border border-accent-primary/15 p-4">
     <SkeletonBox className="w-48 h-6 mb-4" />
     <div className="space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
@@ -46,7 +46,7 @@ export const CardSkeletonGrid = ({ count = 6 }: { count?: number }) => (
 
 // ─── Generic Skeleton Box ────────────────────────────────────────────────────
 export const SkeletonBox = ({ className = "" }: { className?: string }) => (
-  <div className={`rounded-none bg-raised border border-cyan-500/10 animate-pulse ${className}`} />
+  <div className={`rounded-none bg-raised border border-accent-primary/10 animate-pulse ${className}`} />
 );
 
 // ─── Skeleton Surface ────────────────────────────────────────────────────────

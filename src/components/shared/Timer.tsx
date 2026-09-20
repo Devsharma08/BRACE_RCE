@@ -40,7 +40,7 @@ export const Timer: React.FC<TimeProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-2 font-mono font-bold tracking-widest transition-colors ${isDanger ? "text-rose-500 animate-pulse" : "text-white"} ${className}`}
+      className={`flex items-center gap-2 font-mono font-bold tracking-widest transition-colors ${isDanger ? "text-accent-danger animate-pulse" : "text-fg"} ${className}`}
     >
       <Clock className="w-4 h-4 opacity-70" />
       <span>
