@@ -16,22 +16,19 @@ const Layout = () => {
   const isFullscreen =
     pathname === '/signin' ||
     pathname === '/signup' ||
-    pathname.startsWith('/battle')
+    pathname.startsWith('/battle') || pathname.startsWith('/terminal');
+
+  // Dense app views (e.g. /profile) keep the header but get a slim footer —
+  // the full-size footer crowds their vertical layout.
+  const isTrimmedFooter = pathname.startsWith('/profile');
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-[#050608] text-[#F0F4FF]">
+    <div className="flex flex-col min-h-screen w-full bg-base text-fg">
       <GlobalModals />
 
-      {pathname === '/terminal' ? (
-        <>
-          <Header />
-          <main className="h-screen w-full bg-[#050608]">
-            <Outlet />
-          </main>
-        </>
-      ) : isFullscreen ? (
+      {isFullscreen ? (
         /* Full-screen routes: no header, no footer, no padding */
-        <main className="flex-1 h-screen w-full bg-[#050608]">
+        <main className="flex-1 h-screen w-full bg-base">
           <Outlet />
         </main>
       ) : (
@@ -39,14 +36,14 @@ const Layout = () => {
           <Header />
 
           {/*
-            Main content sits below the fixed header (pt-14 = 3.5rem = 56px).
+            Header is sticky (in document flow), so main needs no top padding.
             The footer is a normal document-flow element so scrolling is natural.
           */}
-          <main className="flex-1 w-full pt-14 bg-[#050608]">
+          <main className="flex-1 w-full bg-base">
             <Outlet />
           </main>
 
-          <Footer />
+          <Footer variant={isTrimmedFooter ? 'compact' : 'full'} />
         </>
       )}
     </div>

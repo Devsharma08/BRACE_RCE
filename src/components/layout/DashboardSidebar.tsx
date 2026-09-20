@@ -39,7 +39,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
         hidden md:flex fixed top-14 left-0
         h-[calc(100vh-var(--header-height,3.5rem))]
         ${sidebarWidth}
-        bg-panel border-r border-cyan-500/15
+        bg-panel border-r border-subtle-line
         font-mono flex-col justify-between
         z-40 select-none transition-all duration-300 overflow-hidden
       `}
@@ -51,7 +51,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
 
         {/* ── BRAND HEADER ───────────────────────────────────────────── */}
         <div
-          className={`flex items-center border-b border-cyan-500/10 ${
+          className={`flex items-center border-b border-subtle-line ${
             collapsed ? "justify-center p-3" : "justify-between gap-2 px-3 py-3"
           }`}
         >
@@ -86,7 +86,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={`${
               collapsed ? "absolute top-3 right-1.5" : "shrink-0"
-            } p-1 border border-cyan-500/15 bg-transparent text-slate-500 hover:text-cyan-400 hover:border-cyan-500/40 transition-all cursor-pointer`}
+            } p-1 border border-subtle-line bg-transparent text-faint hover:text-accent-primary hover:border-accent-primary/40 transition-all cursor-pointer`}
           >
             {collapsed
               ? <ChevronRight className="w-3 h-3" />
@@ -111,8 +111,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                   collapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
                 } ${
                   isActive
-                    ? "border-l-cyan-400 bg-cyan-500/10 text-cyan-400"
-                    : "border-l-transparent bg-transparent text-slate-500 hover:text-cyan-400 hover:border-l-white/15 hover:bg-cyan-950/8"
+                    ? "border-l-accent bg-accent/10 text-accent"
+                    : "border-l-transparent bg-transparent text-subtle hover:text-accent hover:border-l-line-mid hover:bg-line-low"
                 }`
               }
             >
@@ -121,14 +121,14 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
                   <Icon
                     className={`w-4 h-4 shrink-0 transition-colors ${
                       isActive
-                        ? "text-cyan-400"
-                        : "text-slate-500 group-hover:text-cyan-400"
+                        ? "text-accent"
+                        : "text-subtle group-hover:text-accent"
                     }`}
                   />
                   {!collapsed && (
                     <span
                       className={`text-xs font-bold tracking-widest uppercase whitespace-nowrap ${
-                        isActive ? "text-cyan-400" : ""
+                        isActive ? "text-accent" : ""
                       }`}
                     >
                       {label}
@@ -143,7 +143,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
 
       {/* ── USER CARD / FOOTER ───────────────────────────────────────────── */}
       <div
-        className={`relative z-10 border-t border-cyan-500/10 pt-3 mt-3 ${
+        className={`relative z-10 border-t border-subtle-line pt-3 mt-3 ${
           collapsed ? "flex flex-col items-center gap-2 p-2" : "p-3"
         }`}
       >
@@ -153,7 +153,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
               to="/profile"
               aria-label={`Profile — ${displayName}`}
               title={`Profile — ${displayName}`}
-              className="p-2.5 border border-cyan-500/15 bg-raised text-slate-400 hover:text-cyan-400 hover:border-cyan-500/40 transition-all"
+              className="p-2.5 border border-subtle-line bg-raised text-subtle hover:text-accent hover:border-accent/40 transition-all"
             >
               <User className="w-4 h-4" />
             </NavLink>
@@ -161,7 +161,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
               onClick={logout}
               aria-label="Sign out"
               title="Sign out"
-              className="p-2.5 border border-transparent text-slate-500 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-950/25 transition-all cursor-pointer"
+              className="p-2.5 border border-transparent text-subtle hover:text-accent-danger hover:border-accent-danger/40 hover:bg-accent-danger/10 transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>

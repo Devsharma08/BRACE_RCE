@@ -36,17 +36,17 @@ describe('Header Component', () => {
   test('renders logo branding title BRACE // RCE', () => {
     renderHeader();
 
-    expect(screen.getByText(/BRACE \/\//i)).toBeDefined();
-    expect(screen.getByText('RCE')).toBeDefined();
+    expect(screen.getByRole('img', { name: /BRACE RCE/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /BRACE RCE/i })).toBeDefined();
   });
 
   test('renders navigation links for desktop', () => {
     renderHeader(['/dashboard']);
 
-    expect(screen.queryByText(/PING:|1v1 BATTLE ARENA/i)).not.toBeInTheDocument();
-    expect(screen.getByText('HOME')).toBeDefined();
-    expect(screen.getByText('DASHBOARD')).toBeDefined();
-    expect(screen.getByText('TERMINAL')).toBeDefined();
-    expect(screen.getByText('ABOUT')).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Home$/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Dashboard$/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Friends$/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Terminal$/i })).toBeDefined();
+    expect(screen.getByRole('link', { name: /^About$/i })).toBeDefined();
   });
 });

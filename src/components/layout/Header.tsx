@@ -1,43 +1,57 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { UseHeadroom } from '../../utils/styles/headRoom'
 import { useAuth } from '../../context/AuthContext'
 import {
-  House,
-  Terminal,
-  LogIn,
-  LayoutDashboard,
+  Bell,
   Info,
+  LayoutDashboard,
+  Menu,
+  Terminal,
   User,
   UserPlus,
-  Menu,
   X,
 } from 'lucide-react'
 import { NotificationCenter } from '../features/NotificationCenter'
+
+/**
+ * SiteHeader — floating pill navigation.
+ *
+ * Sticky (in document flow) so pages scroll under it without padding hacks.
+ * Keeps the app's real auth state, NotificationCenter, and headroom
+ * hide-on-scroll behaviour; only the chrome styling changed.
+ */
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
+  { href: '/friends', label: 'Friends', icon: UserPlus, auth: true },
+  { href: '/terminal', label: 'Terminal', icon: Terminal },
+  { href: '/about', label: 'About', icon: Info },
+]
 
 const Header = () => {
   const { visible } = UseHeadroom()
   const { pathname } = useLocation()
   const { isAuthenticated, user } = useAuth()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [open, setOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
 
-  const isActive = (path: string) => {
-    if (path === '/') return pathname === '/'
-    return pathname.startsWith(path)
-  }
+  const isActive = (href: string) =>
+    href === '/' ? pathname === href : pathname.startsWith(href)
+
+  const visibleLinks = links.filter((link) => !link.auth || isAuthenticated)
 
   // Close mobile menu on route change
   useEffect(() => {
-    setMobileOpen(false)
+    setOpen(false)
   }, [pathname])
 
   // Close on outside click
   useEffect(() => {
-    if (!mobileOpen) return
+    if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
-        setMobileOpen(false)
+        setOpen(false)
       }
     }
     // Small delay so the toggle click itself doesn't immediately close
@@ -48,179 +62,160 @@ const Header = () => {
       clearTimeout(timer)
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [mobileOpen])
+  }, [open])
 
   // Close on Escape key
   useEffect(() => {
-    if (!mobileOpen) return
+    if (!open) return
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMobileOpen(false)
+      if (e.key === 'Escape') setOpen(false)
     }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [mobileOpen])
-
-  const desktopLinkClass = (path: string) =>
-    `flex items-center px-4 py-2 font-mono text-xs uppercase tracking-wide font-semibold transition-all duration-200 ${
-      isActive(path)
-        ? 'border-b-2 border-accent bg-cyan-500/8 text-accent pb-[6px]'
-        : 'text-subtle hover:text-white border-b-2 border-transparent hover:border-white/20'
-    }`
-
-  const mobileLinkClass = (path: string) =>
-    `flex items-center gap-3 w-full px-4 py-3.5 font-mono text-xs uppercase tracking-wide font-medium transition-all ${
-      isActive(path)
-        ? 'border-l-2 border-accent text-accent bg-cyan-500/5'
-        : 'text-subtle hover:text-white border-l-2 border-transparent hover:bg-white/3'
-    }`
+  }, [open])
 
   return (
-    <nav
+    <header
       ref={navRef}
-      aria-label="Main navigation"
-      className={`fixed top-0 left-0 right-0 z-50 h-14 bg-raised/92 backdrop-blur-xl border-b border-cyan-500/15 font-mono text-xs transition-all duration-300 ${
+      className={`sticky top-0 z-50 bg-base/90 font-mono text-fg backdrop-blur-xl transition-all duration-300 ${
         visible
           ? 'opacity-100 translate-y-0'
-          : 'opacity-0 -translate-y-14 pointer-events-none'
+          : 'opacity-0 -translate-y-[calc(100%+16px)] pointer-events-none'
       }`}
     >
-      <div className="flex items-center justify-between px-4 sm:px-8 h-full">
+      <div className='border-b border-line bg-base/95'>
+        <div className='mx-auto flex h-[58px] items-center justify-between max-w-7xl px-4 sm:px-6'>
+          {/* BRAND */}
+          <Link to='/' className='group flex shrink-0 items-center gap-3' onClick={() => setOpen(false)}>
+            <img
+              src='/favicon.svg'
+              alt='BRACE RCE'
+              className='h-9 w-9 rounded-xl bg-accent-primary transition-transform duration-300 group-hover:rotate-6'
+            />
+            <span className='hidden text-xs font-bold tracking-[0.2em] sm:block'>
+              BRACE <span className='text-accent-primary'>// RCE</span>
+            </span>
+          </Link>
 
-        {/* BRAND LOGO */}
-        <Link
-          to="/"
-          className="flex items-center gap-2.5 group shrink-0"
-          style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.5))' }}
-        >
-          <img
-            src="/favicon.svg"
-            alt="BRACE RCE"
-            className="w-7 h-7 transition-transform duration-300 group-hover:scale-110"
-          />
-          <span
-            className="hidden sm:inline text-sm uppercase tracking-widest text-white font-black font-mono"
-            style={{ fontFamily: "'Orbitron', sans-serif" }}
+          {/* DESKTOP NAV */}
+          <nav
+            aria-label='Main navigation'
+            className='hidden items-center gap-1 rounded-xl border border-line bg-black/20 p-1 md:flex'
           >
-            BRACE //{' '}
-            <span className="text-accent font-black drop-shadow-[0_0_6px_rgba(0,212,255,0.4)]">RCE</span>
-          </span>
-        </Link>
-
-        {/* DESKTOP NAV */}
-        <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
-          <Link to="/" className={desktopLinkClass('/')}>HOME</Link>
-
-          {isAuthenticated && (
-            <>
-              <Link to="/dashboard" className={desktopLinkClass('/dashboard')}>
-                DASHBOARD
+            {visibleLinks.map(({ href, label }) => (
+              <Link
+                key={href}
+                to={href}
+                className={`rounded-lg px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                  isActive(href)
+                    ? 'bg-surface-hover text-fg shadow-inner'
+                    : 'text-faint hover:bg-surface-hover/60 hover:text-subtle'
+                }`}
+              >
+                {label}
               </Link>
-              <Link to="/friends" className={desktopLinkClass('/friends')}>
-                FRIENDS
-              </Link>
-            </>
-          )}
+            ))}
+          </nav>
 
-          <Link to="/terminal" className={desktopLinkClass('/terminal')}>
-            TERMINAL
-          </Link>
-          <Link to="/about" className={desktopLinkClass('/about')}>
-            ABOUT
-          </Link>
-
-          {isAuthenticated ? (
-            <>
-              <div className="relative w-8 h-8 flex items-center justify-center border-l border-cyan-500/10 pl-3 ml-1">
+          {/* DESKTOP ACTIONS */}
+          <div className='hidden items-center gap-2 md:flex'>
+            <div className='flex items-center gap-2 border border-accent-success/20 bg-accent-success/[0.05] px-2 py-1 text-[9px] uppercase tracking-widest text-accent-success'>
+              <span className='h-1.5 w-1.5 rounded-full bg-accent-success shadow-[0_0_9px_rgba(0,255,135,0.9)]' />
+              ready
+            </div>
+            {isAuthenticated && (
+              <div className='flex h-9 w-9 items-center justify-center'>
                 <NotificationCenter />
               </div>
-              <Link to="/profile" className="ml-1">
-                <span className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/15 bg-raised text-accent font-mono font-bold text-xs transition-all hover:border-cyan-400 hover:bg-cyan-500/10">
-                  <span className="w-1.5 h-1.5 bg-[#00FF87] animate-pulse rounded-full" />
-                  <span className="max-w-[120px] truncate" title={user?.username}>
-                    {user?.username || 'PROFILE'}
-                  </span>
-                </span>
+            )}
+            {isAuthenticated ? (
+              <Link
+                to='/profile'
+                aria-label={`Profile — ${user?.username || 'account'}`}
+                className='grid h-9 w-9 place-items-center rounded-lg border border-line bg-surface-hover text-[10px] font-bold text-accent-primary transition hover:border-accent-primary/40'
+              >
+                <User size={15} />
               </Link>
-            </>
-          ) : (
-            <Link to="/signin" className="ml-1">
-              <span className="flex items-center gap-2 bg-accent text-ink font-bold px-4 py-2 text-xs transition-all hover:bg-cyan-300">
-                <LogIn className="w-4 h-4" />
-                LOGIN
-              </span>
-            </Link>
-          )}
-        </div>
+            ) : (
+              <Link
+                to='/signin'
+                aria-label='Sign in'
+                className='grid place-items-center px-2 py-1 border border-accent-primary/50 bg-accent-primary/10 text-accent-primary transition hover:bg-accent-primary/20'
+              >
+                {/* <Bell size={0} className='hidden' /> */}
+                <span className='text-[10px] font-bold tracking-widest'>LOG IN</span>
+              </Link>
+            )}
+          </div>
 
-        {/* MOBILE: notification + hamburger */}
-        <div className="flex items-center gap-2 md:hidden">
-          {isAuthenticated && <NotificationCenter />}
+          {/* MOBILE TOGGLE */}
           <button
-            onClick={() => setMobileOpen(o => !o)}
-            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-nav-menu"
-            className="p-2 border border-white/10 text-subtle hover:text-white hover:border-accent/50 transition-all"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls='mobile-header-nav'
+            aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+            className='grid h-10 w-10 place-items-center rounded-xl border border-line text-subtle transition hover:border-accent-primary/50 hover:text-accent-primary md:hidden'
           >
-            {mobileOpen
-              ? <X className="w-5 h-5" />
-              : <Menu className="w-5 h-5" />
-            }
+            {open ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN — outside the flex row so it can be full-width */}
+      {/* MOBILE DROPDOWN */}
       <div
-        id="mobile-nav-menu"
-        role="menu"
-        aria-label="Mobile navigation"
-        className={`md:hidden overflow-hidden transition-all duration-200 ease-in-out ${
-          mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-        } bg-raised/98 backdrop-blur-xl border-b border-cyan-500/15`}
+        id='mobile-header-nav'
+        className={`mx-4 overflow-hidden transition-all duration-200 sm:mx-6 md:hidden ${
+          open ? 'max-h-96 py-3 opacity-100' : 'max-h-0 py-0 opacity-0'
+        }`}
       >
-        <div className="flex flex-col py-2">
-          <Link to="/" className={mobileLinkClass('/')} role="menuitem">
-            <House className="w-4 h-4 shrink-0" />
-            <span>Home</span>
-          </Link>
-
-          {isAuthenticated && (
-            <>
-              <Link to="/dashboard" className={mobileLinkClass('/dashboard')} role="menuitem">
-                <LayoutDashboard className="w-4 h-4 shrink-0" />
-                <span>Dashboard</span>
-              </Link>
-              <Link to="/friends" className={mobileLinkClass('/friends')} role="menuitem">
-                <UserPlus className="w-4 h-4 shrink-0" />
-                <span>Friends</span>
-              </Link>
-            </>
-          )}
-
-          <Link to="/terminal" className={mobileLinkClass('/terminal')} role="menuitem">
-            <Terminal className="w-4 h-4 shrink-0" />
-            <span>Terminal</span>
-          </Link>
-          <Link to="/about" className={mobileLinkClass('/about')} role="menuitem">
-            <Info className="w-4 h-4 shrink-0" />
-            <span>About</span>
-          </Link>
-
+        <nav
+          aria-label='Mobile navigation'
+          className='rounded-2xl border border-line bg-surface p-2'
+        >
+          {visibleLinks.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              to={href}
+              onClick={() => setOpen(false)}
+              role='menuitem'
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                isActive(href)
+                  ? 'bg-accent-primary/10 text-accent-primary'
+                  : 'text-faint hover:bg-surface-hover hover:text-fg'
+              }`}
+            >
+              {Icon ? <Icon size={15} /> : <span className='h-1.5 w-1.5 rounded-full bg-current' />}
+              {label}
+            </Link>
+          ))}
           {isAuthenticated ? (
-            <Link to="/profile" className={mobileLinkClass('/profile')} role="menuitem">
-              <User className="w-4 h-4 shrink-0" />
-              <span>Profile</span>
+            <Link
+              to='/profile'
+              onClick={() => setOpen(false)}
+              role='menuitem'
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                isActive('/profile')
+                  ? 'bg-accent-primary/10 text-accent-primary'
+                  : 'text-faint hover:bg-surface-hover hover:text-fg'
+              }`}
+            >
+              <User size={15} />
+              Profile
             </Link>
           ) : (
-            <Link to="/signin" className={mobileLinkClass('/signin')} role="menuitem">
-              <LogIn className="w-4 h-4 shrink-0" />
-              <span>Login</span>
+            <Link
+            to='/signin'
+            onClick={() => setOpen(false)}
+            role='menuitem'
+            className='flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-accent-primary transition hover:bg-accent-primary/10'
+            >
+            <Bell size={15} />
+            Log in
             </Link>
           )}
-        </div>
+        </nav>
       </div>
-    </nav>
+    </header>
   )
 }
 
