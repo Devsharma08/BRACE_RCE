@@ -87,8 +87,8 @@ export const Root = () => {
                   {
                     style: {
                       background: "rgba(6, 8, 14, 0.92)",
-                      border: "1px solid rgba(34, 211, 238, 0.35)",
-                      color: "#e2e8f0",
+                      border: "1px solid color-mix(in srgb, var(--accent-primary) 35%, transparent)",
+                      color: "var(--text-primary)",
                       fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                       fontSize: "12px",
                     },

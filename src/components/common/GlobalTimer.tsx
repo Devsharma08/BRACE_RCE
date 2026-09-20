@@ -83,7 +83,7 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
 
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-1.5 font-bold ${isExpired ? 'text-rose-500' : isWarning ? 'text-rose-400 animate-pulse' : 'text-emerald-300'}`}>
+      <div className={`flex items-center gap-1.5 font-bold ${isExpired ? 'text-accent-danger' : isWarning ? 'text-accent-danger animate-pulse' : 'text-accent-success'}`}>
         <Clock className="w-3.5 h-3.5" />
         <span className="text-[11px] uppercase tracking-widest">{formatTime(remainingSeconds)}</span>
       </div>
@@ -92,7 +92,7 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
 
   if (variant === 'banner') {
     return (
-      <div className={`w-full py-2 flex items-center justify-center gap-3 border-y ${isExpired ? 'bg-rose-950/40 border-rose-500/30 text-rose-400' : isWarning ? 'bg-rose-900/30 border-rose-500/50 text-rose-400 animate-pulse' : 'bg-emerald-950/30 border-emerald-500/30 text-emerald-400'}`}>
+      <div className={`w-full py-2 flex items-center justify-center gap-3 border-y ${isExpired ? 'bg-accent-danger/10 border-accent-danger/30 text-accent-danger' : isWarning ? 'bg-accent-danger/10 border-accent-danger/50 text-accent-danger animate-pulse' : 'bg-accent-success/10 border-accent-success/30 text-accent-success'}`}>
          <Clock className="w-5 h-5" />
          <span className="text-sm font-bold tracking-[0.2em]">{label} {formatTime(remainingSeconds)}</span>
       </div>
@@ -101,9 +101,9 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
 
   // Default pill variant
   return (
-    <div className={`flex items-center gap-1.5 border px-3 py-1 text-[11px] font-bold ${isExpired ? 'border-rose-500/30 bg-rose-950/30 text-rose-400' : isWarning ? 'border-rose-500/50 bg-rose-950/50 text-rose-400 animate-pulse' : 'border-emerald-500/30 bg-emerald-950/30 text-emerald-300'}`}>
-      <Clock className={`w-3.5 h-3.5 ${isExpired || isWarning ? 'text-rose-400' : 'text-emerald-400'}`} />
-      <span className="text-[9px] text-slate-400 uppercase tracking-widest">{label}</span>
+    <div className={`flex items-center gap-1.5 border px-3 py-1 text-[11px] font-bold ${isExpired ? 'border-accent-danger/30 bg-accent-danger/10 text-accent-danger' : isWarning ? 'border-accent-danger/50 bg-accent-danger/15 text-accent-danger animate-pulse' : 'border-accent-success/30 bg-accent-success/10 text-accent-success'}`}>
+      <Clock className={`w-3.5 h-3.5 ${isExpired || isWarning ? 'text-accent-danger' : 'text-accent-success'}`} />
+      <span className="text-[9px] text-subtle uppercase tracking-widest">{label}</span>
       <span>{formatTime(remainingSeconds)}</span>
     </div>
   );

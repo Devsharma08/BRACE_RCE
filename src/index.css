@@ -27,6 +27,8 @@
   --accent-success:  #00FF87;  /* pass, wins, ELO gain, live telemetry */
   --accent-danger:   #FF3B5C;  /* fail, losses, focus-loss, errors */
   --accent-warning:  #FFB800;  /* exec delays, memory limits, warnings */
+  --accent-violet:   #C4B5FD;  /* competition-protocol accent (home bento) */
+  --accent-pink:     #F9A8D4;  /* review-protocol accent (home bento) */
 
   --accent:      var(--accent-primary);
   --accent-dim:  color-mix(in srgb, var(--accent-primary) 10%, transparent);
@@ -136,6 +138,8 @@
   --color-accent-success:  var(--accent-success);
   --color-accent-danger:   var(--accent-danger);
   --color-accent-warning:  var(--accent-warning);
+  --color-accent-violet:   var(--accent-violet);
+  --color-accent-pink:     var(--accent-pink);
   --color-ink:             var(--ink);
 
   --color-success:   var(--accent-success);
