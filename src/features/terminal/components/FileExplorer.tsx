@@ -65,18 +65,18 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   }, [hints]);
 
   return (
-    <div className="border-t-2 border-amber-500/30 bg-amber-950/10">
+    <div className="border-t-2 border-accent-warning/30 bg-accent-warning/5">
       {/* Section header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-amber-500/20">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+      <div className="flex items-center justify-between px-3 py-2 border-b border-accent-warning/20">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-accent-warning flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-warning inline-block" />
           HINTS ({unlockedCount}/{parsedHints.length})
         </span>
         {unlockedCount < parsedHints.length && (
           <button
             type="button"
             onClick={() => setUnlockedCount((p) => Math.min(parsedHints.length, p + 1))}
-            className="text-[8px] font-bold text-amber-300 border border-amber-500/40 bg-amber-950/30 px-2 py-0.5 uppercase tracking-wider hover:bg-amber-950/60 transition-all cursor-pointer"
+            className="text-[8px] font-bold text-accent-warning border border-accent-warning/40 bg-accent-warning/10 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/10 transition-all cursor-pointer"
           >
             UNLOCK #{unlockedCount + 1}
           </button>
@@ -85,14 +85,14 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
 
       <div className="px-3 py-2">
         {unlockedCount === 0 ? (
-          <p className="text-[10px] text-slate-500 font-sans leading-relaxed">
+          <p className="text-[10px] text-faint font-sans leading-relaxed">
             Hints locked — click to reveal one at a time.
           </p>
         ) : (
           <div className="space-y-2">
             {parsedHints.slice(0, unlockedCount).map((hintText: string, idx: number) => (
-              <div key={idx} className="border-l-2 border-amber-400/60 pl-2.5 py-1 text-[10px] text-amber-200/80 font-sans leading-relaxed">
-                <span className="text-[8px] font-bold text-amber-400/70 block mb-0.5 uppercase tracking-widest">
+              <div key={idx} className="border-l-2 border-accent-warning/60 pl-2.5 py-1 text-[10px] text-accent-warning/80 font-sans leading-relaxed">
+                <span className="text-[8px] font-bold text-accent-warning/70 block mb-0.5 uppercase tracking-widest">
                   Hint {idx + 1}
                 </span>
                 {hintText}
@@ -133,15 +133,15 @@ const SidebarFilesMode = React.memo(({
   return (
     <>
       {/* ── ZONE 1: FILTERS ──────────────────────────────────────── */}
-      <div className="search-container border-b-2 border-cyan-500/20 bg-raised">
+      <div className="search-container border-b-2 border-accent-primary/20 bg-raised">
         {/* Search input */}
         <div className="px-3 pt-3 pb-2 relative flex items-center">
-          <span className="absolute left-6 text-[10px] font-mono text-cyan-500/40 select-none">›</span>
+          <span className="absolute left-6 text-[10px] font-mono text-accent-primary/40 select-none">›</span>
           <input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder={isSmall ? "FIND..." : "SEARCH PROBLEMS..."}
-            className="w-full border border-white/10 bg-black/50 pl-6 pr-3 py-1.5 text-[10px] font-mono text-cyan-300 outline-none focus:border-cyan-500/50 placeholder:text-slate-600 transition"
+            className="w-full border border-subtle-line bg-black/60 pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-primary outline-none focus:border-accent-primary/50 placeholder:text-faint transition"
           />
         </div>
 
@@ -150,10 +150,10 @@ const SidebarFilesMode = React.memo(({
           {(["ALL", "EASY", "MEDIUM", "HARD"] as const).map((f) => {
             const isActive = difficultyFilter === f;
             const style: Record<string, string> = {
-              ALL:    "border-slate-500/50 text-slate-300 bg-slate-900/60",
-              EASY:   "border-emerald-500/50 text-emerald-300 bg-emerald-950/60",
-              MEDIUM: "border-amber-500/50 text-amber-300 bg-amber-950/60",
-              HARD:   "border-rose-500/50 text-rose-300 bg-rose-950/60",
+              ALL:    "border-subtle-line text-subtle bg-base",
+              EASY:   "border-accent-success/50 text-accent-success bg-accent-success/10",
+              MEDIUM: "border-accent-warning/40 text-accent-warning bg-accent-warning/10",
+              HARD:   "border-accent-danger/50 text-accent-danger bg-accent-danger/10",
             };
             return (
               <button
@@ -161,7 +161,7 @@ const SidebarFilesMode = React.memo(({
                 type="button"
                 onClick={() => setDifficultyFilter(f)}
                 className={`flex-1 py-1 text-[8px] font-bold font-mono tracking-wider border transition-all cursor-pointer ${
-                  isActive ? style[f] : "border-white/5 text-slate-600 hover:text-slate-400 hover:border-white/10"
+                  isActive ? style[f] : "border-subtle-line text-faint hover:text-subtle hover:border-subtle-line"
                 }`}
               >
                 <span className="badge-text-full">{f === "ALL" ? "ALL" : f.slice(0, 3)}</span>
@@ -178,7 +178,7 @@ const SidebarFilesMode = React.memo(({
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full border border-white/10 bg-black/60 px-2 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none cursor-pointer uppercase appearance-none hover:border-cyan-500/30"
+                className="w-full border border-subtle-line bg-black/60 px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
               >
                 <option value="ALL">CATEGORY</option>
                 <option value="linked list">LINKED LIST</option>
@@ -196,44 +196,44 @@ const SidebarFilesMode = React.memo(({
                 <option value="greedy">GREEDY</option>
                 <option value="interval problems">INTERVALS</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-cyan-500/40">▼</div>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-accent-primary/40">▼</div>
             </div>
             <div className="relative flex-1">
               <select
                 value={languageFilter}
                 onChange={(e) => setLanguageFilter(e.target.value)}
-                className="w-full border border-white/10 bg-black/60 px-2 py-1.5 text-[9px] font-mono text-cyan-400/80 outline-none cursor-pointer uppercase appearance-none hover:border-cyan-500/30"
+                className="w-full border border-subtle-line bg-black/60 px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
               >
                 <option value="ALL">LANGUAGE</option>
                 <option value="java">JAVA</option>
                 <option value="javascript">JS</option>
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-cyan-500/40">▼</div>
+              <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[8px] text-accent-primary/40">▼</div>
             </div>
           </div>
         )}
 
         {/* Status line */}
         <div className="sidebar-details px-3 pb-2 flex items-center justify-between">
-          <span className="text-[8px] font-mono text-slate-600 uppercase tracking-wider">
+          <span className="text-[8px] font-mono text-faint uppercase tracking-wider">
             {searchActive ? `${filteredFiles.length}/${files.length} matches` : `${files.length} files`}
           </span>
-          {searchActive && <span className="text-[8px] text-cyan-400 font-bold">FILTERED</span>}
+          {searchActive && <span className="text-[8px] text-accent-primary font-bold">FILTERED</span>}
         </div>
       </div>
 
       {/* ── ZONE 2: FILE LIST ─────────────────────────────────────── */}
-      <div className="sidebar-list-container border-b-2 border-white/10">
+      <div className="sidebar-list-container border-b-2 border-subtle-line">
         {/* Zone label */}
-        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a]">
-          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">PROBLEMS</span>
-          <span className="text-[8px] font-mono text-cyan-400/60">{filteredFiles.length}</span>
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-base">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-faint">PROBLEMS</span>
+          <span className="text-[8px] font-mono text-accent-primary/60">{filteredFiles.length}</span>
         </div>
 
         {isLoadingFiles ? (
           <div className="px-3 py-2">{renderLoadingState("Loading files...")}</div>
         ) : (
-          <div className="flex flex-col gap-px max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black [&::-webkit-scrollbar-thumb]:bg-slate-700">
+          <div className="flex flex-col gap-px max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black [&::-webkit-scrollbar-thumb]:bg-elevated">
             {filteredFiles.length > 0 ? (
               filteredFiles.map((file) => (
                 <button
@@ -242,17 +242,17 @@ const SidebarFilesMode = React.memo(({
                   onClick={() => onFileClick(file.oid, file.name)}
                   className={`group file-button-compact flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-[10px] transition-all cursor-pointer border-l-2 ${
                     activeFile === file.oid && activeFileName === file.name
-                      ? "border-l-cyan-400 bg-cyan-950/20 text-cyan-300"
-                      : "border-l-transparent bg-transparent text-slate-400 hover:bg-white/5 hover:text-slate-200 hover:border-l-white/20"
+                      ? "border-l-accent-primary bg-accent-primary/5 text-accent-primary"
+                      : "border-l-transparent bg-transparent text-subtle hover:bg-surface-hover hover:text-fg hover:border-l-white/20"
                   }`}
                 >
-                  <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-500 group-hover:text-cyan-400" />
+                  <FileCode className="file-icon h-3 w-3 shrink-0 text-faint group-hover:text-accent-primary" />
                   <span className="file-name-text flex-1 truncate">{file.name}</span>
                   <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
                 </button>
               ))
             ) : (
-              <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No files match filters</div>
+              <div className="px-3 py-2 text-[10px] text-faint font-mono">No files match filters</div>
             )}
           </div>
         )}
@@ -263,24 +263,24 @@ const SidebarFilesMode = React.memo(({
         <div className={detailsPanelClass}>
 
           {/* File identity row */}
-          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-raised border-b border-white/10">
-            <span className="text-[10px] font-bold text-white truncate font-mono">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 bg-raised border-b border-subtle-line">
+            <span className="text-[10px] font-bold text-fg truncate font-mono">
               {activeFileEntry?.name || "—"}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
               {language && (
-                <span className="text-[8px] px-1.5 py-0.5 border border-cyan-500/30 bg-cyan-950/40 text-cyan-400 font-mono uppercase">
+                <span className="text-[8px] px-1.5 py-0.5 border border-accent-primary/30 bg-accent-primary/10 text-accent-primary font-mono uppercase">
                   {language.toUpperCase()}
                 </span>
               )}
               {fileData?.data_structure && (
-                <span className="text-[8px] px-1.5 py-0.5 border border-slate-700 bg-black/40 text-slate-400 font-mono uppercase">
+                <span className="text-[8px] px-1.5 py-0.5 border border-subtle-line bg-black/60 text-subtle font-mono uppercase">
                   {fileData.data_structure}
                 </span>
               )}
               <DifficultyBadge level={fileData?.difficulty_level || "E"} />
               {testCaseCount > 0 && (
-                <span className="text-[8px] px-1.5 py-0.5 border border-indigo-500/30 bg-indigo-950/30 text-indigo-300 font-mono">
+                <span className="text-[8px] px-1.5 py-0.5 border border-accent-primary/30 bg-accent-primary/10 text-accent-primary font-mono">
                   {testCaseCount}T
                 </span>
               )}
@@ -288,12 +288,12 @@ const SidebarFilesMode = React.memo(({
           </div>
 
           {/* Problem Statement */}
-          <div className="border-t-2 border-cyan-500/25 bg-[#02040a]">
-            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-cyan-500/15">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PROBLEM STATEMENT</span>
+          <div className="border-t-2 border-accent-primary/25 bg-base">
+            <div className="flex items-center gap-1.5 px-3 py-2 border-b border-accent-primary/15">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-primary shrink-0" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">PROBLEM STATEMENT</span>
             </div>
-            <div className="px-3 py-2.5 text-[10px] text-slate-300 font-sans leading-relaxed whitespace-pre-wrap max-h-[260px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
+            <div className="px-3 py-2.5 text-[10px] text-subtle font-sans leading-relaxed whitespace-pre-wrap max-h-[260px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-elevated">
               {fileData?.problem_definition || "No problem statement available for this file."}
             </div>
           </div>
@@ -303,26 +303,26 @@ const SidebarFilesMode = React.memo(({
 
           {/* Test Cases */}
           {fileData?.test_cases?.length ? (
-            <div className="border-t-2 border-indigo-500/25 bg-[#02040a]">
-              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-indigo-500/15">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-400">TEST CASES</span>
-                <span className="ml-auto text-[8px] text-slate-500">{fileData.test_cases.length} cases</span>
+            <div className="border-t-2 border-accent-primary/25 bg-base">
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-accent-primary/15">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-primary shrink-0" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-accent-primary">TEST CASES</span>
+                <span className="ml-auto text-[8px] text-faint">{fileData.test_cases.length} cases</span>
               </div>
               <div className="px-3 py-2.5 space-y-3">
                 {fileData.test_cases.map((tc, i) => (
-                  <div key={i} className="border border-white/8 bg-black/50">
-                    <div className="px-2 py-1 border-b border-white/8 text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div key={i} className="border border-subtle-line bg-black/60">
+                    <div className="px-2 py-1 border-b border-subtle-line text-[8px] font-bold text-faint uppercase tracking-widest">
                       Case {i + 1}
                     </div>
-                    <div className="grid grid-cols-1 divide-y divide-white/5">
+                    <div className="grid grid-cols-1 divide-y divide-subtle-line">
                       <div className="px-2 py-1.5">
-                        <div className="text-[8px] text-emerald-400/70 font-bold uppercase mb-1">IN</div>
-                        <pre className="text-[10px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">{tc.input ?? "—"}</pre>
+                        <div className="text-[8px] text-accent-success/70 font-bold uppercase mb-1">IN</div>
+                        <pre className="text-[10px] text-subtle font-mono whitespace-pre-wrap leading-relaxed">{tc.input ?? "—"}</pre>
                       </div>
                       <div className="px-2 py-1.5">
-                        <div className="text-[8px] text-rose-400/70 font-bold uppercase mb-1">OUT</div>
-                        <pre className="text-[10px] text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">{tc.expectedOutput ?? "—"}</pre>
+                        <div className="text-[8px] text-accent-danger/70 font-bold uppercase mb-1">OUT</div>
+                        <pre className="text-[10px] text-subtle font-mono whitespace-pre-wrap leading-relaxed">{tc.expectedOutput ?? "—"}</pre>
                       </div>
                     </div>
                   </div>
@@ -418,41 +418,41 @@ const SidebarTerminalMode = React.memo(({
   return (
     <>
       {/* ── ZONE 1: CREATE FILE ───────────────────────────────── */}
-      <div className="create-file-container border-b-2 border-amber-500/20 bg-raised">
-        <div className="px-3 py-2 text-[8px] font-bold uppercase tracking-widest text-amber-400/70 border-b border-amber-500/10">
+      <div className="create-file-container border-b-2 border-accent-warning/20 bg-raised">
+        <div className="px-3 py-2 text-[8px] font-bold uppercase tracking-widest text-accent-warning/70 border-b border-accent-warning/10">
           NEW SCRATCHPAD FILE
         </div>
         <div className="px-3 py-2.5 relative flex items-center">
-          <span className="absolute left-6 text-[10px] font-mono text-amber-500/40 select-none">›</span>
+          <span className="absolute left-6 text-[10px] font-mono text-accent-warning/40 select-none">›</span>
           <input
             type="text"
             value={fileName}
             onChange={(e) => setFileName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && createNewFile(e)}
-            className="w-full border border-white/10 bg-black/50 pl-6 pr-3 py-1.5 text-[10px] font-mono text-amber-300 outline-none focus:border-amber-500/40 placeholder:text-slate-600 transition"
+            className="w-full border border-subtle-line bg-black/60 pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-warning outline-none focus:border-accent-warning/40 placeholder:text-faint transition"
             placeholder="filename.js · ENTER to create"
           />
         </div>
       </div>
 
       {/* ── ZONE 2: SAVED LOCAL FILES ─────────────────────────── */}
-      <div className="border-b-2 border-white/10">
-        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a] border-b border-white/8">
-          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">MY FILES</span>
-          <span className="text-[8px] font-mono text-amber-400/60">{localFiles.length}</span>
+      <div className="border-b-2 border-subtle-line">
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-base border-b border-subtle-line">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-faint">MY FILES</span>
+          <span className="text-[8px] font-mono text-accent-warning/60">{localFiles.length}</span>
         </div>
         <div className="flex flex-col gap-px">
           {localFiles.length > 0 ? (
             localFiles.map((file) => (
               <div
                 key={`${file.oid}:${file.name}`}
-                className="group flex items-center gap-2 px-3 py-2 text-[10px] font-mono text-slate-400 hover:bg-white/5 hover:text-slate-200 transition cursor-pointer border-l-2 border-l-transparent hover:border-l-amber-400/50"
+                className="group flex items-center gap-2 px-3 py-2 text-[10px] font-mono text-subtle hover:bg-surface-hover hover:text-fg transition cursor-pointer border-l-2 border-l-transparent hover:border-l-accent-warning/50"
                 role="button"
                 tabIndex={0}
                 onClick={() => onFileClick(file.oid, file.name)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onFileClick(file.oid, file.name)}
               >
-                <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-600 group-hover:text-amber-400" />
+                <FileCode className="file-icon h-3 w-3 shrink-0 text-faint group-hover:text-accent-warning" />
                 <span className="file-name-text flex-1 truncate">{file.name}</span>
                 <button
                   type="button"
@@ -460,23 +460,23 @@ const SidebarTerminalMode = React.memo(({
                     e.stopPropagation();
                     if (window.confirm(`Delete ${file.name}?`)) onDeleteLocalFile(file.oid);
                   }}
-                  className="sidebar-details text-rose-600 hover:text-rose-400 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
+                  className="sidebar-details text-accent-danger hover:text-accent-danger cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
                 >
                   <X className="h-3 w-3" />
                 </button>
               </div>
             ))
           ) : (
-            <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No saved files yet</div>
+            <div className="px-3 py-2 text-[10px] text-faint font-mono">No saved files yet</div>
           )}
         </div>
       </div>
 
       {/* ── ZONE 3: REPO TEMPLATES ────────────────────────────── */}
       <div>
-        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-[#02040a] border-b border-white/8">
-          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-slate-500">TEMPLATES</span>
-          <span className="text-[8px] font-mono text-slate-500">{repositoryFiles.length}</span>
+        <div className="sidebar-details px-3 py-1.5 flex items-center justify-between bg-base border-b border-subtle-line">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-faint">TEMPLATES</span>
+          <span className="text-[8px] font-mono text-faint">{repositoryFiles.length}</span>
         </div>
         {isLoadingFiles ? (
           <div className="px-3 py-2">{renderLoadingState("Loading templates...")}</div>
@@ -488,15 +488,15 @@ const SidebarTerminalMode = React.memo(({
                   key={`${file.oid}:${file.name}`}
                   type="button"
                   onClick={() => onFileClick(file.oid, file.name)}
-                  className="group file-button-compact flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-[10px] text-slate-400 hover:bg-white/5 hover:text-slate-200 transition cursor-pointer border-l-2 border-l-transparent hover:border-l-slate-500/50"
+                  className="group file-button-compact flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-[10px] text-subtle hover:bg-surface-hover hover:text-fg transition cursor-pointer border-l-2 border-l-transparent hover:border-l-faint/50"
                 >
-                  <FileCode className="file-icon h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-400" />
+                  <FileCode className="file-icon h-3 w-3 shrink-0 text-faint group-hover:text-subtle" />
                   <span className="file-name-text flex-1 truncate">{file.name}</span>
                   <DifficultyBadge level={file.difficulty_level || file.diffculty_level || "E"} />
                 </button>
               ))
             ) : (
-              <div className="px-3 py-2 text-[10px] text-slate-600 font-mono">No templates available</div>
+              <div className="px-3 py-2 text-[10px] text-faint font-mono">No templates available</div>
             )}
           </div>
         )}
@@ -507,12 +507,12 @@ const SidebarTerminalMode = React.memo(({
 
 const DifficultyBadge = ({ level }: { level: string }) => {
   const textColors: Record<string, string> = {
-    H: "text-red-400 border-red-500/20 bg-red-950/10",
-    M: "text-yellow-400 border-yellow-500/20 bg-yellow-950/10",
-    E: "text-green-400 border-green-500/20 bg-green-950/10",
-    Hard: "text-red-400 border-red-500/20 bg-red-950/10",
-    Medium: "text-yellow-400 border-yellow-500/20 bg-yellow-950/10",
-    Easy: "text-green-400 border-green-500/20 bg-green-950/10",
+    H: "text-accent-danger border-accent-danger/20 bg-accent-danger/10",
+    M: "text-accent-warning border-accent-warning/20 bg-accent-warning/10",
+    E: "text-accent-success border-accent-success/20 bg-accent-success/10",
+    Hard: "text-accent-danger border-accent-danger/20 bg-accent-danger/10",
+    Medium: "text-accent-warning border-accent-warning/20 bg-accent-warning/10",
+    Easy: "text-accent-success border-accent-success/20 bg-accent-success/10",
   };
 
   const labelMap: Record<string, string> = {
@@ -534,12 +534,12 @@ const DifficultyBadge = ({ level }: { level: string }) => {
   };
 
   const miniColorMap: Record<string, string> = {
-    H: "bg-red-500",
-    M: "bg-yellow-500",
-    E: "bg-green-500",
-    Hard: "bg-red-500",
-    Medium: "bg-yellow-500",
-    Easy: "bg-green-500",
+    H: "bg-accent-danger",
+    M: "bg-accent-warning",
+    E: "bg-accent-success",
+    Hard: "bg-accent-danger",
+    Medium: "bg-accent-warning",
+    Easy: "bg-accent-success",
   };
 
   return (
@@ -716,13 +716,13 @@ const FileExplorer = ({
 
   const searchActive = Boolean(searchInput.trim()) || difficultyFilter !== "ALL" || categoryFilter !== "ALL" || languageFilter !== "ALL";
 
-  const detailsPanelClass = "p-4 space-y-3 border-t-2 border-cyan-500/20 bg-[#02040a] text-xs font-mono text-cyan-400/80";
+  const detailsPanelClass = "p-4 space-y-3 border-t-2 border-accent-primary/20 bg-base text-xs font-mono text-accent-primary/80";
 
   const sidebarStyle = { "--sidebar-width": `${sidebarWidth}px` } as CSSProperties;
   
   const renderLoadingState = useCallback((label: string) => (
-    <div className="flex items-center gap-2 rounded-none border border-cyan-500/20 bg-cyan-950/5 px-3 py-2 text-xs text-cyan-400 font-mono">
-      <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+    <div className="flex items-center gap-2 rounded-none border border-accent-primary/20 bg-accent-primary/5 px-3 py-2 text-xs text-accent-primary font-mono">
+      <Loader2 className="h-3.5 w-3.5 animate-spin text-accent-primary" />
       <span className="uppercase tracking-wider">{label}</span>
     </div>
   ), []);
@@ -791,15 +791,15 @@ const FileExplorer = ({
     <>
       <aside
         style={sidebarStyle}
-        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-white/5 bg-[#02040a] p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-slate-950/40 [&::-webkit-scrollbar-thumb]:bg-slate-700/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r-2 md:border-r-white/10"
+        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-subtle-line bg-base p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black/40 [&::-webkit-scrollbar-thumb]:bg-elevated/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r-2 md:border-r-white/10"
       >
         <div className="hideScrollbar">
         {/* MODE SELECTOR: EXPLORER / TERMINAL */}
         <div className="mb-2 grid grid-cols-1 sidebar-details mode-selector gap-1.5 px-1 text-[9px] font-mono tracking-wider sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2">
           <label htmlFor="mode-files" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "files-mode" 
-              ? "border-l-2 border-l-cyan-500 border-cyan-500/30 bg-cyan-950/15 text-cyan-400" 
-              : "border border-white/10 bg-raised text-slate-500 hover:text-slate-300 hover:border-white/20"
+              ? "border-l-2 border-l-accent-primary border-accent-primary/30 bg-accent-primary/5 text-accent-primary"
+              : "border border-subtle-line bg-raised text-faint hover:text-subtle hover:border-subtle-line"
           }`}>
             <span className="mode-text-full">SYS // EXPLORER</span>
             <span className="mode-text-short">EXPLORER</span>
@@ -816,8 +816,8 @@ const FileExplorer = ({
           </label>
           <label htmlFor="mode-terminal" className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer border transition-all duration-150 ${
             selectedMode === "terminal-mode" 
-              ? "border-l-2 border-l-amber-500 border-amber-500/30 bg-amber-950/10 text-amber-400" 
-              : "border border-white/10 bg-raised text-slate-500 hover:text-slate-300 hover:border-white/20"
+              ? "border-l-2 border-l-accent-warning border-accent-warning/30 bg-accent-warning/5 text-accent-warning"
+              : "border border-subtle-line bg-raised text-faint hover:text-subtle hover:border-subtle-line"
           }`}>
             <span className="mode-text-full">SYS // TERMINAL</span>
             <span className="mode-text-short">TERMINAL</span>
@@ -878,7 +878,7 @@ const FileExplorer = ({
       </aside>
       <div
         onMouseDown={onResizeStart}
-        className="hidden h-full w-1 sidebar-details cursor-col-resize border-l border-cyan-500/40 bg-cyan-400/20 transition-all hover:bg-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] active:bg-cyan-400 md:block"
+        className="hidden h-full w-1 sidebar-details cursor-col-resize border-l border-accent-primary/40 bg-accent-primary/20 transition-all hover:bg-accent-primary hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] active:bg-accent-primary md:block"
       />
     </>
   );

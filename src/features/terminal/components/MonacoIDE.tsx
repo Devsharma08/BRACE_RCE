@@ -218,14 +218,14 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
   }, [code, language, isLocal]);
 
   return (
-    <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-white/10 bg-[#01050f] sm:rounded-xl">
+    <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-subtle-line bg-editor-bg sm:rounded-xl">
       <Editor
         height="100%"
         language={language}
         defaultValue={code || (language === "java" ? JAVA_BOILERPLATE : "")}
         loading={
-          <div className="flex h-full min-h-[220px] items-center justify-center gap-3 bg-[#01050f] text-sm font-medium text-indigo-200">
-            <Loader2 className="h-5 w-5 animate-spin text-indigo-300" />
+          <div className="flex h-full min-h-[220px] items-center justify-center gap-3 bg-editor-bg text-sm font-medium text-subtle">
+            <Loader2 className="h-5 w-5 animate-spin text-accent-primary" />
             Loading workspace modules...
           </div>
         }

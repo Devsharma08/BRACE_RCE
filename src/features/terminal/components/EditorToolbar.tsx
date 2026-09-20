@@ -189,9 +189,9 @@ const EditorToolbar = ({
           className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
         >
           {copied ? (
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
+            <Check className="w-3.5 h-3.5 text-accent-success" />
           ) : (
-            <Copy className="w-3.5 h-3.5 text-slate-400" />
+            <Copy className="w-3.5 h-3.5 text-subtle" />
           )}
         </button>
 
@@ -203,7 +203,7 @@ const EditorToolbar = ({
           aria-label="Format active code"
           className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
         >
-          <IndentationIcon className="w-3.5 h-3.5 text-slate-400" />
+          <IndentationIcon className="w-3.5 h-3.5 text-subtle" />
         </button>
 
         {/* NOTES TOGGLE */}
@@ -230,7 +230,7 @@ const EditorToolbar = ({
           aria-label="Clear output"
           className="flex items-center justify-center rounded-btn border border-accent-primary/40 px-2 py-1.5 text-xs font-mono text-accent-primary transition-all duration-150 hover:bg-accent-primary/10 active:scale-95"
         >
-          <Clear className="w-3.5 h-3.5 text-cyan-400" />
+          <Clear className="w-3.5 h-3.5 text-accent-primary" />
         </button>
 
         {/* RESET TEMPLATE */}
@@ -242,7 +242,7 @@ const EditorToolbar = ({
             aria-label="Reset to original problem template"
             className="flex items-center justify-center rounded-btn border border-accent-danger/20 bg-accent-danger/5 px-2 py-1.5 text-xs font-mono text-accent-danger transition-all duration-150 hover:border-accent-danger/40 hover:bg-accent-danger/10 active:scale-95"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+            <RotateCcw className="w-3.5 h-3.5 text-accent-danger" />
           </button>
         )}
 
@@ -272,9 +272,9 @@ const EditorToolbar = ({
           }`}
         >
           {executingMode === "RUN" ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-primary" />
           ) : (
-            <Play className="w-3.5 h-3.5 text-cyan-400" />
+            <Play className="w-3.5 h-3.5 text-accent-primary" />
           )}
           {!isCompact && <span className="ml-1 text-[10px]">RUN</span>}
         </button>
@@ -292,9 +292,9 @@ const EditorToolbar = ({
             }`}
           >
             {executingMode === "SUBMIT" ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-success" />
             ) : (
-              <Send className="w-3.5 h-3.5 text-emerald-400" />
+              <Send className="w-3.5 h-3.5 text-accent-success" />
             )}
             {!isCompact && <span className="ml-1 text-[10px]">SUBMIT</span>}
           </button>

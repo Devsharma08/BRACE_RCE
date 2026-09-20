@@ -51,18 +51,18 @@ export const TestCaseCard = ({
             RUN TEST #{index + 1} ONLY
           </button>
         )}
-        {isRunningThis && <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />}
+        {isRunningThis && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-primary" />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
-          <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Input</div>
+          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
             {item.input || "-"}
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Expected</div>
+          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
             {item.expectedOutput || "-"}
           </div>
@@ -71,7 +71,7 @@ export const TestCaseCard = ({
 
       {hasResult && match?.output !== undefined && (
         <div className="mt-3">
-          <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">Actual</div>
+          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Actual</div>
           <div className={`border p-2 text-[10px] font-mono whitespace-pre-wrap ${
             passed ? "border-accent-success/15 text-accent-success" : "border-accent-danger/15 text-accent-danger"
           }`}>

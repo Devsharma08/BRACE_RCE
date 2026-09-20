@@ -78,23 +78,23 @@ const ProblemTimer = forwardRef<ProblemTimerRef, ProblemTimerProps>(
     if (!problemId) return null;
 
     return (
-      <div className="relative flex items-center bg-black/40 border border-white/10 px-2 py-1 gap-2 ml-2">
-        <Timer className="w-3.5 h-3.5 text-cyan-400" />
-        <span className="text-[11px] font-mono text-slate-300 min-w-[36px] text-center select-none">
+      <div className="relative flex items-center bg-black/60 border border-subtle-line px-2 py-1 gap-2 ml-2">
+        <Timer className="w-3.5 h-3.5 text-accent-primary" />
+        <span className="text-[11px] font-mono text-subtle min-w-[36px] text-center select-none">
           {formatTime(seconds)}
         </span>
 
-        <div className="flex items-center border-l border-white/10 pl-1 ml-1 gap-1">
+        <div className="flex items-center border-l border-subtle-line pl-1 ml-1 gap-1">
           <button
             onClick={() => setIsRunning(!isRunning)}
-            className="text-slate-500 hover:text-cyan-400 p-0.5 transition-colors"
+            className="text-faint hover:text-accent-primary p-0.5 transition-colors"
             title={isRunning ? "Pause" : "Resume"}
           >
             {isRunning ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
           </button>
           <button
             onClick={() => { setSeconds(0); secondsRef.current = 0; }}
-            className="text-slate-500 hover:text-rose-400 p-0.5 transition-colors"
+            className="text-faint hover:text-accent-danger p-0.5 transition-colors"
             title="Reset Timer"
           >
             <RotateCcw className="w-3 h-3" />
@@ -103,15 +103,15 @@ const ProblemTimer = forwardRef<ProblemTimerRef, ProblemTimerProps>(
             onClick={() => setShowDropdown(!showDropdown)}
             className={`p-0.5 transition-colors relative ${
               submissionTimes.length > 0
-                ? "text-cyan-400 hover:text-cyan-300"
-                : "text-slate-600 cursor-not-allowed"
+                ? "text-accent-primary hover:text-accent-primary"
+                : "text-faint cursor-not-allowed"
             }`}
             title="Submission Queue Analysis"
             disabled={submissionTimes.length === 0}
           >
             <History className="w-3 h-3" />
             {submissionTimes.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-cyan-500 text-[7px] font-bold text-black">
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-accent-primary text-[7px] font-bold text-black">
                 {submissionTimes.length}
               </span>
             )}
@@ -119,19 +119,19 @@ const ProblemTimer = forwardRef<ProblemTimerRef, ProblemTimerProps>(
         </div>
 
         {showDropdown && submissionTimes.length > 0 && (
-          <div className="absolute top-full left-0 mt-2 w-56 bg-slate-950 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,0,0,0.8)] z-50 p-2">
-            <div className="text-[9px] uppercase tracking-widest text-cyan-500 mb-2 border-b border-white/10 pb-1 flex justify-between items-center">
+          <div className="absolute top-full left-0 mt-2 w-56 bg-base border border-accent-primary/30 shadow-[0_0_15px_rgba(0,0,0,0.8)] z-50 p-2">
+            <div className="text-[9px] uppercase tracking-widest text-accent-primary mb-2 border-b border-subtle-line pb-1 flex justify-between items-center">
               <span>SUBMISSION QUEUE ANALYSIS</span>
-              <span className="text-slate-600">{submissionTimes.length} total</span>
+              <span className="text-faint">{submissionTimes.length} total</span>
             </div>
             <ul className="max-h-40 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-white/10 pr-1">
               {submissionTimes.map((time, idx) => (
                 <li
                   key={idx}
-                  className="flex justify-between items-center text-[10px] font-mono text-slate-400 hover:text-white hover:bg-white/5 px-1 py-1 transition-colors"
+                  className="flex justify-between items-center text-[10px] font-mono text-subtle hover:text-fg hover:bg-surface-hover px-1 py-1 transition-colors"
                 >
-                  <span className="text-slate-500">Attempt #{idx + 1}</span>
-                  <span className="text-cyan-300 bg-cyan-950/40 px-1.5 py-0.5 rounded">{time}</span>
+                  <span className="text-faint">Attempt #{idx + 1}</span>
+                  <span className="text-accent-primary bg-accent-primary/10 px-1.5 py-0.5 rounded">{time}</span>
                 </li>
               ))}
             </ul>
