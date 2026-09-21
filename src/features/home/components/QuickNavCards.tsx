@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import {
   Swords,
-  Terminal,
   Users,
   Code2,
+  Layers3,
 } from "lucide-react";
 
 /**
@@ -27,13 +27,13 @@ const cards = [
       "Enter ranked rooms, synchronize with an opponent, and solve under a shared clock.",
   },
   {
-    href: "/terminal",
-    icon: Terminal,
+    href: "/ds",
+    icon: Layers3,
     accent: "text-accent-primary",
-    label: "Workspace",
-    title: "Launch terminal",
+    label: "Structure",
+    title: "Data structures",
     description:
-      "Write, run, and debug code in your sandboxed coding workspace with live diagnostics.",
+      "Master every structure. Choose a domain, open its problem path, and build signal through focused repetition.",
   },
   {
     href: "/friends",
@@ -66,10 +66,10 @@ export function QuickNavCards() {
             quick navigation
           </div>
           <h2 className="mt-5 font-mono text-4xl font-bold tracking-[-0.04em] text-fg md:text-5xl">
-            Jump to a <span className="text-accent-primary">protocol.</span>
+            Master every <span className="text-accent-primary">structure.</span>
           </h2>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-faint mx-auto">
-            Four entry points. Same execution engine underneath — pick the protocol that fits the mission.
+          <p className="mt-5 max-w-2xl text-sm leading-7 text-subtle mx-auto">
+            Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
           </p>
         </div>
 

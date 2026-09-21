@@ -8,6 +8,9 @@ const Terminal = lazy(() => import("./pages/Terminal.tsx"));
 const DataStructureDetail = lazy(
   () => import("./pages/DataStructureDetail.tsx"),
 );
+const DataStructureDirectory = lazy(
+  () => import("./pages/DataStructureDirectory.tsx"),
+);
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
@@ -112,6 +115,7 @@ export const Root = () => {
                       <Route path="about" element={<About />} />
                       <Route path="/signin" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
+                      <Route path="/ds" element={<DataStructureDirectory />} />
                       <Route
                         path="/ds/:slug"
                         element={<DataStructureDetail />}

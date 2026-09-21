@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { WorkspaceDirectory } from "./WorkspaceDirectory";
 import { CategoryDirectory } from "./CategoryDirectory";
+import { WorkspaceTeaser } from "./WorkspaceTeaser";
 import { services } from "./WorkspaceDirectory";
 
 afterEach(cleanup);
@@ -40,7 +41,7 @@ describe("WorkspaceDirectory", () => {
 });
 
 describe("CategoryDirectory", () => {
-  test("renders eight category rows linking to /problems", () => {
+  test("renders eight category rows routing into their /ds/:slug consoles", () => {
     render(
       <MemoryRouter>
         <CategoryDirectory />
@@ -49,6 +50,40 @@ describe("CategoryDirectory", () => {
     const section = screen.getByRole("region", { name: "Problem categories" });
     const links = within(section).getAllByRole("link");
     expect(links).toHaveLength(8);
-    links.forEach((link) => expect(link).toHaveAttribute("href", "/problems"));
+    const hrefs = links.map((l) => l.getAttribute("href"));
+    [
+      "/ds/tree",
+      "/ds/dynamic-programming",
+      "/ds/array",
+      "/ds/linked-list",
+      "/ds/searching",
+      "/ds/math",
+      "/ds/stack",
+      "/ds/greedy",
+    ].forEach((href) => expect(hrefs).toContain(href));
   });
 });
+
+describe("WorkspaceTeaser", () => {
+  test("renders the workspace card routing to /terminal", () => {
+    render(
+      <MemoryRouter>
+        <WorkspaceTeaser />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("region", { name: "Workspace" })).toBeInTheDocument();
+    expect(screen.getByText("Workspace")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Write, run, and debug code in your sandboxed coding workspace with live diagnostics.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Launch terminal/ }),
+    ).toHaveAttribute("href", "/terminal");
+    expect(
+      screen.getByRole("link", { name: /Open protocol/ }),
+    ).toHaveAttribute("href", "/ds");
+  });
+});
+
