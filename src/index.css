@@ -95,6 +95,7 @@
   --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-card-hover: 0 0 24px color-mix(in srgb, var(--accent-primary) 10%, transparent);
   --shadow-accent: 0 0 20px color-mix(in srgb, var(--accent-primary) 20%, transparent);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.24);
   --shadow-accent-lg: 0 0 40px color-mix(in srgb, var(--accent-primary) 30%, transparent);
 
   --backdrop-blur: blur(12px);
@@ -118,10 +119,12 @@
   --font-display: "Orbitron", "Space Grotesk", sans-serif;
 
   --radius-card: 12px;
+  --radius-panel: 28px;
   --radius-btn: 8px;
 
   --shadow-card: 0 0 0 1px var(--border-subtle), 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-card-hover: 0 0 24px color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.24);
 
   /* Canonical surfaces (bg-base, bg-surface, bg-surface-hover) */
   --color-base:           var(--bg-base);
@@ -191,7 +194,7 @@
 
   /* ── Terminal / code surface ──────────────────────────────────────────────── */
   --color-terminal-bg: #070b16;
-  --color-editor-bg:   #01050f;
+  --color-editor-bg:   #000208;
   --color-overlay-bg:  #05070c;
 
   /* ── Spinner / loading accent ────────────────────────────────────────────── */

@@ -21,6 +21,7 @@ import {
   BookOpen,
   Flame,
   ArrowUpRight,
+  Trophy,
 } from "lucide-react";
 import { useAnalytics } from "../hooks/useAnalytics";
 
@@ -115,26 +116,101 @@ export const Problems: React.FC = () => {
           flex flex-col gap-6
         "
       >
-        {/* HEADER BAR */}
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-subtle-line pb-4">
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold text-fg tracking-wide flex items-center gap-2">
-              <Code2 className="w-5 h-5 text-accent-primary shrink-0" />
-              <span>PROBLEM REPOSITORY</span>
+        {/* HEADER BAR — console software strip + overview cards */}
+        <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-accent-primary">
+              <Code2 size={13} />
+              <span>BRACE // training command center</span>
+            </div>
+            <h1 className="text-2xl font-bold text-fg tracking-tight sm:text-3xl">
+              Problem repository
             </h1>
-            <p className="text-xs text-subtle mt-0.5">
-              Explore and solve algorithmic challenges across all data structures
+            <p className="text-xs text-subtle leading-relaxed max-w-xl">
+              Browse, filter, and select algorithmic challenges to open in the execution workspace.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="text-xs font-mono text-accent-success bg-accent-success/10 border border-accent-success/30 px-3 py-1.5 whitespace-nowrap">
-              SOLVED: <strong className="text-fg">{problems.filter((p: any) => p.isSolved).length}</strong> / {problems.length}
-            </div>
-            <div className="text-xs font-mono text-accent-primary bg-accent-primary/10 border border-accent-primary/30 px-3 py-1.5 whitespace-nowrap">
-              TOTAL: <strong className="text-fg">{problems.length}</strong>
-            </div>
+          <div className="flex flex-wrap items-center gap-3 text-[9px] uppercase tracking-widest">
+            <span className="border border-accent-success/25 bg-accent-success/5 px-2.5 py-1.5 text-accent-success">
+              Solved <strong className="text-fg ml-1">{problems.filter((p: any) => p.isSolved).length}</strong>
+            </span>
+            <span className="border border-accent-primary/25 bg-accent-primary/5 px-2.5 py-1.5 text-accent-primary">
+              Indexed <strong className="text-fg ml-1">{problems.length}</strong>
+            </span>
+            {analytics?.summary && (
+              <span className="border border-accent-warning/25 bg-accent-warning/5 px-2.5 py-1.5 text-accent-warning">
+                Streak <strong className="text-fg ml-1">{analytics.summary.currentStreak ?? 0}</strong>
+              </span>
+            )}
           </div>
         </header>
+
+        {/* OVERVIEW CARDS */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
+            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-accent-primary/10" />
+            <div className="relative flex items-center justify-between">
+              <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+                <Target size={13} />
+                Next move
+              </span>
+              <ArrowUpRight size={14} className="text-accent-primary" />
+            </div>
+            <h2 className="relative mt-7 text-lg font-bold text-fg">Choose a pattern to practice.</h2>
+            <p className="relative mt-2 text-xs leading-5 text-subtle">
+              Start with an indexed problem, open it in the terminal, and validate your reasoning against real test cases.
+            </p>
+            <button className="relative mt-5 flex items-center gap-2 border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10">
+              Browse patterns
+              <ChevronRight size={12} />
+            </button>
+          </article>
+
+          <article className="rounded-2xl border border-subtle-line bg-surface p-5">
+            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+              <BookOpen size={13} />
+              Study route
+            </div>
+            <div className="mt-7 flex items-end justify-between">
+              <div>
+                <p className="text-lg font-bold text-fg">Foundations</p>
+                <p className="mt-1 text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-muted">path / open</span>
+            </div>
+            <div className="mt-5 h-1 overflow-hidden bg-surface-hover">
+              <div className="h-full w-1/4 bg-accent-success" />
+            </div>
+            <p className="mt-3 text-[9px] uppercase tracking-widest text-muted">
+              Continue when your training data is connected
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-subtle-line bg-surface p-5 md:col-span-2 xl:col-span-1">
+            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
+              <Flame size={13} />
+              Training signal
+            </div>
+            <div className="mt-7 grid grid-cols-2 gap-3">
+              <div className="border-l border-accent-warning/40 pl-3">
+                <p className="text-lg font-bold text-fg">
+                  {analytics?.summary?.currentStreak ?? 0}
+                </p>
+                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">active streak</p>
+              </div>
+              <div className="border-l border-subtle-line pl-3">
+                <p className="text-lg font-bold text-fg">
+                  {analytics?.summary?.totalSolved ?? problems.filter((p: any) => p.isSolved).length}
+                </p>
+                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">completed</p>
+              </div>
+            </div>
+            <p className="mt-6 text-[9px] uppercase tracking-widest text-muted">
+              <Trophy size={12} className="inline mr-1 text-accent-warning" />
+              Connect your profile to track progress
+            </p>
+          </article>
+        </div>
 
         {/* SEARCH & DIFFICULTY FILTER BAR */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 border border-subtle-line bg-raised p-4 rounded-none">

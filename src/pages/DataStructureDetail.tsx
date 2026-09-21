@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchSystemProblems } from "../features/terminal/api";
 import { Loader2, ArrowLeft, Terminal, LayoutGrid, Award } from "lucide-react";
 import { TableSkeleton } from "../components/ui/Skeleton";
+import { AlgorithmLibrary } from "../components/features/AlgorithmLibrary";
 
 type Complexity = {
   average: string;
@@ -265,6 +266,9 @@ const DataStructureDetail = () => {
             </ul>
           </div>
         </div>
+
+        {/* ── ALGORITHM LIBRARY (theory → syntax → practice) ────────────── */}
+        <AlgorithmLibrary slug={slug ?? ""} />
 
         {/* Challenges Header */}
         <div className="border-b border-subtle-line pb-3 mb-6 flex items-center justify-between tracking-wider select-none">

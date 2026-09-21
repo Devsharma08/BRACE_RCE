@@ -31,14 +31,14 @@ const categories: {
   count: string;
   href: string;
 }[] = [
-  { id: "01", title: "Trees & Graphs", description: "Traverse non-linear structures. Master BSTs, Tries, and complex graph algorithms.", icon: GitBranch, accent: "cyan", count: "32 paths", href: "/problems" },
-  { id: "02", title: "Dynamic Programming", description: "Break down hard problems and build efficient sub-solutions from first principles.", icon: Layers3, accent: "lime", count: "28 paths", href: "/problems" },
-  { id: "03", title: "Arrays & Strings", description: "The core foundation of sequence logic, indexing, windows, and transformations.", icon: Brackets, accent: "violet", count: "46 paths", href: "/problems" },
-  { id: "04", title: "Linked Lists", description: "Sequential access, cycle detection, and pointer mastery under pressure.", icon: Link2, accent: "amber", count: "18 paths", href: "/problems" },
-  { id: "05", title: "Sorting & Searching", description: "Optimize collection performance with lookup and ordering techniques.", icon: Search, accent: "pink", count: "24 paths", href: "/problems" },
-  { id: "06", title: "Math & Geometry", description: "Number theory, primes, modular arithmetic, and spatial algorithms.", icon: Sigma, accent: "cyan", count: "21 paths", href: "/problems" },
-  { id: "07", title: "Stacks & Queues", description: "Master linear data flow using LIFO and FIFO structures.", icon: ListFilter, accent: "lime", count: "16 paths", href: "/problems" },
-  { id: "08", title: "Greedy & Intervals", description: "Make optimal local choices and solve range intersection problems.", icon: Waypoints, accent: "violet", count: "19 paths", href: "/problems" },
+  { id: "01", title: "Trees & Graphs", description: "Traverse non-linear structures. Master BSTs, Tries, and complex graph algorithms.", icon: GitBranch, accent: "cyan", count: "32 paths", href: "/ds/tree" },
+  { id: "02", title: "Dynamic Programming", description: "Break down hard problems and build efficient sub-solutions from first principles.", icon: Layers3, accent: "lime", count: "28 paths", href: "/ds/dynamic-programming" },
+  { id: "03", title: "Arrays & Strings", description: "The core foundation of sequence logic, indexing, windows, and transformations.", icon: Brackets, accent: "violet", count: "46 paths", href: "/ds/array" },
+  { id: "04", title: "Linked Lists", description: "Sequential access, cycle detection, and pointer mastery under pressure.", icon: Link2, accent: "amber", count: "18 paths", href: "/ds/linked-list" },
+  { id: "05", title: "Sorting & Searching", description: "Optimize collection performance with lookup and ordering techniques.", icon: Search, accent: "pink", count: "24 paths", href: "/ds/searching" },
+  { id: "06", title: "Math & Geometry", description: "Number theory, primes, modular arithmetic, and spatial algorithms.", icon: Sigma, accent: "cyan", count: "21 paths", href: "/ds/math" },
+  { id: "07", title: "Stacks & Queues", description: "Master linear data flow using LIFO and FIFO structures.", icon: ListFilter, accent: "lime", count: "16 paths", href: "/ds/stack" },
+  { id: "08", title: "Greedy & Intervals", description: "Make optimal local choices and solve range intersection problems.", icon: Waypoints, accent: "violet", count: "19 paths", href: "/ds/greedy" },
 ];
 
 const accents: Record<AccentKey, string> = {
@@ -49,11 +49,16 @@ const accents: Record<AccentKey, string> = {
   pink: "text-accent-pink border-accent-pink/20 bg-accent-pink/[0.035]",
 };
 
-export function CategoryDirectory() {
+export function CategoryDirectory({
+  showHeader = true,
+}: {
+  showHeader?: boolean;
+}) {
   return (
     <section aria-label="Problem categories" className="w-full py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header */}
+        {showHeader && (
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             <span className="h-2 w-2 rounded-full bg-accent-primary shadow-[0_0_10px_rgba(0,212,255,0.9)]" />
@@ -66,6 +71,7 @@ export function CategoryDirectory() {
             Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
           </p>
         </div>
+        )}
 
         {/* Ledger rows */}
         <div className="border-b border-subtle-line">

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   Swords,
   Send,
@@ -47,6 +48,7 @@ interface FriendRequest {
 
 export default function FriendsDashboard() {
   const { sendDirectMessage, socket, requestPresence } = useSocket();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -90,8 +92,24 @@ export default function FriendsDashboard() {
     },
   });
 
-  const displayedMessages: Message[] =
-    messages.length > 0 ? messages : (directMessages as Message[]);
+  // Session messages (optimistic sends + socket deliveries) are merged ONTO the
+  // DB history instead of replacing it — previously the first sent message made
+  // displayedMessages prefer the session array, hiding the whole conversation.
+  // Deduped by id: socket deliveries carry the DB id, so a message that arrives
+  // live and again via refetch renders once.
+  const displayedMessages = useMemo<Message[]>(() => {
+    const history = directMessages as Message[];
+    if (messages.length === 0) return history;
+    const historyIds = new Set(history.map((m) => m.id));
+    return [...history, ...messages.filter((m) => !historyIds.has(m.id))];
+  }, [directMessages, messages]);
+
+  // Ownership: DB history carries real user ids for both directions, while
+  // optimistic sends use the "ME" sentinel — so a literal === "ME" check made
+  // every reloaded conversation render as received. Compare against the
+  // signed-in user's id instead.
+  const isOwnMessage = (msg: Message) =>
+    msg.senderId === "ME" || (user?.id != null && msg.senderId === user.id);
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({
@@ -288,7 +306,7 @@ export default function FriendsDashboard() {
           />
 
           {/* Chat List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="themed-scroll flex-1 overflow-y-auto">
             {friendsLoading ? (
               <div className="p-4 text-xs text-subtle">Loading...</div>
             ) : friends.length === 0 ? (
@@ -365,18 +383,18 @@ export default function FriendsDashboard() {
               </div>
 
               {/* Messages */}
-              <div ref={chatScrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+              <div ref={chatScrollRef} className="themed-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
                 {displayedMessages.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-xs text-subtle">No messages yet. Say hello!</div>
+                  <div className="flex flex-1 items-center justify-center text-xs text-subtle">No messages yet. Say hello!</div>
                 ) : (
                   displayedMessages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={`flex ${msg.senderId === "ME" ? "justify-end" : "justify-start"}`}
+                      className={`flex min-w-0 ${isOwnMessage(msg) ? "justify-end" : "justify-start"}`}
                     >
                       <div
-                        className={`px-4 py-2 max-w-[70%] text-sm ${
-                          msg.senderId === "ME"
+                        className={`w-fit max-w-[75%] min-w-0 px-4 py-2 text-sm leading-5 [overflow-wrap:anywhere] whitespace-pre-wrap break-words ${
+                          isOwnMessage(msg)
                             ? "rounded-card border border-accent-primary/20 bg-accent-primary/10 text-fg"
                             : "rounded-card border border-subtle-line bg-surface text-fg"
                         }`}
@@ -396,7 +414,7 @@ export default function FriendsDashboard() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="flex-1 rounded-btn border border-subtle-line bg-base px-4 py-2.5 text-sm text-fg focus:border-accent-primary focus:outline-none"
+                    className="min-w-0 flex-1 rounded-btn border border-subtle-line bg-base px-4 py-2.5 text-sm text-fg focus:border-accent-primary focus:outline-none"
                   />
                   <button
                     type="submit"
@@ -420,7 +438,7 @@ export default function FriendsDashboard() {
         {/* ── RIGHT COLUMN: FRIEND PROFILE + BATTLE HISTORY ───────────────── */}
         <aside
           aria-label="Selected operative record"
-          className="hidden w-72 min-w-0 shrink-0 flex-col overflow-y-auto border-l border-subtle-line bg-panel xl:flex"
+          className="themed-scroll hidden w-72 min-w-0 shrink-0 flex-col overflow-y-auto border-l border-subtle-line bg-panel xl:flex"
         >
           {activeTab ? (
             <>

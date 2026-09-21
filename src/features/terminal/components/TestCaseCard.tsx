@@ -54,6 +54,24 @@ export const TestCaseCard = ({
         {isRunningThis && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-primary" />}
       </div>
 
+      {/* Per-input cost — real measurements from the execution runtime */}
+      {match?.metrics && (
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <div className="border border-accent-primary/20 bg-accent-primary/5 px-2.5 py-2">
+            <span className="text-[8px] uppercase tracking-widest text-faint">Time</span>
+            <strong className="mt-0.5 block font-mono text-xs font-bold text-accent-primary">
+              {match.metrics.durationMs}ms
+            </strong>
+          </div>
+          <div className="border border-accent-violet/20 bg-accent-violet/5 px-2.5 py-2">
+            <span className="text-[8px] uppercase tracking-widest text-faint">Space</span>
+            <strong className="mt-0.5 block font-mono text-xs font-bold text-accent-violet">
+              {(match.metrics.memoryKb / 1024).toFixed(1)}MB
+            </strong>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
