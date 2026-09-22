@@ -91,7 +91,7 @@ function CodePane({
   return (
     <div className="flex flex-col border border-subtle-line bg-editor-bg">
       <div className="flex items-center justify-between gap-3 border-b border-subtle-line bg-black/60 px-3 py-2">
-        <span className="flex min-w-0 items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-widest text-faint">
+        <span className="flex min-w-0 items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-widest text-subtle">
           <Terminal className="h-3 w-3 shrink-0 text-accent-primary/50" />
           <span className="truncate">~/{label.toLowerCase()}</span>
           <span className="shrink-0 text-accent-primary/70">· {languageLabel}</span>
@@ -101,7 +101,7 @@ function CodePane({
             aria-label={`${label} language`}
             value={language}
             onChange={(e) => onLanguageChange(e.target.value as Language)}
-            className="border border-subtle-line bg-black/60 px-2 py-1 text-[9px] font-mono uppercase tracking-widest text-faint outline-none transition-colors focus:border-accent-primary/60"
+            className="border border-subtle-line bg-black/60 px-2 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle outline-none transition-colors focus:border-accent-primary/60"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>
@@ -116,7 +116,7 @@ function CodePane({
             className={`flex items-center gap-1 border px-2 py-1 text-[9px] font-mono uppercase tracking-widest transition-colors ${
               copied
                 ? "border-accent-success/50 text-accent-success"
-                : "border-subtle-line text-faint hover:border-accent-primary/50 hover:text-accent-primary"
+                : "border-subtle-line text-subtle hover:border-accent-primary/50 hover:text-accent-primary"
             }`}
           >
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
@@ -159,9 +159,6 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
         </span>
         <span className="flex shrink-0 items-center gap-2 text-[9px] font-mono uppercase tracking-widest text-faint">
           <span className="border border-subtle-line px-2 py-0.5">{entry.timeComplexity}</span>
-          <span className="hidden border border-subtle-line px-2 py-0.5 sm:inline">
-            {entry.spaceComplexity.split(" ")[0]}
-          </span>
         </span>
       </header>
 
@@ -169,22 +166,22 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
         <p className="text-xs leading-6 text-subtle">{entry.idea}</p>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* Pseudocode follows the same language switch as the implementation. */}
-          <CodePane
-            label="PSEUDOCODE"
-            code={entry.pseudocode[language].join("\n")}
-            language={language}
-            onLanguageChange={setLanguage}
-            languageLabel={LANGUAGE_LABEL[language]}
-          />
-          <CodePane
-            label="IMPLEMENTATION"
-            code={entry.implementations[language]}
-            language={language}
-            onLanguageChange={setLanguage}
-            languageLabel={LANGUAGE_LABEL[language]}
-          />
-        </div>
+        {/* Pseudocode follows the same language switch as the implementation. */}
+        <CodePane
+          label="PSEUDOCODE"
+          code={entry.pseudocode[language].join("\n")}
+          language={language}
+          onLanguageChange={setLanguage}
+          languageLabel={LANGUAGE_LABEL[language]}
+        />
+        <CodePane
+          label="IMPLEMENTATION"
+          code={entry.implementations[language]}
+          language={language}
+          onLanguageChange={setLanguage}
+          languageLabel={LANGUAGE_LABEL[language]}
+        />
+      </div>
       </div>
     </article>
   );
