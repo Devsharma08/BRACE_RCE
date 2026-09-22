@@ -87,3 +87,32 @@ describe("WorkspaceTeaser", () => {
   });
 });
 
+import { QuickNavCards } from "./QuickNavCards";
+
+describe("QuickNavCards", () => {
+  test("renders four navigation cards with visible descriptions", () => {
+    render(
+      <MemoryRouter>
+        <QuickNavCards />
+      </MemoryRouter>,
+    );
+    const section = screen.getByRole("region", { name: "Quick navigation" });
+    const cards = within(section).getAllByRole("link", { name: /Go/ });
+    expect(cards).toHaveLength(4);
+
+    const hrefs = cards.map((c) => c.getAttribute("href"));
+    expect(hrefs).toContain("/battle");
+    expect(hrefs).toContain("/ds");
+    expect(hrefs).toContain("/friends");
+    expect(hrefs).toContain("/problems");
+
+    // Each card exposes its title and description as visible text.
+    // Card 2 is the /ds card — verify its description reads cleanly.
+    const dsCard = cards[1];
+    expect(dsCard.textContent).toContain("Data structures");
+    expect(dsCard.textContent).toContain(
+      "Master every structure. Choose a domain, open its problem path",
+    );
+  });
+});
+

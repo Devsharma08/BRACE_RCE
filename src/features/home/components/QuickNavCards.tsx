@@ -95,13 +95,13 @@ export function QuickNavCards() {
                 <h3 className="font-mono text-lg font-bold tracking-tight text-fg group-hover:text-accent-primary transition-colors">
                   {title}
                 </h3>
-                <p className="text-sm leading-6 text-faint group-hover:text-subtle transition-colors">
+                <p className="text-sm leading-6 text-subtle group-hover:text-subtle transition-colors">
                   {description}
                 </p>
               </div>
               {/* Footer chip */}
               <div className="mt-auto flex items-center justify-between border-t border-line pt-4">
-                <span className="font-mono text-[9px] uppercase tracking-wider text-faint">
+                <span className="font-mono text-[9px] uppercase tracking-wider text-subtle">
                   Open protocol
                 </span>
                 <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${accent}`}>
