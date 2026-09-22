@@ -96,22 +96,24 @@ describe("QuickNavCards", () => {
         <QuickNavCards />
       </MemoryRouter>,
     );
-    const section = screen.getByRole("region", { name: "Quick navigation" });
-    const cards = within(section).getAllByRole("link", { name: /Go/ });
-    expect(cards).toHaveLength(4);
+        const section = screen.getByRole("region", { name: "Quick navigation" });
+    const exploreBtn = within(section).getByRole("link", { name: /Explore/ });
+    expect(exploreBtn.getAttribute("href")).toBe("/ds");
 
-    const hrefs = cards.map((c) => c.getAttribute("href"));
+    const goCards = within(section).getAllByRole("link", { name: /Go/ });
+    expect(goCards).toHaveLength(3);
+
+    const hrefs = [exploreBtn, ...goCards].map((c) => c.getAttribute("href"));
     expect(hrefs).toContain("/battle");
     expect(hrefs).toContain("/ds");
     expect(hrefs).toContain("/friends");
     expect(hrefs).toContain("/problems");
 
-    // Each card exposes its title and description as visible text.
-    // Card 2 is the /ds card — verify its description reads cleanly.
-    const dsCard = cards[1];
-    expect(dsCard.textContent).toContain("Data structures");
+            // Each card exposes its title and description as visible text.
+    // The /ds card — verify its description reads cleanly.
+    const dsCard = within(section).getByRole("link", { name: /Data structures/ });
     expect(dsCard.textContent).toContain(
-      "Master every structure. Choose a domain, open its problem path",
+      "Eight domains, one execution engine. Open a structure, study the theory and implementations, then solve the matching problems.",
     );
   });
 });

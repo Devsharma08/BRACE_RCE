@@ -1,5 +1,6 @@
 import type { FC } from "react";
-import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight, Trees, List, Braces, Search } from "lucide-react";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
@@ -72,6 +73,39 @@ const DataStructureDirectory: FC = () => (
       </header>
 
       {/* OVERVIEW CARDS */}
+      {/* JUMP TO A PROTOCOL — four foundational DS entry points */}
+      <section aria-label="Jump to a protocol">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-accent-primary/20 bg-accent-primary/5">
+            <Target size={11} className="text-accent-primary" />
+          </span>
+          <h2 className="text-[10px] uppercase tracking-[0.2em] text-muted">
+            Jump to a protocol
+          </h2>
+          <span className="h-px flex-1 bg-subtle-line" />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+                        { href: "/ds/tree", icon: Trees, title: "Trees", desc: "DFS / BFS traversals, level order, diameter." },
+            { href: "/ds/array", icon: List, title: "Arrays", desc: "Two-pointers, sliding windows, prefix sums." },
+            { href: "/ds/stack", icon: Braces, title: "Stacks", desc: "Monotonic stacks, min-stack, parenthesis matching." },
+            { href: "/ds/searching", icon: Search, title: "Searching", desc: "Binary search on answer, lower bounds, rotation." },
+          ].map((entry) => (
+            <Link
+              key={entry.href}
+              to={entry.href}
+              className="group relative flex flex-col gap-2 rounded-card border border-subtle-line bg-surface px-4 py-3.5 transition hover:border-accent-primary/40 hover:bg-surface-hover"
+            >
+              <entry.icon size={16} className="text-accent-primary/60 transition group-hover:text-accent-primary" />
+              <h3 className="text-sm font-bold text-fg group-hover:text-accent-primary">{entry.title}</h3>
+              <p className="text-[9px] text-subtle">{entry.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-accent-primary/10" />

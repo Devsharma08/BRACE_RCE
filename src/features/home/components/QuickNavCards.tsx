@@ -33,7 +33,9 @@ const cards = [
     label: "Structure",
     title: "Data structures",
     description:
-      "Master every structure. Choose a domain, open its problem path, and build signal through focused repetition.",
+      "Eight domains, one execution engine. Open a structure, study the theory and implementations, then solve the matching problems.",
+    footerLabel: "Explore",
+    footerAction: "Browse →",
   },
   {
     href: "/friends",
@@ -66,16 +68,16 @@ export function QuickNavCards() {
             quick navigation
           </div>
           <h2 className="mt-5 font-mono text-4xl font-bold tracking-[-0.04em] text-fg md:text-5xl">
-            Master every <span className="text-accent-primary">structure.</span>
+            Four entry points.
           </h2>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-subtle mx-auto">
-            Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
+            Battle arena · data structures · friends · problem workspace — each is a front door into the same execution engine.
           </p>
         </div>
 
         {/* Card grid — uniform radius, surface, border, icon, heading, copy */}
         <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {cards.map(({ href, icon: Icon, accent, label, title, description }) => (
+                    {cards.map(({ href, icon: Icon, accent, label, title, description, footerLabel, footerAction }) => (
             <Link
               key={href}
               to={href}
@@ -83,7 +85,7 @@ export function QuickNavCards() {
             >
               {/* Label + icon row */}
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-faint">
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-subtle">
                   {label}
                 </span>
                 <span className={`grid h-9 w-9 place-items-center rounded-full border border-line bg-black/20 ${accent} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
@@ -100,12 +102,12 @@ export function QuickNavCards() {
                 </p>
               </div>
               {/* Footer chip */}
-              <div className="mt-auto flex items-center justify-between border-t border-line pt-4">
+                            <div className="mt-auto flex items-center justify-between border-t border-line pt-4">
                 <span className="font-mono text-[9px] uppercase tracking-wider text-subtle">
-                  Open protocol
+                  {footerLabel ?? "Open protocol"}
                 </span>
                 <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${accent}`}>
-                  Go <span className="transition group-hover:translate-x-0.5 group-hover:translate-y-[-0.5]">→</span>
+                  {footerAction ?? "Go"} <span className="transition group-hover:translate-x-0.5 group-hover:translate-y-[-0.5]">→</span>
                 </span>
               </div>
             </Link>
