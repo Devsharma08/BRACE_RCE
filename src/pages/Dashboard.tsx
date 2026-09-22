@@ -347,17 +347,10 @@ export const Dashboard: React.FC = () => {
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-bold tracking-wide text-fg">
               <LayoutDashboard className="h-5 w-5 shrink-0 text-accent-primary" />
-              <span>OPERATIVE CONSOLE</span>
+              <span>Dashboard</span>
             </h1>
-            <p className="mt-1 font-sans text-xs text-subtle">
-              Execution history, ranked standing, and your next challenge — in one operational view.
-            </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-lg border border-accent-success/20 bg-accent-success/[0.05] px-3 py-2 text-[9px] uppercase tracking-widest text-accent-success md:flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-[0_0_9px_#00ff87]" />
-              session ready
-            </div>
             <button
               aria-label="Notifications"
               className="grid h-9 w-9 place-items-center rounded-lg border border-subtle-line text-subtle transition hover:border-accent-primary/40 hover:text-accent"
@@ -380,10 +373,6 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
             <div>
-              <div className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
-                <span className="h-2 w-2 rounded-full bg-accent-primary shadow-[0_0_10px_#00d4ff]" />
-                Control surface / 01
-              </div>
               <h1 className="font-mono text-4xl font-black tracking-[-0.05em] text-fg md:text-6xl">
                 Good {timeOfDay.toLowerCase()},<br />
                 <span className="text-accent">{username}</span>
@@ -575,7 +564,7 @@ export const Dashboard: React.FC = () => {
                 Browse corpus
               </Link>
             </div>
-            <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
+            <div className="mt-3 overflow-hidden rounded-card border border-subtle-line bg-surface">
               {recommendedLoading ? (
                 <div aria-hidden="true" className="divide-y divide-subtle-line">
                   {[0, 1, 2].map((i) => (
@@ -640,7 +629,7 @@ export const Dashboard: React.FC = () => {
                 View record
               </Link>
             </div>
-            <div className="overflow-hidden rounded-card border border-subtle-line bg-surface">
+            <div className="mt-3 overflow-hidden rounded-card border border-subtle-line bg-surface">
               {statsLoading ? (
                 <div aria-hidden="true" className="divide-y divide-subtle-line">
                   {[0, 1, 2, 3].map((i) => (
@@ -720,9 +709,41 @@ export const Dashboard: React.FC = () => {
                 Analytics
               </Link>
             </div>
-            <p className="mt-4 max-w-xs font-sans text-sm leading-6 text-subtle">
-              A compact view of your execution rhythm across the current cycle.
-            </p>
+            <div className="mt-3 flex flex-col gap-3">
+              <p className="max-w-xs font-sans text-sm leading-6 text-subtle">
+                A compact view of your execution rhythm across the current cycle.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2">
+                  <Gauge size={12} className="text-accent-primary shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-fg">{myRating?.rating ?? "—"}</div>
+                    <div className="text-[8px] uppercase tracking-widest text-subtle">Elo</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Flame size={12} className="text-accent-warning shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-fg">{analyticsSummary?.currentStreak ?? 0}</div>
+                    <div className="text-[8px] uppercase tracking-widest text-subtle">Streak</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy size={12} className="text-accent-success shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-fg">{winRate}%</div>
+                    <div className="text-[8px] uppercase tracking-widest text-subtle">Win rate</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Activity size={12} className="text-accent-primary/30 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-fg">{matchesPlayed}</div>
+                    <div className="text-[8px] uppercase tracking-widest text-subtle">Battles</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="rounded-card border border-subtle-line bg-surface p-5">
             <AnalyticsErrorBoundary>

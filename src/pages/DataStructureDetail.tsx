@@ -4,6 +4,8 @@ import { fetchSystemProblems } from "../features/terminal/api";
 import { Loader2, ArrowLeft, Terminal, LayoutGrid, Award } from "lucide-react";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { AlgorithmLibrary } from "../components/features/AlgorithmLibrary";
+import DashboardSidebar from "../components/layout/DashboardSidebar";
+import MobileBottomNav from "../components/layout/MobileBottomNav";
 
 type Complexity = {
   average: string;
@@ -189,34 +191,58 @@ const DataStructureDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-base text-fg font-mono relative pb-24">
-      {/* Premium FUI L-Bracket Accents */}
-      <div className="max-w-6xl mx-auto px-4 pt-32 relative">
+    <div className="flex min-h-screen bg-base text-fg font-mono relative">
+      {/* Dot-grid texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
+
+      {/* Desktop sidebar */}
+      <DashboardSidebar rating={undefined} />
+
+      {/* Mobile bottom nav */}
+      <MobileBottomNav />
+
+      {/* MAIN CONTENT */}
+      <main
+        className="
+          flex-1 min-w-0 w-full
+          ml-0 md:ml-[60px] lg:ml-[245px]
+          pt-14 px-4 py-6 md:px-8 md:py-8
+          pb-20 md:pb-8
+          flex flex-col gap-6
+        "
+      >
+        {/* BACK NAVIGATION */}
         <Link
           to="/"
-          className="inline-flex items-center gap-2 border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:text-accent-primary hover:bg-accent-primary/5 px-4 py-2 text-xs uppercase tracking-wider text-faint transition-all duration-300 mb-8 cursor-pointer select-none"
+          className="flex items-center gap-2 border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:text-accent-primary hover:bg-accent-primary/5 px-4 py-2 text-xs uppercase tracking-wider text-faint transition-all duration-300 cursor-pointer select-none"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>[ Back to Dashboard ]</span>
         </Link>
 
-        {/* Header Block */}
-        <div className="border border-subtle-line bg-black/60 p-8 rounded-none mb-8 relative overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.3)]">
-          <div className="absolute top-0 right-0 p-3 text-[9px] text-accent-primary/30 select-none tracking-widest uppercase">
-            CONCEPT // {slug?.replace("-", "_").toUpperCase()}
+        {/* HEADER BLOCK — concept header */}
+        <div className="flex flex-col gap-4 border-b border-subtle-line pb-5">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-accent-primary">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Data Structure Classification</span>
+            </div>
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-fg hover:text-accent-primary transition duration-300">
+              {dsData.title}
+            </h1>
           </div>
-          <div className="flex items-center gap-3 mb-2">
-            <LayoutGrid className="h-5 w-5 text-accent-primary/60" />
-            <span className="text-[10px] text-accent-primary/50 tracking-[0.2em] uppercase font-bold">Data Structure Classification</span>
-          </div>
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-fg mb-4 hover:text-accent-primary transition duration-300">
-            {dsData.title}
-          </h1>
           <p className="text-subtle text-sm max-w-3xl leading-relaxed">{dsData.details}</p>
+
+          {/* Eyebrow — CONCEPT // label */}
+          <div className="flex justify-end">
+            <span className="text-[9px] text-accent-primary/30 select-none tracking-widest uppercase">
+              CONCEPT // {slug?.replace("-", "_").toUpperCase()}
+            </span>
+          </div>
         </div>
 
         {/* Info Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Complexity Card */}
           <div className="lg:col-span-2 border border-subtle-line bg-black/60 p-6 relative rounded-none flex flex-col justify-between">
             <div className="absolute top-[-1px] left-[10%] w-[80%] h-[1px] bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent"></div>
@@ -321,8 +347,8 @@ const DataStructureDetail = () => {
             // NO_ACTIVE_CHALLENGES_FOUND_IN_REPOSITORY
           </div>
         )}
-      </div>
-    </div>
+    </main>
+  </div>
   );
 };
 

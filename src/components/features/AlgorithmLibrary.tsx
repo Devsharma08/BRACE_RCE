@@ -157,31 +157,40 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
           </span>
           <span className="truncate font-mono text-xs font-bold text-fg">{entry.name}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-2 text-[9px] font-mono uppercase tracking-widest text-faint">
-          <span className="border border-subtle-line px-2 py-0.5">{entry.timeComplexity}</span>
-        </span>
       </header>
 
-      <div className="space-y-4 p-4">
-        <p className="text-xs leading-6 text-subtle">{entry.idea}</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ── THEORY: pseudocode + intuition ─────────────────────────────── */}
+        <div id={`alg-${entry.id}-theory`} className="space-y-4">
+          <p className="text-xs leading-6 text-subtle">{entry.idea}</p>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-        {/* Pseudocode follows the same language switch as the implementation. */}
-        <CodePane
-          label="PSEUDOCODE"
-          code={entry.pseudocode[language].join("\n")}
-          language={language}
-          onLanguageChange={setLanguage}
-          languageLabel={LANGUAGE_LABEL[language]}
-        />
-        <CodePane
-          label="IMPLEMENTATION"
-          code={entry.implementations[language]}
-          language={language}
-          onLanguageChange={setLanguage}
-          languageLabel={LANGUAGE_LABEL[language]}
-        />
-      </div>
+          <CodePane
+            label="PSEUDOCODE"
+            code={entry.pseudocode[language].join("\n")}
+            language={language}
+            onLanguageChange={setLanguage}
+            languageLabel={LANGUAGE_LABEL[language]}
+          />
+        </div>
+
+        {/* ── IMPLEMENTATION + COMPLEXITY ─────────────────────────────────── */}
+        <div id={`alg-${entry.id}-implementation`} className="space-y-4">
+          <CodePane
+            label="IMPLEMENTATION"
+            code={entry.implementations[language]}
+            language={language}
+            onLanguageChange={setLanguage}
+            languageLabel={LANGUAGE_LABEL[language]}
+          />
+
+          <div className="flex justify-end">
+            <span className="inline-flex items-center gap-1.5 border border-subtle-line bg-black/60 px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle">
+              <span className="shrink-0">{entry.timeComplexity}</span>
+              <span className="shrink-0 text-faint">·</span>
+              <span className="shrink-0">{entry.spaceComplexity}</span>
+            </span>
+          </div>
+        </div>
       </div>
     </article>
   );

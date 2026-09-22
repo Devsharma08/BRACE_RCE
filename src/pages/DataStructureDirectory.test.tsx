@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import DataStructureDirectory from "./DataStructureDirectory";
+
+vi.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ user: { username: "TEST" } }),
+}));
 
 afterEach(cleanup);
 
@@ -13,7 +17,7 @@ describe("DataStructureDirectory (/ds)", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("heading", { name: /Master every/ })).toBeInTheDocument();
-    expect(screen.getAllByText(/problem corpus \/ taxonomy/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/DS \/\/ corpus taxonomy/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Domains/)).toBeInTheDocument();
     expect(screen.getByText(/corpus synced/)).toBeInTheDocument();
   });
