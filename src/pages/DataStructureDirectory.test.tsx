@@ -7,6 +7,10 @@ vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: { username: "TEST" } }),
 }));
 
+vi.mock("../hooks/useAnalytics", () => ({
+  useAnalytics: () => ({ data: null }),
+}));
+
 afterEach(cleanup);
 
 describe("DataStructureDirectory (/ds)", () => {

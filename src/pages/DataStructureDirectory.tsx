@@ -1,15 +1,20 @@
 import type { FC } from "react";
-import { Layers3, Waypoints } from "lucide-react";
+import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight } from "lucide-react";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
 import { DS_ALGORITHMS } from "../data/dsAlgorithms";
+import { useAnalytics } from "../hooks/useAnalytics";
 
 const domainCount = Object.keys(DS_ALGORITHMS).length;
 const algorithmCount = Object.values(DS_ALGORITHMS).reduce(
   (total, topic) => total + topic.algorithms.length,
   0,
 );
+
+const { data: analytics } = useAnalytics(true);
+const totalSolved = analytics?.summary?.totalSolved ?? 0;
+const currentStreak = analytics?.summary?.currentStreak ?? 0;
 
 /**
  * /ds — data-structure taxonomy landing.
@@ -65,6 +70,73 @@ const DataStructureDirectory: FC = () => (
           </span>
         </div>
       </header>
+
+      {/* OVERVIEW CARDS */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-accent-primary/10" />
+          <div className="relative flex items-center justify-between">
+            <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+              <Layers3 size={13} />
+              Corpus roadmap
+            </span>
+            <ArrowUpRight size={14} className="text-accent-primary" />
+          </div>
+          <h2 className="relative mt-7 text-lg font-bold text-fg">{domainCount} domains</h2>
+          <p className="relative mt-2 text-xs leading-5 text-subtle">
+            {algorithmCount} algorithm patterns across eight data-structure domains. Each domain opens into its own /ds/:slug console — pseudocode, implementation, and a matching problem set.
+          </p>
+          <button className="relative mt-5 flex items-center gap-2 border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10">
+            Browse corpus
+            <ChevronRight size={12} />
+          </button>
+        </article>
+
+        <article className="rounded-2xl border border-subtle-line bg-surface p-5">
+          <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+            <BookOpen size={13} />
+            Study route
+          </div>
+          <div className="mt-7 flex items-end justify-between">
+            <div>
+              <p className="text-lg font-bold text-fg">Arrays</p>
+              <p className="mt-1 text-xs text-subtle">Lists, stacks, queues, matrices</p>
+            </div>
+            <span className="font-mono text-[9px] uppercase tracking-widest text-muted">path / open</span>
+          </div>
+          <div className="mt-5 h-1 overflow-hidden bg-surface-hover">
+            <div className="h-full w-1/4 bg-accent-success" />
+          </div>
+          <p className="mt-3 text-[9px] uppercase tracking-widest text-muted">
+            Continue when your training data is connected
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-subtle-line bg-surface p-5 md:col-span-2 xl:col-span-1">
+          <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
+            <Flame size={13} />
+            Training signal
+          </div>
+          <div className="mt-7 grid grid-cols-2 gap-3">
+            <div className="border-l border-accent-warning/40 pl-3">
+              <p className="text-lg font-bold text-fg">
+                {currentStreak}
+              </p>
+              <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">active streak</p>
+            </div>
+            <div className="border-l border-subtle-line pl-3">
+              <p className="text-lg font-bold text-fg">
+                {totalSolved}
+              </p>
+              <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">completed</p>
+            </div>
+          </div>
+          <p className="mt-6 text-[9px] uppercase tracking-widest text-muted">
+            <Trophy size={12} className="inline mr-1 text-accent-warning" />
+            Complete a challenge to populate your performance telemetry
+          </p>
+        </article>
+      </div>
 
       {/* DOMAIN LEDGER */}
       <CategoryDirectory showHeader={false} />
