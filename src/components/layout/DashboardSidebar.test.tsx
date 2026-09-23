@@ -6,23 +6,20 @@ import DashboardSidebar from './DashboardSidebar';
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
     user: { username: 'ALEX_DEV', email: 'alex@example.com' },
+    logout: vi.fn(),
   }),
 }));
 
 
 describe('DashboardSidebar Component', () => {
-  test('renders brand header title BRACE RCE and version', () => {
+  test('renders system status footer', () => {
     render(
       <MemoryRouter>
         <DashboardSidebar rating={1450} />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('BRACE')).toBeDefined();
-    // The brand is rendered stylised as "BRACE // RCE" with // and RCE as separate spans.
-    expect(screen.getByText((content, element) => element?.tagName === 'SPAN' && content === '//')).toBeDefined();
-    expect(screen.getByText('RCE')).toBeDefined();
-    expect(screen.getByText('CYBER ARENA v2.0')).toBeDefined();
+    expect(screen.getByText('system ready')).toBeDefined();
   });
 
   test('renders navigation sidebar links (Dashboard, Battle, Problems, Profile, Friends)', () => {

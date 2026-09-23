@@ -1,4 +1,5 @@
 export { useAuth, AuthProvider } from "./AuthContext";
+export { SidebarProvider, useSidebar } from "./SidebarContext";
 export { SocketProvider, useSocket } from "./SocketContext";
 export type { CustomLobbyState } from "./SocketContext";
 export { CodeContext } from "./CodeContext";

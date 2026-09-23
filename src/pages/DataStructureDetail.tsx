@@ -205,7 +205,7 @@ const DataStructureDetail = () => {
       <main
         className="
           flex-1 min-w-0 w-full
-          ml-0 md:ml-[60px] lg:ml-[245px]
+          ml-0 md:ml-[var(--sidebar-width)]
           pt-14 px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
           flex flex-col gap-6
@@ -319,25 +319,27 @@ const DataStructureDetail = () => {
               <Link
                 key={problem.id}
                 to={`/terminal?id=${problem.id}`}
-                className="group border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:bg-accent-primary/5 p-4 rounded-none flex items-center justify-between transition-all duration-300 border-l-2 border-l-accent-primary/10 hover:border-l-accent-primary"
+                className="group border border-subtle-line bg-black/60 hover:border-accent-primary/30 hover:bg-accent-primary/5 p-4 rounded-none flex flex-col justify-between transition-all duration-300 border-l-2 border-l-accent-primary/10 hover:border-l-accent-primary"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-8 w-8 flex items-center justify-center border border-subtle-line bg-black/60 text-[10px] font-bold text-accent-primary/60 group-hover:text-accent-primary group-hover:border-accent-primary/20 transition-all duration-300">
-                    #{problem.problem_number || "•"}
+                <div className="flex items-start justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-8 w-8 flex items-center justify-center border border-subtle-line bg-black/60 text-[10px] font-bold text-accent-primary/60 group-hover:text-accent-primary group-hover:border-accent-primary/20 transition-all duration-300 shrink-0">
+                      #{problem.problem_number || "•"}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-medium text-fg truncate group-hover:text-accent-primary transition-colors">
+                        {problem.name}
+                      </span>
+                      <span className="block text-[8px] text-faint uppercase tracking-widest mt-0.5">
+                        {problem.isSolved ? "Status: Solved" : "Status: Unsolved"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="block text-xs font-medium text-fg truncate group-hover:text-accent-primary transition-colors">
-                      {problem.name}
-                    </span>
-                    <span className="block text-[8px] text-faint uppercase tracking-widest mt-0.5">
-                      {problem.isSolved ? "Status: Solved" : "Status: Unsolved"}
+                  <div className="flex items-center gap-2 select-none shrink-0">
+                    <span className={`px-2 py-0.5 border text-[8px] font-bold tracking-wider rounded-none uppercase ${getDifficultyColor(problem.difficulty_level)}`}>
+                      [ {getDifficultyLabel(problem.difficulty_level)} ]
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 select-none">
-                  <span className={`px-2 py-0.5 border text-[8px] font-bold tracking-wider rounded-none uppercase ${getDifficultyColor(problem.difficulty_level)}`}>
-                    [ {getDifficultyLabel(problem.difficulty_level)} ]
-                  </span>
                 </div>
               </Link>
             ))}

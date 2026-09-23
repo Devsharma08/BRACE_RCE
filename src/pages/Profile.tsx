@@ -112,7 +112,7 @@ const Profile = () => {
       <main
         className="
           flex-1 min-w-0 w-full
-          ml-0 md:ml-[60px] lg:ml-[245px]
+          ml-0 md:ml-[var(--sidebar-width)]
           pt-14 px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
         "

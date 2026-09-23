@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   LayoutTemplate,
   Swords,
   Shield,
-  ArrowRight,
-  Lock,
+  ArrowUpRight,
+  LockKeyhole,
   Archive,
   RefreshCw,
   Trash2,
+  Search,
+  X,
+  SlidersHorizontal,
+  Radar,
+  Wifi,
+  Clock3,
+  Users,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,21 +36,30 @@ interface Room {
   password: string | null;
   isPublic: boolean;
   isTemplate: boolean;
+  status?: string;
+  totalTimeLimitMs?: number | null;
   host: { username: string; avatarUrl: string | null };
   problems: { difficulty_level: string }[];
 }
+
+type LobbyTab = "ROOMS" | "TEMPLATES" | "MY_ARCHIVES";
 
 const Lobby = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: myRating } = useMyRating(true);
-  const [activeTab, setActiveTab] = useState<"ROOMS" | "TEMPLATES" | "MY_ARCHIVES">("ROOMS");
+  const [activeTab, setActiveTab] = useState<LobbyTab>("ROOMS");
   const [cloningId, setCloningId] = useState<string | null>(null);
+  const [joiningCode, setJoiningCode] = useState<string | null>(null);
   const [pwModal, setPwModal] = useState<{
     isOpen: boolean;
     roomCode: string;
     roomName: string;
   }>({ isOpen: false, roomCode: "", roomName: "" });
+  const [query, setQuery] = useState("");
+  const [maxUsers, setMaxUsers] = useState("any");
+  const [maxTime, setMaxTime] = useState("any");
+  const [access, setAccess] = useState("any");
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ["lobby-data"],
@@ -78,6 +94,54 @@ const Lobby = () => {
   const templates: Room[] = data?.templates || [];
   const myEvents: Room[] = data?.myEvents || [];
 
+  const roomTimeMinutes = (room: Room) =>
+    room.totalTimeLimitMs ? Math.round(room.totalTimeLimitMs / 60000) : null;
+  const isProtected = (room: Room) => Boolean(room.password) || room.isPublic === false;
+
+  const activeItems: Room[] = activeTab === "ROOMS" ? rooms : activeTab === "TEMPLATES" ? templates : myEvents;
+
+  const filteredItems = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return activeItems.filter((room) => {
+      const searchable = `${room.name ?? ""} ${room.description ?? ""} ${room.host?.username ?? ""} ${room.roomCode ?? ""}`.toLowerCase();
+      if (needle && !searchable.includes(needle)) return false;
+      if (maxUsers !== "any" && room.maxUsers > Number(maxUsers)) return false;
+      if (maxTime !== "any") {
+        const minutes = roomTimeMinutes(room);
+        if (minutes === null || minutes > Number(maxTime)) return false;
+      }
+      if (access !== "any") {
+        const locked = isProtected(room);
+        if (access === "protected" && !locked) return false;
+        if (access === "open" && locked) return false;
+      }
+      return true;
+    });
+  }, [access, activeItems, maxTime, maxUsers, query]);
+
+  const hasFilters = Boolean(query.trim() || maxUsers !== "any" || maxTime !== "any" || access !== "any");
+
+  const resetFilters = () => {
+    setQuery("");
+    setMaxUsers("any");
+    setMaxTime("any");
+    setAccess("any");
+  };
+
+  const handleTabChange = (tab: LobbyTab) => {
+    setActiveTab(tab);
+    resetFilters();
+  };
+
+  const tabDefs = [
+    { key: "ROOMS", label: "Active rooms", Icon: Shield },
+    { key: "TEMPLATES", label: "Battle templates", Icon: LayoutTemplate },
+    { key: "MY_ARCHIVES", label: "My archives", Icon: Archive },
+  ] as const;
+
+  const tabLabel =
+    activeTab === "ROOMS" ? "rooms" : activeTab === "TEMPLATES" ? "templates" : "archives";
+
   const handleJoinRoom = (room: Room) => {
     if (room.password) {
       setPwModal({
@@ -86,6 +150,7 @@ const Lobby = () => {
         roomName: room.name || "Untitled Operation",
       });
     } else {
+      setJoiningCode(room.roomCode);
       navigate(`/battle/${room.roomCode}`);
     }
   };
@@ -123,96 +188,100 @@ const Lobby = () => {
 
   const renderCard = (room: Room, isArchive: boolean) => {
     const diff = room.problems?.[0]?.difficulty_level || "MEDIUM";
-    const diffColor =
-      diff === "EASY"
-        ? "text-accent-success"
-        : diff === "HARD"
-        ? "text-accent-danger"
-        : "text-accent-warning";
     const isTemplate = room.isTemplate;
-    const accentBorder = isTemplate
-      ? "border-t-accent-warning/60"
-      : "border-t-accent/60";
+    const locked = isProtected(room);
+    const minutes = roomTimeMinutes(room);
+    const queued = joiningCode === room.roomCode;
 
     return (
       <article
         key={room.id}
-        className={`border border-subtle-line ${accentBorder} border-t-2 bg-raised p-5 flex flex-col gap-3`}
+        className={`group flex min-h-[220px] flex-col rounded-[22px] border p-5 transition hover:-translate-y-0.5 ${
+          locked
+            ? "border-accent-warning/25 bg-accent-warning/[0.035] hover:border-accent-warning/40"
+            : "border-subtle-line bg-raised hover:border-accent/40"
+        }`}
       >
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-bold text-fg line-clamp-2 min-w-0 flex-1">
-            {room.name}
-          </span>
-          {!room.isPublic && (
-            <Lock
-              className="w-3.5 h-3.5 text-subtle shrink-0 mt-0.5"
-              aria-label="Private room"
-            />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <span className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+              {diff} / operation
+            </span>
+            <h2 className="mt-3 text-lg font-bold text-fg line-clamp-2">
+              {room.name}
+            </h2>
+          </div>
+          {locked ? (
+            <span className="flex shrink-0 items-center gap-1 border border-accent-warning/25 bg-accent-warning/[0.08] px-2 py-1 text-[8px] uppercase tracking-widest text-accent-warning">
+              <LockKeyhole size={12} aria-hidden /> Protected
+            </span>
+          ) : (
+            <span className="shrink-0 border border-accent-success/20 px-2 py-1 text-[8px] uppercase tracking-widest text-accent-success">
+              Open
+            </span>
           )}
         </div>
 
-        {room.description && (
-          <p className="text-xs text-subtle line-clamp-2">{room.description}</p>
+        {room.description ? (
+          <p className="mt-3 text-xs leading-5 text-subtle line-clamp-2">
+            {room.description}
+          </p>
+        ) : (
+          <p className="mt-3 text-xs leading-5 text-faint">
+            No briefing provided for this operation.
+          </p>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-subtle">
-          <span className={`font-bold ${diffColor}`}>{diff}</span>
-          <span aria-hidden>•</span>
-          <span>{room.maxUsers} max</span>
-          <span aria-hidden>•</span>
-          <span className="font-mono">{room.roomCode}</span>
-        </div>
-
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-subtle-line">
-          <div className="flex items-center gap-2 min-w-0">
-            <div
-              className="w-6 h-6 shrink-0 bg-elevated border border-subtle-line flex items-center justify-center"
-              aria-hidden
-            >
-              <span className="text-[8px] font-mono font-bold text-accent-primary">
-                {room.host.username.slice(0, 2).toUpperCase()}
-              </span>
-            </div>
-            <span
-              className="text-[10px] text-subtle truncate"
-              title={room.host.username}
-            >
-              {room.host.username}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-subtle-line pt-4 text-[9px] uppercase tracking-widest text-subtle">
+          <span className="flex min-w-0 items-center gap-2">
+            <Users size={13} className="shrink-0" aria-hidden />
+            <span className="whitespace-nowrap">
+              {isTemplate ? `${room.problems?.length ?? 0} problems` : `${room.maxUsers} max`}
             </span>
-          </div>
+            <Clock3 size={13} className="ml-2 shrink-0" aria-hidden />
+            <span className="whitespace-nowrap">{minutes !== null ? `${minutes}m` : "—"}</span>
+            <span className="ml-2 truncate font-mono normal-case tracking-normal text-faint">
+              {room.roomCode}
+            </span>
+          </span>
+          <span className="shrink-0 truncate" title={room.host?.username}>
+            {room.host?.username}
+          </span>
+        </div>
 
           {isArchive ? (
             <button
               onClick={() => handleDeleteEvent(room.id)}
-              className="shrink-0 text-[10px] text-subtle hover:text-accent-danger transition-colors flex items-center gap-1 px-2 py-1"
+              className="mt-4 flex items-center justify-between border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
               aria-label={`Delete operation: ${room.name}`}
             >
-              <Trash2 className="w-3 h-3" />
-              Delete
+              Delete operation
+              <Trash2 size={14} aria-hidden />
             </button>
           ) : isTemplate ? (
             <button
               onClick={() => handleCloneTemplate(room.id)}
               disabled={cloningId === room.id}
-              className="shrink-0 text-[10px] text-accent-warning border border-accent-warning/25 hover:border-accent-warning hover:bg-accent-warning/10 px-3 py-1.5 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label={`Clone template: ${room.name}`}
+              className="mt-4 flex items-center justify-between border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Deploy template: ${room.name}`}
             >
+              {cloningId === room.id ? "Deploying template" : "Deploy template"}
               <RefreshCw
-                className={`w-3 h-3 ${cloningId === room.id ? "animate-spin" : ""}`}
+                size={14}
+                aria-hidden
+                className={cloningId === room.id ? "animate-spin" : ""}
               />
-              Clone
             </button>
           ) : (
             <button
               onClick={() => handleJoinRoom(room)}
-              className="shrink-0 text-[10px] text-accent-primary border border-accent-primary/30 hover:border-accent-primary hover:bg-accent-primary/10 font-mono uppercase tracking-wider px-3 py-1.5 transition-all flex items-center gap-1.5"
-              aria-label={`Join room: ${room.name}`}
+              className="mt-4 flex items-center justify-between border border-accent/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent/[0.08]"
+              aria-label={`Join operation: ${room.name}`}
             >
-              <ArrowRight className="w-3 h-3" />
-              Join
+              {queued ? "Queued for entry" : "Join operation"}
+              <ArrowUpRight size={14} aria-hidden />
             </button>
           )}
-        </div>
       </article>
     );
   };
@@ -223,156 +292,220 @@ const Lobby = () => {
       <MobileBottomNav />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main
-        className="
-          flex-1 min-w-0 w-full
-          ml-0 md:ml-[60px] lg:ml-[245px]
-          pt-14 px-4 py-6 md:px-8 md:py-8
-          pb-20 md:pb-8
-        "
-      >
+      <main className="flex-1 min-w-0 w-full ml-0 md:ml-[var(--sidebar-width)] px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
         {/* Dot-grid texture */}
         <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
+        <div className="mx-auto max-w-[1500px]">
 
         {/* PAGE HEADER */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="w-2 h-2 bg-accent-success rounded-full" aria-hidden />
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-success">
-              Live Operations
-            </span>
+        <header className="relative overflow-hidden border-b border-subtle-line pb-6">
+          <div aria-hidden className="absolute -right-10 -top-20 h-56 w-56 rounded-full border border-accent/10" />
+          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-success">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success" />
+                Live operations / lobby
+              </div>
+              <h1 className="mt-3 max-w-xl text-3xl font-bold tracking-tight sm:text-5xl">
+                Find your next
+                <br />
+                <span className="text-accent-primary">opponent.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-xs leading-5 text-subtle">
+                Scan open rooms, configure a battle template, or review your own operation history.
+              </p>
+            </div>
+            <Link
+              to="/rooms/create"
+              className="relative inline-flex items-center justify-center gap-2 rounded-full bg-accent-primary px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-ink transition hover:opacity-90"
+            >
+              <Swords size={14} aria-hidden /> Create room
+            </Link>
           </div>
-          <h1
-            className="text-xl font-mono font-black text-fg tracking-widest uppercase"
-          >
-            Operations Lobby
-          </h1>
-          <p className="text-xs text-subtle mt-1">
-            Join active battles or deploy your own
-          </p>
         </header>
 
-        {/* RADAR VISUAL
-            overflow-hidden is intentional here — the concentric circles extend
-            beyond the container height and should be clipped for the visual effect */}
-        <div
-          className="mb-8 relative flex items-center justify-center h-48 border border-subtle-line bg-raised overflow-hidden"
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 pointer-events-none opacity-[0.035] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px]" />
-          <div className="relative flex items-center justify-center">
-            {[64, 128, 192, 256].map(size => (
-              <div
-                key={size}
-                className="absolute border border-accent-primary/20"
-                style={{ width: size, height: size }}
-              />
-            ))}
-            <div className="w-3 h-3 bg-accent-primary animate-ping" />
-            <div className="absolute w-3 h-3 bg-accent-primary" />
-          </div>
-          <div className="absolute bottom-4 left-4 text-[10px] text-subtle font-mono">
-            SCANNING...
-          </div>
-          <div className="absolute top-4 right-4 text-[10px] text-accent-primary/60 font-mono">
-            {rooms.length} ACTIVE
-          </div>
-        </div>
-
-        {/* CREATE ROOM CTA */}
-        <div className="mb-6">
-          <Link
-            to="/rooms/create"
-            className="inline-flex items-center gap-2 bg-accent text-ink font-bold text-xs px-5 py-2.5 hover:bg-accent-primary transition-all tracking-wider uppercase"
-          >
-            <Swords className="w-4 h-4" />
-            Create Room
-          </Link>
-        </div>
-
-        {/* TABS */}
-        <div
-          role="tablist"
-          aria-label="Lobby sections"
-          className="flex items-center border-b border-subtle-line mb-6 overflow-x-auto"
-        >
-          {(["ROOMS", "TEMPLATES", "MY_ARCHIVES"] as const).map(tab => (
-            <button
-              key={tab}
-              role="tab"
-              aria-selected={activeTab === tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 sm:px-5 py-3 text-xs font-medium uppercase tracking-wide transition-all whitespace-nowrap ${
-                activeTab === tab
-                  ? "border-b-2 border-accent text-accent bg-accent-primary/5"
-                  : "text-subtle hover:text-fg border-b-2 border-transparent"
-              }`}
+        {/* TABS + FILTERS + CONTENT */}
+        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+          <section className="min-w-0">
+            <nav
+              aria-label="Lobby sections"
+              role="tablist"
+              className="grid grid-cols-3 gap-3 border-b border-subtle-line pb-3"
             >
-              {tab === "ROOMS"
-                ? "Rooms"
-                : tab === "TEMPLATES"
-                ? "Templates"
-                : "My Archives"}
-            </button>
-          ))}
-        </div>
-
-        {/* CONTENT */}
-        {loading ? (
-          <CardSkeletonGrid count={6} />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-            {activeTab === "ROOMS" && rooms.length === 0 && (
-              <div className="col-span-full py-16 text-center border border-dashed border-subtle-line bg-raised flex flex-col items-center gap-4">
-                <Shield className="w-12 h-12 text-faint" />
-                <div>
-                  <p className="text-subtle text-sm">No active rooms</p>
-                  <p className="text-faint text-xs mt-1">
-                    Host a room to start an operation
-                  </p>
-                </div>
-                <Link
-                  to="/rooms/create"
-                  className="mt-2 text-xs font-medium text-accent border border-subtle-line px-4 py-2 hover:bg-accent/8 transition-all"
+              {tabDefs.map(({ key, label, Icon }) => (
+                <button
+                  key={key}
+                  role="tab"
+                  aria-selected={activeTab === key}
+                  onClick={() => handleTabChange(key)}
+                  className={`group flex min-h-[76px] flex-col items-start justify-between rounded-2xl border p-3 text-left transition ${
+                    activeTab === key
+                      ? "border-accent/40 bg-accent/[0.08] text-accent-primary"
+                      : "border-subtle-line bg-raised text-subtle hover:border-line-mid hover:bg-surface-hover"
+                  }`}
                 >
-                  Host a room
-                </Link>
-              </div>
-            )}
-            {activeTab === "ROOMS" && rooms.map(r => renderCard(r, false))}
+                  <Icon size={16} aria-hidden />
+                  <span className="flex w-full items-center justify-between text-[9px] font-bold uppercase tracking-widest">
+                    {label}
+                    <ArrowUpRight size={12} aria-hidden className="opacity-50" />
+                  </span>
+                </button>
+              ))}
+            </nav>
 
-            {activeTab === "TEMPLATES" && templates.length === 0 && (
-              <div className="col-span-full py-16 text-center border border-dashed border-subtle-line bg-raised flex flex-col items-center gap-4">
-                <LayoutTemplate className="w-12 h-12 text-faint" />
-                <p className="text-subtle text-sm">No public templates</p>
+            <section
+              aria-label="Lobby filters"
+              className="mt-4 flex flex-col gap-3 rounded-2xl border border-subtle-line bg-raised p-3 shadow-[0_18px_50px_rgba(0,0,0,.16)] lg:flex-row lg:items-center"
+            >
+              <div className="relative min-w-0 flex-1">
+                <Search
+                  size={14}
+                  aria-hidden
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search by title, host, or room code"
+                  aria-label="Search by title, host, or room code"
+                  className="h-10 w-full border border-subtle-line bg-void pl-9 pr-9 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
+                />
+                {query && (
+                  <button
+                    aria-label="Clear search"
+                    onClick={() => setQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-faint hover:text-fg"
+                  >
+                    <X size={14} aria-hidden />
+                  </button>
+                )}
               </div>
-            )}
-            {activeTab === "TEMPLATES" && templates.map(t => renderCard(t, false))}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-2 px-1 text-[9px] uppercase tracking-widest text-faint">
+                  <SlidersHorizontal size={13} aria-hidden /> Filters
+                </span>
+                <select
+                  aria-label="Maximum users"
+                  value={maxUsers}
+                  onChange={(event) => setMaxUsers(event.target.value)}
+                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                >
+                  <option value="any">Users: any</option>
+                  <option value="2">Users: ≤ 2</option>
+                  <option value="4">Users: ≤ 4</option>
+                  <option value="6">Users: ≤ 6</option>
+                </select>
+                <select
+                  aria-label="Maximum time"
+                  value={maxTime}
+                  onChange={(event) => setMaxTime(event.target.value)}
+                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                >
+                  <option value="any">Time: any</option>
+                  <option value="20">Time: ≤ 20m</option>
+                  <option value="30">Time: ≤ 30m</option>
+                  <option value="45">Time: ≤ 45m</option>
+                </select>
+                <select
+                  aria-label="Room access"
+                  value={access}
+                  onChange={(event) => setAccess(event.target.value)}
+                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                >
+                  <option value="any">Access: any</option>
+                  <option value="open">Open only</option>
+                  <option value="protected">Pass protected</option>
+                </select>
+                {hasFilters && (
+                  <button
+                    onClick={resetFilters}
+                    className="px-2 text-[9px] uppercase tracking-widest text-faint hover:text-fg"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </section>
 
-            {activeTab === "MY_ARCHIVES" && myEvents.length === 0 && (
-              <div className="col-span-full py-16 text-center border border-dashed border-subtle-line bg-raised flex flex-col items-center gap-4">
-                <Archive className="w-12 h-12 text-faint" />
-                <div>
-                  <p className="text-subtle text-sm">Your archives are empty</p>
-                  <p className="text-faint text-xs mt-1">
-                    Rooms you host or create will appear here
-                  </p>
-                </div>
-              </div>
-            )}
-            {activeTab === "MY_ARCHIVES" && myEvents.map(e => renderCard(e, true))}
+            <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
+              <span>
+                {filteredItems.length} {tabLabel} visible
+              </span>
+              {hasFilters && <span className="text-accent-primary">Filtered view</span>}
+            </div>
+
+        {loading ? (
+          <div className="mt-3">
+            <CardSkeletonGrid count={6} />
           </div>
+        ) : (
+          <section className="mt-3 grid gap-3 md:grid-cols-2">
+            {filteredItems.length ? (
+              filteredItems.map((room) =>
+                renderCard(room, activeTab === "MY_ARCHIVES"),
+              )
+            ) : (
+              <div className="col-span-full border border-dashed border-subtle-line py-16 text-center">
+                <Archive size={30} aria-hidden className="mx-auto text-faint" />
+                <p className="mt-4 text-sm text-subtle">
+                  {activeTab === "MY_ARCHIVES"
+                    ? hasFilters
+                      ? "No archived operations match these filters."
+                      : "No archived operations in this preview."
+                    : hasFilters
+                    ? "No matching operations found."
+                    : activeTab === "TEMPLATES"
+                    ? "No public templates"
+                    : "No active rooms"}
+                </p>
+                {!hasFilters && activeTab === "ROOMS" && (
+                  <Link
+                    to="/rooms/create"
+                    className="mt-4 inline-block text-xs font-medium text-accent-primary border border-subtle-line px-4 py-2 hover:bg-accent/[0.08] transition-all"
+                  >
+                    Host a room
+                  </Link>
+                )}
+              </div>
+            )}
+          </section>
         )}
 
-        {/* PASSWORD MODAL */}
-        <PasswordModal
-          isOpen={pwModal.isOpen}
-          roomCode={pwModal.roomCode}
-          roomName={pwModal.roomName}
-          onClose={() => setPwModal({ isOpen: false, roomCode: "", roomName: "" })}
-          onSubmit={handlePasswordSubmit}
-        />
+            <PasswordModal
+              isOpen={pwModal.isOpen}
+              roomCode={pwModal.roomCode}
+              roomName={pwModal.roomName}
+              onClose={() => setPwModal({ isOpen: false, roomCode: "", roomName: "" })}
+              onSubmit={handlePasswordSubmit}
+            />
+          </section>
+
+          <aside className="rounded-[26px] border border-subtle-line bg-raised p-5 lg:sticky lg:top-5 lg:self-start">
+            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+              <Radar size={14} aria-hidden /> Live radar
+            </div>
+            <div className="mt-8 grid aspect-square place-items-center rounded-full border border-accent/20 bg-accent/[0.03]">
+              <div className="grid h-2/3 w-2/3 place-items-center rounded-full border border-accent/20">
+                <Wifi size={22} aria-hidden className="text-accent-primary" />
+              </div>
+            </div>
+            <div className="mt-6 space-y-3 border-t border-subtle-line pt-5 text-[9px] uppercase tracking-widest text-subtle">
+              <p className="flex justify-between">
+                rooms online <span className="text-accent-success">{rooms.length}</span>
+              </p>
+              <p className="flex justify-between">
+                templates <span className="text-accent-primary">{templates.length}</span>
+              </p>
+              <p className="flex justify-between">
+                my archives <span className="text-accent-primary">{myEvents.length}</span>
+              </p>
+              <p className="flex justify-between">
+                system state <span className="text-accent-success">ready</span>
+              </p>
+            </div>
+          </aside>
+        </div>
+        </div>
       </main>
     </div>
   );

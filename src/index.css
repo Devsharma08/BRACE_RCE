@@ -110,6 +110,26 @@
   --mobile-bottom-nav-height: 56px;
 }
 
+/* ── Sidebar shell width ─────────────────────────────────────────────────────
+   Consumed by every console page's <main> offset
+   (ml-0 md:ml-[var(--sidebar-width)]). Mobile has no rail, so 0px; md+ tracks
+   the data-sidebar flag SidebarProvider sets on <html>, so toggling the rail
+   reflows the content column instead of letting it slide underneath.
+   --sidebar-expanded / --sidebar-collapsed are defined above. */
+:root {
+  --sidebar-width: 0px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --sidebar-width: var(--sidebar-expanded);
+  }
+
+  :root[data-sidebar="collapsed"] {
+    --sidebar-width: var(--sidebar-collapsed);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    TAILWIND THEME EXTENSION
    ═══════════════════════════════════════════════════════════════════════════ */

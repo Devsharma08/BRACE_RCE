@@ -203,6 +203,11 @@ export const Dashboard: React.FC = () => {
   const userRating = myRating?.rating ?? 1000;
   const division = getDivision(userRating);
   const globalRank = leaderboardRows?.find((row) => row.userId === user?.id)?.rank;
+  // The matchmaking payload carries identity only (username / id / avatar /
+  // bio) — the server sends no rating. The leaderboard cache this page already
+  // holds is the honest source; an opponent outside that slice renders "—"
+  // rather than a fabricated number (this slot previously hardcoded 1250).
+  const opponentRating = leaderboardRows?.find((row) => row.userId === pendingOpponent?.id)?.rating;
   const matchesPlayed = stats?.totalMatches ?? myRating?.totalMatches ?? 0;
   const winRate = stats ? Math.round(stats.winRate) : Math.round(myRating?.winRate ?? 0);
   const winStreak = analytics?.summary?.currentStreak ?? 0;
@@ -297,7 +302,9 @@ export const Dashboard: React.FC = () => {
                 <span className="text-base font-extrabold text-fg tracking-wide truncate w-full" title={pendingOpponent?.username}>
                   {pendingOpponent?.username || "Opponent"}
                 </span>
-                <span className="text-xs text-subtle mt-1 font-mono">1250</span>
+                <span className="text-xs text-subtle mt-1 font-mono">
+                  {opponentRating ?? "—"}
+                </span>
               </div>
             </div>
 
@@ -338,40 +345,15 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* MAIN CONTENT AREA — left offset matches the fixed sidebar widths */}
-      <main className="relative z-10 w-full min-w-0 flex-1 ml-0 md:ml-[60px] lg:ml-[245px] px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
+      <main className="relative z-10 w-full min-w-0 flex-1 ml-0 md:ml-[var(--sidebar-width)] px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
         {/* ── HEADER ─────────────────────────────────────────────── */}
         {/* Page title only. The app brand + route nav now come from Layout's
             sticky Header and DashboardSidebar, so repeating them here would
             render the BRACE lockup twice on the same screen. */}
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-subtle-line pb-5">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-xl font-bold tracking-wide text-fg">
-              <LayoutDashboard className="h-5 w-5 shrink-0 text-accent-primary" />
-              <span>Dashboard</span>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Notifications"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-subtle-line text-subtle transition hover:border-accent-primary/40 hover:text-accent"
-            >
-              <Bell size={15} />
-            </button>
-            <Link
-              to="/profile"
-              className="grid h-9 w-9 place-items-center rounded-lg border border-subtle-line text-accent-primary transition hover:border-accent-primary/40"
-            >
-              <UserRound size={15} />
-            </Link>
-          </div>
-        </header>
 
         {/* ── OPERATIVE BANNER ───────────────────────────────────── */}
-        <section className="relative isolate overflow-hidden border-y border-subtle-line py-12 md:py-16">
-          <div className="absolute -right-10 top-6 font-mono text-[10rem] font-black leading-none tracking-[-0.16em] text-fg/[0.025]">
-            01
-          </div>
-          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+        <section className="relative isolate overflow-hidden border-y border-subtle-line py-5 md:py-5">
+          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between ">
             <div>
               <h1 className="font-mono text-4xl font-black tracking-[-0.05em] text-fg md:text-6xl">
                 Good {timeOfDay.toLowerCase()},<br />
@@ -381,12 +363,21 @@ export const Dashboard: React.FC = () => {
                 Your execution history, current rating, and next challenge — in one operational view.
               </p>
             </div>
-            <div className="flex items-center gap-4 border-l border-subtle-line pl-5">
-              <div className="h-14 w-14 rounded-full border border-accent-primary/40 bg-accent-primary/10 p-1">
-                <div className="grid h-full place-items-center rounded-full bg-surface text-sm font-bold text-accent-primary">
-                  OP
+            {/* Rank block — profile photo stacks *above* the division and
+                global-rank readout so the identity anchor leads the metadata. */}
+            <div className="flex flex-col items-start gap-3 border-l border-subtle-line pl-5">
+              {/* Profile photo — falls back to avatar icon when no image */}
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt=""
+                  className="h-14 w-14 overflow-hidden rounded-full border border-accent-primary/30 bg-accent-primary/5 object-cover"
+                />
+              ) : (
+                <div className="grid h-14 w-14 place-items-center rounded-full border border-accent-primary/30 bg-accent-primary/10 text-accent-primary">
+                  <UserRound size={20} />
                 </div>
-              </div>
+              )}
               <div>
                 <div className="text-xs font-bold tracking-widest text-fg">
                   RANK /{" "}
@@ -548,7 +539,7 @@ export const Dashboard: React.FC = () => {
         <div className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
           {/* Recommended problems */}
           <section aria-labelledby="recommended-heading">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2">
               <Code2 size={14} className="text-accent-primary/30" />
               <h2
                 id="recommended-heading"
@@ -613,7 +604,7 @@ export const Dashboard: React.FC = () => {
 
           {/* Recent battles */}
           <section aria-labelledby="battles-heading">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2">
               <Activity size={14} className="text-accent-primary/30" />
               <h2
                 id="battles-heading"
@@ -694,7 +685,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* ── PERFORMANCE ANALYTICS ───────────────────────────────────── */}
-        <section className="mt-8 grid gap-4 border-t border-subtle-line pt-8 md:grid-cols-[1fr_1.6fr]">
+        <section className="mt-8 gap-4 border-t border-subtle-line pt-8">
           <div>
             <div className="mb-3 flex items-center gap-2">
               <BarChart2 size={14} className="text-accent-primary/30" />
@@ -709,7 +700,7 @@ export const Dashboard: React.FC = () => {
                 Analytics
               </Link>
             </div>
-            <div className="mt-3 flex flex-col gap-3">
+            {/* <div className="mt-3 flex flex-col gap-3">
               <p className="max-w-xs font-sans text-sm leading-6 text-subtle">
                 A compact view of your execution rhythm across the current cycle.
               </p>
@@ -743,7 +734,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
           <div className="rounded-card border border-subtle-line bg-surface p-5">
             <AnalyticsErrorBoundary>
