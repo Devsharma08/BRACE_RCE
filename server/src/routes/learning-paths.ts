@@ -1,15 +1,16 @@
-import { Router } from "express";
-import { authentication } from "../middleware/authentication.js";
+import { Router, type Request, type Response } from "express";
+import { authentication, type AuthRequest } from "../middleware/authentication.js";
 import { prisma } from "../lib/prisma.js";
+import { learningItemsController } from "../controllers/learning-items.js";
 
 const learningPathsRouter: Router = Router();
 
 learningPathsRouter.use(authentication);
 
 // Get learning paths with recommendations
-learningPathsRouter.get("/", async (req, res) => {
+learningPathsRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const userId = req.userId as string;
+    const userId = (req as AuthRequest).userId as string;
     
     // Get all learning items
     const items = await prisma.learningItem.findMany({
@@ -82,10 +83,10 @@ learningPathsRouter.get("/", async (req, res) => {
 });
 
 // Get single learning path with full details
-learningPathsRouter.get("/:id", async (req, res) => {
+learningPathsRouter.get("/:id", async (req: Request, res: Response) => {
   try {
-    const userId = req.userId as string;
-    const id = req.params.id;
+    const userId = (req as AuthRequest).userId as string;
+    const id = String(req.params.id ?? "");
     if (!id) return res.status(400).json({ status: "error", message: "Item id is required" });
 
     const item = await prisma.learningItem.findUnique({
@@ -101,14 +102,6 @@ learningPathsRouter.get("/:id", async (req, res) => {
             createdAt: true,
             updatedAt: true,
           },
-        },
-        _prerequisites: {
-          where: { id: { in: [] } }, // Will be populated manually
-          select: { id: true, name: true, order: true },
-        },
-        _nextStructures: {
-          where: { id: { in: [] } },
-          select: { id: true, name: true, order: true },
         },
       },
     });
@@ -152,5 +145,8 @@ learningPathsRouter.get("/:id", async (req, res) => {
     return res.status(500).json({ status: "error", message: "Failed to get learning path" });
   }
 });
+
+// User progress: upsert progress status for a learning item
+learningPathsRouter.post("/:id/progress", learningItemsController.upsertUserProgress);
 
 export { learningPathsRouter };

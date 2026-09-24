@@ -108,7 +108,7 @@ class LearningItems {
   async getLearningItemById(req: AuthRequest, res: Response) {
     try {
       const userId = req.userId as string;
-      const id = req.params.id;
+      const id = String(req.params.id ?? "");
       if (!id) return res.status(400).json({ status: "error", message: "Item id is required" });
 
       const item = await prisma.learningItem.findUnique({
@@ -125,19 +125,27 @@ class LearningItems {
               updatedAt: true,
             },
           },
-          // Include related items for navigation
-          _prerequisites: {
-            where: { id: { in: item?.prerequisites || [] } },
-            select: { id: true, name: true, order: true },
-          },
-          _nextStructures: {
-            where: { id: { in: item?.nextStructures || [] } },
-            select: { id: true, name: true, order: true },
-          },
         },
       });
 
       if (!item) return res.status(404).json({ status: "error", message: "Learning item not found" });
+
+      // Resolve related items (prerequisites / next structures) from string IDs
+      const relatedIds = [...(item.prerequisites ?? []), ...(item.nextStructures ?? [])];
+      const relatedItems = relatedIds.length
+        ? await prisma.learningItem.findMany({
+            where: { id: { in: relatedIds } },
+            select: { id: true, name: true, order: true },
+          })
+        : [];
+      const relatedMap = new Map(relatedItems.map((r) => [r.id, r]));
+
+      const prerequisitesDetails = (item.prerequisites ?? [])
+        .map((pid) => relatedMap.get(pid))
+        .filter(Boolean) as { id: string; name: string; order: number }[];
+      const nextStructuresDetails = (item.nextStructures ?? [])
+        .map((nid) => relatedMap.get(nid))
+        .filter(Boolean) as { id: string; name: string; order: number }[];
 
       return res.json({
         status: "success",
@@ -153,8 +161,8 @@ class LearningItems {
           createdAt: item.createdAt.toISOString(),
           updatedAt: item.updatedAt.toISOString(),
           progress: item.progress?.[0] ?? null,
-          prerequisitesDetails: item._prerequisites ?? [],
-          nextStructuresDetails: item._nextStructures ?? [],
+          prerequisitesDetails,
+          nextStructuresDetails,
         },
       });
     } catch (error) {
@@ -208,7 +216,7 @@ class LearningItems {
   // UPDATE
   async updateLearningItem(req: AuthRequest, res: Response) {
     try {
-      const id = req.params.id;
+      const id = String(req.params.id ?? "");
       if (!id) return res.status(400).json({ status: "error", message: "Item id is required" });
 
       const existing = await prisma.learningItem.findUnique({ where: { id } });
@@ -254,7 +262,7 @@ class LearningItems {
   // DELETE
   async deleteLearningItem(req: AuthRequest, res: Response) {
     try {
-      const id = req.params.id;
+      const id = String(req.params.id ?? "");
       if (!id) return res.status(400).json({ status: "error", message: "Item id is required" });
 
       await prisma.learningItem.delete({ where: { id } }).catch(() => {
@@ -276,7 +284,7 @@ class LearningItems {
   async upsertUserProgress(req: AuthRequest, res: Response) {
     try {
       const userId = req.userId as string;
-      const learningItemId = req.params.id;
+      const learningItemId = String(req.params.id ?? "");
       if (!learningItemId) return res.status(400).json({ status: "error", message: "Item id is required" });
 
       const { progressStatus } = req.body ?? {};

@@ -14,6 +14,7 @@ import leaderboardRouter from "./routes/leaderboard.js";
 import roadmapRouter from "./routes/roadmap.js";
 import { adminRouter } from "./routes/admin.js";
 import { learningItemsRouter } from "./routes/learning-items.js";
+import { learningPathsRouter } from "./routes/learning-paths.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { feedbackRouter } from "./routes/feedback.js";
 

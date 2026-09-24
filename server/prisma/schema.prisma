@@ -15,10 +15,11 @@ model User {
   role      String   @default("USER")
   avatarUrl String?
   bio String? @default("try beat me")
-
+  
   performances UserPersonalPerformance[]
 
   matchmakingQueue  MatchmakingQueue[]
+
 
   SentMessage Message[] @relation("SentMessage")
   receivedMessages Message[] @relation("ReceivedMessages")
@@ -36,7 +37,7 @@ model User {
   feedback Feedback[]
 
   TemplateSubscription TemplateSubscription[]
-
+  
   // friends system (self-relation)
   friends User[] @relation("UserFriends")
   friendOf User[] @relation("UserFriends")
@@ -47,13 +48,17 @@ model User {
   updatedAt DateTime @updatedAt
 
   problemProgress UserProblemProgress[]
+
+  // learning paths (roadmap S4)
+  learningProgress UserLearningProgress[]
+  learningSummary  UserLearningSummary?
 }
 
 model FriendRequest {
   id String @id @default(uuid())
   senderId String
   sender User @relation("SentRequest",fields:[senderId],references:[id])
-  receiverId String
+  receiverId String  
   receiver User @relation("ReceivedRequest",fields:[receiverId],references:[id])
 
   status String @default("PENDING") // PENDING,ACCEPTED,DECLINED,BLOCK
@@ -85,10 +90,10 @@ model Problem {
   creatorId String?
   creator User? @relation("UserProblems",fields:[creatorId],references:[id])
   isCustom Boolean @default(false)
-
+  
   test_cases         TestCase[]
   code_snippets      CodeSnippet[]
-
+  
   commonEvents       Event[]
   codeSubmissions    CodeSubmission[]
 
@@ -99,7 +104,7 @@ model Problem {
 
   // user progress tracking
   userProgress UserProblemProgress[]
-
+  
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 }
@@ -109,7 +114,7 @@ model TestCase {
   input          String   @db.Text // Input to be piped into Docker/Piston
   expectedOutput String   @db.Text // Output to compare against
   is_public      Boolean  @default(true) // Public cases show in the UI
-
+  
   problemId      String
   problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
@@ -119,7 +124,7 @@ model CodeSnippet {
   language    String  // "java", "javascript", "python", "c", "cpp"
   code        String  @db.Text // The boilerplate/starter code
   wrapperCode String? @db.Text // Hidden wrapper code
-
+  
   problemId   String
   problem     Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
@@ -144,259 +149,97 @@ model Event {
   status      String    @default("WAITING") // WAITING, IN_PROGRESS, FINISHED
   version Int? @default(1)
 
-  // Host
-  hostId String
-  host   User   @relation("HostedEvents", fields: [hostId], references: [id], onDelete: Cascade)
+  // Advance rooom fields
+  isPublic Boolean? @default(true) // visible in lobby
+  description String? @db.Text
+  hostId String?
+  host User? @relation("HostedEvents",fields:[hostId],references:[id])
+  isTemplate Boolean? @default(false)
+  
+  // If all users in the event solve the same question
+  commonProblemId String?
+  commonProblem   Problem? @relation(fields: [commonProblemId], references: [id])
+  
+  // Participants and their performances
+  performances UserPersonalPerformance[]
 
-  // Participants (include host so we can pull host stats alongside members)
-  participants EventParticipant[]
+  subscribers TemplateSubscription[]
 
-  // Shared problem pool
-  problems        EventProblem[]
-  codeSubmissions CodeSubmission[]
+  // create room support
+  roomCode String? @unique 
+  password String?
+  maxUsers Int @default(2)
+  totalTimeLimitMs Int? 
 
-  // Event chat
-  messages Message[]
-
-  // Event Template SKU
-  templateId  String?   @unique
-  templateSub TemplateSubscription?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([hostId])
-  @@index([status])
+  // playlist relation (connects to problem)
+  problems Problem[] @relation("EventProblems")
+  
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
-model EventParticipant {
-  id        String   @id @default(uuid())
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  role      String   @default("MEMBERS") // HOST, MODERATOR, MEMBER
-  joinedAt  DateTime @default(now())
-  userRating Int?    @default(1000) // participant rating snapshot
-
-  attempts   Int     @default(0)
-  wins       Int     @default(0)
-  losses     Int     @default(0)
-
-  isReady Boolean  @default(false)
-
-  lastDecision  DateTime?
-  lastDecisionAction String? @default("NOT_STARTED") // JOINED | DECLINED | ALREADY_IN
-
-  lastSolver    String?   // "userId who solved last"
-  lastSolvedAt DateTime?
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@index([userId])
-}
-
-model EventProblem {
-  id          String   @id @default(uuid())
-  eventId     String
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  problemId   String
-  problem     Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  order       Int      @default(0)
-
-  @@unique([eventId, problemId])
-  @@index([eventId])
-}
-
-model CodeSubmission {
-  id        String   @id @default(uuid())
-  eventId   String?
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  problemId String
-  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  code      String   @db.Text
-  language  String
-
-  // External judge metadata
-  executionId   String?  @unique // piston execution id
-  exitCode      Int?
-  stderr        String?  @db.Text
-  stdout        String?  @db.Text
-  time          Float?
-  memory        Int?
-  signal        String?
-
-  verdict      String   @default("PENDING") // PENDING, ACCEPTED, WRONG_ANSWER, TIME_LIMIT_EXCEEDED, RUNTIME_ERROR, etc
-  judgedAt     DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([problemId])
-  @@index([eventId])
-  @@index([verdict])
-}
-
-// ------------------------------------------------------
-// EVENTS / MATCHMAKING
-// ------------------------------------------------------
-
-enum MatchmakingStatus {
-  WAITING
-  MATCHED
-  CANCELLED
-  EXPIRED
-}
-
-model MatchmakingQueue {
-  id String @id @default(uuid())
-
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  preferredDifficulty Level
-
-  status MatchmakingStatus @default(WAITING)
-
-  joinedAt DateTime @default(now())
-  matchedAt DateTime?
-
-  @@index([status, preferredDifficulty])
-}
-
-
-model TemplateSubscription {
-  id                String   @id @default(uuid())
-
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  templateEventId   String
-  templateEvent     Event    @relation(fields: [templateEventId], references: [id], onDelete: Cascade)
-
-  subscribedVersion Int      // Locks in the version of the template they subscribed to
-
-  createdAt         DateTime @default(now())
-
-  @@unique([userId, templateEventId]) // A user can only subscribe to a template once
-}
-
-// ------------------------------------------------------
-// DSA PRACTICE PROGRESS
-// ------------------------------------------------------
-
-model UserProblemProgress {
-  id           String    @id @default(uuid())
-
+model UserPersonalPerformance {
+  id           String   @id @default(uuid())
+  
   userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  problemId    String
-  problem      Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  isSolved     Boolean   @default(false)
-  solvedAt     DateTime?
-
-  attempts     Int       @default(0)
-
-  // Last saved code draft for each user/problem combo (cloud save)
-  lastCode     String?   @db.Text
-  lastLanguage String?   @default("javascript")
-
-  submissionTimes String[] @default([])
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@unique([userId, problemId])
-  @@index([userId])
-  @@index([problemId])
-}
-
-// ------------------------------------------------------
-// LEARNING PATHS (ROADMAP S4)
-// ------------------------------------------------------
-
-model LearningItem {
-  id              String   @id @default(uuid())
-  name            String
-  order           Int
-  category        String   @default("")
-  description     String?  @db.Text
-  problemIds      String[] @default([])
-  prerequisites   String[] @default([]) // IDs of prerequisite learning items (e.g., ["Arrays"])
-  nextStructures  String[] @default([]) // IDs/names of next recommended learning items (e.g., ["Queue", "Deque"])
-
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  // Metrics
+  questionsSolved Int     @default(0)
+  timeTakenMs     Int?
+  status          String  @default("PENDING") // PENDING, COMPLETED, PASSED, FAILED, TIMEOUT, SURRENDER
+  score           Int     @default(0)
+  
+  submissions CodeSubmission[]
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 
-  @@index([order])
-  @@index([category])
-}
-
-model UserLearningProgress {
-  id             String        @id @default(uuid())
-
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  learningItemId String
-  learningItem   LearningItem  @relation(fields: [learningItemId], references: [id], onDelete: Cascade)
-
-  progressStatus String        @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | COMPLETED
-  lastVisited    DateTime?
-
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  @@unique([userId, learningItemId])
   @@index([userId])
-  @@index([learningItemId])
+  @@index([eventId])
 }
 
-model UserLearningSummary {
-  id             String   @id @default(uuid())
+model CodeSubmission{
+  id String @id @default(uuid())
+  UserPersonalPerformanceId String
+  userPersonalPerformance UserPersonalPerformance @relation(references:[id],fields:[UserPersonalPerformanceId],onDelete: Cascade)
+  
+  problemId String
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submittedCode String @db.Text
+  language String @default("javascript")
+  status String @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT , SURRENDER
 
-  completedCount Int      @default(0)
-  lastUpdated    DateTime @default(now())
+  runtimeMs Int?
+  memoryKb Int?
+  passedCase Int
+  totalCases Int
+
+  isBestSubmission Boolean @default(false)
+  attemptNumber Int @default(1)
+
+  createdAt DateTime @default(now())
+
+  @@index([UserPersonalPerformanceId])
+  @@index([problemId])
+  
 }
-
-// ------------------------------------------------------
-// FEEDBACK & REPORTS
-// ------------------------------------------------------
-
 model Message {
-  id        String   @id @default(uuid())
-  senderId  String
-  sender    User     @relation("SentMessage", fields: [senderId], references: [id], onDelete: Cascade)
+  id String @id @default(uuid())
+  content String @db.Text
+
+  senderId String
+  sender User @relation("SentMessage",fields:[senderId],references:[id])
 
   receiverId String
-  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  body      String   @db.Text
-
-  eventId   String?
-  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  // Virtual read-receipts (presence system) - kept here for relational integrity
-  readAt    DateTime?
+  receiver User @relation("ReceivedMessages", fields:[receiverId],references:[id])
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@index([senderId])
-  @@index([receiverId])
-  @@index([eventId, createdAt])
 }
 
 // ── NOTIFICATION CENTER (3-day retained queue) ──
@@ -488,4 +331,128 @@ model Setting {
   key       String   @unique
   value     Json
   updatedAt DateTime @updatedAt
+}
+enum MatchmakingStatus {
+  WAITING
+  MATCHED
+  CANCELLED
+  EXPIRED
+}
+
+model MatchmakingQueue {
+  id String @id @default(uuid())
+
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  preferredDifficulty Level
+
+  status MatchmakingStatus @default(WAITING)
+
+  joinedAt DateTime @default(now())
+  matchedAt DateTime?
+
+  @@index([status, preferredDifficulty])
+}
+
+
+model TemplateSubscription {
+  id                String   @id @default(uuid())
+  
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  templateEventId   String
+  templateEvent     Event    @relation(fields: [templateEventId], references: [id], onDelete: Cascade)
+  
+  subscribedVersion Int      // Locks in the version of the template they subscribed to
+
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, templateEventId]) // A user can only subscribe to a template once
+}
+
+// ------------------------------------------------------
+// DSA PRACTICE PROGRESS
+// ------------------------------------------------------
+
+model UserProblemProgress {
+  id           String    @id @default(uuid())
+
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  problemId    String
+  problem      Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  isSolved     Boolean   @default(false)
+  solvedAt     DateTime?
+
+  attempts     Int       @default(0)
+
+  // Last saved code draft for each user/problem combo (cloud save)
+  lastCode     String?   @db.Text
+  lastLanguage String?   @default("javascript")
+
+  submissionTimes String[] @default([])
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+}
+
+// ------------------------------------------------------
+// LEARNING PATHS (ROADMAP S4)
+// ------------------------------------------------------
+
+model LearningItem {
+  id              String   @id @default(uuid())
+  name            String
+  order           Int
+  category        String   @default("")
+  description     String?  @db.Text
+  problemIds      String[] @default([])
+  prerequisites   String[] @default([]) // IDs of prerequisite learning items
+  nextStructures  String[] @default([]) // IDs of next recommended learning items
+
+  progress        UserLearningProgress[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([order])
+  @@index([category])
+}
+
+model UserLearningProgress {
+  id             String        @id @default(uuid())
+
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  learningItemId String
+  learningItem   LearningItem  @relation(fields: [learningItemId], references: [id], onDelete: Cascade)
+
+  progressStatus String        @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | COMPLETED
+  lastVisited    DateTime?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([userId, learningItemId])
+  @@index([userId])
+  @@index([learningItemId])
+}
+
+model UserLearningSummary {
+  id             String   @id @default(uuid())
+
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  completedCount Int      @default(0)
+  lastUpdated    DateTime @default(now())
 }
