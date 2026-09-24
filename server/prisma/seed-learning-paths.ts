@@ -2,8 +2,12 @@
  * Idempotent population script for the learning & recommendation module.
  *
  *   cd server
- *   npx tsx prisma/seed-learning-paths.ts
- *   npx tsx prisma/seed-learning-paths.ts --demo-progress test@mail.com
+ *   npm run seed:learning-paths
+ *   npm run seed:learning-paths -- --demo-progress test@mail.com
+ *   (or directly: npx tsx prisma/seed-learning-paths.ts)
+ *
+ * The script loads .env.development itself — no dotenv CLI wrapper needed
+ * (dotenv v17 dropped its CLI binary).
  *
  * What it does
  * ------------
