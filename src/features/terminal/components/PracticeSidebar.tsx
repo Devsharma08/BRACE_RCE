@@ -11,6 +11,7 @@ import {
   AlignLeft,
   Lightbulb,
   Lock,
+  FlaskConical,
   Tag,
 } from "lucide-react";
 
@@ -167,8 +168,42 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         )}
       </div>
 
-      {/* Public Test Cases — intentionally NOT rendered: examples are embedded
-          in the problem statement HTML above. */}
+      {/* Public Test Cases — explicit section: descriptions are plain text for some
+          problems, so never rely solely on examples embedded in the statement HTML. */}
+      {publicCases.length > 0 && (
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-2">
+            <FlaskConical className="w-3 h-3" /> TEST CASES
+            <span className="ml-auto text-[8px] text-faint normal-case tracking-normal">
+              {publicCases.length} CASE{publicCases.length !== 1 ? "S" : ""}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {publicCases.map((tc, i) => (
+              <div key={tc.id} className="border border-subtle-line bg-black/60 overflow-hidden">
+                <div className="px-3 py-1 border-b border-subtle-line text-[8px] font-bold text-faint uppercase tracking-widest">
+                  CASE #{i + 1}
+                </div>
+                <div className="px-3 py-2 space-y-2">
+                  <div className="min-w-0">
+                    <span className="text-[8px] text-accent-success/70 font-bold uppercase tracking-widest block mb-1">
+                      INPUT
+                    </span>
+                    <pre className="text-[10px] text-subtle font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{tc.input || "(empty)"}</pre>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[8px] text-accent-primary/70 font-bold uppercase tracking-widest block mb-1">
+                      EXPECTED_OUTPUT
+                    </span>
+                    <pre className="text-[10px] text-fg font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{tc.expectedOutput}</pre>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Hints */}
       <HintsAccordion hints={problem.problem_hints} />
 

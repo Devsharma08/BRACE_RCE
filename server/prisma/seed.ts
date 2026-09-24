@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.development") });
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -186,6 +187,36 @@ async function main() {
     });
 
     console.log(`✅ Seeded: [#${problem.problem_number}] ${problem.name} (${problem.difficulty_level})`);
+  }
+
+  // Overlay rich HTML descriptions (with embedded Example Input/Output blocks)
+  // from problems_seed.json. leetcodeProblems.ts only carries plain one-liners;
+  // PracticeSidebar/Battle render problem_definition as HTML and expect the
+  // examples to be embedded there.
+  try {
+    const richPath = path.resolve(process.cwd(), "../problems_seed.json");
+    const richData = JSON.parse(fs.readFileSync(richPath, "utf8"));
+    const richByNum = new Map<number, string>(
+      (richData.problems ?? [])
+        .filter((rp: { problem_number?: number; problem_definition?: string }) =>
+          rp?.problem_number != null &&
+          typeof rp.problem_definition === "string" &&
+          rp.problem_definition.includes("<"))
+        .map((rp: { problem_number: number; problem_definition: string }) => [rp.problem_number, rp.problem_definition])
+    );
+    let overlaid = 0;
+    const seeded = await prisma.problem.findMany({ select: { id: true, name: true } });
+    for (const prob of seeded) {
+      const m = prob.name.match(/LeetCode-?(\d+)/);
+      const richDef = m ? richByNum.get(parseInt(m[1], 10)) : undefined;
+      if (richDef) {
+        await prisma.problem.update({ where: { id: prob.id }, data: { problem_definition: richDef } });
+        overlaid++;
+      }
+    }
+    console.log(`📝 Overlaid rich descriptions: ${overlaid} (${richByNum.size} available in JSON)`);
+  } catch {
+    console.warn("⚠️  problems_seed.json not found — skipping rich description overlay");
   }
 
   await seedLearningPaths();
