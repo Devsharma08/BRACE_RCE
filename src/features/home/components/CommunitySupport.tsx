@@ -14,16 +14,24 @@ import { api } from "../../../config/api";
 /**
  * CommunitySupport — home "developer voice & reviews" + feedback desk.
  *
- * Sticky signal-desk aside + reviews ledger + helpdesk/feedback pair.
+ * Sticky signal-desk aside + capability ledger + helpdesk/feedback pair.
  * The feedback form POSTs to the authenticated /api/feedback endpoint
  * (kept from the previous section — do not downgrade to local state).
+ *
+ * NOTE ON HONESTY: this block previously rendered three invented testimonials
+ * attributed to named third parties ("ALEXANDER_V — SENIOR SYSTEMS ENGINEER",
+ * etc.). Those were fabricated quotes presented as real user reviews, which is
+ * misleading advertising. The ledger below now states verifiable facts about
+ * what the product actually does. If genuine, permissioned testimonials are
+ * ever added, they must come from a real endpoint with real attributions —
+ * never from a hardcoded array in the component.
  */
 
-const reviews = [
-  ["ALEXANDER_V", "SENIOR SYSTEMS ENGINEER", "The sandbox telemetry and realtime execution output cut my debugging time in half."],
-  ["ELENA_R", "COMPETITIVE PROGRAMMER", "The side-by-side workspace makes running custom DSA suites feel effortless."],
-  ["MARCUS_K", "FULLSTACK ARCHITECT", "Fast RCE execution with a focused terminal surface. It feels built for serious practice."],
-];
+const capabilities = [
+  ["01", "Sandboxed execution", "Each submission runs in an isolated workspace with hard CPU, memory and wall-clock ceilings. Nothing touches the host process."],
+  ["02", "Realtime duel format", "Two operatives, one problem, one shared clock. Progress, status and submissions stream live over a socket."],
+  ["03", "Rated progression", "Every duel moves an ELO rating through documented tiers, so the number on your profile reflects real matches."],
+] as const;
 
 export function CommunitySupport() {
   const [feedback, setFeedback] = useState("");
@@ -103,24 +111,21 @@ export function CommunitySupport() {
             </div>
           </div>
 
-          {/* Reviews ledger */}
-          <div aria-label="Community reviews" className="divide-y divide-line">
-            {reviews.map(([name, role, comment], index) => (
+          {/* Capability ledger — verifiable product facts, no invented voices */}
+          <div aria-label="Platform capabilities" className="divide-y divide-line">
+            {capabilities.map(([index, title, body]) => (
               <article
-                key={name}
-                className="group relative grid gap-5 py-8 transition before:absolute before:inset-y-5 before:left-0 before:w-px before:bg-accent-primary before:opacity-0 before:transition group-hover:before:opacity-100 md:grid-cols-[100px_1fr_150px] md:gap-8"
+                key={index}
+                className="group relative grid gap-3 py-8 transition before:absolute before:inset-y-5 before:left-0 before:w-px before:bg-accent-primary before:opacity-0 before:transition group-hover:before:opacity-100 md:grid-cols-[100px_1fr] md:gap-8"
               >
                 <div className="font-mono text-xs text-accent-primary">
-                  0{index + 1}
-                  <span className="text-faint"> / signal</span>
+                  {index}
+                  <span className="text-faint"> / spec</span>
                 </div>
-                <blockquote className="max-w-xl text-lg leading-8 tracking-tight text-subtle transition group-hover:text-fg">
-                  “{comment}”
-                </blockquote>
-                <footer className="font-mono text-[9px] uppercase tracking-[0.14em] text-faint md:text-right">
-                  <div className="font-bold text-fg">{name}</div>
-                  <div className="mt-2 leading-4">{role}</div>
-                </footer>
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight text-fg">{title}</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-subtle">{body}</p>
+                </div>
               </article>
             ))}
           </div>
@@ -139,7 +144,10 @@ export function CommunitySupport() {
                 Report execution issues or help shape the next protocol.
               </p>
               <div className="mt-8 space-y-3">
-                {["24/7 uptime monitoring", "Direct issues channel"].map((item) => (
+                {/* "24/7 uptime monitoring" was an unsubstantiated service-level
+                    promise. These now describe channels the user can actually
+                    reach, without promising response times we don't meet. */}
+                {["Feedback goes to the engineering log", "Issues and bug reports welcome"].map((item) => (
                   <div key={item} className="flex items-center gap-3 border-t border-line pt-3 font-mono text-[10px] uppercase tracking-wider text-subtle">
                     <CheckCircle2 size={14} className="shrink-0 text-accent-success" />
                     {item}

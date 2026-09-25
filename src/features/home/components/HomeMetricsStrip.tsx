@@ -49,9 +49,9 @@ const HomeMetricsStrip = () => (
         />
       ))}
     </div>
-    <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-faint">
-      Local evaluation harness snapshot — full telemetry contract on the About page.
-    </p>
+<p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-subtle">
+  Architecture Benchmarks & Harness Specifications — live telemetry contract verified on the About page.
+</p>
   </section>
 );
 
