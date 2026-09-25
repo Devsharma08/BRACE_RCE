@@ -107,7 +107,11 @@ export class AuthController {
     me = async (req: AuthRequest, res: Response) => {
         try {
             const userId = req.userId;
-            const user = await prisma.user.findUnique({ where: { id: userId as string }, select: { id: true, username: true, avatarUrl: true, email: true } })
+            // `role` is returned so the client can hide privileged surfaces.
+            // NOTE: this is UX only, never authorization — every admin endpoint
+            // independently re-checks the role server-side (isAdminReq) and
+            // returns 403. Do not treat a client-side check as a security boundary.
+            const user = await prisma.user.findUnique({ where: { id: userId as string }, select: { id: true, username: true, avatarUrl: true, email: true, role: true } })
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }

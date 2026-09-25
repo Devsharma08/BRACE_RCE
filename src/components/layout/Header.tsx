@@ -7,6 +7,7 @@ import {
   Info,
   LayoutDashboard,
   Menu,
+  Shield,
   Terminal,
   User,
   UserPlus,
@@ -27,19 +28,25 @@ const links = [
   { href: '/friends', label: 'Friends', icon: UserPlus, auth: true },
   { href: '/terminal', label: 'Terminal', icon: Terminal },
   { href: '/about', label: 'About', icon: Info },
+  // Admin-only. `admin: true` entries are filtered on the role so regular users
+  // never see a link that would land them on a clearance-denied screen.
+  { href: '/admin', label: 'Admin', icon: Shield, admin: true },
 ]
 
 const Header = () => {
   const { visible } = UseHeadroom()
   const { pathname } = useLocation()
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, isAdmin, user } = useAuth()
   const [open, setOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
 
   const isActive = (href: string) =>
     href === '/' ? pathname === href : pathname.startsWith(href)
 
-  const visibleLinks = links.filter((link) => !link.auth || isAuthenticated)
+  const visibleLinks = links.filter((link) => {
+    if ('admin' in link && link.admin) return isAdmin
+    return !('auth' in link && link.auth) || isAuthenticated
+  })
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -100,7 +107,7 @@ const Header = () => {
           {/* DESKTOP NAV */}
           <nav
             aria-label='Main navigation'
-            className='hidden items-center gap-1 rounded-xl border border-line bg-black/20 p-1 md:flex'
+            className='hidden items-center gap-1 rounded-xl border border-line bg-surface/60 p-1 md:flex'
           >
             {visibleLinks.map(({ href, label }) => (
               <Link
@@ -162,16 +169,19 @@ const Header = () => {
       </div>
 
       {/* MOBILE DROPDOWN */}
-      <div
-        id='mobile-header-nav'
-        className={`mx-4 overflow-hidden transition-all duration-200 sm:mx-6 md:hidden ${
-          open ? 'max-h-96 py-3 opacity-100' : 'max-h-0 py-0 opacity-0'
-        }`}
-      >
-        <nav
-          aria-label='Mobile navigation'
-          className='rounded-2xl border border-line bg-surface p-2'
-        >
+
+<div
+  id='mobile-header-nav'
+  className={`mx-4 overflow-hidden transition-all duration-200 sm:mx-6 md:hidden ${
+    open ? 'max-h-[80vh] overflow-y-auto py-3 opacity-100' : 'max-h-0 py-0 opacity-0'
+  }`}
+>
+  <nav
+    aria-label='Mobile navigation'
+    className='rounded-card border border-subtle-line bg-surface p-2'
+  >
+
+
           {visibleLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}

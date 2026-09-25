@@ -8,12 +8,24 @@ interface User {
     email: string;
     username: string;
     avatarUrl?: string | null;
+    // Present on the auth-me payload. Optional so a cached/older payload that
+    // predates the field still type-checks — an absent role simply means
+    // "not an admin".
+    role?: string | null;
 }
 
 interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    /**
+     * Convenience flag derived from `user.role`.
+     *
+     * UX ONLY — this hides admin UI from non-admins. It is NOT a security
+     * boundary: every /api/admin/* route re-checks the role server-side and
+     * returns 403 regardless of what the client believes.
+     */
+    isAdmin: boolean;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
 }
@@ -41,6 +53,9 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
     });
 
     const isAuthenticated = !!user;
+    // Mirrors the server's canonical check in isAdminReq() — case-insensitive
+    // compare against 'ADMIN' — so client and server never disagree.
+    const isAdmin = (user?.role ?? '').toUpperCase() === 'ADMIN';
 
     async function checkAuth() {
         await refetch();
@@ -63,7 +78,7 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
     }
 
     return (
-        <AuthContext.Provider value={{user, logout, isAuthenticated, isLoading, checkAuth}}>
+        <AuthContext.Provider value={{user, logout, isAuthenticated, isAdmin, isLoading, checkAuth}}>
             {children}
         </AuthContext.Provider>
     )

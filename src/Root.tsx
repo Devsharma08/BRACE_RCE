@@ -2,6 +2,18 @@ import { StrictMode, Suspense, useState, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import App from "./App.tsx";
 
+
+
+//----------------- admin routes ------------------
+const AdminLayout = lazy(()=>import('./pages/admin/AdminLayout.tsx').then((m)=>({default:m.AdminLayout})));
+const AdminDashboard = lazy(()=>import('./pages/admin/AdminDashboard.tsx'));
+const AdminUsers = lazy(()=>import('./pages/admin/AdminUsers.tsx'));
+const AdminQuestions = lazy(()=>import('./pages/admin/AdminQuestions.tsx'));  
+const AdminReports = lazy(()=>import('./pages/admin/AdminReports.tsx'));  
+const AdminSettings = lazy(()=>import('./pages/admin/AdminSettings.tsx'));  
+const AdminFeedback = lazy(()=>import('./pages/admin/AdminFeedback.tsx'));
+
+// -------------  normal routes  ------------------
 const About = lazy(() => import("./pages/About.tsx"));
 const Home = lazy(() => import("./pages/Home.tsx"));
 const Terminal = lazy(() => import("./pages/Terminal.tsx"));
@@ -39,6 +51,7 @@ import type {
 import { RouteLoadingSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
+import { AdminRoute } from "./components/shared/AdminRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -123,7 +136,28 @@ export const Root = () => {
                       />
 
                       {/* Protected Routes */}
+  
                       <Route element={<ProtectedRoute />}>
+                        {/* Admin Console Routes.
+                            Wrapped in <AdminRoute> so non-admins never see the
+                            console. That guard is presentation only — every
+                            /api/admin/* endpoint independently re-checks the
+                            caller's role and 403s.
+
+                            NOTE: child paths MUST be relative. React Router v7
+                            throws "Absolute route path "/users" nested under
+                            path "/admin" is not valid" at runtime, which
+                            TypeScript/tsc will not catch. */}
+                        <Route element={<AdminRoute />}>
+                          <Route path="/admin" element={<AdminLayout />}>
+                            <Route index element={<AdminDashboard />} />
+                            <Route path="users" element={<AdminUsers />} />
+                            <Route path="questions" element={<AdminQuestions />} />
+                            <Route path="reports" element={<AdminReports />} />
+                            <Route path="settings" element={<AdminSettings />} />
+                            <Route path="feedback" element={<AdminFeedback />} />
+                          </Route>
+                        </Route>
                         <Route path="dashboard" element={<Dashboard />} />
                         <Route path="/friends" element={<FriendsDashboard />} />
                         <Route path="/profile" element={<Profile />} />

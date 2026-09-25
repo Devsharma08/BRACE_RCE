@@ -156,6 +156,29 @@ describe("Auth Controller Routes (/api/auth)", () => {
       expect(res.body.user.id).toBe("user-123");
     });
 
+    // The client derives `isAdmin` from this field, so it has to survive the
+    // trip to the browser or the admin console becomes unreachable for real
+    // admins while still being visible to everyone.
+    test("should include role so the client can gate the admin console", async () => {
+      const secret = process.env.JWT_SECRET || "development-only-secret-key";
+      const token = jwt.sign({ userId: "user-123" }, secret);
+
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+        id: "user-123",
+        username: "testuser",
+        email: "test@example.com",
+        avatarUrl: "http://avatar.com",
+        role: "ADMIN",
+      });
+
+      const res = await request(app)
+        .get("/api/auth/me")
+        .set("Cookie", [`token=${token}`]);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.role).toBe("ADMIN");
+    });
+
     test("should return 401 if unauthenticated", async () => {
       const res = await request(app).get("/api/auth/me");
       expect(res.status).toBe(401);
