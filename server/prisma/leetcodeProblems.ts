@@ -60,7 +60,9 @@ const problem = (
   test_cases: RawSeedTestCase[],
   code_snippets: RawSeedCodeSnippet[],
 ): RawSeedProblem => ({
-  name,
+  // The source files were named like `LeetCode-01E`; the definition carries
+  // the canonical title, so expose that title to every seed consumer.
+  name: problem_definition.split(" - ", 1)[0]?.trim() || name,
   problem_number,
   github_oid,
   problem_definition,

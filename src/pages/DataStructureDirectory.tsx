@@ -1,11 +1,13 @@
 import type { FC } from "react";
 import { Link } from "react-router-dom";
-import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight, Trees, List, Braces, Search } from "lucide-react";
+import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight, Trees, List, Braces, Search, LayoutDashboard } from "lucide-react";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
 import { DS_ALGORITHMS } from "../data/dsAlgorithms";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
+import { dsCompletionState } from "../data/dsTopics";
 
 const domainCount = Object.keys(DS_ALGORITHMS).length;
 const algorithmCount = Object.values(DS_ALGORITHMS).reduce(
@@ -13,19 +15,54 @@ const algorithmCount = Object.values(DS_ALGORITHMS).reduce(
   0,
 );
 
+/** Header quick-jump cards — the slug drives the live completion state. */
+const PROTOCOL_CARDS = [
+  { slug: "tree", icon: Trees, title: "Trees", desc: "DFS / BFS traversals, level order, diameter." },
+  { slug: "array", icon: List, title: "Arrays", desc: "Two-pointers, sliding windows, prefix sums." },
+  { slug: "stack", icon: Braces, title: "Stacks", desc: "Monotonic stacks, min-stack, parenthesis matching." },
+  { slug: "searching", icon: Search, title: "Searching", desc: "Binary search on answer, lower bounds, rotation." },
+];
+
+/** CategoryDirectory rows that have a learning-path topic behind them. */
+const LEDGER_HREFS = [
+  "/ds/tree",
+  "/ds/dynamic-programming",
+  "/ds/array",
+  "/ds/linked-list",
+  "/ds/searching",
+  "/ds/math",
+  "/ds/stack",
+  "/ds/greedy",
+];
+
 /**
  * /ds — data-structure taxonomy landing.
  *
  * Opens with the same console page-header idiom used across the app
  * (eyebrow strip → h1 → description → stat chips), then the ledger rows
- * route into each /ds/:slug console.
+ * route into each /ds/:slug console. Completion state is live from the
+ * learning-path API (useDsTopicProgress).
  */
 const DataStructureDirectory: FC = () => {
   // Hooks must run inside the component body — a module-scope call crashes
   // with "Invalid hook call" (React rules of hooks).
   const { data: analytics } = useAnalytics(true);
+  const { bySlug } = useDsTopicProgress();
   const totalSolved = analytics?.summary?.totalSolved ?? 0;
   const currentStreak = analytics?.summary?.currentStreak ?? 0;
+
+  const progressByHref: Record<string, { total: number; completed: number; inProgress: number }> = {};
+  for (const href of LEDGER_HREFS) {
+    const page = bySlug[href.replace("/ds/", "")];
+    if (page) progressByHref[href] = page;
+  }
+
+  // Study-route card: completed ledger domains / all ledger domains (live).
+  const studyTotal = LEDGER_HREFS.length;
+  const studyCompleted = LEDGER_HREFS.filter(
+    (href) => (progressByHref[href]?.completed ?? 0) >= (progressByHref[href]?.total ?? 1) && (progressByHref[href]?.total ?? 0) > 0,
+  ).length;
+  const studyPct = studyTotal > 0 ? Math.round((studyCompleted / studyTotal) * 100) : 0;
 
   return (
     <div className="flex min-h-screen bg-base text-fg font-mono relative">
@@ -48,6 +85,7 @@ const DataStructureDirectory: FC = () => {
           flex flex-col gap-6
         "
       >
+        <div className="flex flex-col gap-10">
         {/* HEADER — eyebrow strip → h1 → description → stat chips */}
         <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5">
           <div className="flex flex-col gap-4">
@@ -55,7 +93,7 @@ const DataStructureDirectory: FC = () => {
               <Layers3 size={13} />
               <span>DS // corpus taxonomy</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-3xl">
               Master every <span className="text-accent-primary">structure.</span>
             </h1>
             <p className="text-xs text-subtle leading-relaxed max-w-xl">
@@ -72,6 +110,13 @@ const DataStructureDirectory: FC = () => {
             <span className="border border-subtle-line px-2.5 py-1.5 text-faint">
               <Waypoints size={12} className="mr-1 inline" /> corpus synced
             </span>
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-1.5 border border-accent-primary/40 bg-accent-primary/10 px-2.5 py-1.5 text-accent-primary transition hover:bg-accent-primary/20"
+            >
+              <LayoutDashboard size={12} />
+              Dashboard
+            </Link>
           </div>
         </header>
 
@@ -89,25 +134,50 @@ const DataStructureDirectory: FC = () => {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-                          { href: "/ds/tree", icon: Trees, title: "Trees", desc: "DFS / BFS traversals, level order, diameter." },
-              { href: "/ds/array", icon: List, title: "Arrays", desc: "Two-pointers, sliding windows, prefix sums." },
-              { href: "/ds/stack", icon: Braces, title: "Stacks", desc: "Monotonic stacks, min-stack, parenthesis matching." },
-              { href: "/ds/searching", icon: Search, title: "Searching", desc: "Binary search on answer, lower bounds, rotation." },
-            ].map((entry) => (
-              <Link
-                key={entry.href}
-                to={entry.href}
-                className="group relative flex flex-col gap-2 rounded-card border border-subtle-line bg-surface px-4 py-3.5 transition hover:border-accent-primary/40 hover:bg-surface-hover"
-              >
-                <entry.icon size={16} className="text-accent-primary/60 transition group-hover:text-accent-primary" />
-                <h3 className="text-sm font-bold text-fg group-hover:text-accent-primary">{entry.title}</h3>
-                <p className="text-[9px] text-subtle">{entry.desc}</p>
-              </Link>
-            ))}
+            {PROTOCOL_CARDS.map((entry) => {
+              const progress = bySlug[entry.slug];
+              const state = dsCompletionState(progress);
+              return (
+                <Link
+                  key={entry.slug}
+                  to={`/ds/${entry.slug}`}
+                  className={`group relative flex flex-col gap-2 rounded-card border bg-surface px-4 py-3.5 transition hover:bg-surface-hover ${
+                    state === "COMPLETED"
+                      ? "border-accent-success/60"
+                      : state === "PARTIAL"
+                        ? "border-accent-warning/50"
+                        : "border-subtle-line hover:border-accent-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <entry.icon
+                      size={16}
+                      className={`transition ${
+                        state === "COMPLETED"
+                          ? "text-accent-success"
+                          : state === "PARTIAL"
+                            ? "text-accent-warning"
+                            : "text-accent-primary/60 group-hover:text-accent-primary"
+                      }`}
+                    />
+                    {state === "COMPLETED" && (
+                      <span className="border border-accent-success/50 bg-accent-success/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest text-accent-success">
+                        completed
+                      </span>
+                    )}
+                    {state === "PARTIAL" && progress && (
+                      <span className="border border-accent-warning/50 bg-accent-warning/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest text-accent-warning">
+                        {progress.completed}/{progress.total} done
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-bold text-fg group-hover:text-accent-primary">{entry.title}</h3>
+                  <p className="text-[9px] text-subtle">{entry.desc}</p>
+                </Link>
+              );
+            })}
           </div>
         </section>
-
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
@@ -121,12 +191,8 @@ const DataStructureDirectory: FC = () => {
             </div>
             <h2 className="relative mt-7 text-lg font-bold text-fg">{domainCount} domains</h2>
             <p className="relative mt-2 text-xs leading-5 text-subtle">
-              {algorithmCount} algorithm patterns across eight data-structure domains. Each domain opens into its own /ds/:slug console — pseudocode, implementation, and a matching problem set.
+              {algorithmCount} algorithm patterns across {domainCount} data-structure domains. Each domain opens into its own /ds/:slug console — pseudocode, implementation, and a matching problem set.
             </p>
-            <button className="relative mt-5 flex items-center gap-2 border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10">
-              Browse corpus
-              <ChevronRight size={12} />
-            </button>
           </article>
 
           <article className="rounded-2xl border border-subtle-line bg-surface p-5">
@@ -136,16 +202,16 @@ const DataStructureDirectory: FC = () => {
             </div>
             <div className="mt-7 flex items-end justify-between">
               <div>
-                <p className="text-lg font-bold text-fg">Arrays</p>
-                <p className="mt-1 text-xs text-subtle">Lists, stacks, queues, matrices</p>
+                <p className="text-lg font-bold text-fg">Learning paths</p>
+                <p className="mt-1 text-xs text-subtle">{domainCount} domains · {algorithmCount} algorithms</p>
               </div>
               <span className="font-mono text-[9px] uppercase tracking-widest text-muted">path / open</span>
             </div>
             <div className="mt-5 h-1 overflow-hidden bg-surface-hover">
-              <div className="h-full w-1/4 bg-accent-success" />
+              <div className="h-full bg-accent-success transition-all" style={{ width: `${studyPct}%` }} />
             </div>
             <p className="mt-3 text-[9px] uppercase tracking-widest text-muted">
-              Continue when your training data is connected
+              {studyCompleted}/{studyTotal} domains completed · live from your learning paths
             </p>
           </article>
 
@@ -174,10 +240,11 @@ const DataStructureDirectory: FC = () => {
             </p>
           </article>
         </div>
+        </div>
 
-        {/* DOMAIN LEDGER */}
-        <CategoryDirectory showHeader={false} />
-      </main>
+        {/* DOMAIN LEDGER — live completion state from the learning paths */}
+        <CategoryDirectory showHeader={true} progressByHref={progressByHref} />
+    </main>
     </div>
   );
 };

@@ -25,9 +25,9 @@ const Home: FC = () => {
       {/* 2. Raw fact strip */}
       <HomeMetricsStrip />
       {/* 3. Four navigation cards */}
-      <QuickNavCards />
-      {/* 4. Learning — sandboxed workspace teaser (taxonomy lives on /ds) */}
       <WorkspaceTeaser />
+      {/* 4. Learning — single workspace card */}
+      <QuickNavCards />
       {/* 5. Bento — five service cards */}
       <WorkspaceDirectory />
       {/* 6. Built by operators + reviews + feedback */}

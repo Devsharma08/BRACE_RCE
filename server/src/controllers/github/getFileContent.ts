@@ -5,6 +5,7 @@ import { getQueryValue } from "../../utils/request.js";
 import { internalCache } from "../../lib/cache.js";
 import { postGraphQL } from "../../lib/githubClient.js";
 import { prisma } from "../../lib/prisma.js";
+import { withDisplayProblemName } from "../../utils/problemName.js";
 import type { GitHubFileContentResponse } from "../../types/github.js";
 
 export const getFileContent = async (req: Request, res: Response) => {
@@ -34,6 +35,7 @@ export const getFileContent = async (req: Request, res: Response) => {
       select: {
         id: true,
         name: true,
+        problem_number: true,
         github_oid: true,
         test_cases: true,
         code_snippets: true,
@@ -74,8 +76,9 @@ export const getFileContent = async (req: Request, res: Response) => {
     }
 
     // 3. Fallback content if GitHub text is unavailable
+    const displayProblem = problemRecord ? withDisplayProblemName(problemRecord) : undefined;
     const defaultSnippet = problemRecord?.code_snippets?.[0]?.code ||
-      `// Solution for ${problemRecord?.name || "problem"}\nfunction solution() {\n  \n}\n`;
+      `// Solution for ${displayProblem?.name || "problem"}\nfunction solution() {\n  \n}\n`;
 
     const contentText = githubText || defaultSnippet;
 
@@ -87,7 +90,7 @@ export const getFileContent = async (req: Request, res: Response) => {
       problem_hints: problemRecord?.problem_hints || [],
       difficulty_level: problemRecord?.difficulty_level || "MEDIUM",
       id: problemRecord?.id || oid,
-      name: problemRecord?.name || "",
+      name: displayProblem?.name || "",
     };
 
     if (!content.content) {

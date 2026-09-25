@@ -11,11 +11,12 @@
  *
  * What it does
  * ------------
- * 1. Upserts the 12 learning items from LEARNING_PATH_BLUEPRINT (matched by
+ * 1. Upserts the learning items from LEARNING_PATH_BLUEPRINT (matched by
  *    name — existing ids are preserved so UserLearningProgress rows are never
  *    orphaned by a re-run).
- * 2. Links every item to real Problem rows (`problemIds`) via the seeded name
- *    convention ("LeetCode-01E" → LC 1) and the blueprint's lcNumbers.
+ * 2. Links every item to real Problem rows (`problemIds`) via the stable
+ *    `problem_number` and the blueprint's lcNumbers. The blueprint covers the
+ *    original 124-problem catalog and the current seed JSON.
  * 3. Wires prerequisites / nextStructures to LearningItem ids so
  *    GET /api/learning-paths can resolve prerequisitesDetails /
  *    nextStructuresDetails and drive its recommendation logic.
@@ -34,22 +35,18 @@ import { LEARNING_PATH_BLUEPRINT } from "./learningPathsData.js";
 const pool = new Pool({ connectionString: process.env.DIRECT_URL! });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-const lcNumberOf = (name: string): number | null => {
-  const match = name.match(/LeetCode-?(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
-};
-
 async function main() {
   console.log("🧭 Populating learning paths (idempotent)...\n");
 
   const problems = await prisma.problem.findMany({
     where: { isCustom: false },
-    select: { id: true, name: true },
+    select: { id: true, problem_number: true },
   });
   const problemIdByLc = new Map<number, string>();
   for (const problem of problems) {
-    const lc = lcNumberOf(problem.name);
-    if (lc != null && !problemIdByLc.has(lc)) problemIdByLc.set(lc, problem.id);
+    if (problem.problem_number != null && !problemIdByLc.has(problem.problem_number)) {
+      problemIdByLc.set(problem.problem_number, problem.id);
+    }
   }
   console.log(`📚 Problem pool: ${problems.length} rows, ${problemIdByLc.size} resolvable LC numbers`);
 
@@ -104,7 +101,17 @@ async function main() {
   // ── Report ───────────────────────────────────────────────────────────────
   const items = await prisma.learningItem.findMany({ orderBy: { order: "asc" } });
   const nameById = new Map(items.map((item) => [item.id, item.name]));
+  const mappedProblemIds = new Set(items.flatMap((item) => item.problemIds));
+  const unmappedLiveProblems = [...problemIdByLc.entries()]
+    .filter(([, problemId]) => !mappedProblemIds.has(problemId))
+    .map(([problemNumber]) => problemNumber);
   console.log(`\n✅ Learning items: ${items.length}`);
+  if (unmappedLiveProblems.length > 0) {
+    throw new Error(
+      `Learning-path coverage incomplete. Unmapped live problem numbers: ${unmappedLiveProblems.join(", ")}`,
+    );
+  }
+  console.log(`✅ Live problem coverage: ${problemIdByLc.size}/${problemIdByLc.size} mapped`);
   for (const item of items) {
     const missing = missingByItem.get(item.name);
     console.log(

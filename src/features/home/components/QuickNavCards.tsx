@@ -68,7 +68,7 @@ export function QuickNavCards() {
             quick navigation
           </div>
           <h2 className="mt-5 font-mono text-4xl font-bold tracking-[-0.04em] text-fg md:text-5xl">
-            Four entry points.
+            Four entry <span className="text-accent-primary">points.</span>
           </h2>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-subtle mx-auto">
             Battle arena · data structures · friends · problem workspace — each is a front door into the same execution engine.
@@ -88,7 +88,7 @@ export function QuickNavCards() {
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-subtle">
                   {label}
                 </span>
-                <span className={`grid h-9 w-9 place-items-center rounded-full border border-line bg-black/20 ${accent} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
+                <span className={`grid h-9 w-9 place-items-center rounded-full border border-line bg-surface/60 ${accent} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
                   <Icon size={17} />
                 </span>
               </div>

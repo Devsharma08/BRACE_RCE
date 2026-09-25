@@ -11,6 +11,7 @@ import {
   Sparkles,
   Waypoints,
 } from "lucide-react";
+import { dsCompletionState } from "../../../data/dsTopics";
 
 /**
  * CategoryDirectory — home "master every structure" ledger.
@@ -18,9 +19,15 @@ import {
  * Eight data-structure domains as ledger rows (index / domain / focus /
  * corpus / action). Same accent-role mapping as WorkspaceDirectory so the
  * home page stays visually uniform with the token system.
+ *
+ * On /ds the optional `progressByHref` map (from useDsTopicProgress) marks
+ * completed domains with a green icon border + chip and in-progress domains
+ * amber — real-time from the learning-path API.
  */
 
 type AccentKey = "cyan" | "lime" | "violet" | "amber" | "pink";
+
+type ProgressEntry = { total: number; completed: number; inProgress: number };
 
 const categories: {
   id: string;
@@ -51,23 +58,21 @@ const accents: Record<AccentKey, string> = {
 
 export function CategoryDirectory({
   showHeader = true,
+  progressByHref,
 }: {
   showHeader?: boolean;
+  progressByHref?: Record<string, ProgressEntry>;
 }) {
   return (
-    <section aria-label="Problem categories" className="w-full py-16 sm:py-24">
+    <section aria-label="Problem categories" className="w-full sm:py-4">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header */}
         {showHeader && (
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
-          <div className="flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
-            <span className="h-2 w-2 rounded-full bg-accent-primary shadow-[0_0_10px_rgba(0,212,255,0.9)]" />
-            problem corpus / taxonomy
-          </div>
-          <h2 className="mt-5 font-mono text-4xl font-bold tracking-[-0.04em] text-fg md:text-5xl">
-            Master every <span className="text-accent-primary">structure.</span>
+          <h2 className="mt-3 font-mono text-2xl font-bold tracking-[-0.04em] text-fg md:text-3xl">
+            Every structure
           </h2>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-faint mx-auto">
+          <p className="mt-5 max-w-2xl text-sm leading-5 text-faint mx-auto">
             Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
           </p>
         </div>
@@ -82,35 +87,55 @@ export function CategoryDirectory({
             <span>Corpus</span>
             <span />
           </div>
-          {categories.map(({ id, title, description, icon: Icon, accent, count, href }) => (
-            <Link
-              key={id}
-              to={href}
-              className="group relative grid gap-4 border-b border-line px-4 py-5 transition last:border-0 hover:bg-surface-hover md:grid-cols-[72px_1.1fr_2fr_110px_32px] md:items-center md:gap-6 md:py-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
-            >
-              <span className={`font-mono text-sm font-bold ${accents[accent].split(" ")[0]}`}>{id}</span>
-              <div className="flex items-center gap-3">
-                <span className={`grid h-9 w-9 place-items-center border border-line bg-black/20 ${accents[accent].split(" ")[0]}`}>
-                  <Icon size={16} />
+          {categories.map(({ id, title, description, icon: Icon, accent, count, href }) => {
+            const progress = progressByHref?.[href];
+            const state = dsCompletionState(progress);
+            return (
+              <Link
+                key={id}
+                to={href}
+                className={`group relative grid gap-4 border-b border-line px-4 py-5 transition last:border-0 hover:bg-surface-hover md:grid-cols-[72px_1.1fr_2fr_110px_32px] md:items-center md:gap-6 md:py-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
+                  state === "COMPLETED" ? "bg-accent-success/[0.03]" : ""
+                }`}
+              >
+                <span className={`font-mono text-sm font-bold ${accents[accent].split(" ")[0]}`}>{id}</span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`grid h-9 w-9 place-items-center border bg-surface/60 ${
+                      state === "COMPLETED"
+                        ? "border-accent-success/70 text-accent-success"
+                        : state === "PARTIAL"
+                          ? "border-accent-warning/60 text-accent-warning"
+                          : `border-line ${accents[accent].split(" ")[0]}`
+                    }`}
+                  >
+                    <Icon size={16} />
+                  </span>
+                  <h3 className="font-mono text-base font-bold text-fg md:text-lg">{title}</h3>
+                </div>
+                <p className="max-w-xl text-xs leading-5 text-faint md:text-sm">{description}</p>
+                <span className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-widest text-faint">
+                  {count}
+                  {state === "COMPLETED" && (
+                    <span className="w-max border border-accent-success/50 bg-accent-success/10 px-1.5 py-0.5 text-accent-success">
+                      completed
+                    </span>
+                  )}
+                  {state === "PARTIAL" && progress && (
+                    <span className="w-max border border-accent-warning/50 bg-accent-warning/10 px-1.5 py-0.5 text-accent-warning">
+                      {progress.completed}/{progress.total} done
+                    </span>
+                  )}
                 </span>
-                <h3 className="font-mono text-base font-bold text-fg md:text-lg">{title}</h3>
-              </div>
-              <p className="max-w-xl text-xs leading-5 text-faint md:text-sm">{description}</p>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-faint">{count}</span>
-              <ArrowUpRight
-                size={16}
-                className={`text-faint transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${accents[accent].split(" ")[0]}`}
-              />
-            </Link>
-          ))}
-        </div>
-
-        {/* Footer strip */}
-        <div className="mt-10 flex flex-col justify-between gap-4 border-t border-subtle-line pt-6 font-mono text-[10px] uppercase tracking-widest text-faint md:flex-row">
-          <span>Brace RCE / structured practice</span>
-          <span className="flex items-center gap-2">
-            <Sparkles size={13} className="text-accent-success" /> adaptive paths online
-          </span>
+                <ArrowUpRight
+                  size={16}
+                  className={`text-faint transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${
+                    state === "COMPLETED" ? "text-accent-success" : accents[accent].split(" ")[0]
+                  }`}
+                />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

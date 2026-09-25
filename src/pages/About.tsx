@@ -401,21 +401,6 @@ const About = () => {
         }}
       />
 
-      {/* Page nav — the shared app Header remains above */}
-      <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between border-b border-subtle-line px-4 py-5 sm:px-6 lg:px-8">
-        <a href="#top" className="flex items-center gap-3 font-mono text-sm font-bold tracking-[0.18em] text-fg">
-          <span className="grid h-8 w-8 place-items-center border border-accent-primary/50 bg-accent-primary/10 text-accent-primary"><Zap size={15} /></span>
-          BRACE <span className="text-accent-primary">//</span> RCE
-        </a>
-        <div className="hidden items-center gap-7 font-mono text-[10px] uppercase tracking-[0.2em] text-subtle md:flex">
-          <a className="transition hover:text-accent-primary" href="#innovation">Architecture</a>
-          <a className="transition hover:text-accent-primary" href="#telemetry">Telemetry</a>
-          <a className="transition hover:text-accent-primary" href="#stack">Stack Matrix</a>
-          <a className="flex items-center gap-1 text-accent-primary" href="#credits">Operate <ArrowUpRight size={13} /></a>
-        </div>
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-subtle"><CircleDot size={12} className="text-accent-success" /> v0.8.4 / LIVE</div>
-      </nav>
-
       <div id="top" className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
 
         {/* ══ 01 // MISSION / EXECUTIVE SUMMARY (HERO) ══════════════════════ */}

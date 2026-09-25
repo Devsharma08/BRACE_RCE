@@ -9,7 +9,6 @@ import {
   Shield,
   Target,
   Code,
-  LogOut,
   Zap,
   BarChart3,
 } from "lucide-react";
@@ -17,7 +16,6 @@ import { Link } from "react-router-dom";
 import { api } from "../config/api";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
-import { useAuth } from "../context/AuthContext";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useMyRating } from "../hooks/useLeaderboard";
@@ -58,7 +56,6 @@ interface MatchRecord {
 
 const Profile = () => {
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
-  const { logout } = useAuth();
   const { data: myRating } = useMyRating(true);
 
   // Post-battle wave: stats + history refresh, identity stays cached.
@@ -210,15 +207,6 @@ const Profile = () => {
             </div>
           </section>
 
-          {/* Logout */}
-          <button
-            onClick={logout}
-            className="mt-6 flex items-center gap-2 border border-accent-danger/30 px-3 py-1.5 text-[9px] uppercase tracking-widest text-accent-danger transition-colors hover:border-accent-danger/50 hover:bg-accent-danger/5"
-            aria-label="Sign out of account"
-          >
-            <LogOut size={13} />
-            Sign out
-          </button>
 
           {/* ── BATTLE LEDGER ────────────────────────────────────────────── */}
           <section aria-labelledby="history-heading">

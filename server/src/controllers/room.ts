@@ -1,6 +1,7 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { withDisplayProblemName } from "../utils/problemName.js";
 
 class Rooms {
     // GET PUBLIC LOBBY ROOMS
@@ -15,12 +16,16 @@ class Rooms {
                 },
                 include: {
                     host: { select: { username: true, avatarUrl: true, id: true } },
-                    problems: { select: { id: true, name: true, difficulty_level: true } },
+                    problems: { select: { id: true, name: true, problem_number: true, difficulty_level: true } },
                     performances: { select: { id: true, userId: true, status: true } }
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            return res.json({ status: "success", rooms });
+            const displayRooms = rooms.map((room) => ({
+                ...room,
+                problems: (room.problems ?? []).map((problem) => withDisplayProblemName(problem)),
+            }));
+            return res.json({ status: "success", rooms: displayRooms });
         } catch (error) {
             console.error(error);
             return res.status(500).json({ message: "Server error" });
@@ -58,7 +63,11 @@ class Rooms {
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            return res.json({ status: "success", templates });
+            const displayTemplates = templates.map((template) => ({
+                ...template,
+                problems: (template.problems ?? []).map((problem) => withDisplayProblemName(problem)),
+            }));
+            return res.json({ status: "success", templates: displayTemplates });
         } catch (error) {
             console.error(error);
             return res.status(500).json({ message: "Server error" });
@@ -385,7 +394,16 @@ class Rooms {
                 }
             }
 
-            return res.json({ status: "success", room: event });
+            const displayEvent = event
+                ? {
+                    ...event,
+                    problems: event.problems?.map((problem) => withDisplayProblemName(problem)),
+                    commonProblem: event.commonProblem
+                        ? withDisplayProblemName(event.commonProblem)
+                        : event.commonProblem,
+                }
+                : event;
+            return res.json({ status: "success", room: displayEvent });
         } catch (error) {
             console.error("Get live room error:", error);
             return res.status(500).json({ message: "Server error" });

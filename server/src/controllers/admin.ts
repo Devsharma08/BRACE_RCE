@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import type { AuthRequest } from '../middleware/authentication.js';
 import { prisma } from '../lib/prisma.js';
 import { invalidateAllProblemsCache } from './problems.js';
+import { withDisplayProblemName } from '../utils/problemName.js';
 
 // Prisma client does not expose Feedback / QuestionReport / Setting models yet;
 // callers in routes/admin.ts still register these endpoints. Keep behavior
@@ -149,7 +150,7 @@ export const listQuestions = async (req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  return res.json({ questions });
+  return res.json({ questions: questions.map((question) => withDisplayProblemName(question)) });
 };
 
 export const createQuestion = async (req: Request, res: Response) => {

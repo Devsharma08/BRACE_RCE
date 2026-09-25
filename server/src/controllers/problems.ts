@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { Level } from "../generated/prisma/client.js";
 import { WrapperGenerator } from "../utils/wrapperGenerator.js";
 import { deleteCachedByPrefix, getCached, setCached } from "../lib/cache.js";
+import { withDisplayProblemName } from "../utils/problemName.js";
 
 // Problem payloads embed the caller's OWN progress (isSolved / attempts /
 // lastCode), so the cache namespace is per user — a shared key would leak one
@@ -35,7 +36,11 @@ class Problems {
 
             const cached = getCached<any[]>(cacheKey);
             if (cached) {
-                return res.json({ status: "success", problems: cached, cached: true });
+                return res.json({
+                    status: "success",
+                    problems: cached.map((problem) => withDisplayProblemName(problem)),
+                    cached: true,
+                });
             }
 
             const problems = await prisma.problem.findMany({
@@ -77,7 +82,7 @@ class Problems {
                 const progress = (p as any).userProgress?.[0] ?? null;
                 const { userProgress, ...rest } = p as any;
                 return {
-                    ...rest,
+                    ...withDisplayProblemName(rest),
                     isSolved: progress?.isSolved ?? false,
                     solvedAt: progress?.solvedAt ?? null,
                     attempts: progress?.attempts ?? 0,
@@ -105,7 +110,7 @@ class Problems {
 
             const cached = getCached<any>(cacheKey);
             if (cached) {
-                return res.json({ status: "success", problem: cached, cached: true });
+                return res.json({ status: "success", problem: withDisplayProblemName(cached), cached: true });
             }
 
             const problem = await prisma.problem.findFirst({
@@ -144,7 +149,7 @@ class Problems {
             const { userProgress, ...rest } = problem as any;
 
             const payload = {
-                ...rest,
+                ...withDisplayProblemName(rest),
                 isSolved: progress?.isSolved ?? false,
                 solvedAt: progress?.solvedAt ?? null,
                 attempts: progress?.attempts ?? 0,
@@ -174,7 +179,11 @@ class Problems {
 
             const cached = getCached<any[]>(cacheKey);
             if (cached) {
-                return res.json({ status: "success", problems: cached, cached: true });
+                return res.json({
+                    status: "success",
+                    problems: cached.map((problem) => withDisplayProblemName(problem)),
+                    cached: true,
+                });
             }
 
             const problems = await prisma.problem.findMany({
@@ -183,9 +192,10 @@ class Problems {
                 orderBy: { createdAt: 'desc' }
             });
 
-            setCached(cacheKey, problems, PROBLEMS_CACHE_TTL_SECONDS);
+            const displayProblems = problems.map((problem) => withDisplayProblemName(problem));
+            setCached(cacheKey, displayProblems, PROBLEMS_CACHE_TTL_SECONDS);
 
-            return res.json({ status: "success", problems, cached: false });
+            return res.json({ status: "success", problems: displayProblems, cached: false });
         } catch (error) {
             console.error("Fetch custom problems error:", error);
             return res.status(500).json({ message: "Server error" });

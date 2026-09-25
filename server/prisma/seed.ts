@@ -12,6 +12,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 import { rawProblems as problems } from "./leetcodeProblems.js";
 import { LEARNING_PATH_BLUEPRINT } from "./learningPathsData.js";
+import { displayProblemName } from "../src/utils/problemName.js";
 
 async function seedLearningPaths() {
   console.log("\n🌱 Seeding learning paths...");
@@ -21,15 +22,15 @@ async function seedLearningPaths() {
   await prisma.userLearningProgress.deleteMany();
   await prisma.userLearningSummary.deleteMany();
 
-  // Problem lookup: LC number -> Problem id (name convention: "LeetCode-01E" -> 1)
+  // Problem lookup is keyed by the stable LeetCode number, never by the
+  // user-facing title or the legacy filename-style name.
   const problems = await prisma.problem.findMany({
     where: { isCustom: false },
-    select: { id: true, name: true },
+    select: { id: true, problem_number: true },
   });
   const problemIdByLc = new Map<number, string>();
   for (const problem of problems) {
-    const match = problem.name.match(/LeetCode-?(\d+)/);
-    if (match) problemIdByLc.set(parseInt(match[1], 10), problem.id);
+    if (problem.problem_number != null) problemIdByLc.set(problem.problem_number, problem.id);
   }
 
   // Pass 1 — create items with their problem links (LEARNING_PATH_BLUEPRINT)
@@ -78,11 +79,15 @@ async function main() {
 
   for (const p of problems) {
     const { test_cases, code_snippets, ...problemData } = p;
+    const canonicalProblemData = {
+      ...problemData,
+      name: displayProblemName(problemData.name, problemData.problem_number, problemData.problem_definition),
+    };
 
     const problem = await prisma.problem.upsert({
-      where: { problem_number: problemData.problem_number },
-      update: problemData,
-      create: problemData,
+      where: { problem_number: canonicalProblemData.problem_number },
+      update: canonicalProblemData,
+      create: canonicalProblemData,
     });
 
     await prisma.testCase.deleteMany({ where: { problemId: problem.id } });
@@ -114,10 +119,9 @@ async function main() {
         .map((rp: { problem_number: number; problem_definition: string }) => [rp.problem_number, rp.problem_definition])
     );
     let overlaid = 0;
-    const seeded = await prisma.problem.findMany({ select: { id: true, name: true } });
+    const seeded = await prisma.problem.findMany({ select: { id: true, problem_number: true } });
     for (const prob of seeded) {
-      const m = prob.name.match(/LeetCode-?(\d+)/);
-      const richDef = m ? richByNum.get(parseInt(m[1], 10)) : undefined;
+      const richDef = prob.problem_number != null ? richByNum.get(prob.problem_number) : undefined;
       if (richDef) {
         await prisma.problem.update({ where: { id: prob.id }, data: { problem_definition: richDef } });
         overlaid++;

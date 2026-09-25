@@ -31,7 +31,7 @@ describe("Problems Controller Routes (/api/problems)", () => {
   describe("GET /api/problems/system", () => {
     test("should fetch all non-custom system problems", async () => {
       (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "prob-1", name: "Two Sum", isCustom: false },
+        { id: "prob-1", name: "LeetCode-01E", problem_number: 1, isCustom: false },
       ]);
 
       const res = await request(app)
@@ -41,6 +41,7 @@ describe("Problems Controller Routes (/api/problems)", () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("success");
       expect(res.body.problems).toHaveLength(1);
+      expect(res.body.problems[0].name).toBe("Two Sum");
     });
   });
 

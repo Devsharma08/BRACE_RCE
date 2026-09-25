@@ -11,6 +11,14 @@ vi.mock("../hooks/useAnalytics", () => ({
   useAnalytics: () => ({ data: null }),
 }));
 
+vi.mock("../hooks/useDsTopicProgress", () => ({
+  useDsTopicProgress: () => ({
+    bySlug: {},
+    items: [],
+    isLoading: false,
+  }),
+}));
+
 afterEach(cleanup);
 
 describe("DataStructureDirectory (/ds)", () => {

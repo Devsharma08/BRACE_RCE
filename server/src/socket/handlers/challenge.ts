@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { displayProblemName } from "../../utils/problemName.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
@@ -26,10 +27,10 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
             try {
                 const prob = await prisma.problem.findUnique({
                     where: { id: problemId },
-                    select: { id: true, name: true, github_oid: true, difficulty_level: true }
+                    select: { id: true, name: true, problem_number: true, github_oid: true, difficulty_level: true }
                 });
                 if (prob) {
-                    problemName = problemName ?? prob.name;
+                    problemName = displayProblemName(prob.name, prob.problem_number);
                 }
             } catch { /* best-effort */ }
         }
@@ -42,12 +43,12 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
                         isCustom: false,
                         ...(difficulty === "ANY" ? {} : { difficulty_level: difficulty as never }),
                     },
-                    select: { id: true, name: true }
+                    select: { id: true, name: true, problem_number: true }
                 });
                 if (pool.length > 0) {
                     const pick = pool[Math.floor(Math.random() * pool.length)];
                     problemId = pick.id;
-                    problemName = pick.name;
+                    problemName = displayProblemName(pick.name, pick.problem_number);
                 }
             } catch { /* best-effort */ }
         }

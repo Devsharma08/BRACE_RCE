@@ -2,6 +2,7 @@ import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { invalidateUserProblemsCache } from "./problems.js";
+import { withDisplayProblemName } from "../utils/problemName.js";
 
 class Profile {
 
@@ -54,7 +55,7 @@ class Profile {
                 include: {
                     event: {
                         include: {
-                            commonProblem: { select: { name: true, difficulty_level: true } },
+                            commonProblem: { select: { name: true, problem_number: true, difficulty_level: true } },
                             performances: {
                                 include: {
                                     user: { select: { id: true, username: true, avatarUrl: true } },
@@ -79,6 +80,18 @@ class Profile {
             // Calculate total time spent (in seconds/minutes) based on timeTakenMs
             const totalTimeMs = performances.reduce((acc, curr) => acc + (curr.timeTakenMs || 0), 0);
 
+            const recentMatches = performances.slice(0, 10).map((performance) => ({
+                ...performance,
+                event: performance.event
+                    ? {
+                        ...performance.event,
+                        commonProblem: performance.event.commonProblem
+                            ? withDisplayProblemName(performance.event.commonProblem)
+                            : performance.event.commonProblem,
+                    }
+                    : performance.event,
+            }));
+
             return res.status(200).json({
                 status: "success",
                 stats: {
@@ -88,7 +101,7 @@ class Profile {
                     winRate,
                     totalTimeMs,
                 },
-                recentMatches: performances.slice(0, 10) // Return the last 10 matches for the history ledger
+                recentMatches
             });
         } catch (error) {
             console.error("Profile stats error: ", error);
