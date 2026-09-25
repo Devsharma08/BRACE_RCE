@@ -1,6 +1,10 @@
 import React from "react";
 import { Shield, Trophy, Activity, Zap, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
+// Imported from the shared util, NOT from the Signup page — pulling the auth
+// screen in here would drag react-router/Turnstile/GoogleLogin into a leaf
+// presentation component.
+import { getInitialsAvatar } from "../../utils/avatar";
 
 interface ProfileScoreCardProps {
   profile: any;
@@ -49,11 +53,11 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
         <div className="flex items-center gap-4 border-b border-accent-primary/10 pb-5">
           <div className="relative shrink-0">
             <img
-              src={profile?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.username || "user"}`}
+           src={profile?.avatarUrl || getInitialsAvatar(profile?.username || "OPERATIVE")}
               alt="Avatar"
-              className="w-16 h-16 border-2 border-accent-primary/40 bg-black object-cover shadow-md shadow-accent-primary/30"
+              className="w-16 h-16 border-2 border-accent-primary/40 bg-base object-cover shadow-md shadow-accent-primary/30"
             />
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent-success border-2 border-black rounded-full" />
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-accent-success border-2 border-base rounded-full" />
           </div>
           <div className="overflow-hidden">
             <h2 className="text-base font-black text-fg uppercase tracking-wider truncate">

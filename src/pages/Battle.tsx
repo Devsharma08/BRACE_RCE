@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageSkeleton } from "../components/ui/Skeleton";
+import { getInitialsAvatar } from "../utils/avatar";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
@@ -192,7 +193,7 @@ const SpectateView = ({
                 <div key={uid} className="p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <img
-                      src={p.user?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user?.username}`}
+                      src={p.user?.avatarUrl || getInitialsAvatar(p.user?.username)}
                       alt=""
                       className="w-9 h-9 rounded-full border border-subtle-line"
                     />
@@ -1171,8 +1172,8 @@ export const Battle = () => {
           {/* MOUSE DRAG RESIZE HANDLE (auto-close below ~220px) */}
           {isPanelOpen && !isSidebarCollapsed && (
             <div
-              onMouseDown={startSidebarDragging}
-              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center"
+              onPointerDown={startSidebarDragging}
+              className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none"
               title="Drag to resize panel (drag below ~220px to auto-close)"
             >
               <div className="w-0.5 h-12 bg-accent-primary/40 group-hover:bg-accent-primary rounded" />

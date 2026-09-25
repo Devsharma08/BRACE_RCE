@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAdminFeedback, useResolveFeedback, type AdminFeedback } from '../../hooks/useAdmin';
 import { toast } from 'sonner';
+import { getInitialsAvatar } from '../../utils/avatar';
 
 const statusOptions = [
   { value: 'PENDING', label: 'PENDING', color: 'text-accent-warning bg-accent-warning/10 border border-accent-warning/30' },
@@ -62,7 +63,7 @@ const AdminFeedback = () => {
                   <div className="flex items-start justify-between gap-4 relative z-10">
                     <div className="flex items-center gap-3">
                       <img
-                        src={item.user.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${item.user.username}`}
+                        src={item.user.avatarUrl || getInitialsAvatar(item.user.username)}
                         alt={item.user.username}
                         className="w-8 h-8 rounded-none border border-accent-primary/40"
                       />
