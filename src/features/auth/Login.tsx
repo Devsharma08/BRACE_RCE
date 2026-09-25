@@ -7,7 +7,16 @@ import { useAuth } from '../../context/AuthContext';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 import {api} from "../../config/api";
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'; 
+/**
+ * Cloudflare Turnstile site key.
+ *
+ * No fallback to Cloudflare's always-pass test key ('1x00000000000000000000AA'):
+ * that key renders a real-looking widget which never actually blocks anything,
+ * which is a false promise of security. When no key is configured the widget is
+ * not rendered and an honest notice is shown instead.
+ */
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+const TURNSTILE_ENABLED = TURNSTILE_SITE_KEY.trim().length > 0;
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,14 +29,16 @@ export const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!captchaToken) {
+    // Only require the captcha when one is actually configured, otherwise an
+    // un-configured widget would make sign-in impossible.
+    if (TURNSTILE_ENABLED && !captchaToken) {
       setError("Please complete the captcha.");
       return;
     }
     try {
       setLoading(true);
       setError('');
-      await api.post(`/auth/signin`, { email, password, captchaToken });
+      await api.post(`/auth/signin`, { email, password, captchaToken: captchaToken ?? undefined });
       await checkAuth();
       navigate('/');
     } catch (err: any) {
@@ -96,8 +107,16 @@ export const Login = () => {
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
               </div>
             </div>
-            <div className="flex justify-center py-2"><Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={(token) => setCaptchaToken(token)} options={{ theme: 'dark' }} /></div>
-            <button type="submit" disabled={loading || !captchaToken} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+            {TURNSTILE_ENABLED ? (
+              <div className="flex justify-center py-2">
+                <Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={(token) => setCaptchaToken(token)} options={{ theme: 'dark' }} />
+              </div>
+            ) : (
+              <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
+                Bot protection not configured
+              </p>
+            )}
+            <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
               {loading ? "Signing in..." : "Sign In"} {!loading && <ArrowRight size={18} />}
             </button>
           </form>
