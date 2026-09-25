@@ -43,11 +43,20 @@
   --border-accent: var(--border-subtle);
   --border-hi:     color-mix(in srgb, var(--accent-primary) 40%, transparent);
 
-  /* ── Text & Hierarchy ────────────────────────────────────────────────── */
+  /* ── Text & Hierarchy ──────────────────────────────────────────────────── */
+  /* Contrast is measured against --bg-base (#050811), the darkest surface these
+     tokens are ever used on:
+       --text-primary    #F0F4FF → 16.4:1  (AAA)
+       --text-secondary  #8892A4 →  6.5:1  (AA)
+       --text-muted      #727D8E →  4.8:1  (AA)  ← was #4A5568 at 2.7:1 (FAIL)
+     --text-muted is used for the `text-faint` / `text-muted` utilities, so
+     raising it here corrects every faint label in the app at once instead of
+     patching hundreds of call sites. Do not lower it below ~4.5:1. */
   --text-primary:   #F0F4FF;
   --text-secondary: #8892A4;
-  --text-muted:     #4A5568;
-  --text-label:     color-mix(in srgb, var(--accent-primary) 50%, transparent);
+  --text-muted:     #727D8E;
+  /* Section labels. Was 50% accent (3.4:1, FAIL); 70% lands at 5.8:1. */
+  --text-label:     color-mix(in srgb, var(--accent-primary) 70%, transparent);
 
   /* ── Layout Rhythm ───────────────────────────────────────────────────── */
   --gap-section: 24px;
@@ -115,7 +124,18 @@
    (ml-0 md:ml-[var(--sidebar-width)]). Mobile has no rail, so 0px; md+ tracks
    the data-sidebar flag SidebarProvider sets on <html>, so toggling the rail
    reflows the content column instead of letting it slide underneath.
-   --sidebar-expanded / --sidebar-collapsed are defined above. */
+   --sidebar-expanded / --sidebar-collapsed are defined above.
+
+   Registered via @property so the value is a real animatable <length>. Without
+   this registration the custom property is an untyped token substitution: the
+   245px -> 60px swap resolved instantly, so the rail, the collapse toggle and
+   the main column all snapped and flashed instead of easing. */
+@property --sidebar-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 :root {
   --sidebar-width: 0px;
 }
@@ -123,10 +143,22 @@
 @media (min-width: 768px) {
   :root {
     --sidebar-width: var(--sidebar-expanded);
+    /* Animating the property here makes every consumer (width, margin-left,
+       left) interpolate together, keeping the column locked to the rail edge. */
+    transition: --sidebar-width 300ms ease;
   }
 
   :root[data-sidebar="collapsed"] {
     --sidebar-width: var(--sidebar-collapsed);
+  }
+}
+
+/* Respect the OS "reduce motion" setting — the rail should snap, not glide. */
+@media (prefers-reduced-motion: reduce) {
+  @media (min-width: 768px) {
+    :root {
+      transition: none;
+    }
   }
 }
 
@@ -256,6 +288,16 @@ body {
   /* Prevent body-level horizontal scroll */
   overflow-x: hidden;
   min-height: 100vh;
+}
+
+/* Keep every button within its parent on narrow screens. Text CTAs may
+   ellipsize; icon buttons retain their explicit square dimensions. */
+button {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Global Focus Visible Ring ───────────────────────────────────────────── */

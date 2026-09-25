@@ -287,7 +287,12 @@ export default function FriendsDashboard() {
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-14 pt-[var(--header-height)] md:ml-[var(--sidebar-width)] md:pb-0">
+      {/* Layout.tsx already renders a sticky <Header /> in normal document
+          flow, so this main must NOT add its own pt-[var(--header-height)] —
+          that double-spaced the whole friends workspace. The calc() below only
+          compensates for the header's height in the scroll budget.
+          pb-16 (not pb-14) clears the 56px MobileBottomNav on <768px. */}
+      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-16 md:ml-[var(--sidebar-width)] md:pb-0">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
         <aside

@@ -367,8 +367,12 @@ const CreateRoom = () => {
       {/* MOBILE BOTTOM NAV */}
       <MobileBottomNav />
 
-      {/* MAIN CONTENT — locks to the viewport on lg; both console columns scroll internally */}
-      <main className="relative z-10 ml-0 w-full min-w-0 flex-1 px-4 pt-5 pb-24 md:ml-[var(--sidebar-width)] md:px-8 md:pt-6 md:pb-6 lg:h-screen lg:overflow-hidden">
+      {/* MAIN CONTENT — min-h budget accounts for the sticky header that
+          Layout.tsx renders in document flow. A hard `lg:h-screen` here
+          overflowed past the viewport and collided with the page footer, so the
+          height is expressed as a min-height and the page scrolls normally.
+          pb-24 on mobile clears the fixed MobileBottomNav. */}
+      <main className="relative z-10 ml-0 w-full min-w-0 flex-1 px-4 pt-5 pb-24 md:ml-[var(--sidebar-width)] md:px-8 md:pt-6 md:pb-12 min-h-[calc(100vh-var(--header-height,3.5rem))]">
         <div className="mx-auto flex h-full max-w-[1400px] min-h-0 flex-col">
           <Link
             to="/lobby"
