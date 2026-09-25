@@ -36,7 +36,7 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
       <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-accent-primary" />
 
       {/* HEADER */}
-      <div className="px-6 py-4 border-b border-subtle-line bg-black/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="px-6 py-4 border-b border-subtle-line bg-surface-hover flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h3 className="flex items-center gap-2 text-sm font-black text-fg uppercase tracking-wider">
           <Database className="w-4 h-4 text-accent-primary" />
           Algorithm Repository
@@ -49,15 +49,16 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
             <Search className="w-3.5 h-3.5 text-accent-primary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
+              aria-label="Search problems"
               placeholder="SEARCH PROBLEM..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="bg-black/60 border border-accent-primary/30 hover:border-accent-primary text-subtle text-[11px] pl-9 pr-4 py-2 focus:border-accent-primary focus:outline-none transition-colors w-48 placeholder:text-faint uppercase font-bold"
+              className="bg-surface-hover border border-accent-primary/30 hover:border-accent-primary text-subtle text-[11px] pl-9 pr-4 py-2 focus:border-accent-primary focus:outline-none transition-colors w-48 placeholder:text-faint uppercase font-bold"
             />
           </div>
 
           {/* DIFFICULTY TABS */}
-          <div className="flex border border-accent-primary/30 bg-black/60 divide-x divide-accent-primary/20">
+          <div className="flex border border-accent-primary/30 bg-surface-hover divide-x divide-accent-primary/20">
             {DIFF_TABS.map((d) => {
               const active = selectedDiff === d;
               return (
@@ -160,7 +161,7 @@ export const ProblemTableSection: React.FC<ProblemTableSectionProps> = ({ proble
               className={`w-8 h-8 text-xs font-black transition-all border flex items-center justify-center ${
                 currentPage === p
                   ? "border-accent-primary text-ink bg-accent-primary/15 shadow-md shadow-accent-primary/30"
-                  : "border-accent-primary/30 text-subtle bg-black/60 hover:text-fg hover:border-accent-primary"
+                  : "border-accent-primary/30 text-subtle bg-surface-hover hover:text-fg hover:border-accent-primary"
               }`}
             >
               {p}

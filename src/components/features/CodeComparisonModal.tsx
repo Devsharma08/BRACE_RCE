@@ -73,6 +73,15 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
     setSelectedOppSub(oppBestSub);
   }, [performances, currentUserId]);
 
+  // Escape closes the review dialog, matching the rest of the app's modals.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   const handleCopyOpponentCode = () => {
     if (!selectedOppSub?.submittedCode) return;
     navigator.clipboard.writeText(selectedOppSub.submittedCode);
@@ -81,11 +90,14 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-6 overflow-y-auto">
-      <div className="bg-raised border border-accent-primary/30 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        
-        {/* TOP METRICS HEADER */}
-        <div className="p-6 border-b border-accent-primary/20 bg-black/60 flex items-center justify-between">
+    <div
+  role="dialog"
+  aria-modal="true"
+  aria-label="Code comparison review"
+  className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto"
+>
+  <div className="bg-surface border border-accent-primary/30 rounded-card w-full max-w-6xl shadow-panel overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="p-6 border-b border-subtle-line bg-surface-hover flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-mono font-bold text-accent-primary tracking-widest flex items-center gap-2">
               <Trophy className="w-6 h-6 text-accent-warning" /> BATTLE ANALYSIS & CODE REVIEW
@@ -111,9 +123,9 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
         </div>
 
         {/* COMPARATIVE CARDS */}
-        <div className="grid grid-cols-2 gap-6 p-6 border-b border-subtle-line bg-black/60">
+        <div className="grid grid-cols-2 gap-6 p-6 border-b border-subtle-line bg-surface-hover">
           {/* MY METRICS */}
-          <div className="bg-black/60 border border-accent-primary/20 rounded-xl p-4 flex flex-col gap-3">
+          <div className="bg-surface-hover border border-accent-primary/20 rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-sm font-bold text-accent-primary flex items-center gap-2">
                 YOUR SUBMISSION {selectedMySub?.isBestSubmission && <span className="text-[10px] bg-accent-primary/20 text-accent-primary px-2 py-0.5 rounded">BEST</span>}
@@ -148,7 +160,7 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
           </div>
 
           {/* OPPONENT METRICS */}
-          <div className="bg-black/60 border border-accent-danger/20 rounded-xl p-4 flex flex-col gap-3">
+          <div className="bg-surface-hover border border-accent-danger/20 rounded-xl p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-sm font-bold text-accent-danger flex items-center gap-2">
                 OPPONENT ({oppPerf?.user?.username || "OPPONENT"}) {selectedOppSub?.isBestSubmission && <span className="text-[10px] bg-accent-danger/20 text-accent-danger px-2 py-0.5 rounded">BEST</span>}
@@ -186,7 +198,7 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
         {/* SIDE BY SIDE CODE VIEW */}
         <div className="grid grid-cols-2 gap-4 p-6 flex-1 min-h-0 overflow-hidden">
           {/* MY CODE */}
-          <div className="flex flex-col border border-accent-primary/20 rounded-xl bg-black/60 overflow-hidden">
+          <div className="flex flex-col border border-accent-primary/20 rounded-xl bg-surface-hover overflow-hidden">
             <div className="px-4 py-2 bg-accent-primary/10 border-b border-accent-primary/20 font-mono text-xs text-accent-primary font-bold">
               YOUR CODE ({selectedMySub?.language || "javascript"})
             </div>
@@ -196,7 +208,7 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
           </div>
 
           {/* OPPONENT CODE */}
-          <div className="flex flex-col border border-accent-danger/20 rounded-xl bg-black/60 overflow-hidden relative">
+          <div className="flex flex-col border border-accent-danger/20 rounded-xl bg-surface-hover overflow-hidden relative">
             <div className="px-4 py-2 bg-accent-danger/10 border-b border-accent-danger/20 font-mono text-xs text-accent-danger font-bold flex justify-between items-center">
               <span>OPPONENT CODE ({selectedOppSub?.language || "javascript"})</span>
               <button

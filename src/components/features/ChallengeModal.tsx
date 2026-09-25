@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dices, FileCode2, Swords, X } from "lucide-react";
 import { toast } from "sonner";
@@ -21,6 +21,16 @@ export function ChallengeModal({ friend, open, onClose }: {
   const [difficulty, setDifficulty] = useState("MEDIUM");
   const [problemId, setProblemId] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+  if (!open) return;
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") onClose();
+  };
+  window.addEventListener("keydown", handleKey);
+  return () => window.removeEventListener("keydown", handleKey);
+}, [open, onClose]);
+
 
   const { data: systemProblems = [] } = useQuery<ProblemOption[]>({
     queryKey: ["challenge-system-problems", difficulty],
@@ -57,7 +67,10 @@ export function ChallengeModal({ friend, open, onClose }: {
   };
 
   return (
-    <div className="ds-overlay fixed inset-0 z-[90] flex items-center justify-center p-4">
+    <div
+    role="dialog"
+    aria-modal="true"
+    aria-label={`Challenge ${friend.username}`} className="ds-overlay fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div className="w-full max-w-lg overflow-hidden rounded-card border border-accent-danger/40 bg-surface shadow-glow-danger">
         <div className="flex items-center justify-between border-b border-accent-danger/20 bg-accent-danger/10 px-5 py-4">
           <span className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-accent-danger">

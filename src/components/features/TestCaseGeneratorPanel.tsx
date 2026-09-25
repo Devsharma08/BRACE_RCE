@@ -56,8 +56,9 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
           <label className="block text-[10px] tracking-widest text-faint mb-1">FUNCTION NAME</label>
           <input
             value={signature.funcName}
+             aria-label="Function Name" 
             onChange={(e) => setSignature({ ...signature, funcName: e.target.value })}
-            className="w-full bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
+            className="w-full bg-surface-hover border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
             placeholder="twoSum"
           />
         </div>
@@ -65,8 +66,9 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
           <label className="block text-[10px] tracking-widest text-faint mb-1">RETURN TYPE</label>
           <input
             value={signature.returnType}
+            aria-label="Return Type"
             onChange={(e) => setSignature({ ...signature, returnType: e.target.value })}
-            className="w-full bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
+            className="w-full bg-surface-hover border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
             placeholder="int[]"
           />
         </div>
@@ -77,14 +79,16 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
           <div key={i} className="flex gap-2 items-center">
             <input
               value={arg.name}
+              aria-label={`parameter ${i+1} name`}
               onChange={(e) => updateArg(i, { name: e.target.value })}
-              className="flex-1 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
+              className="flex-1 bg-surface-hover border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none focus:border-accent-primary font-mono"
               placeholder="param name"
             />
             <select
+            aria-label={`parameter ${i+1} type`}
               value={arg.type}
               onChange={(e) => updateArg(i, { type: e.target.value })}
-              className="bg-black/60 border border-subtle-line rounded-lg p-2 text-accent-primary text-sm outline-none"
+              className="bg-surface-hover border border-subtle-line rounded-lg p-2 text-accent-primary text-sm outline-none"
             >
               {ARG_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -111,13 +115,13 @@ export const TestCaseGeneratorPanel = ({ signature, setSignature, onGenerated }:
       <div className="flex gap-2 items-end mb-3">
         <div>
           <label className="block text-[10px] tracking-widest text-faint mb-1">COUNT</label>
-          <input type="number" min={1} max={20} value={count} onChange={(e) => setCount(Number(e.target.value))}
-            className="w-20 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
+          <input aria-label="Test case count" type="number" min={1} max={20} value={count} onChange={(e) => setCount(Number(e.target.value))}
+            className="w-20 bg-surface-hover border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
         </div>
         <div>
           <label className="block text-[10px] tracking-widest text-faint mb-1">SEED</label>
-          <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))}
-            className="w-24 bg-black/60 border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
+          <input aria-label="Generator seed" type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))}
+            className="w-24 bg-surface-hover border border-subtle-line rounded-lg p-2 text-fg text-sm outline-none" />
         </div>
         <button
           type="button"

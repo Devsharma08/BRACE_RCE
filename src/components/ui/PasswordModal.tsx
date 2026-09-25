@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Lock, KeyRound, ShieldAlert, ArrowRight, X } from "lucide-react";
 
 interface PasswordModalProps {
@@ -19,6 +19,17 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  // Escape closes the dialog. Declared above the `if (!isOpen) return null`
+  // early-return so hook order stays stable across renders.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,8 +43,17 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in font-mono">
-      <div className="relative w-full max-w-md bg-raised border border-accent-primary/40 rounded-2xl shadow-[0_0_50px_rgba(0,212,255,0.25)] overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="security-clearance-title"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-base/80 backdrop-blur-md p-4 animate-fade-in font-mono"
+      onClick={(e) => {
+        // Click on the backdrop (not the panel) dismisses the dialog.
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-md bg-surface border border-accent-primary/40 rounded-card shadow-card-hover overflow-hidden">
         {/* Corner Accents */}
         <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-accent-primary" />
         <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-accent-primary" />
@@ -50,7 +70,7 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-fg tracking-widest uppercase">
+              <h3 id="security-clearance-title" className="text-sm font-bold text-fg tracking-widest uppercase">
                 SECURITY CLEARANCE REQUIRED
               </h3>
               <p className="text-[11px] text-accent-primary/70 tracking-wider">
@@ -86,7 +106,7 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({
                   if (error) setError("");
                 }}
                 placeholder="ENTER ACCESS KEY..."
-                className="w-full bg-black/60 border border-accent-primary/30 focus:border-accent-primary rounded-xl px-4 py-3 pl-11 text-sm text-accent-primary placeholder:text-accent-primary/40 outline-none transition-all shadow-inner tracking-widest"
+                className="w-full bg-surface-hover border border-subtle-line focus:border-accent-primary rounded-btn px-4 py-3 pl-11 text-sm text-fg placeholder:text-muted outline-none transition-all tracking-widest"
               />
               <KeyRound className="w-4 h-4 text-accent-primary/60 absolute left-4 top-1/2 -translate-y-1/2" />
             </div>
@@ -103,13 +123,13 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-xl border border-subtle-line hover:border-subtle-line bg-surface-hover hover:bg-surface-hover text-xs font-bold tracking-widest text-subtle transition-all"
+              className="flex-1 py-3 px-4 rounded-btn border border-subtle-line bg-surface-hover text-xs font-bold tracking-widest text-subtle transition-all hover:border-accent-primary/40 hover:text-fg"
             >
               ABORT
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 px-4 rounded-xl border border-accent-primary/50 bg-accent-primary/20 hover:bg-accent-primary text-accent-primary hover:text-black text-xs font-bold tracking-widest transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,212,255,0.2)]"
+              className="flex-1 py-3 px-4 rounded-btn border border-accent-primary/50 bg-accent-primary/20 hover:bg-accent-primary text-accent-primary hover:text-ink text-xs font-bold tracking-widest transition-all flex items-center justify-center gap-2 shadow-accent"
             >
               AUTHENTICATE <ArrowRight className="w-4 h-4" />
             </button>
