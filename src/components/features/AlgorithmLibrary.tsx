@@ -89,8 +89,8 @@ function CodePane({
   };
 
   return (
-    <div className="flex flex-col border border-subtle-line bg-editor-bg">
-      <div className="flex items-center justify-between gap-3 border-b border-subtle-line bg-black/60 px-3 py-2">
+    <div className="flex flex-col border border-subtle-line bg-surface">
+      <div className="flex items-center justify-between gap-3 border-b border-subtle-line bg-surface-hover px-3 py-2">
         <span className="flex min-w-0 items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-widest text-subtle">
           <Terminal className="h-3 w-3 shrink-0 text-accent-primary/50" />
           <span className="truncate">~/{label.toLowerCase()}</span>
@@ -101,7 +101,7 @@ function CodePane({
             aria-label={`${label} language`}
             value={language}
             onChange={(e) => onLanguageChange(e.target.value as Language)}
-            className="border border-subtle-line bg-black/60 px-2 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle outline-none transition-colors focus:border-accent-primary/60"
+            className="border border-subtle-line bg-surface-hover px-2 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle outline-none transition-colors focus:border-accent-primary/60"
           >
             {LANGUAGES.map((lang) => (
               <option key={lang} value={lang}>
@@ -126,7 +126,7 @@ function CodePane({
       </div>
       <Highlight theme={tokenTheme} code={code} language={PRISM_LANGUAGE[language]}>
         {({ tokens, getLineProps, getTokenProps }) => (
-          <pre className="min-h-0 flex-1 overflow-x-auto p-4 text-[11px] leading-5">
+          <pre className="min-h-0 flex-1 overflow-x-auto border-t border-subtle-line/60 bg-base p-4 text-[11px] leading-5">
             {tokens.map((line, i) => (
               <div key={i} {...getLineProps({ line })}>
                 {line.map((token, key) => (
@@ -148,9 +148,9 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
   return (
     <article
       id={`alg-${entry.id}`}
-      className="scroll-mt-24 overflow-hidden border border-subtle-line bg-black/60"
+      className="scroll-mt-24 overflow-hidden border border-subtle-line bg-surface"
     >
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-subtle-line bg-black/40 px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-subtle-line bg-surface-hover px-4 py-3">
         <span className="flex min-w-0 items-center gap-3">
           <span className="shrink-0 text-[10px] font-mono font-bold uppercase tracking-widest text-accent-primary/80">
             ALG // {ordinal}
@@ -159,7 +159,7 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
         </span>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 p-4 lg:grid-cols-2 lg:p-5">
         {/* ── THEORY: pseudocode + intuition ─────────────────────────────── */}
         <div id={`alg-${entry.id}-theory`} className="space-y-4">
           <p className="text-xs leading-6 text-subtle">{entry.idea}</p>
@@ -184,7 +184,7 @@ function AlgorithmCard({ entry, index }: { entry: AlgorithmEntry; index: number 
           />
 
           <div className="flex justify-end">
-            <span className="inline-flex items-center gap-1.5 border border-subtle-line bg-black/60 px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle">
+            <span className="inline-flex items-center gap-1.5 border border-subtle-line bg-surface-hover px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest text-subtle">
               <span className="shrink-0">{entry.timeComplexity}</span>
               <span className="shrink-0 text-faint">·</span>
               <span className="shrink-0">{entry.spaceComplexity}</span>

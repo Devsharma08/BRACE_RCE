@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useTransition } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo, useTransition } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import DashboardSidebar from "../components/layout/DashboardSidebar";
 import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { useMyRating } from "../hooks/useLeaderboard";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
-import { useAuth } from "../context/AuthContext";
 import {
   Code2,
   Search,
@@ -14,8 +13,6 @@ import {
   ChevronLeft,
   Filter,
   CheckCircle2,
-  ListFilter,
-  Sparkles,
   AlertTriangle,
   Target,
   BookOpen,
@@ -24,17 +21,20 @@ import {
   Trophy,
 } from "lucide-react";
 import { useAnalytics } from "../hooks/useAnalytics";
+import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
+import { DS_TOPIC_LABELS } from "../data/dsTopics";
+
+const DS_SUMMARY_SLUGS = ["tree", "dynamic-programming", "array", "linked-list", "searching", "math", "stack", "greedy"] as const;
 
 export const Problems: React.FC = () => {
-  const { user } = useAuth();
   const { data: myRating } = useMyRating(true);
   const { data: analytics } = useAnalytics(false);
+  const { bySlug: dsProgress } = useDsTopicProgress();
   const navigate = useNavigate();
 
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
 
@@ -65,6 +65,24 @@ export const Problems: React.FC = () => {
     },
   });
 
+  const dsSummaries = useMemo(
+    () =>
+      DS_SUMMARY_SLUGS.map((slug) => {
+        const progress = dsProgress[slug];
+        const problemIds = new Set(progress?.problemIds ?? []);
+        const solved = problems.filter((problem: any) => problem.isSolved && problemIds.has(String(problem.id))).length;
+        const total = problemIds.size;
+        return {
+          slug,
+          title: DS_TOPIC_LABELS[slug],
+          solved,
+          total,
+          completion: total > 0 ? Math.round((solved / total) * 100) : 0,
+        };
+      }),
+    [dsProgress, problems],
+  );
+
   // Filter problems by search, difficulty, and category
   const filteredProblems = problems.filter((p) => {
     const matchesSearch =
@@ -75,17 +93,8 @@ export const Problems: React.FC = () => {
       selectedDifficulty === "ALL" ||
       (p.difficulty_level || "MEDIUM").toUpperCase() === selectedDifficulty.toUpperCase();
 
-    const matchesCategory =
-      selectedCategory === "ALL" ||
-      (p.category && p.category.toUpperCase() === selectedCategory.toUpperCase());
-
-    return matchesSearch && matchesDiff && matchesCategory;
+    return matchesSearch && matchesDiff;
   });
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedDifficulty, selectedCategory]);
 
   // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredProblems.length / itemsPerPage));
@@ -123,8 +132,9 @@ export const Problems: React.FC = () => {
               <Code2 size={13} />
               <span>BRACE // training command center</span>
             </div>
-            <h1 className="text-2xl font-bold text-fg tracking-tight sm:text-3xl">
-              Problem repository
+            <h1 className="text-4xl font-bold tracking-tight sm:text-3xl">
+              Problem
+              <span className='text-accent-primary'> repository.</span>
             </h1>
             <p className="text-xs text-subtle leading-relaxed max-w-xl">
               Browse, filter, and select algorithmic challenges to open in the execution workspace.
@@ -145,6 +155,46 @@ export const Problems: React.FC = () => {
           </div>
         </header>
 
+        <section aria-label="Solved data structure problems">
+          <div className="mb-3 flex items-center gap-2">
+            <BookOpen size={14} className="text-accent-primary/60" />
+            <h2 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-secondary">
+              Solved by data structure
+            </h2>
+            <span className="h-px flex-1 border-line" />
+            <Link to="/ds" className="text-[9px] uppercase tracking-widest text-accent-primary transition hover:text-fg">
+              Open /ds
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {dsSummaries.map((summary) => (
+              <Link
+                key={summary.slug}
+                to={`/ds/${summary.slug}`}
+                className="group border border-subtle-line bg-surface px-4 py-3 transition hover:border-accent-primary/50 hover:bg-surface-hover"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-xs font-bold text-fg group-hover:text-accent-primary">
+                    {summary.title}
+                  </span>
+                  <span className="shrink-0 font-mono text-[9px] text-subtle">
+                    {summary.solved}/{summary.total || 0}
+                  </span>
+                </div>
+                <div className="mt-3 h-1 overflow-hidden bg-surface-hover">
+                  <div
+                    className="h-full bg-accent-success transition-all"
+                    style={{ width: `${summary.completion}%` }}
+                  />
+                </div>
+                <span className="mt-2 block text-[8px] uppercase tracking-widest text-faint">
+                  {summary.total > 0 ? `${summary.completion}% solved` : "Path catalog pending"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* OVERVIEW CARDS */}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
@@ -160,10 +210,13 @@ export const Problems: React.FC = () => {
             <p className="relative mt-2 text-xs leading-5 text-subtle">
               Start with an indexed problem, open it in the terminal, and validate your reasoning against real test cases.
             </p>
-            <button className="relative mt-5 flex items-center gap-2 border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10">
+            <Link
+              to="/ds"
+              className="relative mt-5 inline-flex max-w-full items-center gap-2 overflow-hidden border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
+            >
               Browse patterns
               <ChevronRight size={12} />
-            </button>
+            </Link>
           </article>
 
           <article className="rounded-2xl border border-subtle-line bg-surface p-5">

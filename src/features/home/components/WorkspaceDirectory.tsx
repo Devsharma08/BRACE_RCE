@@ -88,7 +88,7 @@ export function WorkspaceDirectory() {
                 to={href}
                 className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary`}
               >
-                <div className={`absolute right-7 top-7 grid h-11 w-11 place-items-center rounded-full border border-line bg-black/20 ${styles.text} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
+                <div className={`absolute right-7 top-7 grid h-11 w-11 place-items-center rounded-full border border-line bg-surface/60 ${styles.text} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
                   <Icon size={18} />
                 </div>
                 <div className="absolute -bottom-10 -right-3 select-none font-mono text-[10rem] font-bold leading-none tracking-[-0.16em] text-fg/[0.025]">{id}</div>

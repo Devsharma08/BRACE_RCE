@@ -48,6 +48,14 @@ afterEach(() => {
 });
 
 describe("Problems filtering and pagination", () => {
+  test("renders solved data structure cards with /ds learning links", async () => {
+    renderProblems();
+    await screen.findByText("Challenge 1");
+    expect(screen.getByText("Solved by data structure")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open /ds" })).toHaveAttribute("href", "/ds");
+    expect(screen.getByRole("link", { name: /Arrays & Strings/ })).toHaveAttribute("href", "/ds/array");
+  });
+
   test("uses the unified raised surface for the problem table", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");

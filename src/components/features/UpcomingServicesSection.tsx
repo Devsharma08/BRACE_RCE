@@ -95,7 +95,7 @@ export const UpcomingServicesSection: React.FC = () => {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent-warning/40 to-transparent" />
 
       {/* HEADER */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05] bg-black/60">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.05] bg-surface-hover">
         <h2 className="font-mono text-sm font-black text-fg tracking-[0.15em] flex items-center gap-2.5 uppercase">
           <Rocket className="w-4 h-4 text-accent-warning" /> Services & Operations
           <span className="text-[10px] text-accent-warning/60 font-normal ml-1">// COMING SOON</span>
@@ -110,7 +110,7 @@ export const UpcomingServicesSection: React.FC = () => {
           return (
             <div
               key={s.id}
-              className={`relative bg-black/60 border ${s.borderColor} rounded-xl p-5 flex flex-col gap-4 transition-all group overflow-hidden`}
+              className={`relative bg-surface-hover border ${s.borderColor} rounded-xl p-5 flex flex-col gap-4 transition-all group overflow-hidden`}
               style={{ boxShadow: `0 0 30px ${s.glowColor}` }}
             >
               {/* SUBTLE BG GLOW */}
@@ -122,7 +122,7 @@ export const UpcomingServicesSection: React.FC = () => {
               {/* ICON + TITLE + BADGE */}
               <div className="flex items-start justify-between gap-3 relative z-10">
                 <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${s.borderColor} bg-black/60`}>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${s.borderColor} bg-surface-hover`}>
                     <Icon className={`w-4 h-4 ${s.accentColor}`} />
                   </div>
                   <span className={`font-mono text-xs font-black tracking-wide ${s.accentColor}`}>
@@ -145,7 +145,7 @@ export const UpcomingServicesSection: React.FC = () => {
                   <span>COMPLETION</span>
                   <span className={s.accentColor}>{s.progress}%</span>
                 </div>
-                <div className="h-1 bg-black/60 rounded-full border border-white/[0.04] overflow-hidden">
+                <div className="h-1 bg-surface-hover rounded-full border border-white/[0.04] overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-1000"
                     style={{

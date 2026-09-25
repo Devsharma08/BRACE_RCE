@@ -14,7 +14,7 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon: Icon, accent, borderClass }) => (
   <div className={`relative rounded-none border border-subtle-line bg-raised p-5 flex flex-col items-center text-center overflow-hidden ${borderClass}`}>
     <div className="absolute inset-0 pointer-events-none opacity-[0.06] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
-    <div className={`w-12 h-12 rounded-none border border-subtle-line bg-black/60 flex items-center justify-center mb-3 ${accent}`}>
+    <div className={`w-12 h-12 rounded-none border border-subtle-line bg-surface-hover flex items-center justify-center mb-3 ${accent}`}>
       <Icon className="w-6 h-6" />
     </div>
     <span className="text-[10px] text-faint tracking-widest font-bold uppercase mb-1">{label}</span>

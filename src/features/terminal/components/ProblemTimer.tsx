@@ -78,7 +78,7 @@ const ProblemTimer = forwardRef<ProblemTimerRef, ProblemTimerProps>(
     if (!problemId) return null;
 
     return (
-      <div className="relative flex items-center bg-black/60 border border-subtle-line px-2 py-1 gap-2 ml-2">
+      <div className="relative flex items-center bg-surface-hover border border-subtle-line px-2 py-1 gap-2 ml-2">
         <Timer className="w-3.5 h-3.5 text-accent-primary" />
         <span className="text-[11px] font-mono text-subtle min-w-[36px] text-center select-none">
           {formatTime(seconds)}

@@ -79,7 +79,7 @@ export const QuickNavHub: React.FC<QuickNavHubProps> = ({
                   className={`py-2.5 text-[11px] font-black tracking-widest uppercase border transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm ${
                     active
                       ? `${c.text} ${c.border} ${c.bg} shadow-md`
-                      : "text-faint border-subtle-line bg-black/60 hover:border-subtle-line hover:text-subtle"
+                      : "text-faint border-subtle-line bg-surface-hover hover:border-subtle-line hover:text-subtle"
                   }`}
                 >
                   {d}
@@ -90,7 +90,7 @@ export const QuickNavHub: React.FC<QuickNavHubProps> = ({
         </div>
 
         {/* SELECTED DIFF INFO */}
-        <div className="border border-accent-danger/20 bg-black/70 p-4 flex items-center justify-between shadow-inner">
+        <div className="border border-accent-danger/20 bg-surface-hover p-4 flex items-center justify-between shadow-inner">
           <div>
             <p className="text-xs text-subtle uppercase tracking-widest font-bold">SELECTED BRACKET</p>
             <p className={`text-base font-black uppercase tracking-widest mt-0.5 ${dc.text}`}>{difficulty}</p>

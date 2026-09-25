@@ -44,7 +44,7 @@ export const PlaygroundShowcase: React.FC = () => (
       <div className="hidden md:block w-px bg-accent-warning/20 self-stretch" />
 
       {/* RIGHT PREVIEW / CAPABILITIES */}
-      <div className="p-8 flex flex-col justify-center gap-5 min-w-[280px] bg-black/60">
+      <div className="p-8 flex flex-col justify-center gap-5 min-w-[280px] bg-surface-hover">
         <p className="text-xs text-accent-warning tracking-[0.25em] uppercase font-bold">RCE CAPABILITIES</p>
         {features.map(({ icon: Icon, label, desc }) => (
           <div key={label} className="flex items-center gap-3">
