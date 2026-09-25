@@ -16,7 +16,7 @@ type OutputPanelProps = {
   customInput: string;
   customInputActive: boolean;
   runningTestCaseIndex?: number | null;
-  onResizeStart: (event: MouseEvent<HTMLDivElement>) => void;
+  onResizeStart: (event: React.PointerEvent<HTMLDivElement>) => void;
   setOutputHeight: (height: number) => void;
   setCustomInput: (value: string) => void;
   setCustomInputActive: (active: boolean) => void;
@@ -97,8 +97,8 @@ const OutputPanel = ({
     <div className="flex h-full flex-col border-t border-subtle-line bg-terminal-bg">
       {/* Resizer handle */}
       <div
-        onMouseDown={onResizeStart}
-        className="h-1 cursor-row-resize border-t border-subtle-line transition-all hover:border-accent-primary hover:bg-accent-primary/10"
+        onPointerDown={onResizeStart}
+        className="h-1 cursor-row-resize border-t border-subtle-line transition-all hover:border-accent-primary hover:bg-accent-primary/10 touch-none"
       />
 
       {/* Diagnostic tabs */}

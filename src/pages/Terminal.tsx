@@ -16,6 +16,7 @@ import type { ExecutionMode, SupportedLanguage } from "../features/terminal/type
 import type { ProblemTimerRef } from "../features/terminal/components/ProblemTimer";
 import { NotesPanel } from "../components/ui/NotesPanel";
 import { invalidateProblemQueries } from "../utils/problemCache";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 // ─────────────────────────────────────────────────────────────
 // Language / Snippet Helpers
@@ -67,6 +68,7 @@ const Terminal = () => {
   const [problems, setProblems] = useState<PracticeProblem[]>([]);
   const [activeProblem, setActiveProblem] = useState<PracticeProblem | null>(null);
   const [problemsLoading, setProblemsLoading] = useState(true);
+  const [problemsError, setProblemsError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executingMode, setExecutingMode] = useState<ExecutionMode | null>(null);
@@ -115,6 +117,12 @@ const Terminal = () => {
     setSidebarWidth,
   } = useTerminalLayout({ autoCloseBelowPx: 220 });
 
+  // Below md the shell stacks vertically. If the sidebar stayed in flow it would
+  // take the full column height and push the editor + output panel off-screen
+  // entirely, so on small screens it becomes a fixed overlay drawer instead.
+  const isMobile = useIsMobile();
+  const isSidebarOpen = isPanelOpen && !isSidebarCollapsed;
+
   const formatEditorRef = useRef<(() => void) | null>(null);
 
   // ── Load all system problems on mount ─────────────────────
@@ -124,7 +132,9 @@ const Terminal = () => {
 
     fetchSystemProblems(controller.signal)
       .then((data) => {
+        if (!Array.isArray(data)) throw new Error("Invalid problem payload");
         setProblems(data);
+        setProblemsError(null);
 
         // Auto-select: by URL id, or first problem
         let initial: PracticeProblem | null = null;
@@ -141,7 +151,10 @@ const Terminal = () => {
         if (initial) loadProblem(initial, data);
       })
       .catch((e) => {
-        if (e.name !== "AbortError") console.error("Failed to load problems:", e);
+        if (e.name !== "AbortError") {
+          console.error("Failed to load problems:", e);
+          setProblemsError("The complete problem catalog could not be loaded.");
+        }
       })
       .finally(() => setProblemsLoading(false));
 
@@ -353,12 +366,29 @@ const Terminal = () => {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div className="flex h-[100vh] min-h-0 flex-col overflow-hidden bg-base pt-2 text-fg font-mono select-none md:flex-row">
-      {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ──────────────── */}
+    // dvh tracks the mobile URL bar as it collapses; plain 100vh overflowed
+    // behind the browser chrome and clipped the output panel's bottom edge.
+    <div className="flex h-[100vh] h-[100dvh] min-h-0 flex-col overflow-hidden bg-base pt-2 text-fg font-mono select-none md:flex-row">
+      {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ────────────────
+          On mobile this is an overlay drawer (absolute + backdrop) rather than a
+          flex child, so opening it never pushes the workspace off-screen. */}
+      {isMobile && isSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close problem sidebar"
+          onClick={() => setIsSidebarCollapsed(true)}
+          className="absolute inset-0 z-20 bg-base/70 backdrop-blur-[1px]"
+        />
+      )}
+
       <div
-        style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
-        className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
+        style={{
+          width: isSidebarOpen ? `min(${sidebarWidth}px, 100vw)` : "0px",
+        }}
+        className={`${isMobile ? "absolute inset-y-0 left-0" : "relative"} z-30 h-full transition-[width] duration-300 ease-in-out shrink-0`}
       >
+        {/* PracticeSidebar renders its own drag handle (fed by
+            onResizeStart → startSidebarDragging). */}
         <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             <PracticeSidebar
@@ -383,7 +413,10 @@ const Terminal = () => {
           </div>
         </div>
 
-        {/* SIDEBAR TOGGLE BUTTON */}
+        {/* SIDEBAR TOGGLE BUTTON.
+            `left-full` sits the button just outside the panel, which is off
+            screen on mobile where the panel is capped at 100vw. On mobile it
+            moves inside the panel instead. */}
         <button
           onClick={() => {
             const next = !(isPanelOpen && !isSidebarCollapsed);
@@ -391,9 +424,12 @@ const Terminal = () => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className="absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/10 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full"
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 hover:bg-accent-primary/10 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] ${
+            isMobile ? "right-3 rounded-r-lg" : "left-full rounded-r-lg"
+          }`}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
           aria-label={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
+          aria-expanded={isPanelOpen && !isSidebarCollapsed}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />
@@ -441,7 +477,14 @@ const Terminal = () => {
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-overlay-bg">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-6 w-6 animate-spin text-accent" />
-                <span className="text-xs font-mono text-subtle uppercase tracking-widest">Setting up environment...</span>
+                <span className="text-xs font-mono text-subtle uppercase tracking-widest">Loading complete problem data…</span>
+              </div>
+            </div>
+          ) : problemsError ? (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-overlay-bg p-6 text-center">
+              <div className="max-w-md border border-accent-danger/30 bg-accent-danger/5 p-6">
+                <p className="font-mono text-xs uppercase tracking-widest text-accent-danger">Problem catalog unavailable</p>
+                <p className="mt-2 text-xs text-subtle">{problemsError}</p>
               </div>
             </div>
           ) : (

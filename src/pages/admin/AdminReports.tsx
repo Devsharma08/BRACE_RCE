@@ -47,13 +47,13 @@ const AdminReports = () => {
             <span className="text-xs text-faint font-bold tracking-widest uppercase">REPORT DIRECTORY</span>
           </div>
 
-          <div className="overflow-y-auto relative z-10">
+          <div className="overflow-y-auto overflow-x-auto relative z-10">
             {isLoading ? (
               <div className="p-8 text-center text-faint text-xs">SCANNING REPORTS...</div>
             ) : !reports || reports.length === 0 ? (
               <div className="p-8 text-center text-faint text-xs">NO REPORTS FOUND</div>
             ) : (
-              <table className="w-full text-xs font-mono">
+              <table className="w-full min-w-[40rem] text-xs font-mono">
                 <thead>
                   <tr className="border-b border-subtle-line">
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Question ID</th>
@@ -66,7 +66,7 @@ const AdminReports = () => {
                 </thead>
                 <tbody>
                   {reports.map((r) => (
-                    <tr key={r.id} className="border-b border-subtle-line hover:bg-black/60">
+                    <tr key={r.id} className="border-b border-subtle-line hover:bg-surface-hover">
                       <td className="px-4 py-3 text-subtle font-mono text-[10px]">{r.questionId.slice(0, 8)}</td>
                       <td className="px-4 py-3 text-accent-primary">{r.reporter?.username || '—'}</td>
                       <td className="px-4 py-3 text-subtle max-w-xs truncate">{r.reason}</td>

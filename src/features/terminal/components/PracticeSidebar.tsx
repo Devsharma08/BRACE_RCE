@@ -42,7 +42,7 @@ interface PracticeSidebarProps {
   activeProblem: PracticeProblem | null;
   onSelectProblem: (problem: PracticeProblem) => void;
   width: number;
-  onResizeStart: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onResizeStart: (e: React.PointerEvent<HTMLDivElement>) => void;
   isLoading?: boolean;
 }
 
@@ -96,7 +96,7 @@ const HintsAccordion = ({ hints }: { hints?: string[] | null }) => {
       ) : (
         <div className="space-y-1.5 mt-2">
           {parsed.slice(0, unlocked).map((text, i) => (
-            <div key={i} className="border-l-2 border-accent-warning bg-black/60 p-2 text-[10px] text-accent-warning/90 leading-relaxed">
+            <div key={i} className="border-l-2 border-accent-warning bg-surface-hover p-2 text-[10px] text-accent-warning/90 leading-relaxed">
               <span className="font-bold text-accent-warning block mb-0.5">// HINT #{i + 1}</span>
               {text}
             </div>
@@ -143,7 +143,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         <div className="flex flex-wrap gap-2 text-[10px]">
           <span className={`px-2 py-0.5 rounded border font-bold uppercase ${diffClass}`}>{diff}</span>
           {problem.attempts != null && problem.attempts > 0 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-subtle-line bg-black/60 text-subtle">
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded border border-subtle-line bg-surface-hover text-subtle">
               <Cpu className="w-3 h-3" /> {problem.attempts} ATTEMPT{problem.attempts !== 1 ? "S" : ""}
             </span>
           )}
@@ -160,7 +160,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         </div>
         {problem.problem_definition && problem.problem_definition.trim().length > 0 ? (
           <div
-            className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-black/60 [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
+            className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
             dangerouslySetInnerHTML={{ __html: problem.problem_definition }}
           />
         ) : (
@@ -180,7 +180,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
           </div>
           <div className="flex flex-col gap-2">
             {publicCases.map((tc, i) => (
-              <div key={tc.id} className="border border-subtle-line bg-black/60 overflow-hidden">
+              <div key={tc.id} className="border border-subtle-line bg-surface-hover overflow-hidden">
                 <div className="px-3 py-1 border-b border-subtle-line text-[8px] font-bold text-faint uppercase tracking-widest">
                   CASE #{i + 1}
                 </div>
@@ -251,7 +251,7 @@ const ProblemsListTab = ({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Progress bar */}
-      <div className="px-3 py-2.5 bg-black/60 border-b border-subtle-line">
+      <div className="px-3 py-2.5 bg-surface-hover border-b border-subtle-line">
         <div className="flex items-center justify-between text-[10px] font-mono mb-1.5">
           <span className="text-faint uppercase tracking-widest">PROGRESS</span>
           <span className="text-accent-primary font-bold">
@@ -275,7 +275,7 @@ const ProblemsListTab = ({
             placeholder="Search problems..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-black/60 border border-subtle-line text-[11px] text-fg pl-8 pr-3 py-1.5 rounded focus:outline-none focus:border-accent-primary/50 transition-colors font-mono"
+            className="w-full bg-surface-hover border border-subtle-line text-[11px] text-fg pl-8 pr-3 py-1.5 rounded focus:outline-none focus:border-accent-primary/50 transition-colors font-mono"
           />
         </div>
       </div>
@@ -289,7 +289,7 @@ const ProblemsListTab = ({
             onClick={() => setDiffFilter(d)}
             className={`px-2 py-0.5 text-[9px] font-bold rounded border transition-all cursor-pointer ${diffFilter === d
                 ? "bg-accent-primary/15 border-accent-primary/60 text-accent-primary"
-                : "bg-black/60 border-subtle-line text-faint hover:text-fg hover:border-subtle-line"
+                : "bg-surface-hover border-subtle-line text-faint hover:text-fg hover:border-subtle-line"
               }`}
           >
             {d}
@@ -389,7 +389,7 @@ const PracticeSidebar = ({
       style={{ width }}
     >
       {/* TAB BAR */}
-      <div className="flex border-b border-subtle-line bg-black/60 shrink-0">
+      <div className="flex border-b border-subtle-line bg-surface-hover shrink-0">
         {(["PROBLEM", "PROBLEMS"] as Tab[]).map((tab) => (
           <button
             key={tab}
@@ -425,8 +425,8 @@ const PracticeSidebar = ({
 
       {/* RESIZE HANDLE */}
       <div
-        onMouseDown={onResizeStart}
-        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center"
+        onPointerDown={onResizeStart}
+        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none"
         title="Drag to resize sidebar"
       >
         <div className="w-0.5 h-12 bg-accent-primary/40 group-hover:bg-accent-primary rounded" />

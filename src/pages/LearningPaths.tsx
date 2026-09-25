@@ -287,7 +287,7 @@ const LearningPaths: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16 border border-subtle-line bg-black/60 text-faint text-xs">// NO_LEARNING_PATHS_FOUND</div>
+              <div className="text-center py-16 border border-subtle-line bg-surface-hover text-faint text-xs">// NO_LEARNING_PATHS_FOUND</div>
             )}
           </>
         )}

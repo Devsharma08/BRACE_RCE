@@ -67,13 +67,13 @@ const AdminUsers = () => {
             <span>USER DIRECTORY</span>
           </div>
 
-          <div className="overflow-y-auto relative z-10">
+          <div className="overflow-y-auto overflow-x-auto relative z-10">
             {isLoading ? (
               <div className="p-8 text-center text-faint text-xs">LOADING OPERATIVES...</div>
             ) : !users || users.length === 0 ? (
               <div className="p-8 text-center text-faint text-xs">NO USERS FOUND</div>
             ) : (
-              <table className="w-full text-xs font-mono">
+              <table className="w-full min-w-[40rem] text-xs font-mono">
                 <thead>
                   <tr className="border-b border-subtle-line">
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Username</th>
@@ -87,7 +87,7 @@ const AdminUsers = () => {
                   {users.map((user) => (
                     <tr
                       key={user.id}
-                      className="border-b border-subtle-line hover:bg-black/60 transition-colors"
+                      className="border-b border-subtle-line hover:bg-surface-hover transition-colors"
                     >
                       <td className="px-4 py-3 text-fg font-bold">{user.username}</td>
                       <td className="px-4 py-3 text-subtle">{user.email || '—'}</td>

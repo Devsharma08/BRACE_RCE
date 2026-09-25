@@ -146,13 +146,13 @@ const AdminQuestions = () => {
           <div className="p-4 border-b border-subtle-line text-xs font-bold text-faint tracking-widest uppercase relative z-10">
             QUESTION DIRECTORY
           </div>
-          <div className="overflow-y-auto relative z-10">
+          <div className="overflow-y-auto overflow-x-auto relative z-10">
             {isLoading ? (
               <div className="p-8 text-center text-faint text-xs">LOADING PROBLEMS...</div>
             ) : !questions || questions.length === 0 ? (
               <div className="p-8 text-center text-faint text-xs">NO QUESTIONS FOUND</div>
             ) : (
-              <table className="w-full text-xs font-mono">
+              <table className="w-full min-w-[40rem] text-xs font-mono">
                 <thead>
                   <tr className="border-b border-subtle-line">
                     <th className="px-4 py-2 text-left text-faint">Name</th>
@@ -164,7 +164,7 @@ const AdminQuestions = () => {
                 </thead>
                 <tbody>
                   {questions.map((q) => (
-                    <tr key={q.id} className="border-b border-subtle-line hover:bg-black/60">
+                    <tr key={q.id} className="border-b border-subtle-line hover:bg-surface-hover">
                       <td className="px-4 py-3 text-fg font-bold">{q.name}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold border ${difficultyColors[q.difficulty_level]}`}>

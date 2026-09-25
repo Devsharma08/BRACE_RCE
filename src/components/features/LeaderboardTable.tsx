@@ -40,13 +40,16 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
       ) : !data || data.length === 0 ? (
         <p className="text-xs text-faint font-mono">NO RANKED OPERATIVES YET — WIN BATTLES TO CLIMB.</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        // min-w keeps the fixed column tracks from squashing on narrow
+        // viewports; overflow-x-auto lets the row scroll instead of
+        // stretching the whole page horizontally.
+        <div className="flex flex-col gap-2 overflow-x-auto">
           {data.map((entry, idx) => {
             const isCurrentUser = Boolean(user?.id && entry.userId === user.id);
             return (
               <div
                 key={entry.userId}
-                className={`${isFirstMount ? "ds-rank-row" : ""} grid grid-cols-[2.5rem_2rem_1fr_6rem_5rem] items-center gap-3 rounded-card border border-subtle-line px-4 py-2 transition-colors ${
+                className={`${isFirstMount ? "ds-rank-row" : ""} grid grid-cols-[2.5rem_2rem_minmax(6rem,1fr)_6rem_5rem] items-center gap-3 min-w-[26rem] rounded-card border border-subtle-line px-4 py-2 transition-colors ${
                   isCurrentUser ? "bg-surface-hover" : "bg-surface hover:bg-surface-hover"
                 }`}
                 style={

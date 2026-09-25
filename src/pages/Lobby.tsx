@@ -306,7 +306,7 @@ const Lobby = () => {
                 <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success" />
                 Live operations / lobby
               </div>
-              <h1 className="mt-3 max-w-xl text-3xl font-bold tracking-tight sm:text-5xl">
+              <h1 className="mt-3 max-w-xl text-2xl font-bold tracking-tight sm:text-4xl">
                 Find your next
                 <br />
                 <span className="text-accent-primary">opponent.</span>

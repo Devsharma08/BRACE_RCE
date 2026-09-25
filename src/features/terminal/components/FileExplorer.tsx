@@ -17,7 +17,7 @@ type FileExplorerProps = {
   testCaseCount: number;
   sidebarWidth: number;
   onFileClick: (oid: string, name: string) => void;
-  onResizeStart: (event: MouseEvent<HTMLDivElement>) => void;
+  onResizeStart: (event: React.PointerEvent<HTMLDivElement>) => void;
   onCreateFile?: (name: string) => void;
   onDeleteLocalFile: (oid: string) => void;
   isLoadingFiles: boolean;
@@ -138,10 +138,11 @@ const SidebarFilesMode = React.memo(({
         <div className="px-3 pt-3 pb-2 relative flex items-center">
           <span className="absolute left-6 text-[10px] font-mono text-accent-primary/40 select-none">›</span>
           <input
+            aria-label="Search problems"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder={isSmall ? "FIND..." : "SEARCH PROBLEMS..."}
-            className="w-full border border-subtle-line bg-black/60 pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-primary outline-none focus:border-accent-primary/50 placeholder:text-faint transition"
+            className="w-full border border-subtle-line bg-surface-hover pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-primary outline-none focus:border-accent-primary/50 placeholder:text-faint transition"
           />
         </div>
 
@@ -178,7 +179,7 @@ const SidebarFilesMode = React.memo(({
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full border border-subtle-line bg-black/60 px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
+                className="w-full border border-subtle-line bg-surface-hover px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
               >
                 <option value="ALL">CATEGORY</option>
                 <option value="linked list">LINKED LIST</option>
@@ -202,7 +203,7 @@ const SidebarFilesMode = React.memo(({
               <select
                 value={languageFilter}
                 onChange={(e) => setLanguageFilter(e.target.value)}
-                className="w-full border border-subtle-line bg-black/60 px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
+                className="w-full border border-subtle-line bg-surface-hover px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 outline-none cursor-pointer uppercase appearance-none hover:border-accent-primary/30"
               >
                 <option value="ALL">LANGUAGE</option>
                 <option value="java">JAVA</option>
@@ -233,7 +234,7 @@ const SidebarFilesMode = React.memo(({
         {isLoadingFiles ? (
           <div className="px-3 py-2">{renderLoadingState("Loading files...")}</div>
         ) : (
-          <div className="flex flex-col gap-px max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black [&::-webkit-scrollbar-thumb]:bg-elevated">
+          <div className="flex flex-col gap-px max-h-[240px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-base [&::-webkit-scrollbar-thumb]:bg-elevated">
             {filteredFiles.length > 0 ? (
               filteredFiles.map((file) => (
                 <button
@@ -274,7 +275,7 @@ const SidebarFilesMode = React.memo(({
                 </span>
               )}
               {fileData?.data_structure && (
-                <span className="text-[8px] px-1.5 py-0.5 border border-subtle-line bg-black/60 text-subtle font-mono uppercase">
+                <span className="text-[8px] px-1.5 py-0.5 border border-subtle-line bg-surface-hover text-subtle font-mono uppercase">
                   {fileData.data_structure}
                 </span>
               )}
@@ -311,7 +312,7 @@ const SidebarFilesMode = React.memo(({
               </div>
               <div className="px-3 py-2.5 space-y-3">
                 {fileData.test_cases.map((tc, i) => (
-                  <div key={i} className="border border-subtle-line bg-black/60">
+                  <div key={i} className="border border-subtle-line bg-surface-hover">
                     <div className="px-2 py-1 border-b border-subtle-line text-[8px] font-bold text-faint uppercase tracking-widest">
                       Case {i + 1}
                     </div>
@@ -429,7 +430,7 @@ const SidebarTerminalMode = React.memo(({
             value={fileName}
             onChange={(e) => setFileName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && createNewFile(e)}
-            className="w-full border border-subtle-line bg-black/60 pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-warning outline-none focus:border-accent-warning/40 placeholder:text-faint transition"
+            className="w-full border border-subtle-line bg-surface-hover pl-6 pr-3 py-1.5 text-[10px] font-mono text-accent-warning outline-none focus:border-accent-warning/40 placeholder:text-faint transition"
             placeholder="filename.js · ENTER to create"
           />
         </div>
@@ -791,7 +792,7 @@ const FileExplorer = ({
     <>
       <aside
         style={sidebarStyle}
-        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-subtle-line bg-base p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-black/40 [&::-webkit-scrollbar-thumb]:bg-elevated/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r-2 md:border-r-white/10"
+        className="sidebar flex max-h-[42dvh] min-h-[220px] w-full flex-none flex-col overflow-y-auto border-b border-subtle-line bg-base p-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-base [&::-webkit-scrollbar-thumb]:bg-elevated/60 md:h-full md:max-h-none md:min-h-0 md:w-[var(--sidebar-width)] md:border-b-0 md:border-r-2 md:border-r-white/10"
       >
         <div className="hideScrollbar">
         {/* MODE SELECTOR: EXPLORER / TERMINAL */}
@@ -877,7 +878,7 @@ const FileExplorer = ({
         </div>
       </aside>
       <div
-        onMouseDown={onResizeStart}
+        onPointerDown={onResizeStart}
         className="hidden h-full w-1 sidebar-details cursor-col-resize border-l border-accent-primary/40 bg-accent-primary/20 transition-all hover:bg-accent-primary hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] active:bg-accent-primary md:block"
       />
     </>

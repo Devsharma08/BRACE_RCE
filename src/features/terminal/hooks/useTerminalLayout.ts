@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from "react";
 
 const getInitialOutputHeight = () => {
   if (typeof window === "undefined") return 250;
@@ -16,7 +16,9 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
   const startDragY = useRef<number | null>(null);
   const startOutputHeight = useRef<number | null>(null);
 
-  const startSidebarDragging = useCallback((event: MouseEvent<HTMLDivElement>) => {
+  const startSidebarDragging = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    // Ignore secondary mouse buttons so a right-click doesn't start a drag.
+    if (event.button !== 0) return;
     setIsSidebarDragging(true);
     event.preventDefault();
     document.body.style.userSelect = "none";
@@ -24,7 +26,8 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
     document.body.classList.add("dragging-active");
   }, []);
 
-  const startOutputDragging = useCallback((event: MouseEvent<HTMLDivElement>) => {
+  const startOutputDragging = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
     startDragY.current = event.clientY;
     startOutputHeight.current = outputHeight;
     setIsOutputDragging(true);
@@ -34,18 +37,21 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
     document.body.classList.add("dragging-active");
   }, [outputHeight]);
 
+  // Both drags use POINTER events rather than mouse events. Mouse events never
+  // fire for touch input, so on phones/tablets these resize handles were simply
+  // dead — the sidebar and output panel could not be dragged at all.
   useEffect(() => {
-    const handleMouseMove = (event: globalThis.MouseEvent) => {
+    const handlePointerMove = (event: PointerEvent) => {
       if (!isSidebarDragging) return;
 
       window.requestAnimationFrame(() => {
-        const maxSidebarWidth = Math.max(30, window.innerWidth/2);
+        const maxSidebarWidth = Math.max(30, window.innerWidth / 2);
         const nextWidth = Math.max(30, Math.min(event.clientX, maxSidebarWidth));
         setSidebarWidth(nextWidth);
       });
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       // Auto-close: if the user drags the question panel below the threshold
       // (≈200-300px), collapse it instead of leaving an unusable sliver.
       setSidebarWidth((current) => {
@@ -62,18 +68,20 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
     };
 
     if (isSidebarDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
     }
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
     };
   }, [isSidebarDragging]);
 
   useEffect(() => {
-    const handleMouseMove = (event: globalThis.MouseEvent) => {
+    const handlePointerMove = (event: PointerEvent) => {
       if (!isOutputDragging) return;
 
       window.requestAnimationFrame(() => {
@@ -88,7 +96,7 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
       });
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       setIsOutputDragging(false);
       document.body.style.userSelect = "auto";
       document.body.style.cursor = "default";
@@ -96,13 +104,15 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
     };
 
     if (isOutputDragging) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+      window.addEventListener("pointercancel", handlePointerUp);
     }
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
     };
   }, [isOutputDragging, outputHeight]);
 
