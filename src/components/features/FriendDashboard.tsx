@@ -21,9 +21,7 @@ import {
 import { toast } from "sonner";
 import { api } from "../../config/api";
 import { ChallengeModal } from "./ChallengeModal";
-import DashboardSidebar from "../layout/DashboardSidebar";
-import MobileBottomNav from "../layout/MobileBottomNav";
-import { TIER_COLORS, useLeaderboard, useMyRating } from "../../hooks/useLeaderboard";
+import { TIER_COLORS, useLeaderboard } from "../../hooks/useLeaderboard";
 import { FriendsWorkspaceHeader } from "./FriendsWorkspaceHeader";
 
 interface Friend {
@@ -265,7 +263,6 @@ export default function FriendsDashboard() {
     }
   };
 
-  const { data: myRating } = useMyRating(true);
 
   // A friend's ranked record lives only on the leaderboard — /friends returns
   // identity, not stats. One cached fetch (10 min staleTime) serves every
@@ -276,13 +273,9 @@ export default function FriendsDashboard() {
     : undefined;
 
   return (
-    <div className="flex min-h-screen bg-base text-fg font-mono">
+    <div className="flex w-full text-fg font-mono">
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* GLOBAL DASHBOARD SIDEBAR */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <MobileBottomNav />
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* 3-COLUMN FRIENDS LAYOUT                                                */}
@@ -292,7 +285,7 @@ export default function FriendsDashboard() {
           that double-spaced the whole friends workspace. The calc() below only
           compensates for the header's height in the scroll budget.
           pb-16 (not pb-14) clears the 56px MobileBottomNav on <768px. */}
-      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-16 md:ml-[var(--sidebar-width)] md:pb-0">
+      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-16 md:pb-0">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
         <aside

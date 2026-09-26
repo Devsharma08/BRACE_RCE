@@ -30,9 +30,6 @@ import {
   TestCaseGeneratorPanel,
   type CreatorSignature,
 } from "../components/features/TestCaseGeneratorPanel";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
-import { useMyRating } from "../hooks/useLeaderboard";
 
 interface Problem {
   id: string;
@@ -108,7 +105,6 @@ const CreateRoom = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { data: myRating } = useMyRating(true);
 
   const [loading, setLoading] = useState(false);
   const [stagedSignature, setStagedSignature] = useState<string | null>(null);
@@ -357,22 +353,18 @@ const CreateRoom = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full bg-base font-mono text-fg selection:bg-accent-primary/30 selection:text-accent-primary">
+    <div className="relative flex w-full bg-base font-mono text-fg selection:bg-accent-primary/30 selection:text-accent-primary">
       {/* Dot-grid texture */}
       <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px]" />
 
-      {/* DESKTOP SIDEBAR — shared shell with /dashboard, /lobby, /problems, /profile */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* MOBILE BOTTOM NAV */}
-      <MobileBottomNav />
 
       {/* MAIN CONTENT — min-h budget accounts for the sticky header that
           Layout.tsx renders in document flow. A hard `lg:h-screen` here
           overflowed past the viewport and collided with the page footer, so the
           height is expressed as a min-height and the page scrolls normally.
           pb-24 on mobile clears the fixed MobileBottomNav. */}
-      <main className="relative z-10 ml-0 w-full min-w-0 flex-1 px-4 pt-5 pb-24 md:ml-[var(--sidebar-width)] md:px-8 md:pt-6 md:pb-12 min-h-[calc(100vh-var(--header-height,3.5rem))]">
+      <main className="relative z-10 w-full min-w-0 flex-1 px-4 pt-5 pb-24 md:px-8 md:pt-6 md:pb-12 min-h-[calc(100vh-var(--header-height,3.5rem))]">
         <div className="mx-auto flex h-full max-w-[1400px] min-h-0 flex-col">
           <Link
             to="/lobby"

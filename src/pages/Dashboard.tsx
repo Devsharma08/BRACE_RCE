@@ -13,8 +13,6 @@ import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { getDivision, TIER_COLORS, useLeaderboard, useMyRating } from "../hooks/useLeaderboard";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import {
   Swords,
   Trophy,
@@ -228,15 +226,11 @@ export const Dashboard: React.FC = () => {
   const avgSolveLabel = formatMs(analyticsSummary?.avgSolveTimeMs);
 
   return (
-    <div className="relative flex min-h-screen w-full bg-base text-fg font-mono selection:bg-accent-primary/30 selection:text-accent-primary">
+    <div className="relative flex w-full bg-base text-fg font-mono selection:bg-accent-primary/30 selection:text-accent-primary">
       {/* Dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
 
-      {/* DESKTOP SIDEBAR — shared shell with /problems, /profile, /lobby */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* MOBILE BOTTOM NAV */}
-      <MobileBottomNav />
 
       {/* DIALOG OVERLAYS (preserved) */}
       {matchmakingStatus === "SEARCHING" && (
@@ -345,7 +339,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* MAIN CONTENT AREA — left offset matches the fixed sidebar widths */}
-      <main className="relative z-10 w-full min-w-0 flex-1 ml-0 md:ml-[var(--sidebar-width)] px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
+      <main className="relative z-10 w-full min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
         {/* ── HEADER ─────────────────────────────────────────────── */}
         {/* Page title only. The app brand + route nav now come from Layout's
             sticky Header and DashboardSidebar, so repeating them here would

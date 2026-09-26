@@ -16,11 +16,8 @@ import { Link } from "react-router-dom";
 import { api } from "../config/api";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
-import { PageSkeleton } from "../components/ui/Skeleton";
+import { ContentSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
-import { useMyRating } from "../hooks/useLeaderboard";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 
@@ -56,7 +53,6 @@ interface MatchRecord {
 
 const Profile = () => {
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
-  const { data: myRating } = useMyRating(true);
 
   // Post-battle wave: stats + history refresh, identity stays cached.
   useSocketInvalidation("leaderboard:invalidate", [
@@ -90,32 +86,33 @@ const Profile = () => {
   // refetch analytics on mount even though the query is otherwise cached.
   const { data: analytics } = useAnalytics(true, true);
 
-  const loading = profileLoading || statsLoading;
   const stats = statsData?.stats || null;
   const history = statsData?.history || [];
 
-  if (loading) return <PageSkeleton />;
+  // Block only on the FIRST load. On a refetch react-query keeps the previous
+  // data and reports isFetching (not isLoading), and useAnalytics is called
+  // with refetchOnMount:true — so gating on `loading` blanked the whole content
+  // area every time the page was opened, which read as the page reloading.
+  if ((profileLoading || statsLoading) && !profile) return <ContentSkeleton />;
 
   return (
-    <div className="flex min-h-screen bg-base text-fg font-mono">
+    <div className="flex w-full text-fg font-mono">
 
-      {/* Desktop sidebar */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <main
         className="
           flex-1 min-w-0 w-full
-          ml-0 md:ml-[var(--sidebar-width)]
-          pt-14 px-4 py-6 md:px-8 md:py-8
+         
+          px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
         "
       >
-        {/* Dot-grid texture */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
+        {/* Dot-grid texture. z-0 + a `relative z-10` content wrapper: the grid is
+            position:fixed inset-0, so -z-10 drops it behind the shell's own
+            background and it disappears entirely. */}
+        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
 
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 relative z-10">
 

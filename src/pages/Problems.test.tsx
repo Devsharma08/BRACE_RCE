@@ -1,18 +1,32 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../config/api";
 import { Problems } from "./Problems";
 
 vi.mock("../config/api", () => ({ api: { get: vi.fn() } }));
-vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ user: { username: "TEST" } }) }));
+// Still needed: something in the Problems render tree consumes auth.
+vi.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ user: { username: "TEST" }, isAuthenticated: true, isAdmin: false, isLoading: false }),
+}));
 vi.mock("../hooks/useLeaderboard", () => ({ useMyRating: () => ({ data: { rating: 1200 } }) }));
-vi.mock("../components/layout/DashboardSidebar", () => ({ default: () => null }));
-vi.mock("../components/layout/MobileBottomNav", () => ({ default: () => null }));
+// DashboardSidebar / MobileBottomNav are no longer rendered here — the console
+// shell (src/pages/ConsoleShell.tsx) owns both, so they need no mock.
 
 vi.mock("../hooks/useSocketInvalidation", () => ({
   useSocketInvalidation: () => undefined,
+}));
+
+// Give the topic tiles real progress so the "solved out of total" figure the
+// bento tile renders is assertable rather than always 0/0. problem-1 is the
+// only solved problem in the fixture, so Arrays expects exactly 1 of 3.
+vi.mock("../hooks/useDsTopicProgress", () => ({
+  useDsTopicProgress: () => ({
+    bySlug: {
+      array: { problemIds: ["problem-1", "problem-2", "problem-3"] },
+    },
+  }),
 }));
 
 const problems = Array.from({ length: 16 }, (_, index) => ({
@@ -48,12 +62,32 @@ afterEach(() => {
 });
 
 describe("Problems filtering and pagination", () => {
-  test("renders solved data structure cards with /ds learning links", async () => {
+  test("bento grid renders topic tiles with the topic left and solved/total right", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    expect(screen.getByText("Solved by data structure")).toBeInTheDocument();
+    // The two former sections are now one bento grid under a single heading.
+    expect(screen.getByText("Command deck")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open /ds" })).toHaveAttribute("href", "/ds");
-    expect(screen.getByRole("link", { name: /Arrays & Strings/ })).toHaveAttribute("href", "/ds/array");
+
+    const arraysTile = screen.getByRole("link", { name: /Arrays & Strings/ });
+    expect(arraysTile).toHaveAttribute("href", "/ds/array");
+    // Left = topic name, right = "solved/total". problem-1 is the only solved
+    // id in the mocked bySlug, and it is three long.
+    expect(arraysTile).toHaveAccessibleName("Arrays & Strings: 1 of 3 problems solved");
+    expect(within(arraysTile).getByText("1")).toBeInTheDocument();
+    expect(within(arraysTile).getByText("/3")).toBeInTheDocument();
+  });
+
+  test("bento tiles opt into their own spans so the grid is not a flat row", async () => {
+    renderProblems();
+    await screen.findByText("Challenge 1");
+    const hero = screen.getByText("Choose a pattern to practice.").closest("article");
+    expect(hero).toHaveClass("lg:row-span-2", "md:col-span-2");
+    const signal = screen.getByText("Training signal").closest("article");
+    expect(signal).toHaveClass("lg:col-span-2");
+    const topicTile = screen.getByRole("link", { name: /Arrays & Strings/ });
+    expect(topicTile).toHaveClass("rounded-2xl");
+    expect(topicTile).not.toHaveClass("lg:col-span-2");
   });
 
   test("uses the unified raised surface for the problem table", async () => {

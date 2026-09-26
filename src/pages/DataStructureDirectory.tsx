@@ -1,8 +1,6 @@
 import type { FC } from "react";
 import { Link } from "react-router-dom";
 import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight, Trees, List, Braces, Search, LayoutDashboard } from "lucide-react";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
 import { DS_ALGORITHMS } from "../data/dsAlgorithms";
 import { useAnalytics } from "../hooks/useAnalytics";
@@ -65,22 +63,18 @@ const DataStructureDirectory: FC = () => {
   const studyPct = studyTotal > 0 ? Math.round((studyCompleted / studyTotal) * 100) : 0;
 
   return (
-    <div className="flex min-h-screen bg-base text-fg font-mono relative">
+    <div className="flex w-full text-fg font-mono relative">
       {/* Dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
 
-      {/* Desktop sidebar */}
-      <DashboardSidebar rating={undefined} />
 
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <main
         className="
-          flex-1 min-w-0 w-full
-          ml-0 md:ml-[var(--sidebar-width)]
-          pt-14 px-4 py-6 md:px-8 md:py-8
+          relative z-10 flex-1 min-w-0 w-full
+         
+          px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
           flex flex-col gap-6
         "

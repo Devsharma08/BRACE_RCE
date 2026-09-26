@@ -23,9 +23,6 @@ import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
 import { toast } from "sonner";
 import { useSocket } from "../context/SocketContext";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
-import { useMyRating } from "../hooks/useLeaderboard";
 
 interface Room {
   id: string;
@@ -47,7 +44,6 @@ type LobbyTab = "ROOMS" | "TEMPLATES" | "MY_ARCHIVES";
 const Lobby = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: myRating } = useMyRating(true);
   const [activeTab, setActiveTab] = useState<LobbyTab>("ROOMS");
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [joiningCode, setJoiningCode] = useState<string | null>(null);
@@ -287,14 +283,15 @@ const Lobby = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-void text-fg font-mono">
-      <DashboardSidebar rating={myRating?.rating} />
-      <MobileBottomNav />
+    <div className="flex w-full text-fg font-mono">
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 w-full ml-0 md:ml-[var(--sidebar-width)] px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
-        {/* Dot-grid texture */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
+      <main className="relative z-10 flex-1 min-w-0 w-full px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
+        {/* Dot-grid texture. Paired with `relative z-10` on this <main>:
+            the grid is position:fixed inset-0, so at z-0 it would paint over
+            the heading, and at -z-10 it falls behind the shell's own
+            background and disappears. Content above, grid just behind it. */}
+        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
         <div className="mx-auto max-w-[1500px]">
 
         {/* PAGE HEADER */}
