@@ -12,10 +12,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   Target,
-  BookOpen,
   Flame,
   ArrowUpRight,
   Trophy,
+  LayoutGrid,
+  Layers,
 } from "lucide-react";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
@@ -79,6 +80,11 @@ export const Problems: React.FC = () => {
     [dsProgress, problems],
   );
 
+  const solvedCount = useMemo(
+    () => problems.filter((problem: any) => problem.isSolved).length,
+    [problems],
+  );
+
   // Filter problems by search, difficulty, and category
   const filteredProblems = problems.filter((p) => {
     const matchesSearch =
@@ -134,7 +140,7 @@ export const Problems: React.FC = () => {
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[9px] uppercase tracking-widest">
             <span className="border border-accent-success/25 bg-accent-success/5 px-2.5 py-1.5 text-accent-success">
-              Solved <strong className="text-fg ml-1">{problems.filter((p: any) => p.isSolved).length}</strong>
+              Solved <strong className="text-fg ml-1">{solvedCount}</strong>
             </span>
             <span className="border border-accent-primary/25 bg-accent-primary/5 px-2.5 py-1.5 text-accent-primary">
               Indexed <strong className="text-fg ml-1">{problems.length}</strong>
@@ -147,115 +153,140 @@ export const Problems: React.FC = () => {
           </div>
         </header>
 
-        <section aria-label="Solved data structure problems">
+        {/* ── BENTO GRID ───────────────────────────────────────────────────
+            One mosaic instead of the two uniform rows this page used to have.
+            Tiles are deliberately different sizes — that IS the bento layout:
+            a 4-up grid at lg where each tile opts into its own span, so the
+            hero tile reads as the anchor and the per-topic tiles read as the
+            dense detail. Order matters for auto-placement:
+              hero(2x2) → signal(2) → route(2) → 8 topic tiles (1x1 each)
+            fills rows 1-4 with no holes. */}
+        <section aria-label="Training overview">
           <div className="mb-3 flex items-center gap-2">
-            <BookOpen size={14} className="text-accent-primary/60" />
+            <LayoutGrid size={14} className="text-accent-primary/60" />
             <h2 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-secondary">
-              Solved by data structure
+              Command deck
             </h2>
-            <span className="h-px flex-1 border-line" />
+            {/* bg-, not border-: the old `border-line` set only a border colour
+                with no width, so this rule never actually painted. */}
+            <span className="h-px flex-1 bg-subtle-line" />
             <Link to="/ds" className="text-[9px] uppercase tracking-widest text-accent-primary transition hover:text-fg">
               Open /ds
             </Link>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {dsSummaries.map((summary) => (
-              <Link
-                key={summary.slug}
-                to={`/ds/${summary.slug}`}
-                className="group border border-subtle-line bg-surface px-4 py-3 transition hover:border-accent-primary/50 hover:bg-surface-hover"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-xs font-bold text-fg group-hover:text-accent-primary">
-                    {summary.title}
-                  </span>
-                  <span className="shrink-0 font-mono text-[9px] text-subtle">
-                    {summary.solved}/{summary.total || 0}
-                  </span>
-                </div>
-                <div className="mt-3 h-1 overflow-hidden bg-surface-hover">
-                  <div
-                    className="h-full bg-accent-success transition-all"
-                    style={{ width: `${summary.completion}%` }}
-                  />
-                </div>
-                <span className="mt-2 block text-[8px] uppercase tracking-widest text-faint">
-                  {summary.total > 0 ? `${summary.completion}% solved` : "Path catalog pending"}
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+            {/* HERO TILE — the 2×2 anchor the rest of the bento hangs off */}
+            <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40 md:col-span-2 lg:row-span-2">
+              <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-accent-primary/10" />
+              <div className="pointer-events-none absolute -right-24 -top-24 h-40 w-40 rounded-full border border-accent-primary/5" />
+              <div className="relative flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+                  <Target size={13} />
+                  Next move
                 </span>
+                <ArrowUpRight size={14} className="text-accent-primary" />
+              </div>
+              <h3 className="relative mt-6 text-lg font-bold text-fg sm:text-xl">
+                Choose a pattern to practice.
+              </h3>
+              <p className="relative mb-6 mt-2 max-w-md text-xs leading-5 text-subtle">
+                Start with an indexed problem, open it in the terminal, and validate your
+                reasoning against real test cases.
+              </p>
+              {/* mt-auto pins the CTA to the floor of the tile, so the extra height
+                  that the 2-row span grants reads as breathing room, not a gap. */}
+              <Link
+                to="/ds"
+                className="relative mt-auto inline-flex max-w-full items-center gap-2 overflow-hidden border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
+              >
+                Browse patterns
+                <ChevronRight size={12} />
               </Link>
-            ))}
+            </article>
+
+            {/* WIDE TILES — 2 columns each, they stack into the hero's shadow */}
+            <article className="flex flex-col rounded-2xl border border-subtle-line bg-surface p-5 transition hover:bg-surface-hover lg:col-span-2">
+              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
+                <Flame size={13} />
+                Training signal
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="border-l border-accent-warning/40 pl-3">
+                  <p className="text-2xl font-bold tabular-nums text-fg">
+                    {analytics?.summary?.currentStreak ?? 0}
+                  </p>
+                  <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">active streak</p>
+                </div>
+                <div className="border-l border-subtle-line pl-3">
+                  <p className="text-2xl font-bold tabular-nums text-fg">
+                    {analytics?.summary?.totalSolved ?? solvedCount}
+                  </p>
+                  <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">completed</p>
+                </div>
+              </div>
+              <p className="mt-5 text-[9px] uppercase tracking-widest text-faint">
+                <Trophy size={12} className="mr-1 inline text-accent-warning" />
+                Connect your profile to track progress
+              </p>
+            </article>
+
+            <article className="flex flex-col rounded-2xl border border-subtle-line bg-surface p-5 transition hover:bg-surface-hover lg:col-span-2">
+              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+                <Layers size={13} />
+                Study route
+              </div>
+              <div className="mt-5 flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-bold text-fg">Foundations</p>
+                  <p className="mt-1 truncate text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
+                </div>
+                <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-faint">path / open</span>
+              </div>
+              <div className="mt-auto h-1 overflow-hidden bg-surface-hover">
+                <div className="h-full w-1/4 bg-accent-success" />
+              </div>
+              <p className="mt-3 text-[9px] uppercase tracking-widest text-faint">
+                Continue when your training data is connected
+              </p>
+            </article>
+
+            {/* TOPIC TILES — the small cards: DS name on the left, solved/total
+                on the right. 1×1 each, so eight of them fill rows 3 and 4. */}
+            {dsSummaries.map((summary) => {
+              const total = summary.total;
+              const complete = total > 0 && summary.solved >= total;
+              return (
+                <Link
+                  key={summary.slug}
+                  to={`/ds/${summary.slug}`}
+                  aria-label={`${summary.title}: ${summary.solved} of ${total || 0} problems solved`}
+                  className="group flex flex-col justify-between rounded-2xl border border-subtle-line bg-surface p-4 transition hover:-translate-y-0.5 hover:border-accent-primary/40 hover:bg-surface-hover hover:shadow-card-hover"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 truncate text-[13px] font-semibold text-fg transition group-hover:text-accent-primary">
+                      {summary.title}
+                    </span>
+                    <span className="shrink-0 font-mono text-[11px] leading-none tabular-nums">
+                      <span className={complete ? "text-accent-success" : "text-fg"}>{summary.solved}</span>
+                      <span className="text-faint">/{total || 0}</span>
+                    </span>
+                  </div>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-hover">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${complete ? "bg-accent-success" : "bg-accent-primary"}`}
+                      style={{ width: `${summary.completion}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[9px] uppercase tracking-widest text-faint">
+                    {total > 0 ? `${summary.completion}% solved` : "catalogue pending"}
+                  </p>
+                </Link>
+              );
+            })}
+
           </div>
         </section>
-
-        {/* OVERVIEW CARDS */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-accent-primary/10" />
-            <div className="relative flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
-                <Target size={13} />
-                Next move
-              </span>
-              <ArrowUpRight size={14} className="text-accent-primary" />
-            </div>
-            <h2 className="relative mt-7 text-lg font-bold text-fg">Choose a pattern to practice.</h2>
-            <p className="relative mt-2 text-xs leading-5 text-subtle">
-              Start with an indexed problem, open it in the terminal, and validate your reasoning against real test cases.
-            </p>
-            <Link
-              to="/ds"
-              className="relative mt-5 inline-flex max-w-full items-center gap-2 overflow-hidden border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-            >
-              Browse patterns
-              <ChevronRight size={12} />
-            </Link>
-          </article>
-
-          <article className="rounded-2xl border border-subtle-line bg-surface p-5">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-              <BookOpen size={13} />
-              Study route
-            </div>
-            <div className="mt-7 flex items-end justify-between">
-              <div>
-                <p className="text-lg font-bold text-fg">Foundations</p>
-                <p className="mt-1 text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
-              </div>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted">path / open</span>
-            </div>
-            <div className="mt-5 h-1 overflow-hidden bg-surface-hover">
-              <div className="h-full w-1/4 bg-accent-success" />
-            </div>
-            <p className="mt-3 text-[9px] uppercase tracking-widest text-muted">
-              Continue when your training data is connected
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-subtle-line bg-surface p-5 md:col-span-2 xl:col-span-1">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
-              <Flame size={13} />
-              Training signal
-            </div>
-            <div className="mt-7 grid grid-cols-2 gap-3">
-              <div className="border-l border-accent-warning/40 pl-3">
-                <p className="text-lg font-bold text-fg">
-                  {analytics?.summary?.currentStreak ?? 0}
-                </p>
-                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">active streak</p>
-              </div>
-              <div className="border-l border-subtle-line pl-3">
-                <p className="text-lg font-bold text-fg">
-                  {analytics?.summary?.totalSolved ?? problems.filter((p: any) => p.isSolved).length}
-                </p>
-                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">completed</p>
-              </div>
-            </div>
-            <p className="mt-6 text-[9px] uppercase tracking-widest text-muted">
-              <Trophy size={12} className="inline mr-1 text-accent-warning" />
-              Connect your profile to track progress
-            </p>
-          </article>
-        </div>
 
         {/* SEARCH & DIFFICULTY FILTER BAR */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 border border-subtle-line bg-raised p-4 rounded-none">
