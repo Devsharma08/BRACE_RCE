@@ -23,6 +23,7 @@ const DataStructureDetail = lazy(
 const DataStructureDirectory = lazy(
   () => import("./pages/DataStructureDirectory.tsx"),
 );
+const ConsoleShell = lazy(()=>import('./pages/ConsoleShell.tsx'));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
@@ -158,16 +159,28 @@ export const Root = () => {
                             <Route path="feedback" element={<AdminFeedback />} />
                           </Route>
                         </Route>
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="/friends" element={<FriendsDashboard />} />
-                        <Route path="/profile" element={<Profile />} />
+                        {/* Console pages — all share <ConsoleShell />, which owns
+                            the rail, the mobile bottom nav and the sidebar
+                            offset. Declared as a PARENT route with children
+                            nested beneath it: mounted as a leaf it would have
+                            an empty <Outlet /> and render a blank page.
+                            Child paths are relative — React Router v7 throws
+                            "Absolute route path ... is not valid" at runtime
+                            and tsc does not catch it. */}
+                        <Route element={<ConsoleShell />}>
+                          <Route path="/dashboard" element={<Dashboard />} />
+                          <Route path="/friends" element={<FriendsDashboard />} />
+                          <Route path="/profile" element={<Profile />} />
+                          <Route path="/lobby" element={<Lobby />} />
+                          <Route path="/problems" element={<Problems />} />
+                          <Route path="/learning-paths" element={<LearningPaths />} />
+                          <Route path="/learning-paths/:id" element={<LearningPaths />} />
+                          <Route path="/rooms/create" element={<CreateRoom />} />
+                          <Route path="/create-room" element={<CreateRoom />} />
+                        </Route>
+
+                        {/* Fullscreen / standalone routes keep their own shell */}
                         <Route path="/battle/:roomId" element={<Battle />} />
-                        <Route path="/rooms/create" element={<CreateRoom />} />
-                        <Route path="/create-room" element={<CreateRoom />} />
-                        <Route path="/lobby" element={<Lobby />} />
-                        <Route path="/problems" element={<Problems />} />
-                      <Route path="/learning-paths" element={<LearningPaths />} />
-                      <Route path="/learning-paths/:id" element={<LearningPaths />} />
 
                         <Route
                           path="terminal"

@@ -1,4 +1,4 @@
-import React from "react";
+import React,{memo} from "react";
 import {
   LayoutDashboard,
   Swords,
@@ -26,7 +26,7 @@ const NAV_LINKS = [
   { icon: UserPlus, to: "/friends", label: "Friends" },
 ] as const;
 
-const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
+const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
   const { user, logout } = useAuth();
   const { collapsed, toggle } = useSidebar();
   const displayName = (user?.username || "DEV").toUpperCase();
@@ -175,6 +175,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ rating }) => {
       </aside>
     </>
   );
-};
+});
 
 export default DashboardSidebar;

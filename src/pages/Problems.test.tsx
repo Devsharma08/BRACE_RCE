@@ -6,10 +6,13 @@ import { api } from "../config/api";
 import { Problems } from "./Problems";
 
 vi.mock("../config/api", () => ({ api: { get: vi.fn() } }));
-vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ user: { username: "TEST" } }) }));
+// Still needed: something in the Problems render tree consumes auth.
+vi.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ user: { username: "TEST" }, isAuthenticated: true, isAdmin: false, isLoading: false }),
+}));
 vi.mock("../hooks/useLeaderboard", () => ({ useMyRating: () => ({ data: { rating: 1200 } }) }));
-vi.mock("../components/layout/DashboardSidebar", () => ({ default: () => null }));
-vi.mock("../components/layout/MobileBottomNav", () => ({ default: () => null }));
+// DashboardSidebar / MobileBottomNav are no longer rendered here — the console
+// shell (src/pages/ConsoleShell.tsx) owns both, so they need no mock.
 
 vi.mock("../hooks/useSocketInvalidation", () => ({
   useSocketInvalidation: () => undefined,

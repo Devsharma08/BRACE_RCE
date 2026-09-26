@@ -18,9 +18,6 @@ import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
 import { PageSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
-import { useMyRating } from "../hooks/useLeaderboard";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 
@@ -56,7 +53,6 @@ interface MatchRecord {
 
 const Profile = () => {
   const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
-  const { data: myRating } = useMyRating(true);
 
   // Post-battle wave: stats + history refresh, identity stays cached.
   useSocketInvalidation("leaderboard:invalidate", [
@@ -97,19 +93,15 @@ const Profile = () => {
   if (loading) return <PageSkeleton />;
 
   return (
-    <div className="flex min-h-screen bg-base text-fg font-mono">
+    <div className="flex w-full text-fg font-mono">
 
-      {/* Desktop sidebar */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <main
         className="
           flex-1 min-w-0 w-full
-          ml-0 md:ml-[var(--sidebar-width)]
+         
           pt-14 px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
         "

@@ -3,8 +3,6 @@ import { CheckCircle2, LockKeyhole, ArrowLeft, ArrowRight, Search, Clock, Target
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
 import { toast } from "sonner";
 
 interface LearningItem {
@@ -117,11 +115,9 @@ const LearningPaths: React.FC = () => {
   if (error) return <div className="flex items-center justify-center min-h-screen bg-base"><div className="text-center"><h2 className="text-2xl font-bold">Failed to load</h2></div></div>;
 
   return (
-    <div className="flex min-h-screen bg-base text-fg font-mono relative">
+    <div className="flex w-full text-fg font-mono relative">
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
-      <DashboardSidebar rating={undefined} />
-      <MobileBottomNav />
-      <main className="flex-1 min-w-0 w-full ml-0 md:ml-[var(--sidebar-width)] pt-14 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8 flex flex-col gap-6">
+      <main className="flex-1 min-w-0 w-full px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8 flex flex-col gap-6">
         <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-accent-primary">

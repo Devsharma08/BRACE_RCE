@@ -1,9 +1,6 @@
 import React, { useState, useMemo, useTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import DashboardSidebar from "../components/layout/DashboardSidebar";
-import MobileBottomNav from "../components/layout/MobileBottomNav";
-import { useMyRating } from "../hooks/useLeaderboard";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
 import {
@@ -27,7 +24,6 @@ import { DS_TOPIC_LABELS } from "../data/dsTopics";
 const DS_SUMMARY_SLUGS = ["tree", "dynamic-programming", "array", "linked-list", "searching", "math", "stack", "greedy"] as const;
 
 export const Problems: React.FC = () => {
-  const { data: myRating } = useMyRating(true);
   const { data: analytics } = useAnalytics(false);
   const { bySlug: dsProgress } = useDsTopicProgress();
   const navigate = useNavigate();
@@ -104,22 +100,18 @@ export const Problems: React.FC = () => {
   );
 
   return (
-    <div className="flex min-h-screen bg-void text-fg font-mono relative select-none">
+    <div className="flex w-full text-void text-fg font-mono relative select-none">
       {/* Dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
       <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-accent-primary/[0.04] rounded-full blur-3xl pointer-events-none z-0" />
 
-      {/* Desktop sidebar */}
-      <DashboardSidebar rating={myRating?.rating} />
 
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
 
       {/* MAIN CONTENT AREA */}
       <main
         className="
           flex-1 min-w-0 w-full
-          ml-0 md:ml-[var(--sidebar-width)]
+         
           pt-14 px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
           flex flex-col gap-6
