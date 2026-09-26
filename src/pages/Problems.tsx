@@ -100,7 +100,7 @@ export const Problems: React.FC = () => {
   );
 
   return (
-    <div className="flex w-full text-void text-fg font-mono relative select-none">
+    <div className="flex w-full text-fg font-mono relative select-none">
       {/* Dot-grid texture */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
       <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-accent-primary/[0.04] rounded-full blur-3xl pointer-events-none z-0" />
@@ -110,9 +110,9 @@ export const Problems: React.FC = () => {
       {/* MAIN CONTENT AREA */}
       <main
         className="
-          flex-1 min-w-0 w-full
+          relative z-10 flex-1 min-w-0 w-full
          
-          pt-14 px-4 py-6 md:px-8 md:py-8
+          px-4 py-6 md:px-8 md:py-8
           pb-20 md:pb-8
           flex flex-col gap-6
         "

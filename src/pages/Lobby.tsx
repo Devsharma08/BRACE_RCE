@@ -283,12 +283,15 @@ const Lobby = () => {
   };
 
   return (
-    <div className="flex w-full text-void text-fg font-mono">
+    <div className="flex w-full text-fg font-mono">
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 w-full px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
-        {/* Dot-grid texture */}
-        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] -z-10" />
+      <main className="relative z-10 flex-1 min-w-0 w-full px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
+        {/* Dot-grid texture. Paired with `relative z-10` on this <main>:
+            the grid is position:fixed inset-0, so at z-0 it would paint over
+            the heading, and at -z-10 it falls behind the shell's own
+            background and disappears. Content above, grid just behind it. */}
+        <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
         <div className="mx-auto max-w-[1500px]">
 
         {/* PAGE HEADER */}
