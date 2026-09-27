@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { executeCode } from "../services/codeExecution.js";
+import { validate, executeCodeSchema } from "../middleware/validation.js";
 
 // Reject oversized submissions before they reach the execution service.
 const MAX_CODE_BYTES = 100 * 1024; // 100 KB
@@ -26,4 +27,4 @@ const codeSizeGuard = (req: any, res: any, next: any) => {
     next();
 };
 
-executeRouter.post("/", executionRateLimiter, codeSizeGuard, executeCode);
+executeRouter.post("/", executionRateLimiter, validate(executeCodeSchema), codeSizeGuard, executeCode);

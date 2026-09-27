@@ -1,47 +1,51 @@
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
-import { execFile, execFileSync } from "child_process";
-import { promisify } from "util";
-import { writeFileSync, mkdtempSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
 import { verifyToken } from '../lib/jwt.js';
-const execFileAsync = promisify(execFile);
+import CircuitBreaker from 'opossum';
 
-/** Write code to a temp file, run it, clean up. Returns { stdout, stderr, exitCode }. */
-function runWithTempFile(
-  lang: "javascript" | "python",
-  code: string,
-  stdin: string,
-  timeoutMs: number
-): { stdout: string; stderr: string; exitCode: number } {
-  const ext = lang === "javascript" ? "js" : "py";
-  const tmpDir = mkdtempSync(join(tmpdir(), `brace-exec-`));
-  const tmpFile = join(tmpDir, `main.${ext}`);
-  try {
-    writeFileSync(tmpFile, code, "utf-8");
-    const cmd = lang === "javascript" ? "node" : "python3";
-    try {
-      const stdout = execFileSync(cmd, [tmpFile], {
-        input: stdin,
-        encoding: "utf-8",
-        timeout: timeoutMs,
-        maxBuffer: 10 * 1024 * 1024, // 10MB
-      });
-      return { stdout, stderr: "", exitCode: 0 };
-    } catch (err: any) {
-      // execFileSync throws on non-zero exit — capture stdout/stderr
-      return {
-        stdout: err.stdout || "",
-        stderr: err.stderr || err.message || "Runtime Error",
-        exitCode: err.status ?? 1,
-      };
+/** PISTON_URL must be set in production and must use HTTPS. */
+const PISTON_URL = (() => {
+  const url = process.env.PISTON_URL;
+  if (!url) {
+    if (process.env.NODE_MODE === "production") {
+      throw new Error("PISTON_URL must be set in production");
     }
-  } finally {
-    try { rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    return "http://127.0.0.1:2000"; // Dev fallback only
   }
-}
+  if (process.env.NODE_MODE === "production" && !url.startsWith("https://")) {
+    throw new Error("PISTON_URL must use HTTPS in production");
+  }
+  return url;
+})();
+
+/** Circuit breaker for Piston API — fails fast after repeated failures. */
+const pistonBreaker = new CircuitBreaker(
+  async (payload: any) => {
+    const response = await fetch(`${PISTON_URL}/api/v2/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Piston API error ${response.status}: ${errText}`);
+    }
+    return response.json();
+  },
+  {
+    timeout: 6000,
+    errorThresholdPercentage: 50,
+    resetTimeout: 30000,
+    rollingCountTimeout: 10000,
+    rollingCountBuckets: 10,
+  }
+);
+
+pistonBreaker.on("open", () => console.error("[circuit-breaker] Piston circuit OPEN — failing fast"));
+pistonBreaker.on("close", () => console.log("[circuit-breaker] Piston circuit CLOSED — recovered"));
+pistonBreaker.on("halfOpen", () => console.log("[circuit-breaker] Piston circuit HALF-OPEN — testing"));
 
 /** Strip server-internal file paths and Node.js stack frames from error messages */
 function sanitizeErrorMessage(raw: string): string {
@@ -1192,22 +1196,8 @@ export const executeCode = async (req: Request, res: Response) => {
       let data: any;
 
       try {
-        // Try hitting the public Piston API first
-
-        const pistonUrl = process.env.PISTON_URL || "http://127.0.0.1:2000"
-        const pistonResponse = await fetch(`${pistonUrl}/api/v2/execute`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal:AbortSignal.timeout(6000),
-        });
-
-        if (!pistonResponse?.ok) {
-          const errText = await pistonResponse.text();
-          console.error("Piston API error response:", pistonResponse.status, errText);
-          throw new Error("Piston API blocked or down: " + pistonResponse.status);
-        }
-        data = await pistonResponse?.json();
+        // Execute via Piston with circuit breaker protection
+        data = await pistonBreaker.fire(payload);
 
         if (data.message && data.message.includes("runtime is unknown")) {
           throw new Error("Piston runtime unknown: " + data.message);
@@ -1217,34 +1207,10 @@ export const executeCode = async (req: Request, res: Response) => {
         }
 
       } catch (apiError) {
-        // FALLBACK: Local execution when Piston is unavailable
-        // Log concisely — don't expose internal stack to end-users
+        // Circuit breaker open or Piston unavailable — fail fast, no local fallback
         const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
-        console.error("Piston unavailable, using local fallback:", apiErrMsg);
-
-        if (executionLanguage === "javascript" || executionLanguage === "python") {
-          // Use a temp file so fs.readFileSync(0) / sys.stdin work correctly
-          const result = runWithTempFile(executionLanguage, finalCode, testCaseInput, 5000);
-          data = {
-            compile: { code: 0 },
-            run: {
-              output: result.stdout,
-              stdout: result.stdout,
-              stderr: result.exitCode !== 0 ? sanitizeErrorMessage(result.stderr) : "",
-              code: result.exitCode,
-            },
-          };
-        } else {
-          results.push({
-            testCaseIndex: index,
-            output: "",
-            expectedOutput: currentCase.expectedOutput,
-            passed: false,
-            ...problemIdPayload(currentCase),
-            runtimeError: `Sandbox unavailable. Language '${executionLanguage}' requires the Piston service to be running.`,
-          });
-          break;
-        }
+        console.error("Piston execution failed:", apiErrMsg);
+        throw new Error("Code execution service unavailable");
       }
 
       if (data) {
