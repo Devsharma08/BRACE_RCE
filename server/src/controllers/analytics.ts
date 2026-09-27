@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma.js";
 import { outcomeFromStatus } from "../utils/elo.js";
 import { deleteCached, deleteCachedByPrefix, getCached, setCached } from "../lib/cache.js";
 
-// ── Analytics cache (shared in-process cache — see lib/cache.ts) ──────────────
+// ── Analytics cache (Redis-backed — see lib/cache.ts) ──────────────
 const CACHE_TTL_SECONDS = 5 * 60; // 5 minutes
 const ANALYTICS_CACHE_PREFIX = "analytics:";
 
@@ -13,12 +13,12 @@ class Analytics {
     return `${ANALYTICS_CACHE_PREFIX}${userId}`;
   }
 
-  private getCachedAnalytics(userId: string) {
-    return getCached<any>(this.getCacheKey(userId)) ?? null;
+  private async getCachedAnalytics(userId: string) {
+    return (await getCached<any>(this.getCacheKey(userId))) ?? null;
   }
 
-  private setCachedAnalytics(userId: string, data: any) {
-    setCached(this.getCacheKey(userId), data, CACHE_TTL_SECONDS);
+  private async setCachedAnalytics(userId: string, data: any) {
+    await setCached(this.getCacheKey(userId), data, CACHE_TTL_SECONDS);
   }
 
   getUserAnalytics = async (req: AuthRequest, res: Response) => {
@@ -26,7 +26,7 @@ class Analytics {
       const userId = req.userId as string;
 
       // Check cache first
-      const cached = this.getCachedAnalytics(userId);
+      const cached = await this.getCachedAnalytics(userId);
       if (cached) {
         return res.status(200).json({
           status: "success",
@@ -304,20 +304,20 @@ class Analytics {
   }
 
   // Clear cache for a user (call after data updates)
-  invalidateCache(userId: string) {
-    deleteCached(this.getCacheKey(userId));
+  async invalidateCache(userId: string) {
+    await deleteCached(this.getCacheKey(userId));
   }
 
   // Clear all analytics cache (for admin/maintenance). Scoped to the analytics
   // namespace so it cannot evict unrelated entries (leaderboard, problems, ...).
-  clearAllCache() {
-    deleteCachedByPrefix(ANALYTICS_CACHE_PREFIX);
+  async clearAllCache() {
+    await deleteCachedByPrefix(ANALYTICS_CACHE_PREFIX);
   }
 }
 
 export const analyticsController = new Analytics();
 
 // Export cache management for use in other controllers
-export const invalidateUserAnalyticsCache = (userId: string) => {
-  analyticsController.invalidateCache(userId);
+export const invalidateUserAnalyticsCache = async (userId: string) => {
+  await analyticsController.invalidateCache(userId);
 };
