@@ -25,6 +25,9 @@ jobs:
         with:
           version: 11
 
+      - name: Approve build scripts
+        run: pnpm approve-builds --yes
+
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
