@@ -1,9 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers } = ctx.state;
 
     socket.on('accept_match', async (matchId: string) => {
         try {
@@ -37,7 +37,7 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
 
                 // Join socket rooms and notify
                 for (const perf of performances) {
-                    const socketId = onlineUsers.get(perf.userId);
+                    const socketId = await getSocketId(perf.userId);
                     if (socketId) {
                         const pSocket = io.sockets.sockets.get(socketId);
                         pSocket?.join(matchId);
@@ -77,7 +77,7 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
 
             // send auto - requeue command to innocent player
             if (innocentPlayer) {
-                const innocentSocketId = onlineUsers.get(innocentPlayer.userId);
+                const innocentSocketId = await getSocketId(innocentPlayer.userId);
                 if (innocentSocketId) {
                     io.to(innocentSocketId).emit(
                         "match_opponent_declined");

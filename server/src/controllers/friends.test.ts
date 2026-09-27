@@ -17,25 +17,30 @@ import jwt from "jsonwebtoken";
 (prisma.friendRequest.delete as any) = jest.fn();
 (prisma.friendRequest.deleteMany as any) = jest.fn();
 
-describe("Friends Controller Routes (/api/friends)", () => {
+// Use valid UUIDs for testing
+const TEST_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
+const TEST_FRIEND_ID = "550e8400-e29b-41d4-a716-446655440001";
+const TEST_REQUEST_ID = "550e8400-e29b-41d4-a716-446655440002";
+
+describe("Friends Controller Routes (/api/v1/friends)", () => {
   const app = createApp();
   const secret = process.env.JWT_SECRET || "development-only-secret-key";
-  const userToken = jwt.sign({ userId: "user-1" }, secret);
+  const userToken = jwt.sign({ userId: TEST_USER_ID }, secret);
   const cookieHeader = [`token=${userToken}`];
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe("GET /api/friends/", () => {
+  describe("GET /api/v1/friends/", () => {
     test("should fetch list of user friends", async () => {
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
-        id: "user-1",
-        friends: [{ id: "user-2", username: "friend2" }],
+        id: TEST_USER_ID,
+        friends: [{ id: TEST_FRIEND_ID, username: "friend2" }],
       });
 
       const res = await request(app)
-        .get("/api/friends/")
+        .get("/api/v1/friends/")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
@@ -44,14 +49,14 @@ describe("Friends Controller Routes (/api/friends)", () => {
     });
   });
 
-  describe("GET /api/friends/messages/:friendId", () => {
+  describe("GET /api/v1/friends/messages/:friendId", () => {
     test("should fetch conversation history with a friend", async () => {
       (prisma.message.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "msg-1", senderId: "user-1", receiverId: "user-2", content: "Hello!" },
+        { id: "msg-1", senderId: TEST_USER_ID, receiverId: TEST_FRIEND_ID, content: "Hello!" },
       ]);
 
       const res = await request(app)
-        .get("/api/friends/messages/user-2")
+        .get(`/api/v1/friends/messages/${TEST_FRIEND_ID}`)
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
@@ -59,15 +64,16 @@ describe("Friends Controller Routes (/api/friends)", () => {
     });
   });
 
-  describe("GET /api/friends/search", () => {
+  describe("GET /api/v1/friends/search", () => {
     test("should search users by query string", async () => {
+      const otherUserId = "550e8400-e29b-41d4-a716-446655440003";
       (prisma.user.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "user-3", username: "alice" },
+        { id: otherUserId, username: "alice" },
       ]);
       (prisma.friendRequest.findMany as jest.Mock<any>).mockResolvedValue([]);
 
       const res = await request(app)
-        .get("/api/friends/search?q=ali")
+        .get("/api/v1/friends/search?q=ali")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
@@ -77,7 +83,7 @@ describe("Friends Controller Routes (/api/friends)", () => {
 
     test("should return empty array if search query is missing", async () => {
       const res = await request(app)
-        .get("/api/friends/search")
+        .get("/api/v1/friends/search")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
@@ -85,62 +91,62 @@ describe("Friends Controller Routes (/api/friends)", () => {
     });
   });
 
-  describe("POST /api/friends/request", () => {
+  describe("POST /api/v1/friends/request", () => {
     test("should send friend request successfully", async () => {
-      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ id: "user-1", friends: [] });
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ id: TEST_USER_ID, friends: [] });
       (prisma.friendRequest.findFirst as jest.Mock<any>).mockResolvedValue(null);
       (prisma.friendRequest.upsert as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .post("/api/friends/request")
+        .post("/api/v1/friends/request")
         .set("Cookie", cookieHeader)
-        .send({ targetUserId: "user-2" });
+        .send({ targetUserId: TEST_FRIEND_ID });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Request sent successfully");
     });
 
     test("should auto-accept if reverse request exists", async () => {
-      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ id: "user-1", friends: [] });
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ id: TEST_USER_ID, friends: [] });
       (prisma.friendRequest.findFirst as jest.Mock<any>)
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: "req-99", senderId: "user-2", receiverId: "user-1" });
+        .mockResolvedValueOnce({ id: TEST_REQUEST_ID, senderId: TEST_FRIEND_ID, receiverId: TEST_USER_ID });
 
       (prisma.friendRequest.update as jest.Mock<any>).mockResolvedValue({});
       (prisma.user.update as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .post("/api/friends/request")
+        .post("/api/v1/friends/request")
         .set("Cookie", cookieHeader)
-        .send({ targetUserId: "user-2" });
+        .send({ targetUserId: TEST_FRIEND_ID });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Request accepted! You are now friends.");
     });
   });
 
-  describe("POST /api/friends/accept", () => {
+  describe("POST /api/v1/friends/accept", () => {
     test("should accept pending friend request", async () => {
       (prisma.friendRequest.update as jest.Mock<any>).mockResolvedValue({});
       (prisma.user.update as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .post("/api/friends/accept")
+        .post("/api/v1/friends/accept")
         .set("Cookie", cookieHeader)
-        .send({ requestId: "req-123", senderId: "user-2" });
+        .send({ requestId: TEST_REQUEST_ID, senderId: TEST_FRIEND_ID });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Friend added!");
     });
   });
 
-  describe("DELETE /api/friends/remove/:id", () => {
+  describe("DELETE /api/v1/friends/remove/:id", () => {
     test("should delete friend and chat history", async () => {
       (prisma.message.deleteMany as jest.Mock<any>).mockResolvedValue({});
       (prisma.user.update as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .delete("/api/friends/remove/user-2")
+        .delete(`/api/v1/friends/remove/${TEST_FRIEND_ID}`)
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);

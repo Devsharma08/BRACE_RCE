@@ -4,9 +4,12 @@ packages:
 
 allowBuilds:
   '@prisma/engines': false
+  '@scarf/scarf': set this to true or false
+  '@sentry/node-cpu-profiler': set this to true or false
   bcrypt: false
   esbuild: false
   prisma: false
+  protobufjs: set this to true or false
 
 onlyBuiltDependencies:
   - "@prisma/engines"

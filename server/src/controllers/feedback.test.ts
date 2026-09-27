@@ -8,7 +8,7 @@ import { getToken } from "../lib/jwt.js";
 // (same caveat as controllers/admin.ts) — stub it for the unit under test.
 (prisma as any).feedback = { create: jest.fn() };
 
-describe("Feedback Routes (/api/feedback)", () => {
+describe("Feedback Routes (/api/v1/feedback)", () => {
   const app = createApp();
 
   beforeEach(() => {
@@ -16,13 +16,13 @@ describe("Feedback Routes (/api/feedback)", () => {
   });
 
   test("rejects anonymous submissions with 401", async () => {
-    const res = await request(app).post("/api/feedback").send({ content: "hello" });
+    const res = await request(app).post("/api/v1/feedback").send({ content: "hello" });
     expect(res.status).toBe(401);
   });
 
   test("rejects empty content with 400", async () => {
     const res = await request(app)
-      .post("/api/feedback")
+      .post("/api/v1/feedback")
       .set("Cookie", `token=${getToken("user-123")}`)
       .send({ content: "   " });
     expect(res.status).toBe(400);
@@ -31,7 +31,7 @@ describe("Feedback Routes (/api/feedback)", () => {
 
   test("rejects content over 5000 characters with 400", async () => {
     const res = await request(app)
-      .post("/api/feedback")
+      .post("/api/v1/feedback")
       .set("Cookie", `token=${getToken("user-123")}`)
       .send({ content: "x".repeat(5001) });
     expect(res.status).toBe(400);
@@ -46,7 +46,7 @@ describe("Feedback Routes (/api/feedback)", () => {
       status: "PENDING",
     });
     const res = await request(app)
-      .post("/api/feedback")
+      .post("/api/v1/feedback")
       .set("Cookie", `token=${getToken("user-123")}`)
       .send({ content: "Great arena" });
     expect(res.status).toBe(201);

@@ -2,6 +2,7 @@ import axios from "axios"
 import type { QueryClient } from "@tanstack/react-query";
 
 const rawUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+// Use /api/v1 for new versioned API, fallback to /api for legacy
 export const backendURL = rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
 
 export const api = axios.create({
@@ -10,6 +11,62 @@ export const api = axios.create({
         "Content-Type": "application/json",
     },
     withCredentials: true,
+});
+
+let csrfToken: string | null = null;
+
+/**
+ * Fetch CSRF token from server on app initialization
+ */
+export async function fetchCsrfToken(): Promise<string> {
+    if (csrfToken) return csrfToken;
+    try {
+        // Try v1 endpoint first, fallback to legacy
+        const urls = [`${backendURL.replace(/\/api$/, '')}/api/v1/csrf-token`, `${backendURL}/csrf-token`];
+        for (const url of urls) {
+            try {
+                const res = await axios.get(url, { withCredentials: true });
+                csrfToken = res.data?.csrfToken;
+                if (csrfToken) break;
+            } catch {
+                // Try next URL
+            }
+        }
+        return csrfToken || '';
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Get current CSRF token
+ */
+export function getCsrfToken(): string | null {
+    return csrfToken;
+}
+
+/**
+ * Set CSRF token (e.g., after fetching)
+ */
+export function setCsrfToken(token: string): void {
+    csrfToken = token;
+}
+
+/**
+ * Clear CSRF token (e.g., on logout)
+ */
+export function clearCsrfToken(): void {
+    csrfToken = null;
+}
+
+// Add CSRF token to mutating requests
+api.interceptors.request.use((config) => {
+    const method = config.method?.toUpperCase();
+    const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    if (mutatingMethods.includes(method) && csrfToken) {
+        config.headers['x-csrf-token'] = csrfToken;
+    }
+    return config;
 });
 
 /**

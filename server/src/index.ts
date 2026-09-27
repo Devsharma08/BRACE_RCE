@@ -5,6 +5,12 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import { initSocketServer } from "./socket/index.js";
 import { prisma } from "./lib/prisma.js";
+import { initTracing } from "./lib/tracing.js";
+import { initSentry, flushSentry } from "./lib/sentry.js";
+
+// Initialize observability early
+initTracing();
+initSentry();
 
 assertRuntimeEnv();
 
@@ -43,3 +49,31 @@ setInterval(async () => {
 httpServer.listen(port, () => {
   console.log("Server and WebSockets are running on port", port);
 });
+
+// Graceful shutdown
+const shutdown = async (signal: string) => {
+  console.log(`[server] Received ${signal}, shutting down gracefully...`);
+  
+  // Close socket.io
+  io.close(() => {
+    console.log('[server] Socket.io closed');
+  });
+  
+  // Flush Sentry events
+  await flushSentry(5000);
+  
+  // Close HTTP server
+  httpServer.close(() => {
+    console.log('[server] HTTP server closed');
+    process.exit(0);
+  });
+  
+  // Force exit after 10 seconds
+  setTimeout(() => {
+    console.error('[server] Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

@@ -1,5 +1,6 @@
 import type { HandlerCtx } from "../types.js";
 import { getFriendIds } from "../presence.js";
+import { getOnlineUsers } from "../stateRedis.js";
 
 /**
  * `request_presence` → `presence_snapshot`.
@@ -12,7 +13,7 @@ import { getFriendIds } from "../presence.js";
  * presence of arbitrary users.
  */
 export function registerPresenceHandlers(ctx: HandlerCtx): void {
-    const { socket, userId, state } = ctx;
+    const { socket, userId } = ctx;
 
     socket.on("request_presence", async (data: { userIds?: string[] } | undefined) => {
         const requested = Array.isArray(data?.userIds)
@@ -21,12 +22,13 @@ export function registerPresenceHandlers(ctx: HandlerCtx): void {
         if (requested.length === 0) return;
 
         const friendIds = new Set(await getFriendIds(userId));
+        const onlineUsers = await getOnlineUsers();
 
         const snapshot = requested
             .filter((id) => friendIds.has(id))
             .map((id) => ({
                 userId: id,
-                status: state.onlineUsers.has(id) ? "ONLINE" : "OFFLINE",
+                status: onlineUsers.has(id) ? "ONLINE" : "OFFLINE",
             }));
 
         socket.emit("presence_snapshot", snapshot);

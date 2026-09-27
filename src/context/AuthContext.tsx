@@ -1,6 +1,6 @@
-import { useContext, createContext, type ReactNode } from 'react'
+import { useContext, createContext, type ReactNode, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../config/api'
+import { api, fetchCsrfToken } from '../config/api'
 import { useSocket } from './SocketContext';
 
 interface User {
@@ -37,6 +37,13 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
     // Socket identity is attached at handshake time, so the stale connection
     // must be torn down on logout — otherwise it keeps the old user's id.
     const { rawSocketRef } = useSocket();
+
+    // Fetch CSRF token on app initialization
+    useEffect(() => {
+        fetchCsrfToken().catch(() => {
+            // Silent fail - CSRF token will be fetched on first mutating request
+        });
+    }, []);
 
     const { data: user = null, isLoading, refetch } = useQuery<User | null>({
         queryKey: ["auth-me"],

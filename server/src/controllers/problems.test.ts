@@ -5,16 +5,27 @@ import { prisma } from "../lib/prisma.js";
 import { internalCache } from "../lib/cache.js";
 import jwt from "jsonwebtoken";
 
+// Mock the withDisplayProblemName function to avoid filesystem access in tests
+jest.mock("../utils/problemName.js", () => ({
+  withDisplayProblemName: jest.fn((problem: any) => problem),
+  displayProblemName: jest.fn((name: string) => name),
+}));
+
 // Assign mocks directly to Prisma delegate methods
 (prisma.problem.findMany as any) = jest.fn();
 (prisma.problem.create as any) = jest.fn();
 (prisma.problem.upsert as any) = jest.fn();
+(prisma.problem.count as any) = jest.fn();
+(prisma.testCase.deleteMany as any) = jest.fn();
+(prisma.testCase.createMany as any) = jest.fn();
+(prisma.codeSnippet.deleteMany as any) = jest.fn();
+(prisma.codeSnippet.createMany as any) = jest.fn();
 (prisma.testCase.deleteMany as any) = jest.fn();
 (prisma.testCase.createMany as any) = jest.fn();
 (prisma.codeSnippet.deleteMany as any) = jest.fn();
 (prisma.codeSnippet.createMany as any) = jest.fn();
 
-describe("Problems Controller Routes (/api/problems)", () => {
+describe("Problems Controller Routes (/api/v1/problems)", () => {
   const app = createApp();
   const secret = process.env.JWT_SECRET || "development-only-secret-key";
   const userToken = jwt.sign({ userId: "user-1" }, secret);
@@ -28,40 +39,80 @@ describe("Problems Controller Routes (/api/problems)", () => {
     internalCache.flushAll();
   });
 
-  describe("GET /api/problems/system", () => {
+  describe("GET /api/v1/problems/system", () => {
     test("should fetch all non-custom system problems", async () => {
       (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "prob-1", name: "LeetCode-01E", problem_number: 1, isCustom: false },
+        { 
+          id: "prob-1", 
+          name: "LeetCode-01E", 
+          problem_number: 1, 
+          isCustom: false,
+          github_oid: "two-sum",
+          problem_definition: "Test problem",
+          problem_hints: [],
+          difficulty_level: "EASY",
+          timeLimitMs: 60000,
+          createdAt: new Date(),
+          code_snippets: [],
+          test_cases: [],
+          userProgress: [{
+            isSolved: false,
+            solvedAt: null,
+            attempts: 0,
+            lastCode: null,
+            lastLanguage: "javascript",
+            submissionTimes: []
+          }]
+        },
       ]);
+      (prisma.problem.count as jest.Mock<any>).mockResolvedValue(1);
 
       const res = await request(app)
-        .get("/api/problems/system")
+        .get("/api/v1/problems/system")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("success");
       expect(res.body.problems).toHaveLength(1);
       expect(res.body.problems[0].name).toBe("Two Sum");
+      expect(res.body.pagination).toBeDefined();
     });
   });
 
-  describe("GET /api/problems/custom", () => {
+  describe("GET /api/v1/problems/custom", () => {
     test("should fetch user's custom created problems", async () => {
       (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "custom-1", name: "My Problem", isCustom: true, creatorId: "user-1" },
+        { 
+          id: "custom-1", 
+          name: "My Problem", 
+          isCustom: true, 
+          creatorId: "user-1",
+          problem_number: 1,
+          github_oid: "my-problem",
+          problem_definition: "Test problem",
+          problem_hints: [],
+          difficulty_level: "EASY",
+          timeLimitMs: 60000,
+          test_cases: [],
+          code_snippets: [],
+          createdAt: new Date(),
+          userProgress: []
+        },
       ]);
+      (prisma.problem.count as jest.Mock<any>).mockResolvedValue(1);
 
       const res = await request(app)
-        .get("/api/problems/custom")
+        .get("/api/v1/problems/custom")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe("success");
       expect(res.body.problems[0].name).toBe("My Problem");
+      expect(res.body.pagination).toBeDefined();
     });
   });
 
-  describe("POST /api/problems/create", () => {
+  describe("POST /api/v1/problems/create", () => {
     test("should create custom problem with test cases and snippets", async () => {
       (prisma.problem.create as jest.Mock<any>).mockResolvedValue({
         id: "new-prob-id",
@@ -71,7 +122,7 @@ describe("Problems Controller Routes (/api/problems)", () => {
       });
 
       const res = await request(app)
-        .post("/api/problems/create")
+        .post("/api/v1/problems/create")
         .set("Cookie", cookieHeader)
         .send({
           name: "Reverse String",
@@ -87,7 +138,7 @@ describe("Problems Controller Routes (/api/problems)", () => {
     });
   });
 
-  describe("POST /api/problems/seed", () => {
+  describe("POST /api/v1/problems/seed", () => {
     test("should seed system problems array", async () => {
       (prisma.problem.upsert as jest.Mock<any>).mockResolvedValue({
         id: "seed-1",
@@ -97,7 +148,7 @@ describe("Problems Controller Routes (/api/problems)", () => {
       (prisma.testCase.createMany as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .post("/api/problems/seed")
+        .post("/api/v1/problems/seed")
         .set("Cookie", cookieHeader)
         .send({
           problems: [
@@ -118,12 +169,12 @@ describe("Problems Controller Routes (/api/problems)", () => {
 
     test("should return 400 if problems array is not provided", async () => {
       const res = await request(app)
-        .post("/api/problems/seed")
+        .post("/api/v1/problems/seed")
         .set("Cookie", cookieHeader)
         .send({});
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toBe("Expected 'problems' array");
+      expect(res.body.message).toBe("Validation failed");
     });
   });
 });

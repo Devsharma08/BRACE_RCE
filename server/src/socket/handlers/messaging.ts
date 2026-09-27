@@ -1,9 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerMessagingHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers } = ctx.state;
 
     socket.on("send_direct_message", async (data: { targetUserId: string, content: string }) => {
         // save to DB
@@ -28,14 +28,14 @@ export function registerMessagingHandlers(ctx: HandlerCtx): void {
                 userId,
                 data.content
             );
-            const targetSocketId = onlineUsers.get(data.targetUserId);
+            const targetSocketId = await getSocketId(data.targetUserId);
             if (targetSocketId) {
                 io.to(targetSocketId).emit("receive_direct_message", message);
                 io.to(targetSocketId).emit("notification:new", notif);
             }
         } catch (e) {
             console.error("direct message notify error:", e);
-            const targetSocketId = onlineUsers.get(data.targetUserId);
+            const targetSocketId = await getSocketId(data.targetUserId);
             if (targetSocketId) {
                 io.to(targetSocketId).emit("receive_direct_message", message);
             }

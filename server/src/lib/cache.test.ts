@@ -1,15 +1,16 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from "@jest/globals";
 import {
-    internalCache,
     getCached,
     setCached,
     deleteCached,
     deleteCachedByPrefix,
+    clearCache,
 } from "./cache.js";
 
-describe("lib/cache helpers", () => {
+describe("lib/cache helpers (node-cache in-memory)", () => {
     beforeEach(() => {
-        internalCache.flushAll();
+        // Clear all cache
+        clearCache();
     });
 
     afterEach(() => {

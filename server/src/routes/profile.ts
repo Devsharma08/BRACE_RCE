@@ -1,21 +1,23 @@
 import { Router } from "express";
+import { profileController } from "../controllers/profile.js";
+import { authentication } from "../middleware/authentication.js";
+import { validate, updateProfileSchema } from "../middleware/validation.js";
+
 const profileRouter: Router = Router();
-import { profileController } from "../controllers/profile";
-import { authentication } from "../middleware/authentication";
 
 profileRouter.use(authentication);
 
 // GET PROFILE DETAILS
-profileRouter.get("/" ,profileController.getProfileDetails);
+profileRouter.get("/", profileController.getProfileDetails);
 
 // GET PROFILE STATISTICS
 profileRouter.get("/stats", profileController.getProfileStatistics);
 
 // POST UPDATE PROFILE
-profileRouter.put("/" , profileController.updateProfile);
+profileRouter.put("/", validate(updateProfileSchema), profileController.updateProfile);
 
 // DELETE PROFILE
-profileRouter.delete("/" , profileController.deleteProfile);
+profileRouter.delete("/", profileController.deleteProfile);
 
 
 export default profileRouter;
