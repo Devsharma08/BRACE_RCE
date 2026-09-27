@@ -26,6 +26,23 @@ const Layout = () => {
   // the full-size footer crowds their vertical layout.
   const isTrimmedFooter = pathname.startsWith('/profile');
 
+  // Routes rendered inside ConsoleShell (Root.tsx). ConsoleShell mounts the
+  // FIXED DashboardSidebar rail and the FIXED MobileBottomNav, but the footer
+  // is rendered by Layout OUTSIDE that shell — so on these paths the footer
+  // needs its own rail offset + bottom-nav clearance (see Footer.offsetRail)
+  // or the rail paints over its left edge and the nav over the copyright row.
+  //
+  // /admin is deliberately absent: AdminLayout's sidebar is a normal in-flow
+  // <aside>, not a fixed rail, so its footer already clears it.
+  const isConsoleRoute =
+    pathname === '/dashboard' ||
+    pathname === '/problems' ||
+    pathname === '/lobby' ||
+    pathname === '/friends' ||
+    pathname === '/profile' ||
+    pathname === '/rooms/create' ||
+    pathname === '/create-room';
+
   return (
     <div className="flex flex-col min-h-screen w-full bg-base text-fg">
       <GlobalModals />
@@ -47,7 +64,10 @@ const Layout = () => {
             <Outlet />
           </main>
 
-          <Footer variant={isTrimmedFooter ? 'compact' : 'full'} />
+          <Footer
+            variant={isTrimmedFooter ? 'compact' : 'full'}
+            offsetRail={isConsoleRoute}
+          />
         </>
       )}
     </div>
