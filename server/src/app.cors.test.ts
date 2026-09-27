@@ -43,7 +43,7 @@ describe("CORS configuration", () => {
       const app = buildApp("http://localhost:5173");
 
       const res = await request(app)
-        .options("/api/auth/me")
+        .options("/api/v1/auth/me")
         .set("Origin", "http://localhost:5173")
         .set("Access-Control-Request-Method", "GET");
 
@@ -57,7 +57,7 @@ describe("CORS configuration", () => {
       const app = buildApp("http://localhost:5173");
 
       const res = await request(app)
-        .options("/api/auth/me")
+        .options("/api/v1/auth/me")
         .set("Origin", "http://evil.example")
         .set("Access-Control-Request-Method", "GET");
 
@@ -74,7 +74,7 @@ describe("CORS configuration", () => {
       // headers must still be present, otherwise the browser would report a
       // CORS failure instead of a clean 401.
       const res = await request(app)
-        .get("/api/auth/me")
+        .get("/api/v1/auth/me")
         .set("Origin", "http://localhost:5173");
 
       expect(res.status).toBe(401);
@@ -85,10 +85,10 @@ describe("CORS configuration", () => {
     test("non-CORS callers (no Origin header) are unaffected", async () => {
       const app = buildApp("http://localhost:5173");
 
-      const res = await request(app).get("/health");
+      const res = await request(app).get("/live");
 
       expect(res.status).toBe(200);
-      expect(res.text).toBe("Everything's Good!");
+      expect(res.body.status).toBe("alive");
       expect(res.headers["access-control-allow-origin"]).toBeUndefined();
     });
   });

@@ -13,24 +13,28 @@ import jwt from "jsonwebtoken";
 (prisma.event.delete as any) = jest.fn();
 (prisma.templateSubscription.upsert as any) = jest.fn();
 
-describe("Room Controller Routes (/api/rooms)", () => {
+// Use valid UUIDs
+const TEST_HOST_ID = "550e8400-e29b-41d4-a716-446655440000";
+const TEST_ROOM_ID = "550e8400-e29b-41d4-a716-446655440001";
+
+describe("Room Controller Routes (/api/v1/rooms)", () => {
   const app = createApp();
   const secret = process.env.JWT_SECRET || "development-only-secret-key";
-  const userToken = jwt.sign({ userId: "user-host" }, secret);
+  const userToken = jwt.sign({ userId: TEST_HOST_ID }, secret);
   const cookieHeader = [`token=${userToken}`];
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe("GET /api/rooms/lobby", () => {
+  describe("GET /api/v1/rooms/lobby", () => {
     test("should return waiting public rooms", async () => {
       (prisma.event.findMany as jest.Mock<any>).mockResolvedValue([
-        { id: "room-1", name: "Speed Coding Arena", isPublic: true, status: "WAITING" },
+        { id: TEST_ROOM_ID, name: "Speed Coding Arena", isPublic: true, status: "WAITING" },
       ]);
 
       const res = await request(app)
-        .get("/api/rooms/lobby")
+        .get("/api/v1/rooms/lobby")
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
@@ -39,23 +43,23 @@ describe("Room Controller Routes (/api/rooms)", () => {
     });
   });
 
-  describe("POST /api/rooms/create", () => {
+  describe("POST /api/v1/rooms/create", () => {
     test("should create a new live room", async () => {
       (prisma.event.create as jest.Mock<any>).mockResolvedValue({
         id: "room-123",
         name: "Custom Battle",
         roomCode: "ABCDEF",
-        hostId: "user-host",
+        hostId: TEST_HOST_ID,
       });
 
       const res = await request(app)
-        .post("/api/rooms/create")
+        .post("/api/v1/rooms/create")
         .set("Cookie", cookieHeader)
         .send({
           name: "Custom Battle",
           description: "Friendly match",
           isPublic: true,
-          problemIds: ["prob-1"],
+          problemIds: ["550e8400-e29b-41d4-a716-446655440010"],
         });
 
       expect(res.status).toBe(200);
@@ -64,38 +68,39 @@ describe("Room Controller Routes (/api/rooms)", () => {
     });
   });
 
-  describe("PUT /api/rooms/lock & /unlock", () => {
+  describe("PUT /api/v1/rooms/lock & /unlock", () => {
     test("should lock room if caller is host", async () => {
-      (prisma.event.findUnique as jest.Mock<any>).mockResolvedValue({ id: "room-1", hostId: "user-host" });
+      (prisma.event.findUnique as jest.Mock<any>).mockResolvedValue({ id: TEST_ROOM_ID, hostId: TEST_HOST_ID });
       (prisma.event.update as jest.Mock<any>).mockResolvedValue({});
 
       const res = await request(app)
-        .put("/api/rooms/lock")
+        .put("/api/v1/rooms/lock")
         .set("Cookie", cookieHeader)
-        .send({ roomId: "room-1" });
+        .send({ roomId: TEST_ROOM_ID });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Room locked!");
     });
 
     test("should deny lock request if user is not host", async () => {
-      (prisma.event.findUnique as jest.Mock<any>).mockResolvedValue({ id: "room-1", hostId: "other-user" });
+      const otherUserId = "550e8400-e29b-41d4-a716-446655440002";
+      (prisma.event.findUnique as jest.Mock<any>).mockResolvedValue({ id: TEST_ROOM_ID, hostId: otherUserId });
 
       const res = await request(app)
-        .put("/api/rooms/lock")
+        .put("/api/v1/rooms/lock")
         .set("Cookie", cookieHeader)
-        .send({ roomId: "room-1" });
+        .send({ roomId: TEST_ROOM_ID });
 
       expect(res.status).toBe(403);
       expect(res.body.message).toBe("Only the host can lock the room");
     });
   });
 
-  describe("GET /api/rooms/time-left", () => {
+  describe("GET /api/v1/rooms/time-left", () => {
     test("should calculate remaining battle time", async () => {
       const startedAt = new Date(Date.now() - 30000).toISOString();
       (prisma.event.findFirst as jest.Mock<any>).mockResolvedValue({
-        id: "room-1",
+        id: TEST_ROOM_ID,
         status: "IN_PROGRESS",
         startedAt,
         totalTimeLimitMs: 600000,
@@ -103,7 +108,7 @@ describe("Room Controller Routes (/api/rooms)", () => {
       });
 
       const res = await request(app)
-        .get("/api/rooms/time-left?roomId=room-1")
+        .get(`/api/v1/rooms/time-left?roomId=${TEST_ROOM_ID}`)
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);

@@ -6,7 +6,7 @@ import { prisma } from "../lib/prisma.js";
 (prisma.user.findUnique as any) = jest.fn();
 
 import { leaderboardController } from "./leaderboard.js";
-import { internalCache, getCached, deleteCachedByPrefix } from "../lib/cache.js";
+import { getCached, deleteCachedByPrefix } from "../lib/cache.js";
 
 interface FakeRes {
     statusCode?: number;
@@ -47,10 +47,11 @@ const rankedUsers = [
     },
 ];
 
-describe("Leaderboard caching", () => {
+describe("Leaderboard caching (sync)", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        internalCache.flushAll();
+        deleteCachedByPrefix("leaderboard:");
+        deleteCachedByPrefix("my-rating:");
     });
 
     test("computes the ranking once and serves the next request from cache", async () => {
@@ -146,6 +147,6 @@ describe("Leaderboard caching", () => {
         await leaderboardController.getMyRating({ userId: "ghost" } as any, res as any);
 
         expect(res.statusCode).toBe(404);
-        expect(getCached("my-rating:ghost")).toBeUndefined();
+        expect(await getCached("my-rating:ghost")).toBeUndefined();
     });
 });

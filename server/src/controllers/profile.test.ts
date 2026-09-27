@@ -10,7 +10,7 @@ import jwt from "jsonwebtoken";
 (prisma.user.delete as any) = jest.fn();
 (prisma.userPersonalPerformance.findMany as any) = jest.fn();
 
-describe("Profile Calculations & Endpoints (/api/profile)", () => {
+describe("Profile Calculations & Endpoints (/api/v1/profile)", () => {
   const calculateRating = (wins: number, losses: number): number => {
     return Math.max(1000, 1000 + wins * 25 - losses * 10);
   };
@@ -44,7 +44,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
       jest.clearAllMocks();
     });
 
-    describe("GET /api/profile", () => {
+    describe("GET /api/v1/profile", () => {
       test("should return current user profile", async () => {
         (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
           id: "user-123",
@@ -54,7 +54,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
         });
 
         const res = await request(app)
-          .get("/api/profile")
+          .get("/api/v1/profile")
           .set("Cookie", cookieHeader);
 
         expect(res.status).toBe(200);
@@ -66,7 +66,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
         (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
 
         const res = await request(app)
-          .get("/api/profile")
+          .get("/api/v1/profile")
           .set("Cookie", cookieHeader);
 
         expect(res.status).toBe(404);
@@ -74,7 +74,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
       });
     });
 
-    describe("PUT /api/profile", () => {
+    describe("PUT /api/v1/profile", () => {
       test("should update profile details", async () => {
         (prisma.user.update as jest.Mock<any>).mockResolvedValue({
           id: "user-123",
@@ -84,7 +84,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
         });
 
         const res = await request(app)
-          .put("/api/profile")
+          .put("/api/v1/profile")
           .set("Cookie", cookieHeader)
           .send({ username: "newname", bio: "Developer", avatarUrl: "http://newavatar.com" });
 
@@ -94,7 +94,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
       });
     });
 
-    describe("GET /api/profile/stats", () => {
+    describe("GET /api/v1/profile/stats", () => {
       test("should calculate profile statistics and win rate from performance history", async () => {
         (prisma.userPersonalPerformance.findMany as jest.Mock<any>).mockResolvedValue([
           { status: "WON", timeTakenMs: 60000 },
@@ -103,7 +103,7 @@ describe("Profile Calculations & Endpoints (/api/profile)", () => {
         ]);
 
         const res = await request(app)
-          .get("/api/profile/stats")
+          .get("/api/v1/profile/stats")
           .set("Cookie", cookieHeader);
 
         expect(res.status).toBe(200);

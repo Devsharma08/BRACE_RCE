@@ -25,14 +25,14 @@ jest.spyOn(OAuth2Client.prototype, "verifyIdToken").mockImplementation(async (op
   throw new Error("Invalid token");
 });
 
-describe("Auth Controller Routes (/api/auth)", () => {
+describe("Auth Controller Routes (/api/v1/auth)", () => {
   const app = createApp();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe("POST /api/auth/signup", () => {
+  describe("POST /api/v1/auth/signup", () => {
     test("should successfully register a new user", async () => {
       (prisma.user.findFirst as jest.Mock<any>).mockResolvedValue(null);
       (prisma.user.create as jest.Mock<any>).mockResolvedValue({
@@ -43,7 +43,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .post("/api/auth/signup")
+        .post("/api/v1/auth/signup")
         .send({
           username: "testuser",
           email: "test@example.com",
@@ -66,7 +66,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       (prisma.user.findFirst as jest.Mock<any>).mockResolvedValue({ id: "existing-id" });
 
       const res = await request(app)
-        .post("/api/auth/signup")
+        .post("/api/v1/auth/signup")
         .send({
           username: "existinguser",
           email: "existing@example.com",
@@ -78,7 +78,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
     });
   });
 
-  describe("POST /api/auth/signin", () => {
+  describe("POST /api/v1/auth/signin", () => {
     test("should log in user with correct credentials", async () => {
       const hashedPassword = await bcrypt.hash("password123", 10);
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
@@ -90,7 +90,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .post("/api/auth/signin")
+        .post("/api/v1/auth/signin")
         .send({ email: "test@example.com", password: "password123" });
 
       expect(res.status).toBe(200);
@@ -103,7 +103,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
 
       const res = await request(app)
-        .post("/api/auth/signin")
+        .post("/api/v1/auth/signin")
         .send({ email: "nonexistent@example.com", password: "password123" });
 
       expect(res.status).toBe(404);
@@ -119,7 +119,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .post("/api/auth/signin")
+        .post("/api/v1/auth/signin")
         .send({ email: "test@example.com", password: "wrongpassword" });
 
       expect(res.status).toBe(401);
@@ -127,15 +127,15 @@ describe("Auth Controller Routes (/api/auth)", () => {
     });
   });
 
-  describe("POST /api/auth/signout", () => {
+  describe("POST /api/v1/auth/signout", () => {
     test("should clear token cookie and sign out", async () => {
-      const res = await request(app).post("/api/auth/signout");
+      const res = await request(app).post("/api/v1/auth/signout");
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Logged out successfully");
     });
   });
 
-  describe("GET /api/auth/me", () => {
+  describe("GET /api/v1/auth/me", () => {
     test("should return authenticated user details", async () => {
       const secret = process.env.JWT_SECRET || "development-only-secret-key";
       const token = jwt.sign({ userId: "user-123" }, secret);
@@ -148,7 +148,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .get("/api/auth/me")
+        .get("/api/v1/auth/me")
         .set("Cookie", [`token=${token}`]);
 
       expect(res.status).toBe(200);
@@ -172,7 +172,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .get("/api/auth/me")
+        .get("/api/v1/auth/me")
         .set("Cookie", [`token=${token}`]);
 
       expect(res.status).toBe(200);
@@ -180,12 +180,12 @@ describe("Auth Controller Routes (/api/auth)", () => {
     });
 
     test("should return 401 if unauthenticated", async () => {
-      const res = await request(app).get("/api/auth/me");
+      const res = await request(app).get("/api/v1/auth/me");
       expect(res.status).toBe(401);
     });
   });
 
-  describe("POST /api/auth/google", () => {
+  describe("POST /api/v1/auth/google", () => {
     test("should authenticate Google user successfully", async () => {
       process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
 
@@ -198,7 +198,7 @@ describe("Auth Controller Routes (/api/auth)", () => {
       });
 
       const res = await request(app)
-        .post("/api/auth/google")
+        .post("/api/v1/auth/google")
         .send({ credential: "valid-google-token" });
 
       expect(res.status).toBe(200);
@@ -209,9 +209,9 @@ describe("Auth Controller Routes (/api/auth)", () => {
     test("should return 400 if Google credential token is missing", async () => {
       process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
 
-      const res = await request(app).post("/api/auth/google").send({});
+      const res = await request(app).post("/api/v1/auth/google").send({});
       expect(res.status).toBe(400);
-      expect(res.body.message).toBe("Missing Google credential token");
+      expect(res.body.message).toBe("Validation failed");
     });
   });
 });
