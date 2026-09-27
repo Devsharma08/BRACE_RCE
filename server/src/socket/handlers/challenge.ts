@@ -1,10 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { displayProblemName } from "../../utils/problemName.js";
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers } = ctx.state;
 
     //DIRECT CHALLENGE PING — supports RANDOM (difficulty) and CUSTOM (problemId)
     socket.on("send_challenge", async (data: {
@@ -15,7 +15,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         problemId?: string,
         problemName?: string,
     }) => {
-        const targetSocketId = onlineUsers.get(data.targetUserId);
+        const targetSocketId = await getSocketId(data.targetUserId);
 
         const mode = data.mode ?? "RANDOM";
         const difficulty = (data.difficulty ?? "MEDIUM").toUpperCase();
@@ -100,7 +100,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         mode?: "RANDOM" | "CUSTOM";
         difficulty?: string;
     }) => {
-        const challengerSocketId = onlineUsers.get(data.challengerId);
+        const challengerSocketId = await getSocketId(data.challengerId);
 
         if (!challengerSocketId) {
             return socket.emit('lobby_error', "Challenger went offline!")
@@ -187,7 +187,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
     // CHALLENGE DECLINE — notify the challenger + queue the result
     socket.on("decline_challenge", async (data: { challengerId: string }) => {
         try {
-            const challengerSocketId = onlineUsers.get(data.challengerId);
+            const challengerSocketId = await getSocketId(data.challengerId);
             const { notifyChallengeResult } = await import("../../services/notificationService.js");
             const me = await prisma.user.findUnique({
                 where: { id: userId },

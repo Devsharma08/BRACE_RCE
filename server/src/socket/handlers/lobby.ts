@@ -1,25 +1,30 @@
 import { prisma } from "../../lib/prisma.js";
 import { LOBBY_TTL_MS } from "../gc.js";
 import type { HandlerCtx } from "../types.js";
+import { 
+  getLobby, 
+  setLobby, 
+  deleteLobby 
+} from "../stateRedis.js";
 
 export function registerLobbyHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { activeLobbies } = ctx.state;
 
     // LEAVE A CUSTOM LOBBY (host or guest)
-    socket.on("leave_custom_room", (roomCode: string) => {
+    socket.on("leave_custom_room", async (roomCode: string) => {
         if (!roomCode) return;
         const normalized = String(roomCode).toUpperCase();
 
-        const lobby = activeLobbies.get(normalized);
+        const lobby = await getLobby(normalized);
         if (lobby) {
             lobby.users = lobby.users.filter((u) => u !== userId);
             if (lobby.hostId === userId) {
                 // If the host leaves, dissolve the lobby
-                activeLobbies.delete(normalized);
+                await deleteLobby(normalized);
                 io.to(`lobby-${normalized}`).emit("lobby_ended");
                 return;
             }
+            await setLobby(normalized, lobby);
             io.to(`lobby-${normalized}`).emit("lobby_updated", {
                 currentUsers: lobby.users.length,
                 maxUsers: lobby.maxUsers
@@ -30,20 +35,21 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
     });
 
     // DELETE A CUSTOM LOBBY (host only)
-    socket.on("delete_custom_room", (roomCode: string) => {
+    socket.on("delete_custom_room", async (roomCode: string) => {
         if (!roomCode) return;
         const normalized = String(roomCode).toUpperCase();
 
-        const lobby = activeLobbies.get(normalized);
+        const lobby = await getLobby(normalized);
         if (!lobby) return;
         if (lobby.hostId !== userId) {
             return socket.emit("lobby_error", "Only the host can delete this lobby!");
         }
 
-        activeLobbies.delete(normalized);
+        await deleteLobby(normalized);
         io.to(`lobby-${normalized}`).emit("lobby_ended");
         console.log(`[LOBBY] Room ${normalized} deleted by host ${userId}`);
     });
+    
     socket.on("leave_room", (roomId: string) => {
         if (roomId) {
             socket.leave(roomId);
@@ -63,15 +69,17 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
         problemsIds?: string[],
     }) => {
         const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        activeLobbies.set(roomCode, {
+        const lobby = {
             hostId: userId,
             users: [userId],
             maxUsers: data.maxUsers || 2,
             password: data.password,
             targetDifficulty: data.difficulty || 'ANY',
             problemsIds: [],
-            expiresAt: Date.now() + LOBBY_TTL_MS // assign connection constraint
-        })
+            expiresAt: Date.now() + LOBBY_TTL_MS
+        };
+        
+        await setLobby(roomCode, lobby);
 
         socket.join(`lobby-${roomCode}`);
 
@@ -85,10 +93,11 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
     })
 
     // PLAYERS JOIN VIA CODE
-    socket.on('join_custom_room', (data: {
+    socket.on('join_custom_room', async (data: {
         roomCode: string, password?: string
     }) => {
-        const lobby = activeLobbies.get(data.roomCode.toUpperCase());
+        const normalizedCode = data.roomCode.toUpperCase();
+        const lobby = await getLobby(normalizedCode);
 
         if (!lobby) return socket.emit(`lobby_error`, `Lobby not found!`)
 
@@ -99,9 +108,10 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
         if (lobby.users.includes(userId)) return socket.emit('lobby_error', "You are already in this lobby!");
 
         lobby.users.push(userId);
-        socket.join(`lobby-${data.roomCode}`);
+        await setLobby(normalizedCode, lobby);
+        socket.join(`lobby-${normalizedCode}`);
 
-        io.to(`lobby-${data.roomCode}`).emit('lobby_updated', {
+        io.to(`lobby-${normalizedCode}`).emit('lobby_updated', {
             currentUsers: lobby.users.length,
             maxUsers: lobby.maxUsers
         })
@@ -110,7 +120,8 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
 
     // HOST STARTS THE MATCH
     socket.on('start_custom_match', async (roomCode: string) => {
-        const lobby = activeLobbies.get(roomCode);
+        const normalizedCode = roomCode.toUpperCase();
+        const lobby = await getLobby(normalizedCode);
         if (!lobby || lobby.hostId !== userId) return;
 
 
@@ -140,7 +151,7 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                         type: "FRIENDS",
                         status: "IN_PROGRESS",
                         startedAt: new Date(),
-                        roomCode: roomCode,
+                        roomCode: normalizedCode,
                         maxUsers: lobby.maxUsers,
                         password: lobby.password || null,
                         problems: {
@@ -159,18 +170,13 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                 const firstProblem = event.problems?.[0];
 
                 // route everyone to the battle arena!
-                io.to(`lobby-${roomCode}`).emit('custom_match_started', {
+                io.to(`lobby-${normalizedCode}`).emit('custom_match_started', {
                     roomId: `room-${event.id}`,
                     problemId: firstProblem?.github_oid || "local-battle",
                     timeLimitMs: firstProblem?.timeLimitMs || 600000
                 });
-                activeLobbies.delete(roomCode);
+                await deleteLobby(normalizedCode);
 
-                // clean up the lobby after 5 minutes
-                setTimeout(() => {
-                    activeLobbies.delete(roomCode);
-                    io.to(`lobby-${roomCode}`).emit('lobby_ended');
-                }, LOBBY_TTL_MS);
             } catch (error) {
                 console.error("Failed to start custom match:", error);
             }

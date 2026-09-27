@@ -2,10 +2,11 @@ import { prisma } from "../../lib/prisma.js";
 import { Level } from "../../generated/prisma/client.js";
 import { getAllowedDifficulties } from "../matchmakingUtils.js";
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers, activeSearchIntervals } = ctx.state;
+    const { activeSearchIntervals } = ctx.state;
 
     // PVP matching events
     socket.on("join_matchmaking", async (payload: { difficulty: Level | string, waitingSeconds?: number } | Level | string) => {
@@ -125,7 +126,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
 
                         // Join both players to the socket room instantly
                         socket.join(roomName);
-                        const opponentSocketId = onlineUsers.get(opponentQueue.userId);
+                        const opponentSocketId = await getSocketId(opponentQueue.userId);
                         if (opponentSocketId) {
                             const oppSocket = io.sockets.sockets.get(opponentSocketId);
                             oppSocket?.join(roomName);

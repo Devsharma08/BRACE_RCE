@@ -1,9 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerHostHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers } = ctx.state;
 
     // HOST KICKS A PLAYER
     socket.on('host_kick_user', async (data: { roomId: string, targetUserId: string }) => {
@@ -20,7 +20,7 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 where: { eventId: event.id, userId: targetUserId },
                 data: { status: 'FAILED' }
             });
-            const kickedSocketId = onlineUsers.get(targetUserId);
+            const kickedSocketId = await getSocketId(targetUserId);
             if (kickedSocketId) {
                 io.to(kickedSocketId).emit('you_were_kicked', { roomId });
             }

@@ -1,13 +1,13 @@
 import type { HandlerCtx } from "../types.js";
+import { getSocketId } from "../stateRedis.js";
 
 export function registerSpectatorHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
-    const { onlineUsers } = ctx.state;
 
     // LIVE SPECTATOR CODE REQUEST
-    socket.on('request_player_code', (data: { roomId: string, targetUserId: string }) => {
+    socket.on('request_player_code', async (data: { roomId: string, targetUserId: string }) => {
         const { roomId, targetUserId } = data;
-        const targetSocketId = onlineUsers.get(targetUserId);
+        const targetSocketId = await getSocketId(targetUserId);
         if (targetSocketId) {
             io.to(targetSocketId).emit('fetch_live_code_request', { requesterSocketId: socket.id, roomId });
         }
