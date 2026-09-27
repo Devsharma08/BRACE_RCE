@@ -5,6 +5,12 @@ export const onlineUsers = new Map<string, string>();
 export const activeSearchIntervals = new Map<string, NodeJS.Timeout>();
 
 /**
+ * Maximum concurrent socket connections per user.
+ * Prevents connection exhaustion from a single user.
+ */
+export const MAX_SOCKETS_PER_USER = 5;
+
+/**
  * userId -> number of live sockets. `onlineUsers` keeps a single socket id per
  * user (last connection wins) because every targeted emit needs exactly one
  * destination, but a user can legitimately have several tabs open — this count
@@ -14,9 +20,17 @@ const userSocketCounts = new Map<string, number>();
 
 // Presence helpers — keep onlineUsers consistent and avoid broadcasting
 // every connect/disconnect to all connected clients.
-export function markOnline(userId: string, socketId: string) {
+export function markOnline(userId: string, socketId: string): boolean {
+    const currentCount = userSocketCounts.get(userId) ?? 0;
+    
+    // Enforce connection limit
+    if (currentCount >= MAX_SOCKETS_PER_USER) {
+        return false; // Connection rejected
+    }
+    
     onlineUsers.set(userId, socketId);
-    userSocketCounts.set(userId, (userSocketCounts.get(userId) ?? 0) + 1);
+    userSocketCounts.set(userId, currentCount + 1);
+    return true;
 }
 
 /**
