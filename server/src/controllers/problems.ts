@@ -13,69 +13,80 @@ import { withDisplayProblemName } from "../utils/problemName.js";
 const PROBLEMS_CACHE_PREFIX = "problems:";
 const PROBLEMS_CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
 
-const systemKey = (userId: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:system`;
-const customKey = (userId: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:custom`;
+const systemKey = (userId: string, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${userId}:system:${page}:${limit}`;
+const customKey = (userId: string, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${userId}:custom:${page}:${limit}`;
 const detailKey = (userId: string, id: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:detail:${id}`;
 
 /** Drop every cached problem payload for one user (call after a progress write). */
-export function invalidateUserProblemsCache(userId: string): void {
-    deleteCachedByPrefix(`${PROBLEMS_CACHE_PREFIX}${userId}:`);
+export async function invalidateUserProblemsCache(userId: string): Promise<void> {
+    await deleteCachedByPrefix(`${PROBLEMS_CACHE_PREFIX}${userId}:`);
 }
 
 /** Drop every user's cached problem payloads (the problem catalog changed). */
-export function invalidateAllProblemsCache(): void {
-    deleteCachedByPrefix(PROBLEMS_CACHE_PREFIX);
+export async function invalidateAllProblemsCache(): Promise<void> {
+    await deleteCachedByPrefix(PROBLEMS_CACHE_PREFIX);
 }
 
 class Problems {
-    // GET ALL SYSTEM PROBLEMS (enriched with solved status for the current user)
+    // GET ALL SYSTEM PROBLEMS (enriched with solved status for the current user) - WITH PAGINATION
     async getSystemProblems(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const cacheKey = systemKey(userId);
+            const validatedQuery = (req as any).validatedQuery || req.query;
+            const page = Math.max(1, parseInt(String(validatedQuery.page ?? "1"), 10) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(String(validatedQuery.limit ?? "25"), 10) || 25));
+            const cacheKey = systemKey(userId, page, limit);
 
-            const cached = getCached<any[]>(cacheKey);
+            const cached = await getCached<any[]>(cacheKey);
             if (cached) {
                 return res.json({
                     status: "success",
                     problems: cached.map((problem) => withDisplayProblemName(problem)),
                     cached: true,
+                    pagination: { page, limit },
                 });
             }
 
-            const problems = await prisma.problem.findMany({
-                where: { isCustom: false },
-                orderBy: { problem_number: 'asc' },
-                select: {
-                    id: true,
-                    name: true,
-                    problem_number: true,
-                    github_oid: true,
-                    problem_definition: true,
-                    problem_hints: true,
-                    difficulty_level: true,
-                    timeLimitMs: true,
-                    createdAt: true,
-                    code_snippets: {
-                        select: { language: true, code: true }
-                    },
-                    test_cases: {
-                        where: { is_public: true },
-                        select: { id: true, input: true, expectedOutput: true, is_public: true }
-                    },
-                    userProgress: {
-                        where: { userId },
-                        select: {
-                            isSolved: true,
-                            solvedAt: true,
-                            attempts: true,
-                            lastCode: true,
-                            lastLanguage: true,
-                            submissionTimes: true,
+            const skip = (page - 1) * limit;
+
+            const [problems, total] = await Promise.all([
+                prisma.problem.findMany({
+                    where: { isCustom: false },
+                    orderBy: { problem_number: 'asc' },
+                    skip,
+                    take: limit,
+                    select: {
+                        id: true,
+                        name: true,
+                        problem_number: true,
+                        github_oid: true,
+                        problem_definition: true,
+                        problem_hints: true,
+                        difficulty_level: true,
+                        timeLimitMs: true,
+                        createdAt: true,
+                        code_snippets: {
+                            select: { language: true, code: true }
+                        },
+                        test_cases: {
+                            where: { is_public: true },
+                            select: { id: true, input: true, expectedOutput: true, is_public: true }
+                        },
+                        userProgress: {
+                            where: { userId },
+                            select: {
+                                isSolved: true,
+                                solvedAt: true,
+                                attempts: true,
+                                lastCode: true,
+                                lastLanguage: true,
+                                submissionTimes: true,
+                            }
                         }
                     }
-                }
-            });
+                }),
+                prisma.problem.count({ where: { isCustom: false } })
+            ]);
 
             // Flatten userProgress into top-level fields
             const enriched = problems.map((p) => {
@@ -92,9 +103,14 @@ class Problems {
                 };
             });
 
-            setCached(cacheKey, enriched, PROBLEMS_CACHE_TTL_SECONDS);
+            await setCached(cacheKey, enriched, PROBLEMS_CACHE_TTL_SECONDS);
 
-            return res.json({ status: "success", problems: enriched, cached: false });
+            return res.json({ 
+                status: "success", 
+                problems: enriched, 
+                cached: false,
+                pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+            });
         } catch (error) {
             console.error("Fetch system problems error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -108,7 +124,7 @@ class Problems {
             const id = req.params.id as string;
             const cacheKey = detailKey(userId, id);
 
-            const cached = getCached<any>(cacheKey);
+            const cached = await getCached<any>(cacheKey);
             if (cached) {
                 return res.json({ status: "success", problem: withDisplayProblemName(cached), cached: true });
             }
@@ -158,7 +174,7 @@ class Problems {
                 submissionTimes: progress?.submissionTimes ?? [],
             };
 
-            setCached(cacheKey, payload, PROBLEMS_CACHE_TTL_SECONDS);
+            await setCached(cacheKey, payload, PROBLEMS_CACHE_TTL_SECONDS);
 
             return res.json({
                 status: "success",
@@ -171,31 +187,47 @@ class Problems {
         }
     }
 
-    // GET USER'S CUSTOM PROBLEMS
+    // GET USER'S CUSTOM PROBLEMS - WITH PAGINATION
     async getMyCustomProblems(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const cacheKey = customKey(userId);
+            const validatedQuery = (req as any).validatedQuery || req.query;
+            const page = Math.max(1, parseInt(String(validatedQuery.page ?? "1"), 10) || 1);
+            const limit = Math.min(100, Math.max(1, parseInt(String(validatedQuery.limit ?? "25"), 10) || 25));
+            const cacheKey = customKey(userId, page, limit);
 
-            const cached = getCached<any[]>(cacheKey);
+            const cached = await getCached<any[]>(cacheKey);
             if (cached) {
                 return res.json({
                     status: "success",
                     problems: cached.map((problem) => withDisplayProblemName(problem)),
                     cached: true,
+                    pagination: { page, limit },
                 });
             }
 
-            const problems = await prisma.problem.findMany({
-                where: { creatorId: userId, isCustom: true },
-                include: { test_cases: true, code_snippets: true },
-                orderBy: { createdAt: 'desc' }
-            });
+            const skip = (page - 1) * limit;
+
+            const [problems, total] = await Promise.all([
+                prisma.problem.findMany({
+                    where: { creatorId: userId, isCustom: true },
+                    include: { test_cases: true, code_snippets: true },
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit,
+                }),
+                prisma.problem.count({ where: { creatorId: userId, isCustom: true } })
+            ]);
 
             const displayProblems = problems.map((problem) => withDisplayProblemName(problem));
-            setCached(cacheKey, displayProblems, PROBLEMS_CACHE_TTL_SECONDS);
+            await setCached(cacheKey, displayProblems, PROBLEMS_CACHE_TTL_SECONDS);
 
-            return res.json({ status: "success", problems: displayProblems, cached: false });
+            return res.json({ 
+                status: "success", 
+                problems: displayProblems, 
+                cached: false,
+                pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+            });
         } catch (error) {
             console.error("Fetch custom problems error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -249,7 +281,7 @@ class Problems {
             });
 
             // The creator's cached lists/detail no longer match the catalog.
-            invalidateUserProblemsCache(userId);
+            await invalidateUserProblemsCache(userId);
 
             return res.json({ status: "success", message: "Custom problem created!", problem: newProblem });
         } catch (error) {
@@ -321,7 +353,7 @@ class Problems {
             }
 
             // System problems changed for every user.
-            invalidateAllProblemsCache();
+            await invalidateAllProblemsCache();
 
             return res.json({ status: "success", message: `Seeded ${results.length} system problems!`, seeded: results });
         } catch (error) {
