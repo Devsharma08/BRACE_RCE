@@ -1,33 +1,33 @@
 import { Router } from "express";
-import { prisma } from "../lib/prisma.js";
 import { authentication } from "../middleware/authentication.js";
 import { FriendController } from "../controllers/friends.js"; 
+import { validate, validateParams, friendRequestSchema, acceptFriendRequestSchema, blockUserSchema, removeFriendSchema } from "../middleware/validation.js";
 
 export const friendsRouter: Router = Router();
 
 // GET current user's friends list
-friendsRouter.get("/", authentication,FriendController.getFriends);
+friendsRouter.get("/", authentication, FriendController.getFriends);
 
 // GET Search users
 friendsRouter.get("/search", authentication, FriendController.searchUsers);
 
 // POST Send friend request
-friendsRouter.post("/request", authentication, FriendController.sendFriendRequest);
+friendsRouter.post("/request", authentication, validate(friendRequestSchema), FriendController.sendFriendRequest);
 
 // GET get all friend requests
 friendsRouter.get("/requests", authentication, FriendController.getPendingRequests);
 
 // POST Accept friend request
-friendsRouter.post("/accept", authentication, FriendController.acceptFriendRequest);
+friendsRouter.post("/accept", authentication, validate(acceptFriendRequestSchema), FriendController.acceptFriendRequest);
 
 // GET messages between two users
-friendsRouter.get('/messages/:friendId', authentication,FriendController.getMessages);
+friendsRouter.get('/messages/:friendId', authentication, FriendController.getMessages);
 
 // DELETE remove a friend
-friendsRouter.delete("/remove/:id", authentication,FriendController.deleteFriend);
+friendsRouter.delete("/remove/:id", authentication, validateParams(removeFriendSchema), FriendController.deleteFriend);
 
 // POST block user
-friendsRouter.post("/block", authentication, FriendController.blockUser);
+friendsRouter.post("/block", authentication, validate(blockUserSchema), FriendController.blockUser);
 
 // GET block users
 friendsRouter.get("/blocked", authentication, FriendController.getBlockedUsers);
@@ -36,4 +36,4 @@ friendsRouter.get("/blocked", authentication, FriendController.getBlockedUsers);
 friendsRouter.post("/unblock", authentication, FriendController.unblockUser);
 
 // POST REJECT REQUEST
-friendsRouter.post("/reject",authentication,FriendController.rejectFriendRequest);
+friendsRouter.post("/reject", authentication, FriendController.rejectFriendRequest);
