@@ -174,6 +174,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   // We need to get the userId from somewhere - let's use a separate effect
   // that reads from the auth context or a global store
   const userIdRef = useRef<string | null>(null);
+  const socketCreatedRef = useRef(false);
 
   useEffect(() => {
     // Try to get userId from the auth query cache
@@ -194,9 +195,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     checkUser();
   }, []);
 
+  // Create socket when userId becomes available
   useEffect(() => {
-    if (!userIdRef.current) return;
-
+    if (!userIdRef.current || socketCreatedRef.current) return;
+    
+    socketCreatedRef.current = true;
     const newSocket = getOrCreateSocket(userIdRef.current);
     if (!socketRef.current) socketRef.current = newSocket;
     const socket = newSocket;
@@ -324,8 +327,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       for (const fn of cleanupFns) fn();
+      socketCreatedRef.current = false;
     };
-  }, [navigate]);
+  }, [userIdRef.current, navigate]);
 
   const sendDirectMessage = (targetUserId: string, content: string) => {
     socketRef.current?.emit("send_direct_message", { targetUserId, content });
