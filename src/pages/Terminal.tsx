@@ -556,7 +556,7 @@ const Terminal = () => {
                       className="grid min-h-0 flex-1"
                       style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
                     >
-                      <div className="h-full min-h-0 overflow-hidden">
+                      <div className="h-full min-h-0 overflow-hidden" style={{ minHeight: 300 }}>
                         <MonacoIDE
                           handleRunCode={handleRunCode}
                           language={language}

@@ -224,7 +224,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
   }, [code, language, isLocal]);
 
   return (
-    <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-subtle-line bg-editor-bg sm:rounded-xl">
+    <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-subtle-line bg-editor-bg sm:rounded-xl" style={{ minHeight: 300 }}>
       <Editor
         height="100%"
         language={language}
