@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import DOMPurify from "dompurify";
 import {
   Search,
   Filter,
@@ -161,7 +162,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         {problem.problem_definition && problem.problem_definition.trim().length > 0 ? (
           <div
             className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: problem.problem_definition }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problem.problem_definition) }}
           />
         ) : (
           <p className="text-xs text-faint italic">Problem description unavailable.</p>

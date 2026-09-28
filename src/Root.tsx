@@ -1,7 +1,6 @@
-import { StrictMode, Suspense, useState, lazy } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import App from "./App.tsx";
-
 
 
 //----------------- admin routes ------------------
@@ -32,22 +31,12 @@ const FriendsDashboard = lazy(() => import("./components/features/FriendDashboar
 const CreateRoom = lazy(() => import("./pages/CreateRoom.tsx"));
 const Lobby = lazy(() => import("./pages/Lobby.tsx"));
 
-import { CodeContext, type TestCase } from "./context/CodeContext.tsx";
-import {
-  FileNamesContext,
-  type FileEntry,
-} from "./context/FileNamesContext.tsx";
-import { UserResponseContext } from "./context/ResponseContext.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
 import { SocketProvider } from "./context/SocketContext.tsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import  {Login}  from "./features/auth/Login.tsx";
 import {Signup} from "./features/auth/Signup.tsx";
-import type {
-  SupportedLanguage,
-  ExecutionResult,
-} from "./features/terminal/types";
-
+import { TerminalProvider } from "./context/TerminalContext.tsx";
 import { RouteLoadingSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
@@ -74,22 +63,6 @@ const queryClient = new QueryClient({
 wireAuthInvalidation(queryClient);
 
 export const Root = () => {
-  // initial states for context
-  const [filesData, setFilesData] = useState<FileEntry[]>([]);
-  const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState<SupportedLanguage>("javascript");
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [activeFile, setActiveFile] = useState<string>("");
-  const [customInput, setCustomInput] = useState<string>("");
-  const [customInputActive, setCustomInputActive] = useState<boolean>(false);
-  const [output, setOutput] = useState<ExecutionResult | null>(null);
-
-  // response context states
-  const [responseContent, setResponseContent] = useState("");
-  const [status, setStatus] = useState<
-    "SUCCESS" | "ERROR" | "LOADING" | "IDLE"
-  >("IDLE");
-
   return (
     <StrictMode>
       <QueryClientProvider client={queryClient}>
@@ -115,6 +88,9 @@ export const Root = () => {
                       success: "toast-success",
                       warning: "toast-warning",
                     },
+                    // Accessibility: announce toasts to screen readers
+                    ariaLive: "polite",
+                    ariaAtomic: true,
                   } as never
                 )
               }
@@ -182,39 +158,9 @@ export const Root = () => {
                         <Route
                           path="terminal"
                           element={
-                            <FileNamesContext.Provider
-                              value={{ filesData, setFilesData }}
-                            >
-                              <CodeContext.Provider
-                                value={{
-                                  code,
-                                  language,
-                                  setCode,
-                                  setLanguage,
-                                  testCases,
-                                  setTestCases,
-                                  activeFile,
-                                  setActiveFile,
-                                  output,
-                                  setOutput,
-                                  customInput,
-                                  setCustomInput,
-                                  customInputActive,
-                                  setCustomInputActive,
-                                }}
-                              >
-                                <UserResponseContext.Provider
-                                  value={{
-                                    responseContent,
-                                    setResponseContent,
-                                    status,
-                                    setStatus,
-                                  }}
-                                >
-                                  <Terminal />
-                                </UserResponseContext.Provider>
-                              </CodeContext.Provider>
-                            </FileNamesContext.Provider>
+                            <TerminalProvider>
+                              <Terminal />
+                            </TerminalProvider>
                           }
                         />
                       </Route>
