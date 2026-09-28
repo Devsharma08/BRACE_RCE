@@ -63,8 +63,8 @@ export function clearCsrfToken(): void {
 api.interceptors.request.use((config) => {
     const method = config.method?.toUpperCase();
     const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-    if (mutatingMethods.includes(method) && csrfToken) {
-        config.headers['x-csrf-token'] = csrfToken;
+    if (method && mutatingMethods.includes(method) && csrfToken) {
+        (config.headers as any).set('x-csrf-token', csrfToken);
     }
     return config;
 });
