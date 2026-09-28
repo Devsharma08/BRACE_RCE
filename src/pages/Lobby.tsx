@@ -23,6 +23,8 @@ import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
 import { toast } from "sonner";
 import { useSocket } from "../context/SocketContext";
+import { useDebounce } from "../hooks/useDebounce";
+import { isFeatureEnabled } from "../config/features";
 
 interface Room {
   id: string;
@@ -53,6 +55,7 @@ const Lobby = () => {
     roomName: string;
   }>({ isOpen: false, roomCode: "", roomName: "" });
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const [maxUsers, setMaxUsers] = useState("any");
   const [maxTime, setMaxTime] = useState("any");
   const [access, setAccess] = useState("any");
@@ -71,19 +74,31 @@ const Lobby = () => {
         myEvents: myEventsRes.data.events,
       };
     },
+    // Refetch on window focus to catch missed events
+    refetchOnWindowFocus: true,
+    staleTime: 30000, // 30s freshness
   });
 
-  // Custom DB-backed rooms bypass the in-memory lobby Map, so the server has
-  // no emit hook for their changes — poll lightly until a realtime source
-  // exists. invalidateQueries is correct here (not setQueryData): the list is
-  // a multi-row server aggregation the client cannot derive.
+  // Replace polling with socket-driven invalidation
   const { socket } = useSocket();
   useEffect(() => {
-    if (!socket) return;
-    const id = setInterval(() => {
+    if (!socket || !isFeatureEnabled('socketEvents')) return;
+
+    const handleLobbyUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-    }, 15000);
-    return () => clearInterval(id);
+    };
+
+    socket.on("lobbies:invalidate", handleLobbyUpdate);
+    socket.on("room:created", handleLobbyUpdate);
+    socket.on("room:deleted", handleLobbyUpdate);
+    socket.on("room:updated", handleLobbyUpdate);
+
+    return () => {
+      socket.off("lobbies:invalidate", handleLobbyUpdate);
+      socket.off("room:created", handleLobbyUpdate);
+      socket.off("room:deleted", handleLobbyUpdate);
+      socket.off("room:updated", handleLobbyUpdate);
+    };
   }, [socket, queryClient]);
 
   const rooms: Room[] = data?.rooms || [];
@@ -97,7 +112,7 @@ const Lobby = () => {
   const activeItems: Room[] = activeTab === "ROOMS" ? rooms : activeTab === "TEMPLATES" ? templates : myEvents;
 
   const filteredItems = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = debouncedQuery.trim().toLowerCase();
     return activeItems.filter((room) => {
       const searchable = `${room.name ?? ""} ${room.description ?? ""} ${room.host?.username ?? ""} ${room.roomCode ?? ""}`.toLowerCase();
       if (needle && !searchable.includes(needle)) return false;

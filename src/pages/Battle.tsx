@@ -21,6 +21,7 @@ import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
 import { invalidateProblemQueries } from "../utils/problemCache";
+import DOMPurify from "dompurify";
 
 
 interface BattleMessage {
@@ -263,6 +264,7 @@ export const Battle = () => {
   const [code, setCode] = useState<string>("// Initialization...");
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [javaClassName, setJavaClassName] = useState<string>("Solution");
 
   // Store codes for each problem
   const [codes, setCodes] = useState<Record<string, string>>({});
@@ -372,6 +374,7 @@ export const Battle = () => {
 
   const joinedRoomRef = useRef<string | null>(null);
   const myUserIdRef = useRef("");
+  let joinAcknowledged = false;
 
   // Point 35: the room fetch goes through the query cache so navigating away
   // and back within gcTime re-seeds instantly instead of refetching.
@@ -454,19 +457,41 @@ export const Battle = () => {
     setLoading(false);
   }, [fetchedRoom]);
 
-  // Setup Sockets
+  // Setup Sockets - Fixed: single join with ack, proper reconnect handling
   useEffect(() => {
     if (!socket || !roomId) return;
 
-    // Join exactly once per connection. socket.io rooms are per-connection, so
-    // a mid-battle reconnect (new socket id) must rejoin or the client silently
-    // stops receiving battle events — the connect handler below covers that.
+    let mounted = true;
+
     const joinRoom = () => {
-      joinedRoomRef.current = roomId;
-      socket.emit("join_battle", roomId);
+      if (!mounted) return;
+      // Use acknowledgment to confirm join
+      socket.emit("join_battle", roomId, (ack: { success: boolean; error?: string }) => {
+        if (!mounted) return;
+        if (ack?.success) {
+          joinAcknowledged = true;
+          joinedRoomRef.current = roomId;
+        } else {
+          console.error("Failed to join battle:", ack?.error);
+          toast.error("Failed to join battle room");
+          navigate("/lobby");
+        }
+      });
     };
-    if (socket.connected) joinRoom();
-    socket.on("connect", joinRoom);
+
+    // Join immediately if connected
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    // Handle reconnect: only re-join if we were previously joined
+    const onConnect = () => {
+      if (mounted && joinedRoomRef.current === roomId && !joinAcknowledged) {
+        joinRoom();
+      }
+    };
+
+    socket.on("connect", onConnect);
 
     socket.on("battle_starting", (data: { countdownSeconds?: number }) => {
       setCountDown(data?.countdownSeconds || 3);
@@ -474,8 +499,6 @@ export const Battle = () => {
     });
 
     socket.on("battle_state", (data) => {
-      // Countdown values come exclusively from battle_starting; no verdict is
-      // set here — battle_state carries no per-player outcome.
       setBattleState(data);
     });
 
@@ -484,7 +507,6 @@ export const Battle = () => {
     });
 
     socket.on("battle_update", (data) => {
-      // Update live intel for this player
       setPlayerProgress((prev) => ({
         ...prev,
         [data.userId]: {
@@ -519,7 +541,6 @@ export const Battle = () => {
       }
     });
 
-    // HOST/ADMIN terminated the group — treat like host_end_match completion.
     socket.on("group_terminated", (data: { roomId: string }) => {
       if (String(data.roomId).replace("room-", "") === String(roomId).replace("room-", "")) {
         setBattleResult("LOST");
@@ -528,8 +549,6 @@ export const Battle = () => {
       }
     });
 
-    // Server-confirmed end of battle — the winner was derived from the database
-    // server-side, so this is the authoritative verdict for this client.
     socket.on("battle_finished", (data: { winnerId?: string; performances?: any[] }) => {
       if (data?.performances) {
         setRoomParticipants(data.performances);
@@ -541,7 +560,6 @@ export const Battle = () => {
       const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
       setBattleResult(won ? "WON" : "LOST");
       setIsBattleMenuOpen(true);
-      // A won battle wrote progress — cached problem payloads are stale now.
       invalidateProblemQueries(queryClient);
     });
 
@@ -549,7 +567,6 @@ export const Battle = () => {
       if (data?.performances) {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
-        // Derive this client's verdict from the server's authoritative statuses.
         const myPerf = data.performances.find(
           (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
         );
@@ -563,9 +580,8 @@ export const Battle = () => {
     });
 
     return () => {
-      joinedRoomRef.current = null;
-      socket.emit("leave_room", roomId);
-      socket.off("connect");
+      mounted = false;
+      socket.off("connect", onConnect);
       socket.off("battle_starting");
       socket.off("battle_state");
       socket.off("receive_battle_message");
@@ -576,6 +592,9 @@ export const Battle = () => {
       socket.off("group_terminated");
       socket.off("match_completed");
       socket.off("battle_finished");
+      if (joinedRoomRef.current === roomId) {
+        socket.emit("leave_room", roomId);
+      }
     };
   }, [socket, roomId, navigate, queryClient]);
 
@@ -608,6 +627,22 @@ export const Battle = () => {
     if (activeProblem && codes[activeProblem.id]) {
       setCode(codes[activeProblem.id]);
       console.log("active problem:", activeProblem.test_cases);
+    }
+    // Extract Java class name from code_snippets
+    if (activeProblem) {
+      const javaSnippet = activeProblem.code_snippets?.find(
+        (s: any) => s.language?.toLowerCase() === "java"
+      );
+      if (javaSnippet?.code) {
+        const classMatch = javaSnippet.code.match(/class\s+(\w+)/);
+        if (classMatch?.[1]) {
+          setJavaClassName(classMatch[1]);
+        } else {
+          setJavaClassName("Solution");
+        }
+      } else {
+        setJavaClassName("Solution");
+      }
     }
   }, [activeProblem, codes]);
 
@@ -700,6 +735,96 @@ export const Battle = () => {
 
   const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
+  // Focus trap refs for modals
+  const battleMenuRef = useRef<HTMLDivElement>(null);
+  const surrenderModalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+
+  // Focus trap for battle menu
+  useEffect(() => {
+    if (!isBattleMenuOpen) return;
+    const modal = battleMenuRef.current;
+    if (!modal) return;
+    
+    previousActiveElementRef.current = document.activeElement as HTMLElement;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsBattleMenuOpen(false);
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusable = modal.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    
+    document.addEventListener("keydown", handleKeyDown);
+    setTimeout(() => {
+      const firstFocusable = modal.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    }, 0);
+    
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousActiveElementRef.current?.focus();
+    };
+  }, [isBattleMenuOpen]);
+
+  // Focus trap for surrender modal
+  useEffect(() => {
+    if (!isSurrenderModalOpen) return;
+    const modal = surrenderModalRef.current;
+    if (!modal) return;
+    
+    previousActiveElementRef.current = document.activeElement as HTMLElement;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsSurrenderModalOpen(false);
+        return;
+      }
+      if (e.key === "Tab") {
+        const focusable = modal.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    
+    document.addEventListener("keydown", handleKeyDown);
+    setTimeout(() => {
+      const firstFocusable = modal.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      firstFocusable?.focus();
+    }, 0);
+    
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousActiveElementRef.current?.focus();
+    };
+  }, [isSurrenderModalOpen]);
 
   const handleSurrenderClick = () => {
     setIsSurrenderModalOpen(true);
@@ -1094,7 +1219,7 @@ export const Battle = () => {
                     className="problem-contain text-sm text-fg leading-relaxed font-sans prose prose-invert max-w-full min-w-0 break-words overflow-hidden [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
                     dangerouslySetInnerHTML={{
                       __html:
-                        stripDuplicateExamples(activeProblem?.problem_definition) || "No definition.",
+                        DOMPurify.sanitize(stripDuplicateExamples(activeProblem?.problem_definition) || "No definition."),
                     }}
                   />
 
@@ -1333,6 +1458,7 @@ export const Battle = () => {
               countdown <= 10 &&
               battleState.status === "IN_PROGRESS"
             }
+            javaClassName={javaClassName}
           />
         </div>
         {/* terminal output panel */}
@@ -1377,7 +1503,10 @@ export const Battle = () => {
 
       {isBattleMenuOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/60 backdrop-blur-[2px] pointer-events-none p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll">
+          <div
+            ref={battleMenuRef}
+            className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll"
+          >
             <div
               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-accent-primary to-accent-success" : "from-accent-danger to-accent-warning"}`}
             />
@@ -1444,7 +1573,10 @@ export const Battle = () => {
       {/* SURRENDER CONFIRMATION MODAL */}
       {isSurrenderModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm p-4">
-          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-accent-danger/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden">
+          <div
+            ref={surrenderModalRef}
+            className="flex flex-col items-center justify-center p-8 bg-raised border border-accent-danger/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
+          >
             <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-accent-danger to-accent-warning" />
             <Flag className="w-12 h-12 text-accent-danger mb-4" />
             <h3 className="font-mono text-xl font-bold tracking-widest text-fg mb-2 uppercase">
