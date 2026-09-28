@@ -3,6 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
 import { api } from "../config/api";
+import { useAuth } from "../context/AuthContext";
+import { queryKeys } from "../lib/queryKeys";
+import { useDebounce } from "../hooks/useDebounce";
 import {
   Code2,
   Search,
@@ -27,10 +30,12 @@ const DS_SUMMARY_SLUGS = ["tree", "dynamic-programming", "array", "linked-list",
 export const Problems: React.FC = () => {
   const { data: analytics } = useAnalytics(false);
   const { bySlug: dsProgress } = useDsTopicProgress();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
@@ -50,7 +55,7 @@ export const Problems: React.FC = () => {
   };
 
   const { data: problems = [], isLoading: loading, isError: isProblemsError, refetch: refetchProblems } = useQuery<any[]>({
-    queryKey: ["system-problems"],
+    queryKey: queryKeys.problems.system({ userId: user?.id }),
     // Problem definitions never change during a session — fetch once per mount
     // window instead of on every visit. Progress changes (solved/attempts) are
     // handled by invalidateProblemQueries() at the write sites.
@@ -88,8 +93,8 @@ export const Problems: React.FC = () => {
   // Filter problems by search, difficulty, and category
   const filteredProblems = problems.filter((p) => {
     const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.problem_number && String(p.problem_number).includes(searchTerm));
+      p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (p.problem_number && String(p.problem_number).includes(debouncedSearch));
 
     const matchesDiff =
       selectedDifficulty === "ALL" ||

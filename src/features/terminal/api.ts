@@ -16,6 +16,24 @@ const readJson = async <T>(response: Response): Promise<T> => {
   return (await response.json()) as T;
 };
 
+// In-flight request deduplication cache
+// Key: `${oid}|${mode}|${codeHash}`
+const inFlightRequests = new Map<string, AbortController>();
+
+// Simple hash for code comparison
+function hashCode(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+function getRequestKey(request: ExecuteCodeRequest): string {
+  return `${request.oid}|${request.mode}|${hashCode(request.code)}`;
+}
+
 // Fetch all system problems (with solved status, code_snippets, test_cases)
 export const fetchSystemProblems = async (signal?: AbortSignal) => {
   const response = await fetch(`${API_BASE_URL}/problems/system`, { signal, credentials: "include" });
@@ -32,18 +50,42 @@ export const fetchProblemById = async (id: string, signal?: AbortSignal) => {
   return data.problem;
 };
 
-export const executeCode = async (request: ExecuteCodeRequest) => {
-  const response = await fetch(`${API_BASE_URL}/execute`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(request),
-  });
+export const executeCode = async (request: ExecuteCodeRequest): Promise<ExecutionResult> => {
+  const key = getRequestKey(request);
 
-  if (!response.ok) {
-    const errorPayload = await response.json().catch(() => null);
-    throw new Error(getErrorMessage(errorPayload, "Failed to execute code"));
+  // Abort previous request for same problem+mode+code
+  const existingController = inFlightRequests.get(key);
+  if (existingController) {
+    existingController.abort();
   }
 
-  return readJson<ExecutionResult>(response);
+  // Create new controller with timeout
+  const controller = new AbortController();
+  inFlightRequests.set(key, controller);
+
+  // Auto-cleanup after 30s timeout
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+    inFlightRequests.delete(key);
+  }, 30000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(request),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null);
+      throw new Error(getErrorMessage(errorPayload, "Failed to execute code"));
+    }
+
+    return await readJson<ExecutionResult>(response);
+  } finally {
+    clearTimeout(timeoutId);
+    inFlightRequests.delete(key);
+  }
 };

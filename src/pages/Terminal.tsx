@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../context/AuthContext";
+import { queryKeys } from "../lib/queryKeys";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CodeContext } from "../context/CodeContext";
 import { UserResponseContext } from "../context/ResponseContext";
@@ -60,6 +62,7 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
 const Terminal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // URL-driven: id or oid selects the initial problem
   const targetId = searchParams.get("id") || searchParams.get("oid") || searchParams.get("problemId") || "";
@@ -79,6 +82,7 @@ const Terminal = () => {
   const [isOutputActive, setIsOutputActive] = useState(true);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [submissionTrigger, setSubmissionTrigger] = useState(0);
+  const [javaClassName, setJavaClassName] = useState<string>("Solution");
 
   const timerRef = useRef<ProblemTimerRef>(null);
 
@@ -98,6 +102,10 @@ const Terminal = () => {
     setCustomInput,
     customInputActive,
     setCustomInputActive,
+    // Per-language code preservation
+    codeByLanguage,
+    setCodeForLanguage,
+    getCodeForLanguage,
   } = useContext(CodeContext);
 
   const { setStatus } = useContext(UserResponseContext);
@@ -160,7 +168,7 @@ const Terminal = () => {
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   // ── Load problem into editor ───────────────────────────────
   const loadProblem = useCallback(
@@ -169,6 +177,21 @@ const Terminal = () => {
       setActiveFile(problem.github_oid || problem.id);
       setOutput(null);
       setOutputText("");
+
+      // Extract Java class name from code_snippets if available
+      const javaSnippet = problem.code_snippets?.find(
+        (s) => s.language?.toLowerCase() === "java"
+      );
+      if (javaSnippet?.code) {
+        const classMatch = javaSnippet.code.match(/class\s+(\w+)/);
+        if (classMatch?.[1]) {
+          setJavaClassName(classMatch[1]);
+        } else {
+          setJavaClassName("Solution");
+        }
+      } else {
+        setJavaClassName("Solution");
+      }
 
       // If there's previously saved draft code — restore it
       const draftLang = (problem.lastLanguage as SupportedLanguage) || "javascript";
@@ -197,15 +220,22 @@ const Terminal = () => {
   const handleLanguageChange = useCallback(
     (newLang: SupportedLanguage) => {
       setLanguage(newLang);
-      setCode(getBoilerplate(activeProblem, newLang));
+      // CodeContext.changeLanguage will restore saved code for this language
+      // or set empty string if none exists - then we set boilerplate
+      const savedCode = getCodeForLanguage(newLang);
+      if (!savedCode && activeProblem) {
+        setCode(getBoilerplate(activeProblem, newLang));
+      }
     },
-    [activeProblem, setLanguage, setCode]
+    [activeProblem, setLanguage, setCode, getCodeForLanguage]
   );
 
   // ── Reset code to starter boilerplate ─────────────────────
   const handleResetCode = useCallback(() => {
     setCode(getBoilerplate(activeProblem, language));
-  }, [activeProblem, language, setCode]);
+    // Also update the per-language storage
+    setCodeForLanguage(language, getBoilerplate(activeProblem, language));
+  }, [activeProblem, language, setCode, setCodeForLanguage]);
 
   // ── Select problem from sidebar ───────────────────────────
   const handleSelectProblem = useCallback(
@@ -537,6 +567,7 @@ const Terminal = () => {
                           onFormatMount={(formatAction) => {
                             formatEditorRef.current = formatAction;
                           }}
+                          javaClassName={javaClassName}
                         />
                       </div>
 
