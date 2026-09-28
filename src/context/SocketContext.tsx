@@ -385,7 +385,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const findMatch = (difficulty: string = "ANY") => {
-    if (socketRef.current) {
+    if (socketRef.current && isConnected) {
       setWaitingTime(0);
       setQueueDifficulty(difficulty);
       setMatchmakingStatus("SEARCHING");
