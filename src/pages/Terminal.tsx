@@ -4,8 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { queryKeys } from "../lib/queryKeys";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { CodeContext } from "../context/CodeContext";
-import { UserResponseContext } from "../context/ResponseContext";
+import { TerminalContext } from "../context/TerminalContext";
 import { executeCode, fetchSystemProblems } from "../features/terminal/api";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import LoadingOverlay from "../features/terminal/components/LoadingOverlay";
@@ -42,12 +41,11 @@ const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string): 
 
 const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage): string => {
   if (!problem) return getLanguageStarterCode(lang);
-  // 1. Try code_snippets from DB
+  // 1. Try code_snippets from DB (stored under Monaco-style ids, e.g. "cpp")
   if (problem.code_snippets && problem.code_snippets.length > 0) {
+    const normalizedLang = lang === "c++" ? "cpp" : lang.toLowerCase();
     const match = problem.code_snippets.find(
-      (s) =>
-        s.language?.toLowerCase() === lang.toLowerCase() ||
-        (lang === "c++" && s.language?.toLowerCase() === "cpp")
+      (s) => s.language?.toLowerCase() === normalizedLang
     );
     if (match?.code) return match.code;
   }
@@ -106,9 +104,9 @@ const Terminal = () => {
     codeByLanguage,
     setCodeForLanguage,
     getCodeForLanguage,
-  } = useContext(CodeContext);
+  } = useContext(TerminalContext);
 
-  const { setStatus } = useContext(UserResponseContext);
+  const { setStatus } = useContext(TerminalContext);
 
   // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
   const queryClient = useQueryClient();
@@ -220,7 +218,7 @@ const Terminal = () => {
   const handleLanguageChange = useCallback(
     (newLang: SupportedLanguage) => {
       setLanguage(newLang);
-      // CodeContext.changeLanguage will restore saved code for this language
+      // TerminalContext.changeLanguage will restore saved code for this language
       // or set empty string if none exists - then we set boilerplate
       const savedCode = getCodeForLanguage(newLang);
       if (!savedCode && activeProblem) {

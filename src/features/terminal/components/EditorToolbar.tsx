@@ -15,7 +15,7 @@ import {
   FolderTree,
 } from "lucide-react";
 import type { ExecutionMode, SupportedLanguage } from "../types";
-import { CodeContext } from "../../../context/CodeContext.tsx";
+import { TerminalContext } from "../../../context/TerminalContext.tsx";
 import { toast } from "sonner";
 
 import ProblemTimer, { type ProblemTimerRef } from "./ProblemTimer";
@@ -88,9 +88,9 @@ const EditorToolbar = ({
   problemId = null,
 }: EditorToolbarProps) => {
   const navigate = useNavigate();
-  const context = useContext(CodeContext);
+  const context = useContext(TerminalContext);
   if (!context) {
-    throw new Error("EditorToolbar must be used inside a CodeContext.Provider");
+    throw new Error("EditorToolbar must be used inside a TerminalContext.Provider");
   }
 
   const toolbarRef = useRef<HTMLDivElement>(null);

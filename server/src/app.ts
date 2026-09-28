@@ -100,6 +100,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 /** CSRF protection middleware using double-submit cookie pattern */
 function csrfMiddleware() {
+  const isProd = process.env.NODE_ENV === "production";
+  const sameSite = isProd ? "none" : "lax";
+  const secure = isProd;
+  
   return (req: Request, res: Response, next: NextFunction) => {
     // Skip for safe methods
     if (SAFE_METHODS.has(req.method)) {
@@ -108,8 +112,8 @@ function csrfMiddleware() {
         const token = generateCsrfToken();
         res.cookie(CSRF_COOKIE_NAME, token, {
           httpOnly: false, // JavaScript must read this to send in header
-          sameSite: "strict",
-          secure: process.env.NODE_ENV === "production",
+          sameSite,
+          secure,
           maxAge: 24 * 60 * 60 * 1000, // 24 hours
         });
       }
@@ -130,8 +134,8 @@ function csrfMiddleware() {
       const token = generateCsrfToken();
       res.cookie(CSRF_COOKIE_NAME, token, {
         httpOnly: false,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV === "production",
+        sameSite,
+        secure,
         maxAge: 24 * 60 * 60 * 1000,
       });
       // For the first mutating request after token generation, allow it but warn
@@ -153,13 +157,17 @@ function csrfMiddleware() {
 
 /** Endpoint to get current CSRF token (for SPA initialization) */
 function csrfTokenEndpoint(req: Request, res: Response) {
+  const isProd = process.env.NODE_ENV === "production";
+  const sameSite = isProd ? "none" : "lax";
+  const secure = isProd;
+  
   let token = req.cookies?.[CSRF_COOKIE_NAME];
   if (!token) {
     token = generateCsrfToken();
     res.cookie(CSRF_COOKIE_NAME, token, {
       httpOnly: false,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      sameSite,
+      secure,
       maxAge: 24 * 60 * 60 * 1000,
     });
   }

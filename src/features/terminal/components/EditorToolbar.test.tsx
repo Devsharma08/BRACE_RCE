@@ -20,6 +20,17 @@ const mockContextValue = {
   setCustomInput: vi.fn(),
   customInputActive: false,
   setCustomInputActive: vi.fn(),
+  // Per-language code preservation
+  codeByLanguage: {
+    javascript: "",
+    python: "",
+    "c++": "",
+    java: "",
+    c: "",
+    c11: "",
+  },
+  setCodeForLanguage: vi.fn(),
+  getCodeForLanguage: vi.fn(),
 };
 
 describe('EditorToolbar Component', () => {
