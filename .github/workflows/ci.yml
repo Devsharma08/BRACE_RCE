@@ -26,7 +26,8 @@ jobs:
           version: 11
 
       - name: Approve build scripts
-        run: pnpm approve-builds --yes
+        run: |
+          pnpm approve-builds @prisma/engines bcrypt esbuild prisma @scarf/scarf @sentry/node-cpu-profiler protobufjs
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
