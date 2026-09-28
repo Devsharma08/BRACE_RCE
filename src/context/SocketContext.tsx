@@ -181,12 +181,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const userIdRef = useRef<string | null>(null);
   const socketCreatedRef = useRef(false);
 
+  // Get backend URL for auth check
+  const getBackendUrl = () => {
+    const rawUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+    return rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
+  };
+
   useEffect(() => {
     // Try to get userId from the auth query cache
     // This is a workaround - ideally we'd get it from context
     const checkUser = async () => {
       try {
-        const response = await fetch('/api/auth/me', { credentials: 'include' });
+        const backendUrl = getBackendUrl();
+        const response = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           if (data.user?.id) {
