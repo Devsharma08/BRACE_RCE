@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ComponentProps } from 'react';
 import EditorToolbar from './EditorToolbar';
-import { CodeContext } from '../../../context/CodeContext';
+import { TerminalContext } from '../../../context/TerminalContext';
 
 const mockContextValue = {
   code: '// test code',
@@ -31,6 +31,13 @@ const mockContextValue = {
   },
   setCodeForLanguage: vi.fn(),
   getCodeForLanguage: vi.fn(),
+  // TerminalContext additional fields
+  filesData: [],
+  setFilesData: vi.fn(),
+  responseContent: '',
+  status: 'IDLE' as const,
+  setStatus: vi.fn(),
+  setResponseContent: vi.fn(),
 };
 
 describe('EditorToolbar Component', () => {
@@ -57,9 +64,9 @@ describe('EditorToolbar Component', () => {
   const renderToolbar = (props = defaultProps) => {
     return render(
       <MemoryRouter>
-        <CodeContext.Provider value={mockContextValue}>
+        <TerminalContext.Provider value={mockContextValue}>
           <EditorToolbar {...props} />
-        </CodeContext.Provider>
+        </TerminalContext.Provider>
       </MemoryRouter>
     );
   };

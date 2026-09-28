@@ -293,69 +293,83 @@ const Profile = () => {
           {/* ── ANALYTICS ─────────────────────────────────────────────────── */}
           {analytics && (
             <section aria-labelledby="analytics-heading">
-              <div className="mt-10 mb-3 flex items-center gap-2">
+              <div className="mt-10 mb-6 flex items-center gap-2">
                 <BarChart3 size={15} className="text-accent-primary" />
                 <h2 className="text-[10px] uppercase tracking-[0.2em] text-subtle" id="analytics-heading">
                   Analytics
                 </h2>
                 <span className="h-px flex-1 bg-line" />
               </div>
+              
+              {/* Activity & Quick Stats Row */}
               <div className="grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
                 <div className="overflow-hidden rounded-panel border border-line-mid bg-surface p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-fg">Execution activity</span>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-fg">Execution Activity</span>
                     <span className="text-[9px] uppercase tracking-widest text-muted">
                       {analytics.activityData?.length > 0 ? "Active" : "Awaiting data"}
                     </span>
                   </div>
                   {analytics.activityData?.length > 0 ? (
                     <>
-                      <div className="mt-8 flex h-28 items-end gap-2 border-b border-line">
-                        {analytics.activityData.slice(-12).map((point, index) => {
+                      <div className="flex h-32 items-end gap-1.5 border-b border-line">
+                        {analytics.activityData.slice(-14).map((point, index) => {
                           const height = Math.min(100, Math.max(5, point.count || 0));
                           return (
                             <div
                               key={index}
-                              className="flex-1 bg-accent-primary/20 transition hover:bg-accent-primary/60"
+                              className="flex-1 bg-accent-primary/15 transition hover:bg-accent-primary/50 cursor-pointer group"
                               style={{ height: `${height}%` }}
-                            />
+                              title={`${point.date}: ${point.count} submissions`}
+                            >
+                              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-mono text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                                {point.count}
+                              </span>
+                            </div>
                           );
                         })}
                       </div>
                       <div className="mt-3 flex justify-between text-[8px] uppercase tracking-widest text-muted">
-                        <span>
-                          {new Date(analytics.activityData[0]?.date || "").toLocaleDateString(undefined, { month: "short" })} weeks ago
-                        </span>
+                        <span>{new Date(analytics.activityData[0]?.date || "").toLocaleDateString(undefined, { month: "short" })} weeks ago</span>
                         <span>current cycle</span>
                       </div>
                     </>
                   ) : (
-                    <div className="mt-8 flex h-28 items-end justify-center gap-2 border-b border-line">
-                      {[22, 38, 30, 52, 44, 68, 56, 76, 62, 84, 73, 92].map((height, index) => (
+                    <div className="flex h-32 items-end justify-center gap-1.5 border-b border-line">
+                      {[22, 38, 30, 52, 44, 68, 56, 76, 62, 84, 73, 92, 45, 78].map((height, index) => (
                         <div
                           key={index}
-                          className="flex-1 bg-accent-primary/20 transition hover:bg-accent-primary/60"
+                          className="flex-1 bg-accent-primary/15 transition hover:bg-accent-primary/50"
                           style={{ height: `${height}%` }}
                         />
                       ))}
                     </div>
                   )}
+                  <div className="mt-4 flex items-center justify-between text-[8px] uppercase tracking-widest text-muted">
+                    <span>Less</span>
+                    <span>More</span>
+                  </div>
                 </div>
-                <div className="overflow-hidden rounded-panel border border-line-mid bg-surface p-6">
-                  <div className="text-sm text-fg">Training signal</div>
-                  <p className="mt-3 text-xs leading-6 text-subtle">
-                    Complete a challenge to populate your performance telemetry and difficulty distribution.
-                  </p>
+                
+                <div className="overflow-hidden rounded-panel border border-line-mid bg-surface p-6 flex flex-col justify-between">
+                  <div>
+                    <div className="text-sm text-fg mb-2">Training Signal</div>
+                    <p className="text-xs leading-6 text-subtle">
+                      Complete a challenge to populate your performance telemetry and difficulty distribution.
+                    </p>
+                  </div>
                   <Link
                     to="/problems"
-                    className="mt-8 inline-flex items-center gap-2 text-[10px] uppercase tracking-widest text-accent-primary hover:text-fg"
+                    className="mt-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-widest text-accent-primary hover:text-fg border border-accent-primary/30 px-4 py-2 hover:bg-accent-primary/10 transition-all"
                   >
                     Enter training
                     <Zap size={13} />
                   </Link>
                 </div>
               </div>
-              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              
+              {/* Full Analytics Panels */}
+              <div className="mt-6">
                 <AnalyticsErrorBoundary>
                   <AnalyticsPanels analytics={analytics} />
                 </AnalyticsErrorBoundary>
