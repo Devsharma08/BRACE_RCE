@@ -13,10 +13,13 @@ describe("invalidateProblemQueries", () => {
 
     invalidateProblemQueries(client);
 
-    expect(invalidateQueries).toHaveBeenCalledTimes(PROBLEM_QUERY_ROOTS.length);
+    // 4 legacy roots + 1 new 'problems' root = 5 calls
+    expect(invalidateQueries).toHaveBeenCalledTimes(PROBLEM_QUERY_ROOTS.length + 1);
     for (const root of PROBLEM_QUERY_ROOTS) {
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: [root] });
     }
+    // Also invalidates the new unified 'problems' key
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['problems'] });
   });
 
   test("covers the query keys actually used by the problem pages", () => {

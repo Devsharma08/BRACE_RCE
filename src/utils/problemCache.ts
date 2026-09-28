@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../lib/queryKeys";
 
 /**
  * Query-key roots for every endpoint whose payload embeds the current user's
@@ -21,9 +22,23 @@ export const PROBLEM_QUERY_ROOTS = [
  *
  * Call after anything that can change the user's solved status or attempt count
  * (a practice SUBMIT, a battle SUBMIT, creating a custom problem).
+ * 
+ * Now uses the centralized query key factory - invalidates ALL problems.* queries
+ * including parameterized variants like problems.system({ userId }) etc.
  */
 export function invalidateProblemQueries(queryClient: QueryClient): void {
+  // Invalidate all problems queries (system, detail, search, etc.)
+  queryClient.invalidateQueries({ queryKey: ['problems'] });
+  
+  // Also invalidate legacy roots for backward compatibility during transition
   for (const root of PROBLEM_QUERY_ROOTS) {
     queryClient.invalidateQueries({ queryKey: [root] });
   }
+}
+
+/**
+ * Invalidate only system problems queries (more targeted)
+ */
+export function invalidateSystemProblems(queryClient: QueryClient): void {
+  queryClient.invalidateQueries({ queryKey: queryKeys.problems.system() });
 }

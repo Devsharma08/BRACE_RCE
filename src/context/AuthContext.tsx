@@ -1,16 +1,13 @@
-import { useContext, createContext, type ReactNode, useEffect } from 'react'
+import { useContext, createContext, useRef, type ReactNode, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, fetchCsrfToken } from '../config/api'
-import { useSocket } from './SocketContext';
+import { useSocket, clearSocketSingleton } from './SocketContext';
 
 interface User {
     id: string;
     email: string;
     username: string;
     avatarUrl?: string | null;
-    // Present on the auth-me payload. Optional so a cached/older payload that
-    // predates the field still type-checks — an absent role simply means
-    // "not an admin".
     role?: string | null;
 }
 
@@ -18,13 +15,6 @@ interface AuthContextType {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    /**
-     * Convenience flag derived from `user.role`.
-     *
-     * UX ONLY — this hides admin UI from non-admins. It is NOT a security
-     * boundary: every /api/admin/* route re-checks the role server-side and
-     * returns 403 regardless of what the client believes.
-     */
     isAdmin: boolean;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
@@ -32,11 +22,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({children}:{children:ReactNode}) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const queryClient = useQueryClient();
-    // Socket identity is attached at handshake time, so the stale connection
-    // must be torn down on logout — otherwise it keeps the old user's id.
     const { rawSocketRef } = useSocket();
+
+    // track previous userId to detect changes
+    const prevUserIdRef = useRef<string | null>(null);
 
     // Fetch CSRF token on app initialization
     useEffect(() => {
@@ -49,19 +40,31 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
         queryKey: ["auth-me"],
         queryFn: async () => {
             try {
-                const response: { data: { user: User } } = await api.get("/auth/me");
+                const response = await api.get("/auth/me");
                 return response.data?.user || null;
             } catch (error) {
                 console.error("Auth check failed:", error);
                 return null;
             }
         },
-        staleTime: 1000 * 60 * 15, // 15 mins cache for auth state
+        staleTime: 1000 * 60 * 15,
     });
 
+    // React to user identity changes: clear old socket when user switches/logs out
+    useEffect(() => {
+        const currentUserId = user?.id ?? null;
+        const previousUserId = prevUserIdRef.current;
+
+        if (currentUserId !== previousUserId) {
+            // User changed (login, logout, or account switch)
+            if (previousUserId) {
+                clearSocketSingleton(previousUserId);
+            }
+            prevUserIdRef.current = currentUserId;
+        }
+    }, [user?.id]);
+
     const isAuthenticated = !!user;
-    // Mirrors the server's canonical check in isAdminReq() — case-insensitive
-    // compare against 'ADMIN' — so client and server never disagree.
     const isAdmin = (user?.role ?? '').toUpperCase() === 'ADMIN';
 
     async function checkAuth() {
@@ -74,18 +77,16 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
-            // Fresh socket on next login gets the new identity at handshake.
             rawSocketRef.current?.disconnect();
             rawSocketRef.current = null;
+            if (user?.id) clearSocketSingleton(user.id);
             queryClient.setQueryData(["auth-me"], null);
-            // Full-slate reset — the next login belongs to a different user,
-            // so no socket- or user-scoped cache may survive.
             queryClient.invalidateQueries();
         }
     }
 
     return (
-        <AuthContext.Provider value={{user, logout, isAuthenticated, isAdmin, isLoading, checkAuth}}>
+        <AuthContext.Provider value={{ user, logout, isAuthenticated, isAdmin, isLoading, checkAuth }}>
             {children}
         </AuthContext.Provider>
     )
@@ -93,7 +94,7 @@ export const AuthProvider = ({children}:{children:ReactNode}) => {
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if(!context){
+    if (!context) {
         throw new Error("useAuth must be used within an AuthProvider");
     }
     return context
