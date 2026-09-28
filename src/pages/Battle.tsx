@@ -10,6 +10,7 @@ import OutputPanel from "../features/terminal/components/OutputPanel";
 import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
+import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
 import { Bot, Clock, LayoutTemplate, Loader2, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
@@ -1469,7 +1470,7 @@ export const Battle = () => {
           output={executionOutput}
           outputHeight={outputHeight}
           outputText={terminalOutput}
-          testCases={activeProblem?.test_cases || []}
+          testCases={buildProblemTestCases(activeProblem as any)}
           customInput={customInput}
           customInputActive={customInputActive}
           runningTestCaseIndex={runningTestCaseIndex}
