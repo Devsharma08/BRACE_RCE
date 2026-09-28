@@ -21,7 +21,9 @@ describe('NotesPanel Component', () => {
   });
 
   test('loads saved notes from localStorage on mount (global/default key)', () => {
-    localStorage.setItem('brace-global-notes', 'My algorithm strategy notes');
+    // New format includes timestamp and uses 'brace-notes-global' key
+    const stored = JSON.stringify({ value: 'My algorithm strategy notes', timestamp: Date.now() });
+    localStorage.setItem('brace-notes-global', stored);
     render(<NotesPanel isOpen={true} />);
     const textarea = screen.getByPlaceholderText(/Shared scratchpad/i) as HTMLTextAreaElement;
     expect(textarea.value).toBe('My algorithm strategy notes');
@@ -32,14 +34,16 @@ describe('NotesPanel Component', () => {
     const textarea = screen.getByPlaceholderText(/Shared scratchpad/i);
     fireEvent.change(textarea, { target: { value: 'New test note' } });
 
-    expect(localStorage.getItem('brace-global-notes')).toBe('New test note');
+    const stored = JSON.parse(localStorage.getItem('brace-notes-global') || '{}');
+    expect(stored.value).toBe('New test note');
+    expect(stored.timestamp).toBeDefined();
   });
 
   test('triggers onClose callback when close button is clicked', () => {
     const handleClose = vi.fn();
     render(<NotesPanel isOpen={true} onClose={handleClose} />);
     
-    const closeBtn = screen.getByTitle('Close Notes');
+    const closeBtn = screen.getByLabelText('Close notes panel');
     fireEvent.click(closeBtn);
 
     expect(handleClose).toHaveBeenCalledTimes(1);
@@ -60,13 +64,19 @@ describe('NotesPanel Component', () => {
     // Type into COMMON
     const commonTextarea = screen.getByPlaceholderText(/Shared scratchpad/i);
     fireEvent.change(commonTextarea, { target: { value: 'Common notes' } });
-    expect(localStorage.getItem('brace-notes-common-ev123')).toBe('Common notes');
+    
+    const commonStored = JSON.parse(localStorage.getItem('brace-notes-common-ev123') || '{}');
+    expect(commonStored.value).toBe('Common notes');
+    expect(commonStored.timestamp).toBeDefined();
 
     // Switch to P1
     fireEvent.click(screen.getByText('P1'));
     const p1Textarea = screen.getByPlaceholderText(/Notes for: Two Sum/i);
     fireEvent.change(p1Textarea, { target: { value: 'P1 notes' } });
-    expect(localStorage.getItem('brace-notes-problem-p1')).toBe('P1 notes');
+    
+    const p1Stored = JSON.parse(localStorage.getItem('brace-notes-problem-p1') || '{}');
+    expect(p1Stored.value).toBe('P1 notes');
+    expect(p1Stored.timestamp).toBeDefined();
 
     // clearEventNotes removes both
     clearEventNotes('ev123', ['p1', 'p2']);
@@ -74,4 +84,3 @@ describe('NotesPanel Component', () => {
     expect(localStorage.getItem('brace-notes-problem-p1')).toBeNull();
   });
 });
-

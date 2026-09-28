@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { StickyNote, X, BookOpen } from "lucide-react";
+import { getNote, setNote, clearEventNotes, clearAllNotes } from "../../utils/notesStorage";
 
 interface Problem {
   id: string;
@@ -15,15 +16,7 @@ interface NotesPanelProps {
   defaultOpen?: boolean;
 }
 
-const commonKey = (eventId?: string) =>
-  eventId ? `brace-notes-common-${eventId}` : "brace-global-notes";
-
-const problemKey = (problemId: string) => `brace-notes-problem-${problemId}`;
-
-export function clearEventNotes(eventId: string, problemIds: string[]) {
-  localStorage.removeItem(commonKey(eventId));
-  problemIds.forEach((id) => localStorage.removeItem(problemKey(id)));
-}
+export { clearEventNotes, clearAllNotes };
 
 export const NotesPanel = ({
   problems,
@@ -45,9 +38,9 @@ export const NotesPanel = ({
 
   useEffect(() => {
     const loaded: Record<string, string> = {};
-    loaded["COMMON"] = localStorage.getItem(commonKey(eventId)) || "";
+    loaded["COMMON"] = getNote('common', eventId || '');
     (problems || []).forEach((p) => {
-      loaded[p.id] = localStorage.getItem(problemKey(p.id)) || "";
+      loaded[p.id] = getNote('problem', p.id);
     });
     setNotes(loaded);
   }, [eventId, problems]);
@@ -57,9 +50,9 @@ export const NotesPanel = ({
       const val = e.target.value;
       setNotes((prev) => ({ ...prev, [activeTab]: val }));
       if (activeTab === "COMMON") {
-        localStorage.setItem(commonKey(eventId), val);
+        setNote('common', eventId || '', val);
       } else {
-        localStorage.setItem(problemKey(activeTab), val);
+        setNote('problem', activeTab, val);
       }
     },
     [activeTab, eventId],
@@ -95,7 +88,7 @@ export const NotesPanel = ({
           </div>
           <button
             onClick={handleClose}
-            title="Close Notes"
+            aria-label="Close notes panel"
             className="cursor-pointer rounded-btn p-1 text-subtle transition-colors hover:bg-surface-hover hover:text-fg"
           >
             <X className="w-4 h-4" />

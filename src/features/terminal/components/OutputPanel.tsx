@@ -153,7 +153,7 @@ const OutputPanel = ({
                 )}
                 {testCases.map((item, index) => (
                   <TestCaseCard
-                    key={`${item.input}-${index}`}
+                    key={index}
                     item={item}
                     index={index}
                     match={output?.details?.find((detail) => detail.testCaseIndex === index)}

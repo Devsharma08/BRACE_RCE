@@ -28,22 +28,27 @@ type MonacoIDEProps = {
   onCodeChange: (code: string) => void;
   onFormatMount?: (formatAction: () => void) => void;
   isDisabled?: boolean;
+  // Java class name from problem snippet (defaults to "Solution")
+  javaClassName?: string;
 };
 
-const JAVA_BOILERPLATE = [
-  "import java.util.*;",
-  "import java.io.*;",
-  "import java.math.*;",
-  "",
-  "class Solution {",
-  "    public static void main(String[] args) {",
-  "// --- DO NOT ALTER ABOVE THIS LINE ---",
-  "        // Your code here",
-  "    }",
-  "}",
-].join("\n");
+// Generate Java boilerplate with dynamic class name
+function getJavaBoilerplate(className: string = "Solution"): string {
+  return [
+    "import java.util.*;",
+    "import java.io.*;",
+    "import java.math.*;",
+    "",
+    `class ${className} {`,
+    "    public static void main(String[] args) {",
+    "// --- DO NOT ALTER ABOVE THIS LINE ---",
+    "        // Your code here",
+    "    }",
+    "}",
+  ].join("\n");
+}
 
-const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, onFormatMount, isDisabled }: MonacoIDEProps) => {
+const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, onFormatMount, isDisabled, javaClassName = "Solution" }: MonacoIDEProps) => {
   const editorRef = useRef<EditorInstance | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const lastFileKeyRef = useRef<string | null>(null);
@@ -51,6 +56,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
   const propsRef = useRef({ handleRunCode, language, oid });
 
   const isLocal = oid && oid.startsWith("local-");
+  const javaBoilerplate = getJavaBoilerplate(javaClassName);
 
   useEffect(() => {
     propsRef.current = { handleRunCode, language, oid };
@@ -148,7 +154,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
     });
 
     if (language === "java" && !editor.getValue() && !isLocal) {
-      editor.setValue(JAVA_BOILERPLATE);
+      editor.setValue(javaBoilerplate);
       applyJavaDecorations(editor, monaco);
     }
 
@@ -184,7 +190,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
 
     if (editor && monaco && oid) {
       const currentVal = editor.getValue();
-      const targetVal = code || (language === "java" ? JAVA_BOILERPLATE : "");
+      const targetVal = code || (language === "java" ? javaBoilerplate : "");
 
       if (lastFileKeyRef.current !== fileKey || targetVal !== currentVal) {
         lastFileKeyRef.current = fileKey;
@@ -207,7 +213,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
     if (editor && monaco) {
       if (code === "" || code === null) {
         if (language === "java" && !isLocal) {
-          editor.setValue(JAVA_BOILERPLATE);
+          editor.setValue(javaBoilerplate);
           applyJavaDecorations(editor, monaco);
         } else {
           decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
@@ -222,7 +228,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
       <Editor
         height="100%"
         language={language}
-        defaultValue={code || (language === "java" ? JAVA_BOILERPLATE : "")}
+        defaultValue={code || (language === "java" ? javaBoilerplate : "")}
         loading={
           <div className="flex h-full min-h-[220px] items-center justify-center gap-3 bg-editor-bg text-sm font-medium text-subtle">
             <Loader2 className="h-5 w-5 animate-spin text-accent-primary" />
