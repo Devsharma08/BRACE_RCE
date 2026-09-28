@@ -53,6 +53,9 @@ interface SocketContextType {
   isClicked: boolean;
   waitingTime: number;
   requestPresence: (userIds: string[]) => void;
+  // Friends presence
+  friends: Array<{ id: string; username: string; avatarUrl: string | null; isOnline: boolean }>;
+  setFriends: React.Dispatch<React.SetStateAction<Array<{ id: string; username: string; avatarUrl: string | null; isOnline: boolean }>>>;
   rawSocketRef: React.MutableRefObject<Socket | null>;
 }
 
@@ -136,6 +139,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const incomingChallenge = challengeQueue[0] ?? null;
   const [isClicked, setIsClicked] = useState<boolean>(false);
   const [waitingTime, setWaitingTime] = useState<number>(0);
+  // Friends presence state
+  const [friends, setFriends] = useState<Array<{ id: string; username: string; avatarUrl: string | null; isOnline: boolean }>>([]);
 
   // Local ticker to increment waiting seconds smoothly by 1 every second
   useEffect(() => {
@@ -325,6 +330,22 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socket.emit("join_matchmaking", { difficulty: queueDifficultyRef.current, waitingSeconds: waitingTimeRef.current });
     });
 
+    // Friend presence events
+    bind("user_online_status", (data: { userId: string; isOnline: boolean }) => {
+      setFriends((prev) =>
+        prev.map((f) => (f.id === data.userId ? { ...f, isOnline: data.isOnline } : f))
+      );
+    });
+
+    bind("presence_snapshot", (data: { users: Array<{ userId: string; isOnline: boolean }> }) => {
+      setFriends((prev) =>
+        prev.map((f) => {
+          const match = data.users.find((u) => u.userId === f.id);
+          return match ? { ...f, isOnline: match.isOnline } : f;
+        })
+      );
+    });
+
     return () => {
       for (const fn of cleanupFns) fn();
       socketCreatedRef.current = false;
@@ -462,6 +483,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         isClicked,
         waitingTime,
         requestPresence,
+        friends,
+        setFriends,
         rawSocketRef: socketRef,
       }}
     >

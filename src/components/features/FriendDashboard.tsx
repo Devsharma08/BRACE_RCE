@@ -45,7 +45,7 @@ interface FriendRequest {
 }
 
 export default function FriendsDashboard() {
-  const { sendDirectMessage, socket, requestPresence } = useSocket();
+  const { sendDirectMessage, socket, requestPresence, friends: socketFriends, setFriends } = useSocket();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
@@ -56,6 +56,12 @@ export default function FriendsDashboard() {
   const [challengeFriend, setChallengeFriend] = useState<Friend | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
+
+  // Update onlineIds from socket friends presence
+  useEffect(() => {
+    const online = socketFriends.filter(f => f.isOnline).map(f => f.id);
+    setOnlineIds(online);
+  }, [socketFriends]);
 
   const { data: friends = [], isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
