@@ -3,19 +3,10 @@ packages:
   - "server"
 
 allowBuilds:
-  '@prisma/engines': set this to true or false
-  '@scarf/scarf': set this to true or false
-  '@sentry/node-cpu-profiler': set this to true or false
-  bcrypt: set this to true or false
-  esbuild: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-
-onlyBuiltDependencies:
-  - "@prisma/engines"
-  - "bcrypt"
-  - "esbuild"
-  - "prisma"
-  - "@scarf/scarf"
-  - "@sentry/node-cpu-profiler"
-  - "protobufjs"
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@sentry/node-cpu-profiler': true
+  bcrypt: true
+  esbuild: true
+  prisma: true
+  protobufjs: true
