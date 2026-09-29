@@ -53,9 +53,9 @@ describe('CodeComparisonModal Component', () => {
     onReturnHome: vi.fn(),
   };
 
-  test('renders BATTLE ANALYSIS & CODE REVIEW header', () => {
+  test('renders the battle review heading', () => {
     render(<CodeComparisonModal {...defaultProps} />);
-    expect(screen.getByText('BATTLE ANALYSIS & CODE REVIEW')).toBeDefined();
+    expect(screen.getByText('Battle analysis & code review')).toBeDefined();
   });
 
   test('displays submitted code snippets for user and opponent', () => {
@@ -64,23 +64,37 @@ describe('CodeComparisonModal Component', () => {
     expect(screen.getByText('def solution(): return False')).toBeDefined();
   });
 
-  test('triggers onClose when [ CLOSE REVIEW ] button is clicked', () => {
+  test('triggers onClose when the close button is clicked', () => {
     const handleClose = vi.fn();
     render(<CodeComparisonModal {...defaultProps} onClose={handleClose} />);
 
-    const closeBtn = screen.getByText('[ CLOSE REVIEW ]');
-    fireEvent.click(closeBtn);
+    fireEvent.click(screen.getByLabelText('Close review'));
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
-  test('triggers onReturnHome when [ MAINFRAME ] button is clicked', () => {
+  test('triggers onReturnHome when the Mainframe button is clicked', () => {
     const handleReturnHome = vi.fn();
     render(<CodeComparisonModal {...defaultProps} onReturnHome={handleReturnHome} />);
 
-    const homeBtn = screen.getByText('[ MAINFRAME ]');
+    const homeBtn = screen.getByText('Mainframe');
     fireEvent.click(homeBtn);
 
     expect(handleReturnHome).toHaveBeenCalledTimes(1);
+  });
+
+  test('formats memory into MB and shows the opponent score', () => {
+    render(<CodeComparisonModal {...defaultProps} />);
+    // 12800 KB -> 12.5 MB, 15400 KB -> 15.0 MB
+    expect(screen.getByText('12.5 MB')).toBeDefined();
+    expect(screen.getByText('15.0 MB')).toBeDefined();
+    expect(screen.getByText('100')).toBeDefined();
+  });
+
+  test('keeps code panes scrollable instead of hiding the scrollbar', () => {
+    const { container } = render(<CodeComparisonModal {...defaultProps} />);
+    const panes = container.querySelectorAll('pre.themed-scroll');
+    expect(panes.length).toBe(2);
+    panes.forEach((pane) => expect(pane.className).not.toContain('scrollbar-hide'));
   });
 });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trophy, Copy, Check } from "lucide-react";
+import { Trophy, Copy, Check, X, Swords, Clock, MemoryStick, ListChecks, Home } from "lucide-react";
 
 interface Submission {
   id: string;
@@ -49,6 +49,73 @@ const getEffectiveSubmissions = (perf: PerformanceData | undefined): Submission[
   }];
 };
 
+/** "12.4 MB" / "820 KB" — raw `memoryKb` was rendered unformatted in the old grid. */
+const formatMemory = (kb?: number | null): string => {
+  if (!kb) return "N/A";
+  return kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+};
+
+const formatRuntime = (ms?: number | null): string => {
+  if (ms === undefined || ms === null) return "N/A";
+  return `${ms} ms`;
+};
+
+/** Thin wrapper so the two comparison columns stay byte-identical in markup. */
+const MetricTile = ({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  tone: string;
+}) => (
+  <div className="rounded-btn border border-subtle-line bg-base/60 px-2.5 py-2 text-center">
+    <span className="flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-widest text-faint">
+      <Icon className="h-3 w-3" />
+      {label}
+    </span>
+    <span className={`mt-1 block font-mono text-xs font-bold tabular-nums ${tone}`}>{value}</span>
+  </div>
+);
+
+const AttemptPicker = ({
+  submissions,
+  selected,
+  onSelect,
+  tone,
+}: {
+  submissions: Submission[];
+  selected?: Submission;
+  onSelect: (submission: Submission) => void;
+  tone: string;
+}) => (
+  <label className="flex shrink-0 items-center gap-1.5">
+    <span className="sr-only">Select attempt</span>
+    <select
+      value={selected?.id}
+      onChange={(e) => {
+        const next = submissions.find((s) => s.id === e.target.value);
+        if (next) onSelect(next);
+      }}
+      className={`max-w-[11rem] cursor-pointer rounded-btn border border-subtle-line bg-base px-2 py-1 font-mono text-[10px] text-fg outline-none transition-colors focus:border-accent-primary ${tone}`}
+    >
+      {submissions.map((s) => (
+        <option key={s.id} value={s.id}>
+          Attempt #{s.attemptNumber}
+          {s.isBestSubmission ? " (Best)" : ""} — {s.passedCase}/{s.totalCases}
+        </option>
+      ))}
+    </select>
+  </label>
+);
+
+/** Wash colour per side, shared by the header chip and the column border. */
+const washFor = (tone: "primary" | "danger") =>
+  tone === "primary" ? "bg-accent-primary/10" : "bg-accent-danger/10";
+
 export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
   currentUserId,
   performances = [],
@@ -89,140 +156,173 @@ export const CodeComparisonModal: React.FC<CodeComparisonModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const renderCodePane = (
+    heading: string,
+    submission: Submission | undefined,
+    tone: "primary" | "danger",
+    onCopy?: () => void,
+  ) => {
+    const border = tone === "primary" ? "border-accent-primary/30" : "border-accent-danger/30";
+    const accent = tone === "primary" ? "text-accent-primary" : "text-accent-danger";
+
+    return (
+      <div className={`flex min-h-0 flex-col overflow-hidden rounded-card border ${border} bg-surface`}>
+        <div className={`flex shrink-0 items-center justify-between gap-2 border-b ${border} ${washFor(tone)} px-4 py-2.5`}>
+          <span className={`truncate font-mono text-[10px] font-bold uppercase tracking-widest ${accent}`}>
+            {heading}
+          </span>
+          {onCopy && (
+            <button
+              type="button"
+              onClick={onCopy}
+              className="flex shrink-0 items-center gap-1 rounded-btn border border-subtle-line bg-base px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-subtle transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+            >
+              {copied ? <Check className="h-3 w-3 text-accent-success" /> : <Copy className="h-3 w-3" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          )}
+        </div>
+        {/* themed-scroll, not scrollbar-hide — long solutions were unreachable. */}
+        <pre className="themed-scroll min-h-0 flex-1 overflow-auto p-4 font-mono text-[11px] leading-relaxed text-fg">
+          {submission?.submittedCode || "// No submission recorded"}
+        </pre>
+      </div>
+    );
+  };
+
+  const renderColumn = (
+    title: string,
+    perf: PerformanceData | undefined,
+    submission: Submission | undefined,
+    submissions: Submission[],
+    onSelect: (s: Submission) => void,
+    tone: "primary" | "danger",
+  ) => {
+    const border = tone === "primary" ? "border-accent-primary/25" : "border-accent-danger/25";
+    const accent = tone === "primary" ? "text-accent-primary" : "text-accent-danger";
+    const allPassed =
+      submission != null && submission.totalCases > 0 && submission.passedCase === submission.totalCases;
+
+    return (
+      <div className={`flex flex-col gap-3 rounded-card border ${border} bg-surface p-4`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="flex min-w-0 items-center gap-2">
+            {tone === "primary" ? (
+              <Trophy className="h-3.5 w-3.5 shrink-0 text-accent-warning" />
+            ) : (
+              <Swords className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span className={`truncate font-mono text-xs font-bold uppercase tracking-widest ${accent}`}>
+              {title}
+            </span>
+            {submission?.isBestSubmission && (
+              <span className={`shrink-0 rounded-btn border ${border} ${washFor(tone)} px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest ${accent}`}>
+                Best
+              </span>
+            )}
+          </span>
+          {submissions.length > 0 && (
+            <AttemptPicker
+              submissions={submissions}
+              selected={submission}
+              onSelect={onSelect}
+              tone={tone === "primary" ? "focus:border-accent-primary" : "focus:border-accent-danger"}
+            />
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          <MetricTile icon={Clock} label="Runtime" value={formatRuntime(submission?.runtimeMs)} tone={accent} />
+          <MetricTile icon={MemoryStick} label="Memory" value={formatMemory(submission?.memoryKb)} tone={accent} />
+          <MetricTile
+            icon={ListChecks}
+            label="Cases"
+            value={`${submission?.passedCase ?? 0}/${submission?.totalCases ?? 0}`}
+            tone={allPassed ? "text-accent-success" : "text-accent-danger"}
+          />
+        </div>
+
+        {perf && (
+          <div className="flex items-center justify-between border-t border-subtle-line pt-2 text-[10px]">
+            <span className="uppercase tracking-widest text-faint">Battle score</span>
+            <span className={`font-mono font-bold tabular-nums ${accent}`}>{perf.score}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
   role="dialog"
   aria-modal="true"
   aria-label="Code comparison review"
-  className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto"
+  className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-base/80 p-4 backdrop-blur-md sm:p-6"
 >
-  <div className="bg-surface border border-accent-primary/30 rounded-card w-full max-w-6xl shadow-panel overflow-hidden flex flex-col max-h-[90vh]">
-    <div className="p-6 border-b border-subtle-line bg-surface-hover flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-mono font-bold text-accent-primary tracking-widest flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-accent-warning" /> BATTLE ANALYSIS & CODE REVIEW
-            </h2>
-            <p className="text-subtle text-xs font-sans mt-1">
-              Compare approaches, execution runtimes, and learn from opponent's optimal code.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-subtle-line bg-surface hover:bg-elevated text-subtle font-mono text-xs font-bold rounded-lg transition-all"
-            >
-              [ CLOSE REVIEW ]
-            </button>
-            <button
-              onClick={onReturnHome}
-              className="px-4 py-2 border border-accent-primary/50 bg-accent-primary/10 hover:bg-accent-primary text-accent-primary font-mono text-xs font-bold rounded-lg transition-all"
-            >
-              [ MAINFRAME ]
-            </button>
-          </div>
-        </div>
+  <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-card border border-subtle-line bg-surface shadow-panel">
+    <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-subtle-line px-5 py-4">
+      <div className="min-w-0">
+        <h2 className="flex items-center gap-2 font-mono text-sm font-bold uppercase tracking-[0.2em] text-fg">
+          <Trophy className="h-4 w-4 text-accent-warning" />
+          Battle analysis &amp; code review
+        </h2>
+        <p className="mt-1 font-sans text-[11px] leading-relaxed text-subtle">
+          Compare approaches, runtimes and test-case coverage from your previous battle.
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onReturnHome}
+          className="flex items-center gap-1.5 rounded-btn border border-subtle-line bg-base px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-subtle transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Mainframe
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close review"
+          className="rounded-btn border border-subtle-line bg-base p-2 text-subtle transition-colors hover:border-accent-danger/40 hover:text-accent-danger"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
 
-        {/* COMPARATIVE CARDS */}
-        <div className="grid grid-cols-2 gap-6 p-6 border-b border-subtle-line bg-surface-hover">
-          {/* MY METRICS */}
-          <div className="bg-surface-hover border border-accent-primary/20 rounded-xl p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-sm font-bold text-accent-primary flex items-center gap-2">
-                YOUR SUBMISSION {selectedMySub?.isBestSubmission && <span className="text-[10px] bg-accent-primary/20 text-accent-primary px-2 py-0.5 rounded">BEST</span>}
-              </span>
-              {/* Attempt Selector */}
-              <select
-                value={selectedMySub?.id}
-                onChange={(e) => setSelectedMySub(mySubmissions.find(s => s.id === e.target.value))}
-                className="bg-base border border-subtle-line text-subtle text-xs rounded px-2 py-1 font-mono"
-              >
-                {mySubmissions.map(s => (
-                  <option key={s.id} value={s.id}>
-                    Attempt #{s.attemptNumber} {s.isBestSubmission ? "(Best)" : ""} - {s.passedCase}/{s.totalCases}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">AVG RUNTIME</span>
-                <span className="text-accent-primary font-bold">{selectedMySub?.runtimeMs !== undefined && selectedMySub?.runtimeMs !== null ? `${selectedMySub.runtimeMs} ms` : "N/A"}</span>
-              </div>
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">AVG MEMORY</span>
-                <span className="text-accent-primary font-bold">{selectedMySub?.memoryKb ? (selectedMySub.memoryKb >= 1024 ? `${(selectedMySub.memoryKb / 1024).toFixed(1)} MB` : `${selectedMySub.memoryKb} KB`) : "N/A"}</span>
-              </div>
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">TEST CASES</span>
-                <span className="text-accent-success font-bold">{selectedMySub?.passedCase}/{selectedMySub?.totalCases}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* OPPONENT METRICS */}
-          <div className="bg-surface-hover border border-accent-danger/20 rounded-xl p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-sm font-bold text-accent-danger flex items-center gap-2">
-                OPPONENT ({oppPerf?.user?.username || "OPPONENT"}) {selectedOppSub?.isBestSubmission && <span className="text-[10px] bg-accent-danger/20 text-accent-danger px-2 py-0.5 rounded">BEST</span>}
-              </span>
-              {/* Attempt Selector */}
-              <select
-                value={selectedOppSub?.id}
-                onChange={(e) => setSelectedOppSub(oppSubmissions.find(s => s.id === e.target.value))}
-                className="bg-base border border-subtle-line text-subtle text-xs rounded px-2 py-1 font-mono"
-              >
-                {oppSubmissions.map(s => (
-                  <option key={s.id} value={s.id}>
-                    Attempt #{s.attemptNumber} {s.isBestSubmission ? "(Best)" : ""} - {s.passedCase}/{s.totalCases}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">AVG RUNTIME</span>
-                <span className="text-accent-danger font-bold">{selectedOppSub?.runtimeMs !== undefined && selectedOppSub?.runtimeMs !== null ? `${selectedOppSub.runtimeMs} ms` : "N/A"}</span>
-              </div>
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">AVG MEMORY</span>
-                <span className="text-accent-danger font-bold">{selectedOppSub?.memoryKb ? (selectedOppSub.memoryKb >= 1024 ? `${(selectedOppSub.memoryKb / 1024).toFixed(1)} MB` : `${selectedOppSub.memoryKb} KB`) : "N/A"}</span>
-              </div>
-              <div className="bg-surface-hover p-2 rounded">
-                <span className="text-faint block text-[10px]">TEST CASES</span>
-                <span className="text-accent-success font-bold">{selectedOppSub?.passedCase}/{selectedOppSub?.totalCases}</span>
-              </div>
-            </div>
-          </div>
+        {/* COMPARATIVE SUMMARY */}
+        <div className="themed-scroll grid shrink-0 grid-cols-1 gap-3 overflow-y-auto border-b border-subtle-line bg-base/40 p-4 lg:grid-cols-2">
+          {renderColumn(
+            "Your submission",
+            myPerf,
+            selectedMySub,
+            mySubmissions,
+            setSelectedMySub,
+            "primary",
+          )}
+          {renderColumn(
+            `Opponent — ${oppPerf?.user?.username || "unknown"}`,
+            oppPerf,
+            selectedOppSub,
+            oppSubmissions,
+            setSelectedOppSub,
+            "danger",
+          )}
         </div>
 
         {/* SIDE BY SIDE CODE VIEW */}
-        <div className="grid grid-cols-2 gap-4 p-6 flex-1 min-h-0 overflow-hidden">
-          {/* MY CODE */}
-          <div className="flex flex-col border border-accent-primary/20 rounded-xl bg-surface-hover overflow-hidden">
-            <div className="px-4 py-2 bg-accent-primary/10 border-b border-accent-primary/20 font-mono text-xs text-accent-primary font-bold">
-              YOUR CODE ({selectedMySub?.language || "javascript"})
-            </div>
-            <pre className="p-4 flex-1 overflow-auto font-mono text-xs text-fg leading-relaxed scrollbar-hide">
-              {selectedMySub?.submittedCode || "// No submission recorded"}
-            </pre>
-          </div>
-
-          {/* OPPONENT CODE */}
-          <div className="flex flex-col border border-accent-danger/20 rounded-xl bg-surface-hover overflow-hidden relative">
-            <div className="px-4 py-2 bg-accent-danger/10 border-b border-accent-danger/20 font-mono text-xs text-accent-danger font-bold flex justify-between items-center">
-              <span>OPPONENT CODE ({selectedOppSub?.language || "javascript"})</span>
-              <button
-                onClick={handleCopyOpponentCode}
-                className="text-[10px] bg-surface-hover hover:bg-surface-hover text-fg px-2 py-1 rounded flex items-center gap-1 transition-all"
-              >
-                {copied ? <Check className="w-3 h-3 text-accent-success" /> : <Copy className="w-3 h-3" />}
-                {copied ? "COPIED" : "COPY CODE"}
-              </button>
-            </div>
-            <pre className="p-4 flex-1 overflow-auto font-mono text-xs text-fg leading-relaxed scrollbar-hide">
-              {selectedOppSub?.submittedCode || "// No submission recorded"}
-            </pre>
-          </div>
+        <div className="themed-scroll grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-4 lg:grid-cols-2">
+          {renderCodePane(
+            `Your code${selectedMySub?.language ? ` (${selectedMySub.language})` : ""}`,
+            selectedMySub,
+            "primary",
+          )}
+          {renderCodePane(
+            `Opponent code${selectedOppSub?.language ? ` (${selectedOppSub.language})` : ""}`,
+            selectedOppSub,
+            "danger",
+            selectedOppSub?.submittedCode ? handleCopyOpponentCode : undefined,
+          )}
         </div>
 
       </div>
