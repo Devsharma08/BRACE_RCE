@@ -34,12 +34,29 @@ function getRequestKey(request: ExecuteCodeRequest): string {
   return `${request.oid}|${request.mode}|${hashCode(request.code)}`;
 }
 
-// Fetch all system problems (with solved status, code_snippets, test_cases)
-export const fetchSystemProblems = async (signal?: AbortSignal) => {
-  const response = await fetch(`${API_BASE_URL}/problems/system`, { signal, credentials: "include" });
-  if (!response.ok) throw new Error("Failed to load problems");
-  const data = await readJson<{ status: string; problems: any[] }>(response);
-  return data.problems;
+// Fetch all system problems (with solved status, code_snippets, test_cases).
+// The list endpoint is paginated (default limit 25) — page through until the
+// server returns fewer rows than requested so the terminal sidebar always sees
+// the full catalog, not just the first page.
+export const fetchSystemProblems = async (
+  signal?: AbortSignal,
+  pageSize = 100,
+) => {
+  const all: any[] = [];
+  let page = 1;
+  for (;;) {
+    const response = await fetch(
+      `${API_BASE_URL}/problems/system?page=${page}&limit=${pageSize}`,
+      { signal, credentials: "include" },
+    );
+    if (!response.ok) throw new Error("Failed to load problems");
+    const data = await readJson<{ status: string; problems: any[] }>(response);
+    const batch = Array.isArray(data.problems) ? data.problems : [];
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+    page += 1;
+  }
+  return all;
 };
 
 // Fetch a single problem by ID or github_oid

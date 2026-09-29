@@ -24,7 +24,7 @@ import {
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
-import { invalidateProblemQueries } from "../utils/problemCache";
+import { invalidateProblemQueries, fetchAllProblems } from "../utils/problemCache";
 import { toast } from "sonner";
 import {
   TestCaseGeneratorPanel,
@@ -157,11 +157,13 @@ const CreateRoom = () => {
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
-      const [sysRes, customRes] = await Promise.all([
-        api.get("/problems/system"),
-        api.get("/problems/custom"),
+      // Paginated endpoints — fetch every page so room creation sees the same
+      // full catalog as the Terminal sidebar.
+      const [sysProblems, customProblems] = await Promise.all([
+        fetchAllProblems("/problems/system"),
+        fetchAllProblems("/problems/custom"),
       ]);
-      return [...sysRes.data.problems, ...customRes.data.problems] as Problem[];
+      return [...sysProblems, ...customProblems] as Problem[];
     },
   });
 
@@ -379,7 +381,7 @@ const CreateRoom = () => {
               <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
                 <Swords size={14} aria-hidden /> Room deployment / configuration
               </div>
-              <h1 className="mt-3 font-mono text-3xl font-black tracking-[-0.04em] text-fg md:text-5xl">
+              <h1 className="mt-3 font-mono text-3xl font-black tracking-[-0.04em] text-fg md:text-4xl">
                 Configure the <span className="text-accent-primary">operation.</span>
               </h1>
             </div>

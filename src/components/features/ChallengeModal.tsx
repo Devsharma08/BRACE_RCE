@@ -2,9 +2,9 @@ import { useState,useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dices, FileCode2, Swords, X } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "../../config/api";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
+import { fetchAllProblems } from "../../utils/problemCache";
 
 export type ChallengeMode = "RANDOM" | "CUSTOM";
 
@@ -38,14 +38,14 @@ export function ChallengeModal({ friend, open, onClose }: {
     // Static problem definitions — refreshed only when progress changes.
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
-    queryFn: async () => (await api.get("/problems/system")).data?.problems ?? [],
+    queryFn: async () => fetchAllProblems<ProblemOption>("/problems/system"),
   });
   const { data: customProblems = [] } = useQuery<ProblemOption[]>({
     queryKey: ["challenge-custom-problems"],
     enabled: open && mode === "CUSTOM",
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
-    queryFn: async () => (await api.get("/problems/custom")).data?.problems ?? [],
+    queryFn: async () => fetchAllProblems<ProblemOption>("/problems/custom"),
   });
 
   if (!open || !friend) return null;
