@@ -45,7 +45,7 @@ class Friends {
     // SEARCH USER
     async searchUsers(req: AuthRequest, res: Response) {
         try {
-            const query = req.query.q as string;
+            const query = (req.query.q as string)?.trim();
             const userId = (req as AuthRequest).userId;
             if (!query) return res.json({ users: [] });
 
@@ -56,15 +56,54 @@ class Friends {
                 orderBy: { username: 'asc' }
             });
 
-            // Find all pending requests sent by this user to the searched users
-            const requests = await prisma.friendRequest.findMany({
-                where: { senderId: userId as string, receiverId: { in: users.map((u: any) => u.id) }, status: "PENDING" }
-            });
+            const candidateIds = users.map((u: any) => u.id);
 
-            // Map over results to inject a "requestSent" flag
-            const userWithReqs = users.map((u: any) => ({
+            // Anyone already connected is not a discovery target — returning them
+            // just filled the panel with rows the client can only label "Friend".
+            const existingFriends = candidateIds.length
+                ? await prisma.user.findUnique({
+                    where: { id: userId as string },
+                    select: { friends: { select: { id: true } } },
+                })
+                : null;
+            const friendIds = new Set((existingFriends?.friends ?? []).map((f: any) => f.id));
+
+            // Same for blocked accounts: sending them a request would only 403.
+            const blocks = candidateIds.length
+                ? await prisma.friendRequest.findMany({
+                    where: {
+                        status: "BLOCK",
+                        OR: [
+                            { senderId: userId as string, receiverId: { in: candidateIds } },
+                            { receiverId: userId as string, senderId: { in: candidateIds } },
+                        ],
+                    },
+                    select: { senderId: true, receiverId: true },
+                })
+                : [];
+            const blockedIds = new Set(
+                blocks.flatMap((b: any) => [b.senderId, b.receiverId]) as string[],
+            );
+
+            const searchable = users.filter(
+                (u: any) => !friendIds.has(u.id) && !blockedIds.has(u.id),
+            );
+
+            // Pending requests already sent BY this user, so the panel can show
+            // "Requested" instead of a second, server-rejected send.
+            const requests = searchable.length
+                ? await prisma.friendRequest.findMany({
+                    where: {
+                        senderId: userId as string,
+                        receiverId: { in: searchable.map((u: any) => u.id) },
+                        status: "PENDING",
+                    },
+                })
+                : [];
+
+            const userWithReqs = searchable.map((u: any) => ({
                 ...u,
-                requestSent: requests.some((r: any) => r.receiverId === u.id)
+                requestSent: requests.some((r: any) => r.receiverId === u.id),
             }));
 
             return res.json({ users: userWithReqs, user: userWithReqs });
