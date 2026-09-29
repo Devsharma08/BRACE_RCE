@@ -188,9 +188,17 @@ export const seedSystemProblemsSchema = z.object({
 });
 
 // Code execution schemas
+// Frontend SupportedLanguage uses "c++"/"c11"; normalize to the execution
+// engine's ids ("cpp"/"c") before validation so the C++ editor selection
+// stops failing zod validation with a 400 on every RUN/SUBMIT.
+const executionLanguageSchema = z.preprocess(
+  (value) => (value === "c++" ? "cpp" : value === "c11" ? "c" : value),
+  z.enum(["javascript", "python", "java", "cpp", "c"]),
+);
+
 export const executeCodeSchema = z.object({
   code: z.string().min(1, "Code is required").max(100_000, "Code exceeds 100KB limit"),
-  language: z.enum(["javascript", "python", "java", "cpp", "c"]),
+  language: executionLanguageSchema,
   oid: z.string().optional(),
   mode: z.enum(["RUN", "SUBMIT"]).default("RUN"),
   customInput: z.string().optional(),

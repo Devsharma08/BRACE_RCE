@@ -116,6 +116,7 @@ const getLanguage = (language: unknown): SupportedLanguage => {
     case 'javascript':
     case 'js': return 'javascript';
     case 'java': return 'java';
+    case 'c11':
     case 'c': return 'c';
     default: return 'javascript';
   }

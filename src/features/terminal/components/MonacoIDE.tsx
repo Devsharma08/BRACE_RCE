@@ -32,6 +32,28 @@ type MonacoIDEProps = {
   javaClassName?: string;
 };
 
+// Monaco language ids differ from our SupportedLanguage union ("c++" is "cpp").
+// Passing "c++" straight through makes Monaco fall back to plaintext — that is
+// the blank/broken C++ editor. "c11" has no Monaco id either, so map to "c".
+export const MONACO_LANGUAGE_IDS: Record<SupportedLanguage, string> = {
+  javascript: "javascript",
+  python: "python",
+  java: "java",
+  c: "c",
+  "c++": "cpp",
+  c11: "c",
+};
+
+// Unique Monaco model paths: @monaco-editor/react reuses a model per `path`.
+// Reusing one path across problems/languages lets a stale model win and the
+// editor renders the wrong (or empty) content.
+export const monacoModelPath = (fileKey: string, language: SupportedLanguage): string => {
+  const monacoLanguage = MONACO_LANGUAGE_IDS[language] ?? language;
+  const safeKey = String(fileKey || "untitled").replace(/[^a-zA-Z0-9_-]/g, "-");
+  const ext = monacoLanguage === "cpp" ? "cpp" : monacoLanguage;
+  return `problem-${safeKey}.${ext}`;
+};
+
 // Generate Java boilerplate with dynamic class name
 function getJavaBoilerplate(className: string = "Solution"): string {
   return [
@@ -54,6 +76,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
   const lastFileKeyRef = useRef<string | null>(null);
   const decorationsRef = useRef<string[]>([]); // Prevents visual decoration memory leaks
   const propsRef = useRef({ handleRunCode, language, oid });
+  const monacoLanguage = MONACO_LANGUAGE_IDS[language] ?? language;
 
   const isLocal = oid && oid.startsWith("local-");
   const javaBoilerplate = getJavaBoilerplate(javaClassName);
@@ -194,7 +217,10 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
 
       if (lastFileKeyRef.current !== fileKey || targetVal !== currentVal) {
         lastFileKeyRef.current = fileKey;
+        // Switching language/model resets the view state; keep the cursor sane.
         editor.setValue(targetVal);
+        editor.setPosition({ lineNumber: 1, column: 1 });
+        editor.revealLine(1);
 
         if (language === "java" && !isLocal) {
           applyJavaDecorations(editor, monaco);
@@ -203,7 +229,7 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
         }
       }
     }
-  }, [fileKey, oid, code, language, isLocal]);
+  }, [fileKey, oid, code, language, isLocal, javaBoilerplate]);
 
   // 🔄 Monitor Context clearing/reset actions safely
   useEffect(() => {
@@ -227,7 +253,8 @@ const MonacoIDE = ({ handleRunCode, language, code, oid, fileKey, onCodeChange, 
     <div className="flex-1 w-full h-full min-h-0 overflow-hidden border border-subtle-line bg-editor-bg sm:rounded-xl" style={{ minHeight: 300 }}>
       <Editor
         height="100%"
-        language={language}
+        language={monacoLanguage}
+        path={monacoModelPath(fileKey, language)}
         defaultValue={code || (language === "java" ? javaBoilerplate : "")}
         loading={
           <div className="flex h-full min-h-[220px] items-center justify-center gap-3 bg-editor-bg text-sm font-medium text-subtle">
