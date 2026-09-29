@@ -38,7 +38,11 @@ class Problems {
             const cacheKey = systemKey(userId, page, limit);
 
             const cached = await getCached<any[]>(cacheKey);
-            if (cached) {
+            // An empty array is a truthy cache hit — but an empty catalog was
+            // almost certainly captured mid-reseed (the seeder wipes the table
+            // first). Serving it would show "NO PROBLEMS FOUND" for the whole
+            // TTL, so only trust non-empty snapshots and re-query otherwise.
+            if (cached && cached.length > 0) {
                 return res.json({
                     status: "success",
                     problems: cached.map((problem) => withDisplayProblemName(problem)),
@@ -103,7 +107,10 @@ class Problems {
                 };
             });
 
-            await setCached(cacheKey, enriched, PROBLEMS_CACHE_TTL_SECONDS);
+            // Never cache an empty catalog (see the read-side note above).
+            if (enriched.length > 0) {
+                await setCached(cacheKey, enriched, PROBLEMS_CACHE_TTL_SECONDS);
+            }
 
             return res.json({ 
                 status: "success", 

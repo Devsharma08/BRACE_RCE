@@ -107,27 +107,40 @@ async function main() {
   // from problems_seed.json. leetcodeProblems.ts only carries plain one-liners;
   // PracticeSidebar/Battle render problem_definition as HTML and expect the
   // examples to be embedded there.
+  //
+  // Match by canonical TITLE, never by problem_number: leetcodeProblems.ts
+  // numbers rows with a local sequence (1..34, 100..189) while
+  // problems_seed.json uses real LeetCode numbers, so a number-based join
+  // spliced a *different* problem's description (examples/constraints) onto
+  // the row — the title, statement and test cases no longer matched each
+  // other. Rows with no JSON title match keep their own definition.
   try {
     const richPath = path.resolve(process.cwd(), "../problems_seed.json");
     const richData = JSON.parse(fs.readFileSync(richPath, "utf8"));
-    const richByNum = new Map<number, string>(
+    const normTitle = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const richByTitle = new Map<string, string>(
       (richData.problems ?? [])
-        .filter((rp: { problem_number?: number; problem_definition?: string }) =>
-          rp?.problem_number != null &&
+        .filter((rp: { name?: string; problem_definition?: string }) =>
+          typeof rp?.name === "string" &&
           typeof rp.problem_definition === "string" &&
           rp.problem_definition.includes("<"))
-        .map((rp: { problem_number: number; problem_definition: string }) => [rp.problem_number, rp.problem_definition])
+        .map((rp: { name: string; problem_definition: string }) => [normTitle(rp.name), rp.problem_definition])
     );
     let overlaid = 0;
-    const seeded = await prisma.problem.findMany({ select: { id: true, problem_number: true } });
+    let kept = 0;
+    const seeded = await prisma.problem.findMany({ select: { id: true, name: true, problem_number: true } });
     for (const prob of seeded) {
-      const richDef = prob.problem_number != null ? richByNum.get(prob.problem_number) : undefined;
+      const richDef = richByTitle.get(normTitle(prob.name));
       if (richDef) {
         await prisma.problem.update({ where: { id: prob.id }, data: { problem_definition: richDef } });
         overlaid++;
+      } else {
+        kept++;
       }
     }
-    console.log(`📝 Overlaid rich descriptions: ${overlaid} (${richByNum.size} available in JSON)`);
+    console.log(
+      `📝 Overlaid rich descriptions: ${overlaid} matched by title, ${kept} kept as-is (${richByTitle.size} rich entries in JSON)`
+    );
   } catch {
     console.warn("⚠️  problems_seed.json not found — skipping rich description overlay");
   }

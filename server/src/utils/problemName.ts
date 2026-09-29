@@ -65,10 +65,19 @@ export const displayProblemName = (
   const encodedNumber = legacyNumber(name);
   if (encodedNumber === undefined) return name;
 
+  // Prefer the title embedded in the row's OWN definition ("<Title> - <body>"):
+  // it always describes this row's test cases/snippets. The seed-JSON index is
+  // only a fallback because `problem_number` follows leetcodeProblems.ts's
+  // local sequence (1..34 / 100..189), which does NOT match the seed JSON's
+  // real LeetCode numbering — indexing by it can return a different
+  // problem's title.
+  const ownTitle = titleFromDefinition(definition);
+  if (ownTitle) return ownTitle;
+
   const canonical = typeof problemNumber === "number"
     ? loadTitleIndex().get(problemNumber)
     : loadTitleIndex().get(encodedNumber);
-  return canonical ?? titleFromDefinition(definition) ?? name;
+  return canonical ?? name;
 };
 
 type ProblemNameFields = {
