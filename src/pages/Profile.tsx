@@ -245,27 +245,36 @@ const Profile = () => {
                         </div>
                         <div className="flex items-center gap-3">
                           <span
-                            className={`text-[10px] font-bold ${
+                            className={`text-[10px] font-bold uppercase tracking-widest ${
                               isWin ? "text-accent-success" : "text-accent-danger"
                             }`}
                           >
-                            {isWin ? "VICTORY" : "DEFEAT"}
+                            {isWin ? "Victory" : "Defeat"}
                           </span>
-                          {(record.event?.performances || record.submissions) && (
-                            <button
-                              onClick={() => {
-                                const perfsToPass =
-                                  record.event?.performances ||
-                                  record.submissions ||
-                                  [];
-                                setSelectedPerformances(perfsToPass);
-                              }}
-                              className="flex items-center gap-1 border border-line bg-surface px-3 py-1.5 text-[9px] uppercase tracking-widest text-subtle transition hover:border-accent-primary/40 hover:text-accent-primary"
-                            >
-                              <Code size={12} />
-                              Review
-                            </button>
+                          {record.score != null && (
+                            <span className="font-mono text-[10px] tabular-nums text-faint">
+                              {record.score} pts
+                            </span>
                           )}
+                          {record.timeTakenMs != null && (
+                            <span className="flex items-center gap-1 font-mono text-[10px] tabular-nums text-faint">
+                              <Clock size={10} />
+                              {Math.round(record.timeTakenMs / 1000)}s
+                            </span>
+                          )}
+                          <button
+                            onClick={() => {
+                              const perfsToPass =
+                                record.event?.performances ||
+                                record.submissions ||
+                                [];
+                              setSelectedPerformances(perfsToPass);
+                            }}
+                            className="flex items-center gap-1.5 rounded-btn border border-subtle-line bg-base px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-subtle transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
+                          >
+                            <Code size={12} />
+                            Review
+                          </button>
                         </div>
                       </div>
                     );
