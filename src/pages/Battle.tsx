@@ -22,6 +22,7 @@ import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
 import { invalidateProblemQueries } from "../utils/problemCache";
+import { stripDuplicateExamples } from "../features/terminal/components/PracticeSidebar";
 import DOMPurify from "dompurify";
 
 
@@ -33,18 +34,10 @@ interface BattleMessage {
 }
 
 /**
- * Examples ship inside problem_definition HTML already — strip any embedded
- * "<h3>Example N</h3> … Input:/Output:" blocks so the panel never renders
- * examples twice (once in statement, once as separate cards).
+ * Shared with Terminal sidebar — re-exported so both arenas strip the same
+ * embedded "<strong class=example>Example N:</strong> … <pre>…</pre>" blocks.
  */
-export const stripDuplicateExamples = (raw?: string | null): string => {
-  if (!raw) return "";
-  return raw
-    .replace(/<h3[^>]*>\s*Example\s+\d+\s*<\/h3>[\s\S]*?(?=<h3[^>]*>|$)/gi, (block) =>
-      /Input:|Output:|Explanation:/i.test(block) ? "" : block,
-    )
-    .trim();
-};
+export { stripDuplicateExamples };
 
 const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
@@ -112,8 +105,9 @@ const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) =
 
 const getProblemSnippet = (problem: any, lang: SupportedLanguage) => {
   if (!problem) return getLanguageStarterCode(lang);
+  const normalizedLang = lang === "c++" ? "cpp" : lang.toLowerCase();
   const snippet = problem.code_snippets?.find(
-    (s: any) => s.language?.toLowerCase() === lang.toLowerCase() || (lang === "c++" && s.language?.toLowerCase() === "cpp")
+    (s: any) => s.language?.toLowerCase() === normalizedLang
   );
   return snippet?.code || getLanguageStarterCode(lang, problem.name);
 };

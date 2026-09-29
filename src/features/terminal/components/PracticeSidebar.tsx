@@ -12,18 +12,32 @@ import {
   AlignLeft,
   Lightbulb,
   Lock,
-  FlaskConical,
   Tag,
 } from "lucide-react";
 
 /**
- * Examples ship inside problem_definition HTML already — strip any embedded
- * "<h3>Example N</h3> … Input:/Output:" blocks so the panel never renders
- * examples twice (once in statement, once as separate cards).
+ * Shared problem-statement helpers.
+ *
+ * The Terminal problem panel renders the statement AS-IS — Examples included —
+ * and no longer renders a second "TEST CASES" list built from the public cases:
+ * those cards carried the same input/expected pairs as the worked examples, so
+ * the description showed the same data twice. This helper is kept for the
+ * Battle arena, which still de-duplicates its compact statement.
+ *
+ * The seed JSON carries the statement as one HTML blob that embeds the
+ * "<strong class=example>Example N:</strong> … <pre>…</pre>" blocks. Some rows
+ * insert tags between the marker and the block (e.g. Example 1 wrapped in <p>
+ * before the <pre>), so allow any markup between them.
  */
-const stripDuplicateExamples = (raw?: string | null): string => {
+export const stripDuplicateExamples = (raw?: string | null): string => {
   if (!raw) return "";
   return raw
+    // Real seed format: <strong class="example">Example N:</strong> … <pre>…</pre>
+    .replace(
+      /<strong[^>]*>\s*Example[\s\S]*?<\/strong>\s*[\s\S]*?(<pre>[\s\S]*?<\/pre>)?/gi,
+      (block) => (/Input|Output|Explanation/i.test(block) ? "" : block),
+    )
+    // Legacy <h3>Example N</h3> format kept for older rows
     .replace(/<h3[^>]*>\s*Example\s+\d+\s*<\/h3>[\s\S]*?(?=<h3[^>]*>|$)/gi, (block) =>
       /Input:|Output:|Explanation:/i.test(block) ? "" : block,
     )
@@ -137,7 +151,6 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
 
   const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
   const diffClass = getDiffClass(diff);
-  const publicCases = (problem.test_cases || []).filter((tc) => tc.is_public);
 
   return (
     <div className="problem-contain flex flex-col h-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 gap-4 themed-scroll">
@@ -176,48 +189,16 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         {problem.problem_definition && problem.problem_definition.trim().length > 0 ? (
           <div
             className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(stripDuplicateExamples(problem.problem_definition)) }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problem.problem_definition) }}
           />
         ) : (
           <p className="text-xs text-faint italic">Problem description unavailable.</p>
         )}
       </div>
 
-      {/* Public Test Cases — explicit section: descriptions are plain text for some
-          problems, so never rely solely on examples embedded in the statement HTML. */}
-      {publicCases.length > 0 && (
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-2">
-            <FlaskConical className="w-3 h-3" /> TEST CASES
-            <span className="ml-auto text-[8px] text-faint normal-case tracking-normal">
-              {publicCases.length} CASE{publicCases.length !== 1 ? "S" : ""}
-            </span>
-          </div>
-          <div className="flex flex-col gap-2">
-            {publicCases.map((tc, i) => (
-              <div key={tc.id} className="border border-subtle-line bg-surface-hover overflow-hidden">
-                <div className="px-3 py-1 border-b border-subtle-line text-[8px] font-bold text-faint uppercase tracking-widest">
-                  CASE #{i + 1}
-                </div>
-                <div className="px-3 py-2 space-y-2">
-                  <div className="min-w-0">
-                    <span className="text-[8px] text-accent-success/70 font-bold uppercase tracking-widest block mb-1">
-                      INPUT
-                    </span>
-                    <pre className="text-[10px] text-subtle font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{tc.input || "(empty)"}</pre>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[8px] text-accent-primary/70 font-bold uppercase tracking-widest block mb-1">
-                      EXPECTED_OUTPUT
-                    </span>
-                    <pre className="text-[10px] text-fg font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{tc.expectedOutput}</pre>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Worked Examples live inside the statement rendered above. The old
+          "TEST CASES" card list (built from the public cases) was removed: it
+          repeated the very same input/expected pairs a second time. */}
 
       {/* Hints */}
       <HintsAccordion hints={problem.problem_hints} />
