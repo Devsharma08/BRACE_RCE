@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Check, X, AlertTriangle } from "lucide-react";
 import type { ExecutionDetail, ExecutionResult, ProblemTestCase } from "../types";
 import type { MouseEvent } from "react";
@@ -93,6 +93,28 @@ const OutputPanel = ({
 
   const [activeDiagTab, setActiveDiagTab] = useState<"LOGS" | "TESTS">("LOGS");
 
+  // The runtime executes the FULL case set (public + hidden) and returns one
+  // detail row per case, while the API only ever ships the public cases to the
+  // client. Mapping over `testCases` alone rendered 2 cards for a "10/10" run,
+  // so render the union of both sources keyed by testCaseIndex.
+  const renderedCases = useMemo(() => {
+    const details = isCustomInputRun ? [] : output?.details ?? [];
+    const byIndex = new Map(details.map((detail) => [detail.testCaseIndex, detail]));
+    const lastDetailIndex = details.reduce(
+      (max, detail) => Math.max(max, detail.testCaseIndex),
+      -1,
+    );
+    const count = Math.max(testCases.length, lastDetailIndex + 1);
+
+    return Array.from({ length: count }, (_, index) => ({
+      item:
+        testCases[index] ??
+        { input: "", expectedOutput: byIndex.get(index)?.expectedOutput ?? "" },
+      match: byIndex.get(index),
+      isHidden: testCases[index] === undefined,
+    }));
+  }, [isCustomInputRun, output?.details, testCases]);
+
   return (
     <div className="flex h-full flex-col border-t border-subtle-line bg-terminal-bg">
       {/* Resizer handle */}
@@ -111,8 +133,10 @@ const OutputPanel = ({
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 themed-scroll">
+      {/* Content — overscroll-contain keeps wheel/trackpad scrolling from
+          chaining to the page, and a stable gutter keeps the themed scrollbar
+          visible instead of flashing over the cards. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 themed-scroll [scrollbar-gutter:stable]">
         {isExecuting && (
           <div className="flex items-center gap-2 p-3 text-accent-primary text-xs font-mono font-bold tracking-widest border border-accent-primary/20 bg-accent-primary/5 shadow-glow-accent">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -126,10 +150,20 @@ const OutputPanel = ({
 
         {!isExecuting && activeDiagTab === "TESTS" && (
           <div className="space-y-4">
-            {testCases.length === 0 ? (
+            {renderedCases.length === 0 ? (
               <p className="text-faint text-xs font-mono">NO_TEST_CASES // SYNTAX_SEEDED_EXERCISE</p>
             ) : (
               <>
+                {/* Verdict header — how many cases ran versus how many exist locally */}
+                <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-faint">
+                  <span>{renderedCases.length} CASE{renderedCases.length !== 1 ? "S" : ""} RENDERED</span>
+                  {output && (
+                    <span>
+                      {output.passedCases ?? 0}/{output.totalCases ?? renderedCases.length} PASSED
+                    </span>
+                  )}
+                </div>
+
                 {/* Aggregate execution metrics — measured cost of the inputs below */}
                 {successfulDetails.length > 0 && (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -151,12 +185,13 @@ const OutputPanel = ({
                     </div>
                   </div>
                 )}
-                {testCases.map((item, index) => (
+                {renderedCases.map(({ item, match, isHidden }, index) => (
                   <TestCaseCard
                     key={index}
                     item={item}
                     index={index}
-                    match={output?.details?.find((detail) => detail.testCaseIndex === index)}
+                    isHidden={isHidden}
+                    match={match}
                     isRunningThis={runningTestCaseIndex === index}
                     isExecutingAny={isExecuting}
                     onRunSingleTestCase={onRunSingleTestCase}

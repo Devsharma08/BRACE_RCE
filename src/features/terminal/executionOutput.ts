@@ -33,7 +33,9 @@ export const detectLanguageFromFileName = (fileName?: string): SupportedLanguage
 
 export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCase[] => {
   return (data.test_cases ?? [])
-    .filter((testCase) => (testCase.input ?? "") !== "")
+    // Keep every case the API returns. Dropping rows with an empty input used
+    // to silently remove legitimate no-input cases from the Test Cases tab.
+    .filter((testCase) => (testCase.input ?? "") !== "" || (testCase.expectedOutput ?? "") !== "")
     .map((testCase) => ({
       input: testCase.input ?? "",
       expectedOutput: testCase.expectedOutput ?? "",

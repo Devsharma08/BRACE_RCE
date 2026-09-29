@@ -4,6 +4,8 @@ import type { ExecutionDetail, ProblemTestCase } from "../types";
 type TestCaseCardProps = {
   item: ProblemTestCase;
   index: number;
+  /** True when the case ran but its input was never sent to the client. */
+  isHidden?: boolean;
   match?: ExecutionDetail;
   isRunningThis: boolean;
   isExecutingAny: boolean;
@@ -13,6 +15,7 @@ type TestCaseCardProps = {
 export const TestCaseCard = ({
   item,
   index,
+  isHidden = false,
   match,
   isRunningThis,
   isExecutingAny,
@@ -32,6 +35,11 @@ export const TestCaseCard = ({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono font-bold text-subtle">CASE #{index + 1}</span>
+          {isHidden && (
+            <span className="text-[9px] font-bold px-2 py-0.5 border border-subtle-line bg-surface/60 text-faint">
+              [ HIDDEN ]
+            </span>
+          )}
           {hasResult && (
             <span className={`text-[9px] font-bold px-2 py-0.5 ${
               passed
@@ -42,7 +50,7 @@ export const TestCaseCard = ({
             </span>
           )}
         </div>
-        {onRunSingleTestCase && !isExecutingAny && (
+        {onRunSingleTestCase && !isExecutingAny && !isHidden && (
           <button
             onClick={() => onRunSingleTestCase(index)}
             className="flex items-center gap-1 border border-accent-primary/40 bg-elevated px-2 py-1 text-[9px] font-mono font-bold tracking-wider text-accent-primary transition-all hover:bg-accent-primary/10"
@@ -76,7 +84,7 @@ export const TestCaseCard = ({
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {item.input || "-"}
+            {isHidden ? "// hidden case — input not exposed to the client" : item.input || "-"}
           </div>
         </div>
         <div>
