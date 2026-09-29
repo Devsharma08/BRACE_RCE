@@ -62,46 +62,95 @@ afterEach(() => {
 });
 
 describe("Problems filtering and pagination", () => {
-  test("bento grid renders topic tiles with the topic left and solved/total right", async () => {
+  test("puts EVERY data structure inside one Data structure progress panel", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    // The two former sections are now one bento grid under a single heading.
-    expect(screen.getByText("Command deck")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open /ds" })).toHaveAttribute("href", "/ds");
 
-    const arraysTile = screen.getByRole("link", { name: /Arrays & Strings/ });
-    expect(arraysTile).toHaveAttribute("href", "/ds/array");
-    // Left = topic name, right = "solved/total". problem-1 is the only solved
-    // id in the mocked bySlug, and it is three long.
-    expect(arraysTile).toHaveAccessibleName("Arrays & Strings: 1 of 3 problems solved");
-    expect(within(arraysTile).getByText("1")).toBeInTheDocument();
-    expect(within(arraysTile).getByText("/3")).toBeInTheDocument();
+    const overview = screen.getByRole("region", { name: "Training overview" });
+    const panel = screen.getByRole("region", { name: "Data structure progress" });
+
+    // The eight structure rows (one per /ds page) all live in the panel...
+    const structureLinks = (container: HTMLElement) =>
+      within(container)
+        .getAllByRole("link")
+        .filter((link) => (link.getAttribute("href") ?? "").startsWith("/ds/"));
+    expect(structureLinks(panel)).toHaveLength(8);
+    // ...and the overview holds no others — nothing is duplicated as a tile.
+    expect(structureLinks(overview)).toHaveLength(8);
+    expect(overview.children[0]).toHaveClass("md:grid-cols-2"); // bento tiles
+    expect(overview.children[1]).toBe(panel); // panel sits to their right
+
+    // Arrays row: link target, accessible name, teaser copy, solved/total.
+    const arraysRow = screen.getByRole("link", { name: /Arrays & Strings/ });
+    expect(arraysRow).toHaveAttribute("href", "/ds/array");
+    // problem-1 is the only solved id in the mocked bySlug, and it is three long.
+    expect(arraysRow).toHaveAccessibleName("Arrays & Strings: 1 of 3 problems solved");
+    expect(within(arraysRow).getByText("1")).toBeInTheDocument();
+    expect(within(arraysRow).getByText("/3")).toBeInTheDocument();
+    expect(within(panel).getByText("Indexing, traversal, and window patterns.")).toBeInTheDocument();
   });
 
-  test("bento tiles opt into their own spans so the grid is not a flat row", async () => {
+  test("keeps the mock's two-column overview: tiles left, DS panel right", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    const hero = screen.getByText("Choose a pattern to practice.").closest("article");
-    expect(hero).toHaveClass("lg:row-span-2", "md:col-span-2");
-    const signal = screen.getByText("Training signal").closest("article");
-    expect(signal).toHaveClass("lg:col-span-2");
-    const topicTile = screen.getByRole("link", { name: /Arrays & Strings/ });
-    expect(topicTile).toHaveClass("rounded-2xl");
-    expect(topicTile).not.toHaveClass("lg:col-span-2");
+
+    const overview = screen.getByRole("region", { name: "Training overview" });
+    expect(overview).toHaveClass("lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]");
+
+    const hero = screen.getByText("Choose a pattern to practice.").closest("article") as HTMLElement;
+    expect(hero).toHaveClass("md:col-span-2", "min-h-[260px]", "p-5");
+    expect(within(hero).getByRole("link", { name: /Browse patterns/ })).toHaveAttribute("href", "/ds");
+
+    const route = screen.getByText("Study route").closest("article") as HTMLElement;
+    expect(route).toHaveClass("min-h-[180px]");
+    const signal = screen.getByText("Training signal").closest("article") as HTMLElement;
+    expect(signal).toHaveClass("min-h-[180px]");
+    expect(signal).not.toHaveClass("md:col-span-2");
   });
 
-  test("uses the unified raised surface for the problem table", async () => {
+  test("stretches both overview columns to the same height", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    const tableSurface = screen.getByText("PROBLEM TITLE").closest(".overflow-x-auto");
-    expect(tableSurface).toHaveClass("bg-raised");
-    expect(tableSurface).not.toHaveClass("bg-slate-950/40");
+
+    const overview = screen.getByRole("region", { name: "Training overview" });
+    const panel = screen.getByRole("region", { name: "Data structure progress" });
+
+    // Neither column opts out of the grid's stretch, so both end level
+    // instead of leaving the tile column ~200px short of the panel.
+    expect(overview).not.toHaveClass("lg:items-start");
+    expect(panel).not.toHaveClass("self-start");
+
+    // The tile column hands its spare height to the tiles (3fr/2fr, floors
+    // held by min-h) rather than parking it under them...
+    expect(overview.children[0]).toHaveClass("md:grid-rows-[3fr_2fr]");
+    // ...and the panel spreads its rows when the left column is the taller one.
+    expect(panel).toHaveClass("flex", "flex-col");
+    expect(within(panel).getAllByRole("link")[0]).toHaveClass("flex-1");
+  });
+
+  test("uses the unified raised surface for the problem index", async () => {
+    renderProblems();
+    await screen.findByText("Challenge 1");
+    const index = screen.getByRole("region", { name: "Problem index" });
+    expect(index).toHaveClass("bg-raised");
+    expect(index).not.toHaveClass("bg-slate-950/40");
+
+    // Mock column heads: # / Problem / Difficulty / Domain (+ Open action).
+    expect(within(index).getByText("Problem")).toBeInTheDocument();
+    expect(within(index).getByText("Difficulty")).toBeInTheDocument();
+    expect(within(index).getByText("Domain")).toBeInTheDocument();
+    expect(within(index).getByText("16 matches")).toBeInTheDocument();
   });
 
   test("paginates 15 rows and resets to page one when difficulty changes", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    expect(api.get).toHaveBeenCalledWith("/problems/system");
+    expect(api.get).toHaveBeenCalledWith("/problems/system", {
+      params: { page: 1, limit: 100 },
+    });
+    // The mock returns 16 rows (< page size 100), so the pagination loop must
+    // stop after the first request instead of fetching a phantom page 2.
+    expect(api.get).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Challenge 16")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "PREV" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "NEXT" }));
@@ -129,14 +178,15 @@ describe("Problems filtering and pagination", () => {
     fireEvent.change(search, { target: { value: "cHaLlEnGe 16" } });
     expect(await screen.findByText("Challenge 16")).toBeInTheDocument();
     fireEvent.change(search, { target: { value: "unmatched title" } });
-    expect(await screen.findByText("NO PROBLEMS FOUND MATCHING YOUR CRITERIA.")).toBeInTheDocument();
+    expect(await screen.findByText("No matching problems")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "NEXT" })).not.toBeInTheDocument();
   });
 
-  test("keeps the solve action navigable after restyling", async () => {
+  test("opens a problem in the terminal when its row is clicked", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    fireEvent.click(screen.getAllByRole("button", { name: /SOLVE/ })[0]);
+    // Whole rows are buttons in this design; the title cell pins the target.
+    fireEvent.click(screen.getByText("Challenge 1").closest("button") as HTMLElement);
     expect(await screen.findByText("Terminal destination")).toBeInTheDocument();
   });
 });

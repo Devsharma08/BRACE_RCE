@@ -2,30 +2,59 @@ import React, { useState, useMemo, useTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
-import { api } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 import { queryKeys } from "../lib/queryKeys";
 import { useDebounce } from "../hooks/useDebounce";
+import { fetchAllProblems } from "../utils/problemCache";
 import {
-  Code2,
-  Search,
-  ChevronRight,
-  ChevronLeft,
-  Filter,
-  CheckCircle2,
   AlertTriangle,
-  Target,
-  Flame,
   ArrowUpRight,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Code2,
+  Filter,
+  Flame,
+  Search,
+  Target,
   Trophy,
-  LayoutGrid,
-  Layers,
 } from "lucide-react";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
 
-const DS_SUMMARY_SLUGS = ["tree", "dynamic-programming", "array", "linked-list", "searching", "math", "stack", "greedy"] as const;
+/**
+ * EVERY data structure on this page lives in ONE side panel — the mock's
+ * "Data structure progress" card — instead of being spread across bento tiles.
+ * `accent` keys into PROGRESS_ACCENT; `description` is the one-line teaser the
+ * panel shows under each structure's name. Array order is the panel order.
+ */
+const DS_PANEL = [
+  { slug: "array", accent: "cyan", description: "Indexing, traversal, and window patterns." },
+  { slug: "stack", accent: "amber", description: "Ordering, buffering, and monotonic patterns." },
+  { slug: "linked-list", accent: "lime", description: "Pointer movement and structural updates." },
+  { slug: "tree", accent: "pink", description: "Recursion, traversal, and hierarchical search." },
+  { slug: "searching", accent: "cyan", description: "Divide-and-conquer sorting and boundary lookups." },
+  { slug: "dynamic-programming", accent: "violet", description: "Optimal substructure over overlapping subproblems." },
+  { slug: "math", accent: "violet", description: "Number theory, modular arithmetic, and geometry." },
+  { slug: "greedy", accent: "lime", description: "Local-choice heuristics and interval scheduling." },
+] as const;
+
+/** Two-letter chip colours per accent — the mock's progressAccent map, on tokens. */
+const PROGRESS_ACCENT: Record<string, string> = {
+  cyan: "text-accent-primary border-accent-primary/25 bg-accent-primary/[0.05]",
+  violet: "text-accent-violet border-accent-violet/25 bg-accent-violet/[0.05]",
+  lime: "text-accent-success border-accent-success/25 bg-accent-success/[0.05]",
+  amber: "text-accent-warning border-accent-warning/25 bg-accent-warning/[0.05]",
+  pink: "text-accent-pink border-accent-pink/25 bg-accent-pink/[0.05]",
+};
+
+/** Difficulty pills on the semantic ramp (lime / amber / rose in the mock). */
+const difficultyStyles: Record<string, string> = {
+  EASY: "border-accent-success/30 bg-accent-success/[0.06] text-accent-success",
+  MEDIUM: "border-accent-warning/30 bg-accent-warning/[0.06] text-accent-warning",
+  HARD: "border-accent-danger/30 bg-accent-danger/[0.06] text-accent-danger",
+};
 
 export const Problems: React.FC = () => {
   const { data: analytics } = useAnalytics(false);
@@ -62,21 +91,26 @@ export const Problems: React.FC = () => {
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
-      const res = await api.get("/problems/system");
-      return res.data?.problems || [];
+      // Paginated endpoint — fetch every page so the list matches the
+      // Terminal sidebar catalog instead of just the first 25 rows.
+      return fetchAllProblems("/problems/system");
     },
   });
 
+  /** One panel row per structure: real progress from the learning-path graph
+   *  plus the teaser copy from DS_PANEL. */
   const dsSummaries = useMemo(
     () =>
-      DS_SUMMARY_SLUGS.map((slug) => {
+      DS_PANEL.map(({ slug, accent, description }) => {
         const progress = dsProgress[slug];
         const problemIds = new Set(progress?.problemIds ?? []);
         const solved = problems.filter((problem: any) => problem.isSolved && problemIds.has(String(problem.id))).length;
         const total = problemIds.size;
         return {
           slug,
-          title: DS_TOPIC_LABELS[slug],
+          accent,
+          description,
+          title: DS_TOPIC_LABELS[slug] ?? slug,
           solved,
           total,
           completion: total > 0 ? Math.round((solved / total) * 100) : 0,
@@ -85,16 +119,30 @@ export const Problems: React.FC = () => {
     [dsProgress, problems],
   );
 
+  /** Reverse index built from the learning-path graph: problem id → topic label.
+   *  Feeds the DOMAIN column and the domain half of the search query; problems
+   *  that belong to no structure fall back to an em dash. */
+  const topicByProblemId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [slug, progress] of Object.entries(dsProgress)) {
+      for (const problemId of progress?.problemIds ?? []) {
+        if (!(problemId in map)) map[problemId] = DS_TOPIC_LABELS[slug] ?? slug;
+      }
+    }
+    return map;
+  }, [dsProgress]);
+
   const solvedCount = useMemo(
     () => problems.filter((problem: any) => problem.isSolved).length,
     [problems],
   );
 
-  // Filter problems by search, difficulty, and category
+  // Filter by title, problem number, or the structure the problem belongs to.
   const filteredProblems = problems.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      (p.problem_number && String(p.problem_number).includes(debouncedSearch));
+    const domain = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "";
+    const matchesSearch = `${p.name} ${p.problem_number ?? ""} ${domain}`
+      .toLowerCase()
+      .includes(debouncedSearch.toLowerCase());
 
     const matchesDiff =
       selectedDifficulty === "ALL" ||
@@ -103,236 +151,213 @@ export const Problems: React.FC = () => {
     return matchesSearch && matchesDiff;
   });
 
-  // Pagination calculation
   const totalPages = Math.max(1, Math.ceil(filteredProblems.length / itemsPerPage));
   const currentProblems = filteredProblems.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   return (
-    <div className="flex w-full text-fg font-mono relative select-none">
-      {/* Dot-grid texture */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
-      <div className="fixed top-1/3 left-1/4 w-96 h-96 bg-accent-primary/[0.04] rounded-full blur-3xl pointer-events-none z-0" />
-
-
-
-      {/* MAIN CONTENT AREA */}
-      <main
-        className="
-          relative z-10 flex-1 min-w-0 w-full
-         
-          px-4 py-6 md:px-8 md:py-8
-          pb-20 md:pb-8
-          flex flex-col gap-6
-        "
-      >
-        {/* HEADER BAR — console software strip + overview cards */}
-        <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-accent-primary">
-              <Code2 size={13} />
-              <span>BRACE // training command center</span>
+    <main className="bg-void px-4 py-5 font-mono text-fg sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px]">
+        {/* ── HEADER ────────────────────────────────────────────────────── */}
+        <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5 md:flex-row md:items-end">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
+              <Code2 size={14} />
+              <span>Training command center</span>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-3xl">
-              Problem
-              <span className='text-accent-primary'> repository.</span>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Build your next <span className="text-accent-primary">signal.</span>
             </h1>
-            <p className="text-xs text-subtle leading-relaxed max-w-xl">
-              Browse, filter, and select algorithmic challenges to open in the execution workspace.
+            <p className="mt-2 max-w-xl text-xs leading-5 text-subtle">
+              Choose a path, study the pattern, then prove it in the execution workspace.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-[9px] uppercase tracking-widest">
-            <span className="border border-accent-success/25 bg-accent-success/5 px-2.5 py-1.5 text-accent-success">
-              Solved <strong className="text-fg ml-1">{solvedCount}</strong>
+          <div className="grid w-full grid-cols-2 gap-2 text-[9px] uppercase tracking-widest md:w-auto">
+            <span className="border border-accent-success/25 bg-accent-success/[0.05] px-3 py-2 text-accent-success">
+              Solved <b className="text-fg">{solvedCount}</b>
             </span>
-            <span className="border border-accent-primary/25 bg-accent-primary/5 px-2.5 py-1.5 text-accent-primary">
-              Indexed <strong className="text-fg ml-1">{problems.length}</strong>
+            <span className="border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2 text-accent-primary">
+              Indexed <b className="text-fg">{problems.length}</b>
             </span>
-            {analytics?.summary && (
-              <span className="border border-accent-warning/25 bg-accent-warning/5 px-2.5 py-1.5 text-accent-warning">
-                Streak <strong className="text-fg ml-1">{analytics.summary.currentStreak ?? 0}</strong>
-              </span>
-            )}
           </div>
         </header>
 
-        {/* ── BENTO GRID ───────────────────────────────────────────────────
-            One mosaic instead of the two uniform rows this page used to have.
-            Tiles are deliberately different sizes — that IS the bento layout:
-            a 4-up grid at lg where each tile opts into its own span, so the
-            hero tile reads as the anchor and the per-topic tiles read as the
-            dense detail. Order matters for auto-placement:
-              hero(2x2) → signal(2) → route(2) → 8 topic tiles (1x1 each)
-            fills rows 1-4 with no holes. */}
-        <section aria-label="Training overview">
-          <div className="mb-3 flex items-center gap-2">
-            <LayoutGrid size={14} className="text-accent-primary/60" />
-            <h2 className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-secondary">
-              Command deck
-            </h2>
-            {/* bg-, not border-: the old `border-line` set only a border colour
-                with no width, so this rule never actually painted. */}
-            <span className="h-px flex-1 bg-subtle-line" />
-            <Link to="/ds" className="text-[9px] uppercase tracking-widest text-accent-primary transition hover:text-fg">
-              Open /ds
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {/* HERO TILE — the 2×2 anchor the rest of the bento hangs off */}
-            <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40 md:col-span-2 lg:row-span-2">
-              <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-accent-primary/10" />
-              <div className="pointer-events-none absolute -right-24 -top-24 h-40 w-40 rounded-full border border-accent-primary/5" />
+        {/* ── TRAINING OVERVIEW ───────────────────────────────────────────
+            Two columns at lg: the three bento tiles on the left, and ONE
+            "Data structure progress" panel on the right that owns every
+            structure — no per-structure tiles anywhere else on the page. */}
+        <section
+          aria-label="Training overview"
+          className="mt-5 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]"
+        >
+          <div className="grid min-w-0 gap-4 md:grid-cols-2 md:grid-rows-[3fr_2fr]">
+            {/* HERO — full-width anchor tile with the ghost 01 watermark */}
+            <article className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-panel border border-accent-primary/20 bg-accent-primary/[0.045] p-5 transition hover:border-accent-primary/40 md:col-span-2">
+              <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-accent-primary/10 transition duration-500 group-hover:scale-110" />
+              <div className="pointer-events-none absolute bottom-5 right-7 font-mono text-[8rem] font-bold leading-none text-fg/[0.03]">
+                01
+              </div>
               <div className="relative flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
-                  <Target size={13} />
+                  <Target size={14} />
                   Next move
                 </span>
-                <ArrowUpRight size={14} className="text-accent-primary" />
+                <ArrowUpRight size={15} className="text-accent-primary transition group-hover:-translate-y-1 group-hover:translate-x-1" />
               </div>
-              <h3 className="relative mt-6 text-lg font-bold text-fg sm:text-xl">
-                Choose a pattern to practice.
-              </h3>
-              <p className="relative mb-6 mt-2 max-w-md text-xs leading-5 text-subtle">
-                Start with an indexed problem, open it in the terminal, and validate your
-                reasoning against real test cases.
-              </p>
-              {/* mt-auto pins the CTA to the floor of the tile, so the extra height
-                  that the 2-row span grants reads as breathing room, not a gap. */}
-              <Link
-                to="/ds"
-                className="relative mt-auto inline-flex max-w-full items-center gap-2 overflow-hidden border border-accent-primary/30 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-              >
-                Browse patterns
-                <ChevronRight size={12} />
-              </Link>
-            </article>
-
-            {/* WIDE TILES — 2 columns each, they stack into the hero's shadow */}
-            <article className="flex flex-col rounded-2xl border border-subtle-line bg-surface p-5 transition hover:bg-surface-hover lg:col-span-2">
-              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
-                <Flame size={13} />
-                Training signal
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="border-l border-accent-warning/40 pl-3">
-                  <p className="text-2xl font-bold tabular-nums text-fg">
-                    {analytics?.summary?.currentStreak ?? 0}
-                  </p>
-                  <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">active streak</p>
-                </div>
-                <div className="border-l border-subtle-line pl-3">
-                  <p className="text-2xl font-bold tabular-nums text-fg">
-                    {analytics?.summary?.totalSolved ?? solvedCount}
-                  </p>
-                  <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">completed</p>
-                </div>
-              </div>
-              <p className="mt-5 text-[9px] uppercase tracking-widest text-faint">
-                <Trophy size={12} className="mr-1 inline text-accent-warning" />
-                Connect your profile to track progress
-              </p>
-            </article>
-
-            <article className="flex flex-col rounded-2xl border border-subtle-line bg-surface p-5 transition hover:bg-surface-hover lg:col-span-2">
-              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-                <Layers size={13} />
-                Study route
-              </div>
-              <div className="mt-5 flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-base font-bold text-fg">Foundations</p>
-                  <p className="mt-1 truncate text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
-                </div>
-                <span className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-faint">path / open</span>
-              </div>
-              <div className="mt-auto h-1 overflow-hidden bg-surface-hover">
-                <div className="h-full w-1/4 bg-accent-success" />
-              </div>
-              <p className="mt-3 text-[9px] uppercase tracking-widest text-faint">
-                Continue when your training data is connected
-              </p>
-            </article>
-
-            {/* TOPIC TILES — the small cards: DS name on the left, solved/total
-                on the right. 1×1 each, so eight of them fill rows 3 and 4. */}
-            {dsSummaries.map((summary) => {
-              const total = summary.total;
-              const complete = total > 0 && summary.solved >= total;
-              return (
+              <div className="relative mt-auto max-w-md">
+                <p className="mb-3 text-[9px] uppercase tracking-[0.2em] text-faint">Your next training action</p>
+                <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">Choose a pattern to practice.</h2>
+                <p className="mt-3 max-w-sm text-xs leading-5 text-subtle">
+                  Start with an indexed problem, open it in the terminal, and validate your
+                  reasoning against real test cases.
+                </p>
                 <Link
-                  key={summary.slug}
-                  to={`/ds/${summary.slug}`}
-                  aria-label={`${summary.title}: ${summary.solved} of ${total || 0} problems solved`}
-                  className="group flex flex-col justify-between rounded-2xl border border-subtle-line bg-surface p-4 transition hover:-translate-y-0.5 hover:border-accent-primary/40 hover:bg-surface-hover hover:shadow-card-hover"
+                  to="/ds"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-accent-primary/30 px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="min-w-0 truncate text-[13px] font-semibold text-fg transition group-hover:text-accent-primary">
-                      {summary.title}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] leading-none tabular-nums">
-                      <span className={complete ? "text-accent-success" : "text-fg"}>{summary.solved}</span>
-                      <span className="text-faint">/{total || 0}</span>
-                    </span>
-                  </div>
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-hover">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${complete ? "bg-accent-success" : "bg-accent-primary"}`}
-                      style={{ width: `${summary.completion}%` }}
-                    />
-                  </div>
-                  <p className="mt-2 text-[9px] uppercase tracking-widest text-faint">
-                    {total > 0 ? `${summary.completion}% solved` : "catalogue pending"}
-                  </p>
+                  Browse patterns <ChevronRight size={13} />
                 </Link>
-              );
-            })}
+              </div>
+            </article>
+            {/* STUDY ROUTE */}
+            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised p-5 transition hover:border-accent-success/30">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+                  <BookOpen size={14} />
+                  Study route
+                </span>
+                <span className="font-mono text-[9px] text-faint">01 / 04</span>
+              </div>
+              <div className="mt-auto">
+                <p className="text-lg font-bold text-fg">Foundations</p>
+                <p className="mt-1 text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
+                <div className="mt-4 flex gap-1">
+                  {["bg-accent-success", "bg-fg/20", "bg-fg/20", "bg-fg/20"].map((tone, index) => (
+                    <span key={index} className={`h-1.5 flex-1 ${tone}`} />
+                  ))}
+                </div>
+              </div>
+            </article>
 
+            {/* TRAINING SIGNAL */}
+            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised p-5 transition hover:border-accent-warning/30">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
+                  <Flame size={14} />
+                  Training signal
+                </span>
+                <Trophy size={15} className="text-faint" />
+              </div>
+              <div className="mt-auto">
+                <div className="flex items-end gap-5">
+                  <div>
+                    <p className="text-3xl font-bold text-fg">{analytics?.summary?.currentStreak ?? "—"}</p>
+                    <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">active streak</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-fg">{analytics?.summary?.totalSolved ?? solvedCount}</p>
+                    <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">completed</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-[9px] uppercase tracking-widest text-faint">Connect your profile to track progress</p>
+              </div>
+            </article>
+          </div>
+
+          {/* ── DATA STRUCTURE PROGRESS — the single home for all of them ── */}
+          <section
+            aria-label="Data structure progress"
+            className="flex min-w-0 flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised shadow-panel"
+          >
+            <div className="border-b border-subtle-line bg-white/[0.025] px-5 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Domain coverage</p>
+                  <h2 className="mt-1 text-lg font-bold text-fg">Data structure progress</h2>
+                </div>
+                <span className="text-[9px] uppercase tracking-widest text-faint">
+                  {solvedCount} / {problems.length} solved
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-1 flex-col divide-y divide-subtle-line">
+              {dsSummaries.map(({ slug, accent, description, title, solved, total, completion }) => (
+                <Link
+                  key={slug}
+                  to={`/ds/${slug}`}
+                  aria-label={`${title}: ${solved} of ${total || 0} problems solved`}
+                  className="group flex flex-1 items-center gap-3 px-5 py-3 transition hover:bg-white/[0.04]"
+                >
+                  <span
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-[9px] font-bold ${PROGRESS_ACCENT[accent]}`}
+                  >
+                    {title.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="truncate text-xs font-bold text-fg group-hover:text-accent-primary">{title}</h3>
+                      <span className="shrink-0 font-mono text-sm font-bold text-fg">
+                        {solved}
+                        <span className="text-[8px] font-normal text-faint">/{total || 0}</span>
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-[9px] text-subtle">{description}</p>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-accent-primary/60 transition-all duration-500"
+                        style={{ width: `${completion}%` }}
+                      />
+                    </div>
+                  </div>
+                  <ArrowUpRight size={13} className="shrink-0 text-faint transition group-hover:text-accent-primary" />
+                </Link>
+              ))}
+            </div>
+          </section>
+        </section>
+
+        {/* ── PROBLEM FILTERS ─────────────────────────────────────────── */}
+        <section aria-label="Problem filters" className="mt-6 rounded-2xl border border-subtle-line bg-raised p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <label className="relative block w-full lg:max-w-sm">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-primary/50" />
+              <input
+                type="text"
+                aria-label="Search problems"
+                value={searchTerm}
+                onChange={(event) => handleSearchChange(event.target.value)}
+                placeholder="Search title or problem number..."
+                className="w-full border border-subtle-line bg-void py-3 pl-10 pr-4 text-xs text-fg outline-none transition placeholder:text-faint focus:border-accent-primary/50"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="mr-1 flex items-center gap-2 text-[9px] uppercase tracking-widest text-faint">
+                <Filter size={13} /> Difficulty
+              </span>
+              {["ALL", "EASY", "MEDIUM", "HARD"].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => handleDifficultyChange(level)}
+                  aria-pressed={selectedDifficulty === level}
+                  className={`border px-3 py-2 text-[9px] font-bold uppercase tracking-widest transition ${
+                    selectedDifficulty === level
+                      ? "border-accent-primary/50 bg-accent-primary/[0.08] text-accent-primary"
+                      : "border-subtle-line text-subtle hover:border-white/25 hover:text-fg"
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* SEARCH & DIFFICULTY FILTER BAR */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 border border-subtle-line bg-raised p-4 rounded-none">
-          {/* SEARCH INPUT */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-accent-primary/40 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              aria-label="Search problems"
-              placeholder="Search by problem title or #..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full bg-raised border border-subtle-line text-xs text-fg pl-9 pr-4 py-2 rounded-none focus:outline-none focus:border-accent-primary transition-colors"
-            />
-          </div>
-
-          {/* DIFFICULTY FILTER TABS */}
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-            <span className="text-[10px] font-mono text-label uppercase tracking-[0.2em] mr-1 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> DIFFICULTY:
-            </span>
-            {["ALL", "EASY", "MEDIUM", "HARD"].map((d) => (
-              <button
-                key={d}
-                onClick={() => handleDifficultyChange(d)}
-                aria-pressed={selectedDifficulty === d}
-                className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider rounded-none border transition-all ${
-                  selectedDifficulty === d
-                    ? "bg-accent-primary/10 border-accent-primary/60 text-accent-primary shadow-glow-accent"
-                    : "bg-raised border-subtle-line text-subtle hover:border-accent-primary hover:text-fg"
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* QUERY FAILURE — themed error state with retry */}
+        {/* QUERY FAILURE — not in the mock, but losing the list silently would
+            be worse; same themed retry block this page has always had. */}
         {isProblemsError && !loading && (
-          <div className="flex flex-col items-center gap-3 border border-accent-danger/30 bg-accent-danger/10 p-10 text-center">
+          <div className="mt-6 flex flex-col items-center gap-3 border border-accent-danger/30 bg-accent-danger/10 p-10 text-center">
             <div className="w-12 h-12 rounded-none border border-accent-danger/40 bg-accent-danger/20 flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-accent-danger" />
             </div>
@@ -350,152 +375,121 @@ export const Problems: React.FC = () => {
             </button>
           </div>
         )}
-
-        {/* PROBLEMS TABLE — overflow-x-auto is intentional: table scrolls horizontally on
-            narrow screens rather than breaking the page layout */}
+        {/* ── PROBLEM INDEX ────────────────────────────────────────────── */}
         {!isProblemsError && (
-        <div className="border border-subtle-line bg-raised overflow-x-auto shadow-xl">
-          <div className="min-w-[640px]">
-          {/* TABLE HEADER */}
-          <div className="grid grid-cols-12 p-3.5 bg-void border-b border-subtle-line text-[10px] font-mono text-accent-primary/40 tracking-[0.2em] uppercase">
-            <span className="col-span-1">#</span>
-            <span className="col-span-5">PROBLEM TITLE</span>
-            <span className="col-span-2">DIFFICULTY</span>
-            <span className="col-span-2">LANGUAGES</span>
-            <span className="col-span-2 text-right">ACTION</span>
-          </div>
+          <section
+            aria-label="Problem index"
+            className="mt-3 overflow-hidden rounded-2xl border border-subtle-line bg-raised shadow-panel"
+          >
+            <div className="flex items-center justify-between border-b border-subtle-line bg-white/[0.025] px-5 py-4">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Problem index</p>
+                <p className="mt-1 text-xs text-subtle">Select a challenge to open its execution workspace.</p>
+              </div>
+              <span className="text-[9px] uppercase tracking-widest text-faint">{filteredProblems.length} matches</span>
+            </div>
 
-          {/* TABLE BODY */}
-          <div className={`flex flex-col divide-y divide-subtle-line ${isPending ? "opacity-60 transition-opacity" : ""}`}>
+            {/* Column heads are md+ only — below that every row stacks (mock). */}
+            <div className="hidden grid-cols-[70px_1.6fr_120px_1fr_110px] gap-5 border-b border-subtle-line bg-white/[0.025] px-5 py-3 text-[9px] uppercase tracking-[0.2em] text-faint md:grid">
+              <span>#</span>
+              <span>Problem</span>
+              <span>Difficulty</span>
+              <span>Domain</span>
+              <span />
+            </div>
+
             {loading ? (
               <div className="p-4">
                 <TableSkeleton rows={8} />
               </div>
-            ) : currentProblems.length === 0 ? (
-              <div className="p-12 text-center text-faint font-mono">
-                NO PROBLEMS FOUND MATCHING YOUR CRITERIA.
+            ) : filteredProblems.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
+                <AlertTriangle size={22} className="text-accent-warning" />
+                <p className="text-xs uppercase tracking-widest text-subtle">No matching problems</p>
+                <p className="text-xs text-faint">Adjust the search or difficulty filter.</p>
               </div>
             ) : (
-              currentProblems.map((p, idx) => {
-                const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
-                const diffColor =
-                  diff === "EASY"
-                    ? "text-accent-success border-accent-success/30 bg-accent-success/10"
-                    : diff === "HARD"
-                    ? "text-accent-danger border-accent-danger/30 bg-accent-danger/10"
-                    : "text-accent-warning border-accent-warning/30 bg-accent-warning/10";
+              <div className={`flex flex-col ${isPending ? "opacity-60 transition-opacity" : ""}`}>
+                {currentProblems.map((p, idx) => {
+                  const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
+                  const problemNumber = p.problem_number || (currentPage - 1) * itemsPerPage + idx + 1;
+                  const domainLabel = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "—";
 
-                const problemNumber = p.problem_number || (currentPage - 1) * itemsPerPage + idx + 1;
+                  return (
+                    <button
+                      key={p.id || idx}
+                      onClick={() => navigate(`/terminal?id=${p.id || p.github_oid}`)}
+                      className="group grid w-full gap-3 border-b border-white/5 px-5 py-4 text-left transition last:border-0 hover:bg-accent-primary/[0.035] md:grid-cols-[70px_1.6fr_120px_1fr_110px] md:items-center md:gap-5"
+                    >
+                      <span className="text-[10px] text-faint">#{problemNumber}</span>
 
-                return (
-                  <div
-                    key={p.id || idx}
-                    onClick={() =>
-                      navigate(
-                        `/terminal?id=${p.id || p.github_oid}`
-                      )
-                    }
-                    className="grid grid-cols-12 p-3.5 text-xs items-center border-l-2 border-l-transparent hover:bg-accent-primary/5 hover:border-l-accent-primary/40 transition-all cursor-pointer group"
-                  >
-                    {/* PROBLEM NUMBER & SOLVED STATUS */}
-                    <div className="col-span-1 flex items-center gap-1.5 font-mono text-faint font-bold">
-                      {p.isSolved ? (
-                        <span title="Solved" className="inline-flex">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-accent-success shrink-0" />
+                      {/* STATUS BOX + TITLE */}
+                      <span className="flex min-w-0 items-center gap-3 text-sm font-bold text-fg transition group-hover:text-accent-primary">
+                        <span
+                          className={`grid h-7 w-7 shrink-0 place-items-center border text-[9px] ${
+                            p.isSolved
+                              ? "border-accent-success/30 bg-accent-success/[0.06] text-accent-success"
+                              : "border-subtle-line bg-void text-faint"
+                          }`}
+                        >
+                          {p.isSolved ? "✓" : String(problemNumber).slice(-1)}
                         </span>
-                      ) : (
-                        <span className="text-faint">#{problemNumber}</span>
-                      )}
-                    </div>
-
-                    {/* PROBLEM TITLE */}
-                    <div className="col-span-5 flex items-center gap-2 pr-2">
-                      <span className="font-bold text-fg group-hover:text-accent-primary transition-colors truncate">
-                        {p.name}
+                        <span className="truncate">{p.name}</span>
                       </span>
-                      {p.isSolved && (
-                        <span className="text-[9px] px-1.5 py-0.5 text-accent-success bg-accent-success/10 border border-accent-success/30 rounded-none font-bold uppercase shrink-0">
-                          SOLVED
-                        </span>
-                      )}
-                    </div>
 
-                    {/* DIFFICULTY */}
-                    <div className="col-span-2">
-                      <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 border rounded-sm uppercase ${diffColor}`}>
+                      {/* DIFFICULTY */}
+                      <span
+                        className={`w-fit border px-2 py-1 text-[9px] font-bold uppercase tracking-widest ${
+                          difficultyStyles[diff] ?? difficultyStyles.MEDIUM
+                        }`}
+                      >
                         {diff}
                       </span>
-                    </div>
 
-                    {/* LANGUAGES */}
-                    <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-subtle-line text-subtle">
-                        JS
+                      {/* DOMAIN — the structure this problem was indexed under */}
+                      <span className="truncate text-xs text-subtle">{domainLabel}</span>
+
+                      {/* OPEN affordance: always visible on touch, hover-revealed on md+ */}
+                      <span className="text-right text-[9px] uppercase tracking-widest text-accent-primary opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
+                        Open <ChevronRight size={13} className="inline" />
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-subtle-line text-subtle">
-                        PY
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-subtle-line text-subtle">
-                        JAVA
-                      </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-raised border border-subtle-line text-subtle">
-                        C++
-                      </span>
-                    </div>
-
-                    {/* ACTION BUTTON */}
-                    <div className="col-span-2 text-right">
-                      <button className="px-3 py-1 bg-accent-primary/20 group-hover:bg-accent-primary text-accent-primary group-hover:text-black border border-accent-primary/40 font-bold rounded-none transition-all inline-flex items-center gap-1 cursor-pointer">
-                        <span>[ {p.isSolved ? "PRACTICE" : "SOLVE"} ]</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* PAGINATION FOOTER */}
-          {!loading && filteredProblems.length > 0 && (
-            <div className="p-4 border-t border-subtle-line bg-raised flex items-center justify-between text-xs">
-              <span className="text-subtle">
-                Showing <strong className="text-fg">{(currentPage - 1) * itemsPerPage + 1}</strong> to{" "}
-                <strong className="text-fg">
-                  {Math.min(currentPage * itemsPerPage, filteredProblems.length)}
-                </strong>{" "}
-                of <strong className="text-fg">{filteredProblems.length}</strong> problems
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-none border border-subtle-line bg-raised text-accent-primary/60 hover:border-accent-primary/40 hover:text-accent-primary font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>PREV</span>
-                </button>
-
-                <span className="px-3 py-1.5 rounded-none border border-accent-primary bg-accent-primary/10 text-accent-primary font-bold">
-                  {currentPage} / {totalPages}
-                </span>
-
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-none border border-subtle-line bg-raised text-accent-primary/60 hover:border-accent-primary/40 hover:text-accent-primary font-bold disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <span>NEXT</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          )}
-          </div>{/* min-w wrapper */}
-        </div>
+            )}
+            {/* PAGINATION — hidden on zero results; text renders uppercase via
+                the footer's tracking classes. */}
+            {!loading && filteredProblems.length > 0 && (
+              <footer className="flex flex-col gap-3 border-t border-subtle-line bg-white/[0.02] px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Showing {filteredProblems.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}–
+                  {Math.min(currentPage * itemsPerPage, filteredProblems.length)} of {filteredProblems.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft size={13} className="inline" /> PREV
+                  </button>
+                  <span className="border border-accent-primary/30 px-3 py-2 text-accent-primary">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:opacity-30 disabled:pointer-events-none"
+                  >
+                    NEXT <ChevronRight size={13} className="inline" />
+                  </button>
+                </div>
+              </footer>
+            )}
+          </section>
         )}
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
