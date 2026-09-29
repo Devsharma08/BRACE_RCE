@@ -38,3 +38,6 @@ server/.env.development
 server/.env.production
 
 piston
+
+# agent tooling / scratch dirs
+.kilo/
