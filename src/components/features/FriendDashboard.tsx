@@ -57,6 +57,60 @@ export default function FriendsDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
 
+  // ── NEW-FRIEND DISCOVERY ──────────────────────────────────────────────
+  // The workspace had no way to search *new* users at all: `searchQuery` only
+  // filtered the already-friends list, and the send-request handler was never
+  // rendered. `handleSendFriendRequest` existed but nothing called it, so the
+  // "search + send request" flow simply did not exist in the UI.
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [discoverQuery, setDiscoverQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [discoverResults, setDiscoverResults] = useState<Friend[]>([]);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+
+  // Debounce so every keystroke doesn't hit GET /friends/search.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(discoverQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [discoverQuery]);
+
+  useEffect(() => {
+    if (!discoverOpen) return;
+    if (debouncedQuery.length < 2) {
+      setDiscoverResults([]);
+      setDiscoverError(null);
+      setDiscoverLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDiscoverLoading(true);
+    setDiscoverError(null);
+
+    api
+      .get("/friends/search", { params: { q: debouncedQuery } })
+      .then((res) => {
+        if (cancelled) return;
+        setDiscoverResults((res.data.users || []) as Friend[]);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDiscoverResults([]);
+        setDiscoverError(
+          err?.response?.data?.message || "Could not reach the operatives directory",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setDiscoverLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, discoverOpen]);
+
   // Update onlineIds from socket friends presence
   useEffect(() => {
     const online = socketFriends.filter(f => f.isOnline).map(f => f.id);
@@ -205,20 +259,30 @@ export default function FriendsDashboard() {
     }
   };
 
-  const handleAddFriend = async (username: string) => {
+  const handleSendFriendRequest = async (targetUserId: string, username: string) => {
+    setSendingTo(targetUserId);
     try {
-      await api.post("/friends/request", { username });
+      // The server validates { targetUserId } — the old { username } body was
+      // rejected by zod, so no request was ever created.
+      await api.post("/friends/request", { targetUserId });
       toast.success(`Friend request sent to ${username}`);
+      setDiscoverResults((prev) =>
+        prev.map((u) => (u.id === targetUserId ? { ...u, requestSent: true } : u)),
+      );
       fetchFriends();
       fetchRequests();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to send request");
+    } finally {
+      setSendingTo(null);
     }
   };
 
-  const handleAcceptRequest = async (requestId: string) => {
+  const handleAcceptRequest = async (requestId: string, senderId: string) => {
     try {
-      await api.post(`/friends/accept/${requestId}`);
+      // Route is POST /friends/accept with a body — the old /accept/:id call
+      // never matched a handler, so accepts silently failed.
+      await api.post("/friends/accept", { requestId, senderId });
       toast.success("Friend request accepted");
       fetchFriends();
       fetchRequests();
@@ -229,7 +293,8 @@ export default function FriendsDashboard() {
 
   const handleRejectRequest = async (requestId: string) => {
     try {
-      await api.post(`/friends/reject/${requestId}`);
+      // Route is POST /friends/reject with { requestId } in the body.
+      await api.post("/friends/reject", { requestId });
       toast.success("Friend request rejected");
       fetchRequests();
     } catch {
@@ -239,7 +304,8 @@ export default function FriendsDashboard() {
 
   const handleRemoveFriend = async (friendId: string) => {
     try {
-      await api.delete(`/friends/${friendId}`);
+      // Route is DELETE /friends/remove/:id — /friends/:id 404'd.
+      await api.delete(`/friends/remove/${friendId}`);
       toast.success("Friend removed");
       if (activeTab?.id === friendId) setActiveTab(null);
       fetchFriends();
@@ -250,7 +316,7 @@ export default function FriendsDashboard() {
 
   const handleBlockUser = async (userId: string) => {
     try {
-      await api.post("/friends/block", { userId });
+      await api.post("/friends/block", { targetUserId: userId });
       toast.success("User blocked");
       fetchFriends();
       getBlockedUsers();
@@ -261,7 +327,7 @@ export default function FriendsDashboard() {
 
   const handleUnblockUser = async (userId: string) => {
     try {
-      await api.post("/friends/unblock", { userId });
+      await api.post("/friends/unblock", { targetUserId: userId });
       toast.success("User unblocked");
       getBlockedUsers();
     } catch {
@@ -307,6 +373,16 @@ export default function FriendsDashboard() {
             pendingRequests={pendingRequests}
             onAcceptRequest={handleAcceptRequest}
             onRejectRequest={handleRejectRequest}
+            discoverOpen={discoverOpen}
+            onToggleDiscover={() => setDiscoverOpen((open) => !open)}
+            discoverResults={discoverResults}
+            discoverQuery={discoverQuery}
+            onDiscoverQueryChange={setDiscoverQuery}
+            discoverLoading={discoverLoading}
+            discoverError={discoverError}
+            onSendRequest={handleSendFriendRequest}
+            sendingTo={sendingTo}
+            existingFriendIds={friends.map((f) => f.id)}
           />
 
           {/* Chat List */}
