@@ -554,7 +554,10 @@ const Terminal = () => {
                       className="grid min-h-0 flex-1"
                       style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
                     >
-                      <div className="h-full min-h-0 overflow-hidden" style={{ minHeight: 300 }}>
+                      {/* No inline min-height here: this cell sits in a minmax(0,1fr)
+                          grid row, so a hard floor made the editor overflow its own row
+                          and paint over the OutputPanel below it. */}
+                      <div className="h-full min-h-0 overflow-hidden">
                         <MonacoIDE
                           handleRunCode={handleRunCode}
                           language={language}

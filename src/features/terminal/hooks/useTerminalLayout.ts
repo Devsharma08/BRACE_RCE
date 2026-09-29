@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from "react";
 
+// The output panel hosts one ~150-200px verdict card per test case inside its
+// own scroll area — a 100px default showed less than a single card, which read
+// as "the list is cut off and there is no scrollbar".
+const MIN_EDITOR_PX = 200;
+
 const getInitialOutputHeight = () => {
-  if (typeof window === "undefined") return 250;
-  return window.innerWidth < 768 ? Math.min(100, Math.floor(window.innerHeight * 0.3)) : 100;
+  if (typeof window === "undefined") return 320;
+  return window.innerWidth < 768
+    ? Math.max(180, Math.floor(window.innerHeight * 0.35))
+    : 320;
 };
 
 export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; autoCloseBelowPx?: number }) => {
@@ -90,7 +97,14 @@ export const useTerminalLayout = (opts?: { onSidebarAutoClose?: () => void; auto
         const delta = startY - event.clientY; // drag up => positive
         const isMobile = window.innerWidth < 768;
         const minHeight = isMobile ? 150 : 80;
-        const maxHeight = Math.floor(window.innerHeight * (isMobile ? 0.90 : 1));
+        // Always leave the editor usable. Previously the output track could be
+        // dragged to 100% of the viewport, which pushed the grid past its own
+        // container and let the editor cell overlap the output panel — its tabs
+        // and first case cards became unreachable (no scrollbar, "few cases").
+        const maxHeight = Math.max(
+          minHeight,
+          Math.floor(window.innerHeight - (isMobile ? 120 : MIN_EDITOR_PX)),
+        );
         const nextHeight = Math.max(minHeight, Math.min(startH + delta, maxHeight));
         setOutputHeight(nextHeight);
       });
