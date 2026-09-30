@@ -21,6 +21,15 @@ import { isFeatureEnabled } from '../../config/features';
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 const TURNSTILE_ENABLED = isFeatureEnabled('turnstile') && TURNSTILE_SITE_KEY.trim().length > 0;
 
+// Root.tsx falls back to the literal "not-configured" for GoogleOAuthProvider.
+// Treat it as unset here too — rendering the button with that placeholder sent
+// users to Google's "invalid client" page with no in-app explanation.
+const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
+const GOOGLE_AUTH_ENABLED =
+  isFeatureEnabled('googleOAuth') &&
+  GOOGLE_CLIENT_ID.length > 0 &&
+  GOOGLE_CLIENT_ID !== 'not-configured';
+
 if (import.meta.env.PROD && !TURNSTILE_ENABLED && isFeatureEnabled('turnstile')) {
   console.warn(
     "[BRACE RCE] VITE_TURNSTILE_SITE_KEY is not set in this production build. " +
@@ -35,11 +44,19 @@ export const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Remount nonce: bump whenever the widget reports an expired/errored token
+  // so a fresh challenge renders instead of a dead, already-consumed one.
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    setCaptchaKey((k) => k + 1);
+  };
 
   // Handle Google OAuth callback on mount
   useEffect(() => {
@@ -50,6 +67,7 @@ export const Signup = () => {
           await api.post("/auth/google/callback", {
             code: result.code,
             code_verifier: result.codeVerifier,
+            redirect_uri: `${window.location.origin}/signup`,
           });
           await checkAuth();
           navigate("/");
@@ -89,9 +107,8 @@ export const Signup = () => {
   };
 
   const handleGoogleClick = () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/signup`;
-    initiateGoogleOAuthPKCE(clientId, redirectUri);
+    initiateGoogleOAuthPKCE(GOOGLE_CLIENT_ID, redirectUri);
   };
 
   if (authLoading) return <PageSkeleton />;
@@ -175,7 +192,14 @@ export const Signup = () => {
 
             {TURNSTILE_ENABLED ? (
               <div className="flex justify-center py-2">
-                <Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={(token) => setCaptchaToken(token)} options={{ theme: 'dark' }} />
+                <Turnstile
+                  key={captchaKey}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onExpire={resetCaptcha}
+                  onError={resetCaptcha}
+                  options={{ theme: 'dark' }}
+                />
               </div>
             ) : (
               <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
@@ -188,7 +212,7 @@ export const Signup = () => {
             </button>
           </form>
 
-          {isFeatureEnabled('googleOAuth') && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+          {GOOGLE_AUTH_ENABLED ? (
             <>
               <div className="mt-8 flex items-center gap-4 before:h-px before:flex-1 before:bg-surface-hover after:h-px after:flex-1 after:bg-surface-hover"><span className="text-xs font-medium text-subtle uppercase">Or continue with</span></div>
               <div className="mt-6 flex justify-center">
@@ -208,6 +232,10 @@ export const Signup = () => {
                 </button>
               </div>
             </>
+          ) : (
+            <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
+              Google sign-in not configured
+            </p>
           )}
 
           <p className="mt-8 text-center text-sm text-subtle">Already have an account?{' '}<Link to="/signin" className="text-accent hover:underline font-medium transition-colors">Sign in</Link></p>
