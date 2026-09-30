@@ -21,13 +21,24 @@ export async function createNotification(input: CreateNotificationInput) {
   });
 }
 
-export const notifyFriendRequest = (receiverId: string, senderName: string) =>
+export interface FriendRequestNotifyMeta {
+  requestId?: string;
+  senderId?: string;
+}
+
+export const notifyFriendRequest = (
+  receiverId: string,
+  senderName: string,
+  meta?: FriendRequestNotifyMeta
+) =>
   createNotification({
     userId: receiverId,
     type: "FRIEND_REQUEST",
     title: "New friend request",
     body: `${senderName} sent you a friend request.`,
-    data: { senderName },
+    // requestId/senderId let the notification panel act on the request
+    // (Accept / Reject) without a second lookup.
+    data: { senderName, ...meta },
   });
 
 export const notifyFriendAccept = (receiverId: string, accepterName: string) =>

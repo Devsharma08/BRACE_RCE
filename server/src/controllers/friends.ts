@@ -2,6 +2,7 @@ import { type AuthRequest } from '../middleware/authentication.js'
 import { prisma } from '../lib/prisma.js';
 import { type Response } from 'express';
 import { notifyFriendAccept, notifyFriendRequest } from '../services/notificationService.js';
+import { emitFriendsUpdate, emitNotification } from '../socket/ioRegistry.js';
 
 class Friends {
     // ALL FRIENDS
@@ -129,6 +130,9 @@ class Friends {
                 create: { senderId: userId as string, receiverId: targetUserId, status: "BLOCK" }
             });
 
+            // Pending-requests lists changed on both sides.
+            await emitFriendsUpdate([userId, targetUserId]);
+
             return res.json({ message: "User blocked successfully" });
         } catch (error) {
             return res.status(500).json({ message: "Server Error" });
@@ -177,6 +181,19 @@ class Friends {
                     where: { id: targetUserId },
                     data: { friends: { connect: { id: userId as string } } }
                 });
+
+                // Real-time: the original requester gets the accept notification
+                // + both sides refresh their friend state without a refetch.
+                try {
+                    const accepter = await prisma.user.findUnique({
+                        where: { id: userId as string },
+                        select: { username: true }
+                    });
+                    const notif = await notifyFriendAccept(targetUserId, accepter?.username ?? "Someone");
+                    await emitNotification(targetUserId, notif);
+                } catch { /* best-effort */ }
+                await emitFriendsUpdate([userId, targetUserId]);
+
                 return res.json({ message: "Request accepted! You are now friends." });
             }
 
@@ -196,7 +213,7 @@ class Friends {
 
 
             // create request
-            await prisma.friendRequest.upsert({
+            const request = await prisma.friendRequest.upsert({
                 where: { senderId_receiverId: { senderId: userId as string, receiverId: targetUserId } },
                 update: { status: "PENDING" },
                 create: {
@@ -212,8 +229,15 @@ class Friends {
                     where: { id: userId as string },
                     select: { username: true }
                 });
-                await notifyFriendRequest(targetUserId, sender?.username ?? "Someone");
+                const notif = await notifyFriendRequest(targetUserId, sender?.username ?? "Someone", {
+                    requestId: request.id,
+                    senderId: userId as string,
+                });
+                await emitNotification(targetUserId, notif);
             } catch { /* notification queue is best-effort */ }
+
+            // Live badge + request-list refresh on the receiver (and sender).
+            await emitFriendsUpdate([targetUserId, userId]);
 
             return res.json({
                 message: "Request sent successfully"
@@ -245,15 +269,29 @@ class Friends {
     async acceptFriendRequest(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
-            const { requestId, senderId } = req.body;
+            const { requestId } = req.body;
+
+            // Ownership + state checks: only the receiver of a still-pending
+            // request may accept it (body senderId is never trusted).
+            const request = await prisma.friendRequest.findUnique({ where: { id: requestId } });
+            if (!request) return res.status(404).json({ message: "Friend request not found" });
+            if (request.receiverId !== userId) {
+                return res.status(403).json({ message: "Not your request to accept" });
+            }
+            if (request.status !== "PENDING") {
+                return res.status(400).json({ message: "Request is no longer pending" });
+            }
+
+            const otherId = request.senderId;
+
             await prisma.friendRequest.update({ where: { id: requestId }, data: { status: "ACCEPTED" } });
             // Connect both users in the friends array
             await prisma.user.update({
                 where: { id: userId },
-                data: { friends: { connect: { id: senderId } } }
+                data: { friends: { connect: { id: otherId } } }
             });
             await prisma.user.update({
-                where: { id: senderId },
+                where: { id: otherId },
                 data: { friends: { connect: { id: userId as string } } }
             });
             try {
@@ -261,8 +299,13 @@ class Friends {
                     where: { id: userId as string },
                     select: { username: true }
                 });
-                await notifyFriendAccept(senderId, accepter?.username ?? "Someone");
+                const notif = await notifyFriendAccept(otherId, accepter?.username ?? "Someone");
+                await emitNotification(otherId, notif);
             } catch { /* best-effort */ }
+
+            // Both sides refetch friend lists / requests live.
+            await emitFriendsUpdate([userId, otherId]);
+
             return res.json({ message: "Friend added!" });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
@@ -288,7 +331,9 @@ class Friends {
             // Disconnect both ways
             await prisma.user.update({ where: { id: userId }, data: { friends: { disconnect: { id: targetId } } } });
             await prisma.user.update({ where: { id: targetId }, data: { friends: { disconnect: { id: userId as string } } } });
-            
+
+            await emitFriendsUpdate([userId, targetId]);
+
             return res.json({ message: "Friend and chat history removed!" });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
@@ -323,6 +368,9 @@ class Friends {
                     } 
                 }
             });
+
+            await emitFriendsUpdate([userId, targetUserId]);
+
             return res.json({ message: "User unblocked successfully" });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
@@ -333,11 +381,31 @@ class Friends {
     async rejectFriendRequest(req:AuthRequest,res:Response) {
         try {
             const {requestId} = req.body;
+            if (!requestId || typeof requestId !== "string") {
+                return res.status(400).json({ message: "requestId is required" });
+            }
+
+            // Ownership + state checks: only the receiver of a still-pending
+            // request may reject it.
+            const request = await prisma.friendRequest.findUnique({ where: { id: requestId } });
+            if (!request) {
+                return res.status(404).json({ message: "Friend request not found" });
+            }
+            if (request.receiverId !== (req as AuthRequest).userId) {
+                return res.status(403).json({ message: "Not your request to reject" });
+            }
+            if (request.status !== "PENDING") {
+                return res.status(400).json({ message: "Request is no longer pending" });
+            }
+
             await prisma.friendRequest.delete({
                 where:{
                     id:requestId
                 }
             })
+
+            // Sender's outgoing-request badge/list refreshes immediately too.
+            await emitFriendsUpdate([(req as AuthRequest).userId, request.senderId]);
 
             return res.json({
                 message:"Request rejected!"

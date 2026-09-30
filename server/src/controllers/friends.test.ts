@@ -12,6 +12,7 @@ import jwt from "jsonwebtoken";
 (prisma.message.deleteMany as any) = jest.fn();
 (prisma.friendRequest.findMany as any) = jest.fn();
 (prisma.friendRequest.findFirst as any) = jest.fn();
+(prisma.friendRequest.findUnique as any) = jest.fn();
 (prisma.friendRequest.upsert as any) = jest.fn();
 (prisma.friendRequest.update as any) = jest.fn();
 (prisma.friendRequest.delete as any) = jest.fn();
@@ -126,7 +127,15 @@ describe("Friends Controller Routes (/api/v1/friends)", () => {
   });
 
   describe("POST /api/v1/friends/accept", () => {
+    const pendingRequest = {
+      id: TEST_REQUEST_ID,
+      senderId: TEST_FRIEND_ID,
+      receiverId: TEST_USER_ID,
+      status: "PENDING",
+    };
+
     test("should accept pending friend request", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue(pendingRequest);
       (prisma.friendRequest.update as jest.Mock<any>).mockResolvedValue({});
       (prisma.user.update as jest.Mock<any>).mockResolvedValue({});
 
@@ -137,6 +146,98 @@ describe("Friends Controller Routes (/api/v1/friends)", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Friend added!");
+    });
+
+    test("404s when the request does not exist", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue(null);
+
+      const res = await request(app)
+        .post("/api/v1/friends/accept")
+        .set("Cookie", cookieHeader)
+        .send({ requestId: TEST_REQUEST_ID, senderId: TEST_FRIEND_ID });
+
+      expect(res.status).toBe(404);
+    });
+
+    test("403s when the caller is not the receiver", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue({
+        ...pendingRequest,
+        receiverId: "550e8400-e29b-41d4-a716-446655440099",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/friends/accept")
+        .set("Cookie", cookieHeader)
+        .send({ requestId: TEST_REQUEST_ID, senderId: TEST_FRIEND_ID });
+
+      expect(res.status).toBe(403);
+      // Nothing was mutated.
+      expect(prisma.friendRequest.update).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    test("400s when the request is no longer pending", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue({
+        ...pendingRequest,
+        status: "ACCEPTED",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/friends/accept")
+        .set("Cookie", cookieHeader)
+        .send({ requestId: TEST_REQUEST_ID, senderId: TEST_FRIEND_ID });
+
+      expect(res.status).toBe(400);
+      expect(prisma.friendRequest.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("POST /api/v1/friends/reject", () => {
+    const pendingRequest = {
+      id: TEST_REQUEST_ID,
+      senderId: TEST_FRIEND_ID,
+      receiverId: TEST_USER_ID,
+      status: "PENDING",
+    };
+
+    test("rejects a pending request the caller owns", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue(pendingRequest);
+      (prisma.friendRequest.delete as jest.Mock<any>).mockResolvedValue({});
+
+      const res = await request(app)
+        .post("/api/v1/friends/reject")
+        .set("Cookie", cookieHeader)
+        .send({ requestId: TEST_REQUEST_ID });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Request rejected!");
+      expect(prisma.friendRequest.delete).toHaveBeenCalledWith({
+        where: { id: TEST_REQUEST_ID },
+      });
+    });
+
+    test("403s when the caller is not the receiver", async () => {
+      (prisma.friendRequest.findUnique as jest.Mock<any>).mockResolvedValue({
+        ...pendingRequest,
+        receiverId: "550e8400-e29b-41d4-a716-446655440099",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/friends/reject")
+        .set("Cookie", cookieHeader)
+        .send({ requestId: TEST_REQUEST_ID });
+
+      expect(res.status).toBe(403);
+      expect(prisma.friendRequest.delete).not.toHaveBeenCalled();
+    });
+
+    test("400s when requestId is missing", async () => {
+      const res = await request(app)
+        .post("/api/v1/friends/reject")
+        .set("Cookie", cookieHeader)
+        .send({});
+
+      expect(res.status).toBe(400);
     });
   });
 

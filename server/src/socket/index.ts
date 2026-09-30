@@ -22,8 +22,12 @@ import { registerSpectatorHandlers } from "./handlers/spectator.js";
 import { registerHostHandlers } from "./handlers/host.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
 import { createSocketRateLimiter } from "./rateLimiter.js";
+import { registerIO } from "./ioRegistry.js";
 
 export const initSocketServer = (io: Server) => {
+    // Expose io to HTTP controllers (friend events, notifications, ...)
+    registerIO(io);
+
     // Start module-level GC once
     initModuleGC(io);
 
