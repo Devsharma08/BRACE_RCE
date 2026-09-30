@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
@@ -12,10 +11,9 @@ import {
   Zap,
   BarChart3,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../config/api";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
-import { CodeComparisonModal } from "../components/features/CodeComparisonModal";
 import { ContentSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
@@ -52,8 +50,7 @@ interface MatchRecord {
 }
 
 const Profile = () => {
-  const [selectedPerformances, setSelectedPerformances] = useState<any[] | null>(null);
-
+  const navigate = useNavigate();
   // Post-battle wave: stats + history refresh, identity stays cached.
   useSocketInvalidation("leaderboard:invalidate", [
     ["profile-stats"],
@@ -159,17 +156,19 @@ const Profile = () => {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 border-l border-line pl-0 lg:pl-8">
+              {/* Stacks under the identity block on phones (the 3-up row was
+                  crushed against the avatar); side rail divider only at lg. */}
+              <div className="grid grid-cols-3 gap-2 border-t border-line pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
                 {[
                   [stats?.totalMatches ?? 0, "battles"],
                   [`${stats?.winRate ?? 0}%`, "win rate"],
                   [stats?.totalScore ?? 0, "score"],
                 ].map(([value, label]) => (
-                  <div key={label} className="border-l border-line px-3 first:border-0">
-                    <div className="text-2xl font-bold text-fg">
+                  <div key={label} className="min-w-0 border-l border-line px-2 first:border-0 sm:px-3">
+                    <div className="truncate text-xl font-bold text-fg sm:text-2xl">
                       {value}
                     </div>
-                    <div className="mt-2 text-[9px] uppercase tracking-widest text-faint">
+                    <div className="mt-2 truncate text-[9px] uppercase tracking-widest text-faint">
                       {label}
                     </div>
                   </div>
@@ -264,11 +263,9 @@ const Profile = () => {
                           )}
                           <button
                             onClick={() => {
-                              const perfsToPass =
-                                record.event?.performances ||
-                                record.submissions ||
-                                [];
-                              setSelectedPerformances(perfsToPass);
+                              // Full review lives on its own page now — the
+                              // ownership-checked /analysis/:matchId route.
+                              navigate(`/analysis/${record.id}`);
                             }}
                             className="flex items-center gap-1.5 rounded-btn border border-subtle-line bg-base px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest text-subtle transition-colors hover:border-accent-primary/40 hover:text-accent-primary"
                           >
@@ -387,16 +384,6 @@ const Profile = () => {
           )}
         </div>
       </main>
-
-      {/* Code comparison modal */}
-      {selectedPerformances && (
-        <CodeComparisonModal
-          currentUserId={profile?.id || ""}
-          performances={selectedPerformances}
-          onClose={() => setSelectedPerformances(null)}
-          onReturnHome={() => setSelectedPerformances(null)}
-        />
-      )}
     </div>
   );
 };

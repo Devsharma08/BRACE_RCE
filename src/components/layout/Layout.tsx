@@ -40,6 +40,7 @@ const Layout = () => {
     pathname === '/lobby' ||
     pathname === '/friends' ||
     pathname === '/profile' ||
+    pathname.startsWith('/analysis') ||
     pathname === '/rooms/create' ||
     pathname === '/create-room';
 

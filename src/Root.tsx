@@ -24,6 +24,7 @@ const DataStructureDirectory = lazy(
 );
 const ConsoleShell = lazy(()=>import('./pages/ConsoleShell.tsx'));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
+const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
 const Problems = lazy(() => import("./pages/Problems.tsx").then((m) => ({ default: m.Problems })));
@@ -146,6 +147,8 @@ export const Root = () => {
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/friends" element={<FriendsDashboard />} />
                           <Route path="/profile" element={<Profile />} />
+                          {/* Post-battle review — ownership-checked match detail */}
+                          <Route path="/analysis/:matchId" element={<MatchAnalysis />} />
                           <Route path="/lobby" element={<Lobby />} />
                           <Route path="/problems" element={<Problems />} />
                           <Route path="/rooms/create" element={<CreateRoom />} />
