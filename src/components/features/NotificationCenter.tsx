@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from "react";
 import {
   Bell,
+  Check,
   CheckCheck,
   Trash2,
   X,
@@ -20,6 +21,7 @@ import type { NotificationItem } from "../../hooks/useNotifications";
 import { api } from "../../config/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useSocketInvalidation } from "../../hooks/useSocketInvalidation";
 
 const TABS = [
   { id: "ALL", label: "ALL" },
@@ -114,6 +116,18 @@ export const NotificationCenter = memo(function NotificationCenter() {
   const items = useMemo(() => (data?.notifications ?? []).filter((n) => tabMatch(tab, n)), [data, tab]);
   const unreadCount = unread?.unreadCount ?? 0;
 
+  // Request acted on from another surface (friends page / other tab) → refresh
+  // the queue so a resolved friend request doesn't linger as a stale action.
+  useSocketInvalidation("friends:update", [
+    ["friend-requests"],
+    ["friends-list"],
+    ["notifications"],
+    ["notifications-unread-count"],
+  ]);
+
+  // Row-level in-flight guard: one accept/reject at a time, buttons disabled.
+  const [actingOn, setActingOn] = useState<string | null>(null);
+
   const handleDelete = async (id: string) => {
     const snapshotAll = queryClient.getQueryData<{
       notifications: NotificationItem[];
@@ -148,6 +162,78 @@ export const NotificationCenter = memo(function NotificationCenter() {
     }
   };
 
+  /**
+   * Resolve the pending request behind a FRIEND_REQUEST row. Rows created
+   * after the socket work carry `data.requestId` + `data.senderId`; older rows
+   * fall back to matching the live pending-requests list by sender name.
+   */
+  const resolveFriendRequest = async (
+    n: NotificationItem,
+  ): Promise<{ requestId: string; senderId: string } | null> => {
+    const payload = n.data ?? {};
+    const directId = typeof payload.requestId === "string" ? payload.requestId : "";
+    const directSender = typeof payload.senderId === "string" ? payload.senderId : "";
+    if (directId && directSender) return { requestId: directId, senderId: directSender };
+
+    const res = await api.get("/friends/requests");
+    const requests = (res.data.requests ?? []) as {
+      id: string;
+      senderId: string;
+      sender?: { id?: string; username?: string };
+    }[];
+    const senderName = typeof payload.senderName === "string" ? payload.senderName : "";
+    const match = requests.find(
+      (r) =>
+        (directSender && r.senderId === directSender) ||
+        (senderName && r.sender?.username === senderName),
+    );
+    if (!match) return null;
+    return { requestId: match.id, senderId: match.senderId };
+  };
+
+  /** Accept or reject a friend request straight from the notification row. */
+  const handleFriendRequestAction = async (
+    n: NotificationItem,
+    action: "accept" | "reject",
+  ) => {
+    if (actingOn) return;
+    setActingOn(n.id);
+    try {
+      const target = await resolveFriendRequest(n);
+      if (!target) {
+        toast.info("This friend request is no longer available");
+        await handleDelete(n.id); // stale row — clear it
+        return;
+      }
+      if (action === "accept") {
+        await api.post("/friends/accept", {
+          requestId: target.requestId,
+          senderId: target.senderId,
+        });
+        toast.success("Friend request accepted");
+      } else {
+        await api.post("/friends/reject", { requestId: target.requestId });
+        toast.success("Friend request rejected");
+      }
+
+      // The request is resolved — the notification row is no longer actionable.
+      await handleDelete(n.id);
+      queryClient.invalidateQueries({ queryKey: ["friends-list"] });
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["blocked-users"] });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined;
+      toast.error(message || `Failed to ${action} request`);
+      queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    } finally {
+      setActingOn(null);
+    }
+  };
+
   return (
     <div className="relative">
       <button onClick={() => setOpen((o) => !o)} title="Notifications"
@@ -159,8 +245,8 @@ export const NotificationCenter = memo(function NotificationCenter() {
         }`}>
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-danger px-1 text-[10px] font-bold text-ink">
-            {unreadCount > 9 ? "9+" : unreadCount}
+          <span className="absolute -top-1.5 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-danger px-1 text-[10px] font-bold leading-none text-ink">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
@@ -236,7 +322,41 @@ export const NotificationCenter = memo(function NotificationCenter() {
                     </div>
                     <p className="mt-1.5 text-xs font-bold text-fg">{n.title}</p>
                     <p className="mt-0.5 font-sans text-[11px] leading-relaxed text-subtle">{n.body}</p>
-                    <div className="mt-2 flex items-center gap-3">
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      {n.type === "FRIEND_REQUEST" && (
+                        <span className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleFriendRequestAction(n, "accept")}
+                            disabled={actingOn !== null}
+                            title="Accept friend request"
+                            className="cursor-pointer rounded-btn border border-accent-success/40 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-accent-success transition-colors hover:bg-accent-success/10 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {actingOn === n.id ? (
+                              <Loader2 className="mx-2.5 h-3 w-3 animate-spin" />
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <Check className="h-3 w-3" />
+                                Accept
+                              </span>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleFriendRequestAction(n, "reject")}
+                            disabled={actingOn !== null}
+                            title="Reject friend request"
+                            className="cursor-pointer rounded-btn border border-accent-danger/40 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition-colors hover:bg-accent-danger/10 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {actingOn === n.id ? (
+                              <Loader2 className="mx-2.5 h-3 w-3 animate-spin" />
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <X className="h-3 w-3" />
+                                Reject
+                              </span>
+                            )}
+                          </button>
+                        </span>
+                      )}
                       {unread && (
                         <button onClick={() => markRead.mutate(n.id)}
                           className="cursor-pointer text-[9px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:text-fg">

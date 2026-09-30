@@ -155,6 +155,14 @@ const Header = () => {
             )}
           </div>
 
+          {/* MOBILE ACTIONS — the notification queue was desktop-only, so
+              phone users had no badge and no way to act on friend requests. */}
+          {isAuthenticated && (
+            <div className='flex items-center md:hidden'>
+              <NotificationCenter />
+            </div>
+          )}
+
           {/* MOBILE TOGGLE */}
           <button
             onClick={() => setOpen((o) => !o)}
