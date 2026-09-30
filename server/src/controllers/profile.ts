@@ -109,6 +109,62 @@ class Profile {
         }
     }
 
+    // GET SINGLE MATCH DETAIL (post-battle analysis page)
+    // Ownership-checked: only the participant may read the match, and the
+    // payload includes BOTH sides' performances + submissions for the
+    // side-by-side review.
+    async getMatchDetail(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const matchId = req.params.id as string;
+
+            const performance = await prisma.userPersonalPerformance.findUnique({
+                where: { id: matchId },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true } },
+                    event: {
+                        include: {
+                            commonProblem: {
+                                select: { name: true, problem_number: true, difficulty_level: true },
+                            },
+                            performances: {
+                                include: {
+                                    user: { select: { id: true, username: true, avatarUrl: true } },
+                                    submissions: { orderBy: { attemptNumber: "asc" } },
+                                },
+                            },
+                        },
+                    },
+                    submissions: { orderBy: { attemptNumber: "asc" } },
+                },
+            });
+
+            if (!performance) {
+                return res.status(404).json({ status: "error", message: "Match not found" });
+            }
+            if (performance.userId !== userId) {
+                return res.status(403).json({ status: "error", message: "Not your match" });
+            }
+
+            const match = {
+                ...performance,
+                event: performance.event
+                    ? {
+                        ...performance.event,
+                        commonProblem: performance.event.commonProblem
+                            ? withDisplayProblemName(performance.event.commonProblem)
+                            : performance.event.commonProblem,
+                    }
+                    : performance.event,
+            };
+
+            return res.status(200).json({ status: "success", match });
+        } catch (error) {
+            console.error("Match detail error: ", error);
+            return res.status(500).json({ status: "error", message: "Internal server error" });
+        }
+    }
+
     // CREATE CUSTOM PROBLEM
     async createCustomProblem(req: AuthRequest, res: Response) {
         try {

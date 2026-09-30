@@ -13,6 +13,10 @@ profileRouter.get("/", profileController.getProfileDetails);
 // GET PROFILE STATISTICS
 profileRouter.get("/stats", profileController.getProfileStatistics);
 
+// GET SINGLE MATCH DETAIL (analysis page — must be declared before "/:id"-style
+// routes are considered; profileRouter has no conflicting params otherwise)
+profileRouter.get("/matches/:id", profileController.getMatchDetail);
+
 // POST UPDATE PROFILE
 profileRouter.put("/", validate(updateProfileSchema), profileController.updateProfile);
 
