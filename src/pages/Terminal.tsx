@@ -70,6 +70,14 @@ const Terminal = () => {
   const [activeProblem, setActiveProblem] = useState<PracticeProblem | null>(null);
   const [problemsLoading, setProblemsLoading] = useState(true);
   const [problemsError, setProblemsError] = useState<string | null>(null);
+  // Bumped by Retry buttons — re-runs the catalog fetch without a remount.
+  const [problemsNonce, setProblemsNonce] = useState(0);
+  const retryProblems = useCallback(() => setProblemsNonce((n) => n + 1), []);
+
+  // Output-track ceiling, measured from the workspace grid (ResizeObserver
+  // below) and consumed by useTerminalLayout via getMaxOutputHeight.
+  const workspaceGridRef = useRef<HTMLDivElement | null>(null);
+  const maxOutputHeightRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executingMode, setExecutingMode] = useState<ExecutionMode | null>(null);
@@ -121,7 +129,34 @@ const Terminal = () => {
     startOutputDragging,
     startSidebarDragging,
     setSidebarWidth,
-  } = useTerminalLayout({ autoCloseBelowPx: 220 });
+    clampOutputHeight,
+  } = useTerminalLayout({
+    autoCloseBelowPx: 220,
+    getMaxOutputHeight: () => maxOutputHeightRef.current,
+  });
+
+  // The output track's true ceiling is the WORKSPACE height minus the editor
+  // floor — window.innerHeight ignores the toolbar, status bar, and stacked
+  // mobile layout, so dragging could push the grid past its own container and
+  // make the output scrollbar unreachable. Re-clamp on every container resize.
+  useEffect(() => {
+    const el = workspaceGridRef.current;
+    if (!el) return;
+    const measure = () => {
+      const height = el.getBoundingClientRect().height;
+      if (height <= 0) return;
+      const isMobile = window.innerWidth < 768;
+      // Floors: desktop keeps MIN_EDITOR_PX (200) for the editor row; mobile
+      // keeps a usable 180px editor above the output track.
+      maxOutputHeightRef.current = Math.max(120, height - (isMobile ? 180 : 200));
+      clampOutputHeight();
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [clampOutputHeight]);
 
   // Below md the shell stacks vertically. If the sidebar stayed in flow it would
   // take the full column height and push the editor + output panel off-screen
@@ -162,11 +197,16 @@ const Terminal = () => {
           setProblemsError("The complete problem catalog could not be loaded.");
         }
       })
-      .finally(() => setProblemsLoading(false));
+      .finally(() => {
+        // A superseded request (auth restore re-runs this effect) must not
+        // clear the NEWER request's flag — that race flashed "NO PROBLEMS
+        // FOUND" while the real catalog was still in flight.
+        if (!controller.signal.aborted) setProblemsLoading(false);
+      });
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, problemsNonce]);
 
   // ── Load problem into editor ───────────────────────────────
   const loadProblem = useCallback(
@@ -426,6 +466,7 @@ const Terminal = () => {
               width={sidebarWidth}
               onResizeStart={startSidebarDragging}
               isLoading={problemsLoading}
+              errorMessage={problemsError}
             />
             {/* ── Loader: full problems fetch overlay (blocks panels until databank syncs) ── */}
             {problemsLoading && (
@@ -513,6 +554,13 @@ const Terminal = () => {
               <div className="max-w-md border border-accent-danger/30 bg-accent-danger/5 p-6">
                 <p className="font-mono text-xs uppercase tracking-widest text-accent-danger">Problem catalog unavailable</p>
                 <p className="mt-2 text-xs text-subtle">{problemsError}</p>
+                <button
+                  type="button"
+                  onClick={retryProblems}
+                  className="mt-4 cursor-pointer border border-accent-primary/40 bg-accent-primary/10 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:bg-accent-primary/20"
+                >
+                  Retry sync
+                </button>
               </div>
             </div>
           ) : (
@@ -551,6 +599,7 @@ const Terminal = () => {
                     />
 
                     <div
+                      ref={workspaceGridRef}
                       className="grid min-h-0 flex-1"
                       style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
                     >
@@ -592,8 +641,21 @@ const Terminal = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="p-8 text-center text-subtle font-mono text-sm">
-                    NO PROBLEMS FOUND. ADD PROBLEMS VIA SEED ENDPOINT.
+                  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+                    {/* Empty catalog is a transient databank state, not a dead
+                        end — show progress + a manual retry instead of the old
+                        "ADD PROBLEMS VIA SEED ENDPOINT" dead-end copy. */}
+                    <Loader2 className="h-6 w-6 animate-spin text-accent-primary" />
+                    <p className="font-mono text-xs uppercase tracking-widest text-subtle">
+                      No problems in the databank yet — sync in progress
+                    </p>
+                    <button
+                      type="button"
+                      onClick={retryProblems}
+                      className="cursor-pointer border border-accent-primary/40 bg-accent-primary/10 px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-widest text-accent-primary transition-colors hover:bg-accent-primary/20"
+                    >
+                      Retry sync
+                    </button>
                   </div>
                 )}
               </div>

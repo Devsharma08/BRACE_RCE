@@ -73,6 +73,8 @@ interface PracticeSidebarProps {
   width: number;
   onResizeStart: (e: React.PointerEvent<HTMLDivElement>) => void;
   isLoading?: boolean;
+  /** Catalog fetch error — keeps the list from claiming "no problems match". */
+  errorMessage?: string | null;
 }
 
 // ─────────────────────────────────────────
@@ -220,10 +222,14 @@ const ProblemsListTab = ({
   problems,
   activeProblem,
   onSelect,
+  isLoading,
+  errorMessage,
 }: {
   problems: PracticeProblem[];
   activeProblem: PracticeProblem | null;
   onSelect: (p: PracticeProblem) => void;
+  isLoading?: boolean;
+  errorMessage?: string | null;
 }) => {
   const [search, setSearch] = useState("");
   const [diffFilter, setDiffFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
@@ -295,9 +301,15 @@ const ProblemsListTab = ({
 
       {/* Problem list — themed scrollbar */}
       <div className="flex-1 overflow-y-auto themed-scroll">
-        {filtered.length === 0 ? (
+        {isLoading && problems.length === 0 ? (
+          // Still fetching and nothing to show yet — the empty state would
+          // falsely claim "no problems match" while the catalog is in flight.
+          <SidebarSkeleton />
+        ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-faint text-[10px] font-mono uppercase tracking-widest">
-            NO PROBLEMS MATCH YOUR FILTERS
+            {errorMessage
+              ? "PROBLEM CATALOG UNAVAILABLE"
+              : "NO PROBLEMS MATCH YOUR FILTERS"}
           </div>
         ) : (
           filtered.map((p) => {
@@ -376,6 +388,7 @@ const PracticeSidebar = ({
   width,
   onResizeStart,
   isLoading,
+  errorMessage,
 }: PracticeSidebarProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("PROBLEM");
 
@@ -411,6 +424,8 @@ const PracticeSidebar = ({
           <ProblemsListTab
             problems={problems}
             activeProblem={activeProblem}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
             onSelect={(p) => {
               onSelectProblem(p);
               setActiveTab("PROBLEM"); // auto-switch to PROBLEM tab after selection
@@ -419,10 +434,11 @@ const PracticeSidebar = ({
         )}
       </div>
 
-      {/* RESIZE HANDLE */}
+      {/* RESIZE HANDLE — w-3 (was w-2) plus a pseudo hit strip reaching into
+          the workspace, so touch drags are not a precision sport. */}
       <div
         onPointerDown={onResizeStart}
-        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none"
+        className="absolute top-0 right-0 w-3 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none before:absolute before:inset-y-0 before:left-0 before:-right-3 before:content-['']"
         title="Drag to resize sidebar"
       >
         <div className="w-0.5 h-12 bg-accent-primary/40 group-hover:bg-accent-primary rounded" />

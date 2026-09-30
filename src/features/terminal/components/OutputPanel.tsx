@@ -117,10 +117,11 @@ const OutputPanel = ({
 
   return (
     <div className="flex h-full flex-col border-t border-subtle-line bg-terminal-bg">
-      {/* Resizer handle */}
+      {/* Resizer handle — 4px line visually, ~20px hit strip for touch/fat
+          fingers (the pseudo-element extends the pointer target only). */}
       <div
         onPointerDown={onResizeStart}
-        className="h-1 cursor-row-resize border-t border-subtle-line transition-all hover:border-accent-primary hover:bg-accent-primary/10 touch-none"
+        className="relative h-1 cursor-row-resize border-t border-subtle-line transition-all hover:border-accent-primary hover:bg-accent-primary/10 touch-none before:absolute before:inset-x-0 before:-top-3 before:-bottom-1 before:content-['']"
       />
 
       {/* Diagnostic tabs */}
