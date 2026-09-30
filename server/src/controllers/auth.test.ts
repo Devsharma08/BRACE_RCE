@@ -25,6 +25,13 @@ jest.spyOn(OAuth2Client.prototype, "verifyIdToken").mockImplementation(async (op
   throw new Error("Invalid token");
 });
 
+// Mock the PKCE authorization-code exchange — tests must never reach Google's
+// token endpoint. The returned id_token is then checked by the verifyIdToken
+// spy above, so the callback path exercises the same payload handling.
+jest.spyOn(OAuth2Client.prototype, "getToken").mockImplementation(async () => {
+  return { tokens: { id_token: "valid-google-token" } } as any;
+});
+
 describe("Auth Controller Routes (/api/v1/auth)", () => {
   const app = createApp();
 
@@ -212,6 +219,62 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       const res = await request(app).post("/api/v1/auth/google").send({});
       expect(res.status).toBe(400);
       expect(res.body.message).toBe("Validation failed");
+    });
+  });
+
+  describe("POST /api/v1/auth/google/callback", () => {
+    test("should exchange a PKCE code and authenticate the Google user", async () => {
+      process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
+
+      (prisma.user.findFirst as jest.Mock<any>).mockResolvedValue(null);
+      (prisma.user.create as jest.Mock<any>).mockResolvedValue({
+        id: "google-user-id",
+        username: "googleuser",
+        email: "googleuser@example.com",
+        avatarUrl: "https://example.com/avatar.png",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/auth/google/callback")
+        .send({
+          code: "auth-code-123",
+          code_verifier: "v".repeat(64),
+          redirect_uri: "http://localhost:5173/signin",
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Google auth successful");
+      expect(res.body.user.email).toBe("googleuser@example.com");
+      expect(res.headers["set-cookie"]).toBeDefined();
+    });
+
+    test("should return 400 when the PKCE body is incomplete", async () => {
+      process.env.GOOGLE_CLIENT_ID = "mock-google-client-id";
+
+      const res = await request(app)
+        .post("/api/v1/auth/google/callback")
+        .send({ code: "auth-code-123" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Validation failed");
+    });
+
+    test("should return 500 when the server has no Google client id", async () => {
+      const previous = process.env.GOOGLE_CLIENT_ID;
+      delete process.env.GOOGLE_CLIENT_ID;
+
+      const res = await request(app)
+        .post("/api/v1/auth/google/callback")
+        .send({
+          code: "auth-code-123",
+          code_verifier: "v".repeat(64),
+          redirect_uri: "http://localhost:5173/signin",
+        });
+
+      expect(res.status).toBe(500);
+      expect(res.body.message).toBe("Server is not configured with GOOGLE_CLIENT_ID");
+
+      process.env.GOOGLE_CLIENT_ID = previous;
     });
   });
 });

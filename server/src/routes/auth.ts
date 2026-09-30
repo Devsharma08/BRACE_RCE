@@ -2,7 +2,7 @@ import { Router, type Router as ExpressRouter } from "express";
 import rateLimit from "express-rate-limit";
 import authcontroller from "../controllers/auth.js";
 import { authentication } from "../middleware/authentication.js";
-import { validate, signupSchema, signinSchema, googleAuthSchema } from "../middleware/validation.js";
+import { validate, signupSchema, signinSchema, googleAuthSchema, googleCallbackSchema } from "../middleware/validation.js";
 
 export const authRouter: ExpressRouter = Router();
 
@@ -19,3 +19,4 @@ authRouter.post('/signin', authLimiter, validate(signinSchema), authcontroller.s
 authRouter.post('/signout', authcontroller.signout);
 authRouter.get('/me', authentication, authcontroller.me);
 authRouter.post('/google', authLimiter, validate(googleAuthSchema), authcontroller.googleAuth);
+authRouter.post('/google/callback', authLimiter, validate(googleCallbackSchema), authcontroller.googleCallback);

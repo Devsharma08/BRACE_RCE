@@ -106,6 +106,14 @@ export const googleAuthSchema = z.object({
   credential: z.string().min(1, "Google credential token is required"),
 });
 
+// PKCE callback body — the redirect page posts the authorization code it
+// received plus the verifier and the exact redirect URI used to start the flow.
+export const googleCallbackSchema = z.object({
+  code: z.string().min(1, "Authorization code is required"),
+  code_verifier: z.string().min(43, "Invalid PKCE code verifier").max(128, "Invalid PKCE code verifier"),
+  redirect_uri: z.string().url("Invalid redirect URI"),
+});
+
 // Profile schemas
 export const updateProfileSchema = z.object({
   username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_-]+$/).optional(),

@@ -121,6 +121,45 @@ export class AuthController {
         }
     }
 
+    /**
+     * Find an existing account by email or create one from the Google profile.
+     * Shared by the ID-token flow (/google) and the PKCE code flow
+     * (/google/callback) so both produce identical accounts.
+     */
+    private async findOrCreateGoogleUser(payload: { email?: string | null; name?: string | null; picture?: string | null }) {
+        const email = payload.email as string;
+
+        let user = await prisma.user.findFirst({
+            where: { email }
+        });
+
+        if (!user) {
+            let emailPrefix = email ? email.split('@')[0] : 'user';
+            let baseUsername = (payload.name || emailPrefix || 'user').replace(/[^a-zA-Z0-9_]/g, '');
+            if (!baseUsername) baseUsername = "user";
+            let count = 0;
+            let uniqueUsername = baseUsername;
+            while (await prisma.user.findFirst({
+                where: { username: uniqueUsername }
+            })) {
+                uniqueUsername = `${baseUsername}${count}`;
+                count++;
+            }
+
+            user = await prisma.user.create({
+                data: {
+                    id: uuidv4(),
+                    email,
+                    avatarUrl: payload.picture || `https://api.dicebear.com/9.x/avataaars/svg?seed=${uniqueUsername}`,
+                    username: uniqueUsername,
+                    updatedAt: new Date()
+                }
+            });
+        }
+
+        return user;
+    }
+
     googleAuth = async (req: Request, res: Response) => {
         const google_client_id = process.env.GOOGLE_CLIENT_ID;
         if (!google_client_id || !google_client_id.trim() || google_client_id.trim() === "not-configured") {
@@ -150,33 +189,7 @@ export class AuthController {
 
             const { email, picture, name } = payload;
 
-            let user = await prisma.user.findFirst({
-                where: { email }
-            });
-
-            if (!user) {
-                let emailPrefix = email ? email.split('@')[0] : 'user';
-                let baseUsername = (name || emailPrefix || 'user').replace(/[^a-zA-Z0-9_]/g, '');
-                if (!baseUsername) baseUsername = "user";
-                let count = 0;
-                let uniqueUsername = baseUsername;
-                while (await prisma.user.findFirst({
-                    where: { username: uniqueUsername }
-                })) {
-                    uniqueUsername = `${baseUsername}${count}`;
-                    count++;
-                }
-
-                user = await prisma.user.create({
-                    data: {
-                        id: uuidv4(),
-                        email,
-                        avatarUrl: picture || `https://api.dicebear.com/9.x/avataaars/svg?seed=${uniqueUsername}`,
-                        username: uniqueUsername,
-                        updatedAt: new Date()
-                    }
-                });
-            }
+            const user = await this.findOrCreateGoogleUser({ email, picture, name });
 
             await this.setTokenCookie(res, user.id);
 
@@ -198,7 +211,67 @@ export class AuthController {
     }
 }
 
+    /**
+     * Complete the PKCE authorization-code flow started by the client
+     * (redirect_uri = the page that received ?code=). Exchange the code with
+     * Google, verify the returned ID token, then create/lookup the account and
+     * set the session cookie — same account semantics as the ID-token flow.
+     */
+    googleCallback = async (req: Request, res: Response) => {
+        const google_client_id = process.env.GOOGLE_CLIENT_ID;
+        if (!google_client_id || !google_client_id.trim() || google_client_id.trim() === "not-configured") {
+            return res.status(500).json({
+                message: "Server is not configured with GOOGLE_CLIENT_ID"
+            });
+        }
 
+        const { code, code_verifier, redirect_uri } = req.body;
+
+        try {
+            // GOOGLE_CLIENT_SECRET is only required for confidential "Web
+            // application" clients; public/desktop clients verify PKCE alone.
+            const client = new OAuth2Client(google_client_id, process.env.GOOGLE_CLIENT_SECRET);
+
+            const { tokens } = await client.getToken({
+                code,
+                codeVerifier: code_verifier,
+                redirect_uri,
+            });
+            if (!tokens.id_token) {
+                return res.status(400).json({ message: "Google did not return an ID token" });
+            }
+
+            const ticket = await client.verifyIdToken({
+                idToken: tokens.id_token,
+                audience: google_client_id
+            });
+
+            const payload = ticket.getPayload();
+            if (!payload || !payload.email) {
+                return res.status(400).json({ message: "Invalid google token payload" });
+            }
+
+            const user = await this.findOrCreateGoogleUser(payload);
+
+            await this.setTokenCookie(res, user.id);
+
+            return res.status(200).json({
+                message: "Google auth successful",
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    avatarUrl: user.avatarUrl
+                }
+            });
+        }
+        catch (error) {
+            console.error("error in google callback", error);
+            return res.status(401).json({
+                message: "Google authorization failed"
+            });
+        }
+    };
 }
 
 const authcontroller = new AuthController();
