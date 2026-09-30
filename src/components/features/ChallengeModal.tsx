@@ -89,7 +89,8 @@ export function ChallengeModal({ friend, open, onClose }: {
         {mode === "RANDOM" ? (
           <div className="px-5 pb-2">
             <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-secondary">DIFFICULTY // SERVER PICKS A RANDOM PROBLEM</p>
-            <div className="grid grid-cols-4 gap-2">
+            {/* 2-up on phones so the tracked labels don't overflow the modal */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {["EASY", "MEDIUM", "HARD", "ANY"].map((d) => (
                 <button key={d} onClick={() => setDifficulty(d)}
                   className={`rounded-btn border px-2 py-2.5 text-[11px] font-bold tracking-widest transition-all ${difficulty === d ? "border-accent-primary bg-accent-primary/10 text-accent-primary" : "border-subtle-line text-subtle hover:border-accent-primary/40 hover:text-accent-primary"}`}>{d}</button>

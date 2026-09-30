@@ -67,7 +67,8 @@ export const QuickNavHub: React.FC<QuickNavHubProps> = ({
         {/* DIFFICULTY SELECTOR */}
         <div>
           <p className="text-[9px] text-subtle tracking-[0.2em] uppercase mb-2.5 font-bold">SELECT TARGET BRACKET</p>
-          <div className="grid grid-cols-4 gap-2">
+          {/* 4 tracked-out labels overflow a phone modal — 2-up below sm. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {DIFFICULTIES.map((d) => {
               const active = difficulty === d;
               const c = diffColors[d];

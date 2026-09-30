@@ -85,8 +85,9 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
   return (
     <Card accent="top">
       <SectionLabel>Activity — {monthName}</SectionLabel>
-      {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      {/* Day-of-week headers — always 7 columns (calendar semantics); tighter
+          gutter on phones so the cells keep usable width. */}
+      <div className="grid grid-cols-7 gap-0.5 mb-1 sm:gap-1">
         {DOW.map((d, i) => (
           <div key={i} className="text-[10px] font-bold text-subtle font-mono text-center">
             {d}
@@ -94,7 +95,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
         ))}
       </div>
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {padded.map((day, i) =>
           day === null ? (
             <div key={`pad-${i}`} />
@@ -400,17 +401,18 @@ export const RuntimeStats = memo(({
   return (
     <Card accent="none">
       <SectionLabel>Execution Runtime</SectionLabel>
+      {/* 3-up metrics: scaled down on phones so "12345ms" stays in its column */}
       <div className="grid grid-cols-3 divide-x divide-accent-primary/15">
         {[
           { label: "Best", value: data.best, color: "text-accent-success" },
           { label: "Average", value: data.avg, color: "text-accent-primary" },
           { label: "Worst", value: data.worst, color: "text-accent-danger" },
         ].map((m) => (
-          <div key={m.label} className="flex flex-col items-center gap-1 px-3 first:pl-0 last:pr-0">
+          <div key={m.label} className="flex min-w-0 flex-col items-center gap-1 px-1.5 first:pl-0 last:pr-0 sm:px-3">
             <span className="text-[9px] font-mono text-faint uppercase tracking-wider">
               {m.label}
             </span>
-            <span className={`text-xl font-black font-mono ${m.color}`}>
+            <span className={`text-base font-black font-mono sm:text-xl ${m.color}`}>
               {fmt(m.value)}
             </span>
           </div>

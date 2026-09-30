@@ -274,8 +274,8 @@ export const Dashboard: React.FC = () => {
           className="fixed inset-0 z-50 flex items-center justify-center ds-overlay p-4 select-none"
         >
           <div className="w-full max-w-xl bg-raised border border-subtle-line border-t-2 border-t-accent-primary/40 p-8 flex flex-col items-center gap-6">
-            <div className="w-full grid grid-cols-5 items-center gap-3">
-              <div className="col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
+            <div className="w-full grid grid-cols-3 sm:grid-cols-5 items-center gap-3">
+              <div className="sm:col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
                 <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   YOU
                 </span>
@@ -289,7 +289,7 @@ export const Dashboard: React.FC = () => {
                 <span className="text-sm font-black text-accent-danger font-mono">VS</span>
               </div>
 
-              <div className="col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
+              <div className="sm:col-span-2 border border-subtle-line bg-raised p-4 flex flex-col items-center text-center min-w-0">
                 <span className="text-[10px] text-subtle font-mono font-bold uppercase tracking-widest mb-1">
                   OPPONENT
                 </span>
