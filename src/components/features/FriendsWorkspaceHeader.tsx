@@ -20,6 +20,8 @@ interface FriendsWorkspaceHeaderProps {
   pendingRequests: PendingRequest[];
   onAcceptRequest: (id: string, senderId: string) => void;
   onRejectRequest: (id: string) => void;
+  /** Request id currently being accepted/rejected — disables its buttons. */
+  actingRequestId?: string | null;
   discoverOpen: boolean;
   onToggleDiscover: () => void;
   discoverResults: Friend[];
@@ -40,6 +42,7 @@ export function FriendsWorkspaceHeader({
   pendingRequests,
   onAcceptRequest,
   onRejectRequest,
+  actingRequestId,
   discoverOpen,
   onToggleDiscover,
   discoverResults,
@@ -101,8 +104,8 @@ export function FriendsWorkspaceHeader({
         >
           <UserPlus className="h-3.5 w-3.5" />
           {requestCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-accent-warning px-1 text-center text-[9px] font-bold text-ink">
-                {requestCount > 9 ? "9+" : requestCount}
+              <span className="absolute -right-1.5 -top-1.5 z-10 min-w-4 rounded-full bg-accent-warning px-1 text-center text-[9px] font-bold leading-4 text-ink">
+                {requestCount > 99 ? "99+" : requestCount}
               </span>
             )}
           </button>
@@ -216,19 +219,35 @@ export function FriendsWorkspaceHeader({
             <p className="px-3 py-4 text-[10px] text-muted">No pending requests.</p>
           ) : (
             <div className="divide-y divide-subtle-line">
-              {pendingRequests.map((request) => (
+              {pendingRequests.map((request) => {
+                const acting = actingRequestId === request.id;
+                const anyActing = actingRequestId != null;
+                return (
                 <div key={request.id} className="flex items-center justify-between gap-2 px-3 py-2.5">
                   <span className="truncate text-xs font-bold text-fg">{request.sender.username}</span>
                   <div className="flex shrink-0 gap-1">
-                    <button type="button" onClick={() => handleAccept(request)} className="rounded-btn border border-accent-success/30 p-1.5 text-accent-success hover:bg-accent-success/10" title="Accept request">
-                      <Check className="h-3.5 w-3.5" />
+                    <button
+                      type="button"
+                      disabled={anyActing}
+                      onClick={() => handleAccept(request)}
+                      className="rounded-btn border border-accent-success/30 p-1.5 text-accent-success hover:bg-accent-success/10 disabled:cursor-wait disabled:opacity-60"
+                      title="Accept request"
+                    >
+                      {acting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                     </button>
-                    <button type="button" onClick={() => onRejectRequest(request.id)} className="rounded-btn border border-accent-danger/30 p-1.5 text-accent-danger hover:bg-accent-danger/10" title="Reject request">
-                      <X className="h-3.5 w-3.5" />
+                    <button
+                      type="button"
+                      disabled={anyActing}
+                      onClick={() => onRejectRequest(request.id)}
+                      className="rounded-btn border border-accent-danger/30 p-1.5 text-accent-danger hover:bg-accent-danger/10 disabled:cursor-wait disabled:opacity-60"
+                      title="Reject request"
+                    >
+                      {acting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

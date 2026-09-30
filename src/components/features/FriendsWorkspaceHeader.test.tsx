@@ -165,4 +165,21 @@ describe('FriendsWorkspaceHeader — pending requests', () => {
     fireEvent.click(screen.getByTitle('Reject request'));
     expect(onRejectRequest).toHaveBeenCalledWith('req-1');
   });
+
+  test('shows the real request count above 9 (badge capped at 99+)', () => {
+    renderHeader({ requestCount: 120 });
+    expect(screen.getByText('99+')).toBeInTheDocument();
+  });
+
+  test('disables BOTH action buttons while a request action is in flight', () => {
+    renderHeader({
+      requestCount: 1,
+      pendingRequests: [{ id: 'req-1', sender: { id: 'sender-9', username: 'morpheus' } }],
+      actingRequestId: 'req-1',
+    });
+    openRequests();
+
+    expect(screen.getByTitle('Accept request')).toBeDisabled();
+    expect(screen.getByTitle('Reject request')).toBeDisabled();
+  });
 });

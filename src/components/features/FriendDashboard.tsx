@@ -5,24 +5,19 @@ import { useAuth } from "../../context/AuthContext";
 import {
   Swords,
   Send,
-  UserPlus,
-  Search,
-  Check,
   Trash2,
-  X,
   Ban,
   MessageSquare,
   ChevronLeft,
   User,
-  Shield,
   Trophy,
-  Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../config/api";
 import { ChallengeModal } from "./ChallengeModal";
 import { TIER_COLORS, useLeaderboard } from "../../hooks/useLeaderboard";
 import { FriendsWorkspaceHeader } from "./FriendsWorkspaceHeader";
+import { useSocketInvalidation } from "../../hooks/useSocketInvalidation";
 
 interface Friend {
   id: string;
@@ -44,8 +39,19 @@ interface FriendRequest {
   sender: Friend;
 }
 
+// Axios errors arrive as `unknown`; pull the server's message out without
+// falling back to `any` (which the lint config rejects).
+const apiErrorMessage = (err: unknown, fallback: string) => {
+  if (err && typeof err === "object" && "response" in err) {
+    const message = (err as { response?: { data?: { message?: string } } }).response
+      ?.data?.message;
+    if (message) return message;
+  }
+  return fallback;
+};
+
 export default function FriendsDashboard() {
-  const { sendDirectMessage, socket, requestPresence, friends: socketFriends, setFriends } = useSocket();
+  const { sendDirectMessage, socket, requestPresence, friends: socketFriends } = useSocket();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
@@ -55,8 +61,12 @@ export default function FriendsDashboard() {
 
   const [challengeFriend, setChallengeFriend] = useState<Friend | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [onlineIds, setOnlineIds] = useState<string[]>([]);
-
+  // Derived presence set — no local mirror state, so socket presence can never
+  // go stale between renders.
+  const onlineIds = useMemo(
+    () => socketFriends.filter((f) => f.isOnline).map((f) => f.id),
+    [socketFriends],
+  );
   // ── NEW-FRIEND DISCOVERY ──────────────────────────────────────────────
   // The workspace had no way to search *new* users at all: `searchQuery` only
   // filtered the already-friends list, and the send-request handler was never
@@ -64,58 +74,53 @@ export default function FriendsDashboard() {
   // "search + send request" flow simply did not exist in the UI.
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [discoverQuery, setDiscoverQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [discoverResults, setDiscoverResults] = useState<Friend[]>([]);
-  const [discoverLoading, setDiscoverLoading] = useState(false);
+  // Ids requested during this session — overlaid as `requestSent` on the
+  // directory results so a row flips to "Requested" without a refetch.
+  const [sentRequestIds, setSentRequestIds] = useState<string[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
-  const [discoverError, setDiscoverError] = useState<string | null>(null);
 
-  // Debounce so every keystroke doesn't hit GET /friends/search.
+  // In-flight accept/reject so rows can disable their buttons ("proper checks"
+  // on the client too — double-submits used to race the ownership checks).
+  const [actingRequest, setActingRequest] = useState<string | null>(null);
+
+  // The server emits `friends:update` after every graph mutation (send /
+  // accept / reject / remove / block / unblock) — refetch in one wave instead
+  // of waiting for a manual navigation.
+  useSocketInvalidation("friends:update", [
+    ["friends-list"],
+    ["friend-requests"],
+    ["blocked-users"],
+  ]);
+
+  // Debounce the directory search: the query only commits 300ms after the user
+  // stops typing, and the react-query key below is the committed value.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(discoverQuery.trim()), 300);
     return () => clearTimeout(timer);
   }, [discoverQuery]);
 
-  useEffect(() => {
-    if (!discoverOpen) return;
-    if (debouncedQuery.length < 2) {
-      setDiscoverResults([]);
-      setDiscoverError(null);
-      setDiscoverLoading(false);
-      return;
-    }
+  // Directory search is a keyed query: loading/results/error are owned by
+  // react-query instead of an effect that synchronously set three state values
+  // (which also double-fetched under StrictMode).
+  const {
+    data: discoverResults = [],
+    isFetching: discoverLoading,
+    error: discoverQueryError,
+  } = useQuery<Friend[]>({
+    queryKey: ["friend-discover", debouncedQuery],
+    enabled: discoverOpen && debouncedQuery.length >= 2,
+    staleTime: 0,
+    retry: false,
+    queryFn: async () => {
+      const res = await api.get("/friends/search", { params: { q: debouncedQuery } });
+      return (res.data.users || []) as Friend[];
+    },
+  });
 
-    let cancelled = false;
-    setDiscoverLoading(true);
-    setDiscoverError(null);
-
-    api
-      .get("/friends/search", { params: { q: debouncedQuery } })
-      .then((res) => {
-        if (cancelled) return;
-        setDiscoverResults((res.data.users || []) as Friend[]);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setDiscoverResults([]);
-        setDiscoverError(
-          err?.response?.data?.message || "Could not reach the operatives directory",
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setDiscoverLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery, discoverOpen]);
-
-  // Update onlineIds from socket friends presence
-  useEffect(() => {
-    const online = socketFriends.filter(f => f.isOnline).map(f => f.id);
-    setOnlineIds(online);
-  }, [socketFriends]);
+  const discoverError = discoverQueryError
+    ? apiErrorMessage(discoverQueryError, "Could not reach the operatives directory")
+    : null;
 
   const { data: friends = [], isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
@@ -133,7 +138,9 @@ export default function FriendsDashboard() {
     },
   });
 
-  const { data: blockedUsers = [], refetch: getBlockedUsers } = useQuery<Friend[]>({
+  // No blocked-list UI yet; the query exists so the `blocked-users` cache that
+  // socket invalidations target is a real query, and blocking can refresh it.
+  const { refetch: getBlockedUsers } = useQuery<Friend[]>({
     queryKey: ["blocked-users"],
     queryFn: async () => {
       const res = await api.get("/friends/blocked");
@@ -190,8 +197,8 @@ export default function FriendsDashboard() {
         );
       }
     };
-    socket.on("direct_message", handleMessage);
-    return () => { socket.off("direct_message", handleMessage); };
+    socket.on("receive_direct_message", handleMessage);
+    return () => { socket.off("receive_direct_message", handleMessage); };
   }, [socket, activeTab, queryClient]);
 
   // A friend request being accepted (or a new request arriving) must update the
@@ -208,40 +215,17 @@ export default function FriendsDashboard() {
     return () => { socket.off("notification:new", onNotification); };
   }, [socket, queryClient]);
 
-  // Invariant: switching chats never carries the previous friend's optimistic
-  // messages (the chat-list click clears them too; this covers every path).
-  useEffect(() => {
+  // Single transition point for opening/switching/closing a conversation: the
+  // previous friend's optimistic messages can never leak across (this replaced
+  // a setState-in-effect reset that lint flags as a cascading render).
+  const selectFriend = (friend: Friend | null) => {
+    setActiveTab(friend);
     setMessages([]);
-  }, [activeTab?.id]);
+  };
 
-  useEffect(() => {
-    if (!socket) return;
-    const handlePresence = (data: { userId: string; status: string }) => {
-      setOnlineIds((prev) =>
-        data.status === "ONLINE" ? [...new Set([...prev, data.userId])] : prev.filter((id) => id !== data.userId)
-      );
-    };
-    // Batch answer to requestPresence() below — without this the server's reply
-    // was dropped and friends never showed as online.
-    const handleSnapshot = (snapshot: { userId: string; status: string }[]) => {
-      if (!Array.isArray(snapshot) || snapshot.length === 0) return;
-      setOnlineIds((prev) => {
-        const next = new Set(prev);
-        for (const entry of snapshot) {
-          if (entry.status === "ONLINE") next.add(entry.userId);
-          else next.delete(entry.userId);
-        }
-        return [...next];
-      });
-    };
-    socket.on("user_online_status", handlePresence);
-    socket.on("presence_snapshot", handleSnapshot);
-    return () => {
-      socket.off("user_online_status", handlePresence);
-      socket.off("presence_snapshot", handleSnapshot);
-    };
-  }, [socket]);
-
+  // Presence is owned by SocketContext: it binds `user_online_status` and
+  // `presence_snapshot` and folds both into `friends[].isOnline`, which
+  // `onlineIds` above derives from. This only fires the batch question.
   useEffect(() => {
     if (!socket || friends.length === 0) return;
     requestPresence(friends.map((f) => f.id));
@@ -266,19 +250,21 @@ export default function FriendsDashboard() {
       // rejected by zod, so no request was ever created.
       await api.post("/friends/request", { targetUserId });
       toast.success(`Friend request sent to ${username}`);
-      setDiscoverResults((prev) =>
-        prev.map((u) => (u.id === targetUserId ? { ...u, requestSent: true } : u)),
+      setSentRequestIds((prev) =>
+        prev.includes(targetUserId) ? prev : [...prev, targetUserId],
       );
       fetchFriends();
       fetchRequests();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to send request");
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, "Failed to send request"));
     } finally {
       setSendingTo(null);
     }
   };
 
   const handleAcceptRequest = async (requestId: string, senderId: string) => {
+    if (actingRequest) return;
+    setActingRequest(requestId);
     try {
       // Route is POST /friends/accept with a body — the old /accept/:id call
       // never matched a handler, so accepts silently failed.
@@ -286,19 +272,28 @@ export default function FriendsDashboard() {
       toast.success("Friend request accepted");
       fetchFriends();
       fetchRequests();
-    } catch {
-      toast.error("Failed to accept request");
+    } catch (err: unknown) {
+      // Surface the server's ownership/state message (404/403/400) verbatim.
+      toast.error(apiErrorMessage(err, "Failed to accept request"));
+      fetchRequests();
+    } finally {
+      setActingRequest(null);
     }
   };
 
   const handleRejectRequest = async (requestId: string) => {
+    if (actingRequest) return;
+    setActingRequest(requestId);
     try {
       // Route is POST /friends/reject with { requestId } in the body.
       await api.post("/friends/reject", { requestId });
       toast.success("Friend request rejected");
       fetchRequests();
-    } catch {
-      toast.error("Failed to reject request");
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, "Failed to reject request"));
+      fetchRequests();
+    } finally {
+      setActingRequest(null);
     }
   };
 
@@ -307,7 +302,7 @@ export default function FriendsDashboard() {
       // Route is DELETE /friends/remove/:id — /friends/:id 404'd.
       await api.delete(`/friends/remove/${friendId}`);
       toast.success("Friend removed");
-      if (activeTab?.id === friendId) setActiveTab(null);
+      if (activeTab?.id === friendId) selectFriend(null);
       fetchFriends();
     } catch {
       toast.error("Failed to remove friend");
@@ -322,16 +317,6 @@ export default function FriendsDashboard() {
       getBlockedUsers();
     } catch {
       toast.error("Failed to block user");
-    }
-  };
-
-  const handleUnblockUser = async (userId: string) => {
-    try {
-      await api.post("/friends/unblock", { targetUserId: userId });
-      toast.success("User unblocked");
-      getBlockedUsers();
-    } catch {
-      toast.error("Failed to unblock user");
     }
   };
 
@@ -373,9 +358,14 @@ export default function FriendsDashboard() {
             pendingRequests={pendingRequests}
             onAcceptRequest={handleAcceptRequest}
             onRejectRequest={handleRejectRequest}
+            actingRequestId={actingRequest}
             discoverOpen={discoverOpen}
             onToggleDiscover={() => setDiscoverOpen((open) => !open)}
-            discoverResults={discoverResults}
+            discoverResults={discoverResults.map((candidate) =>
+              candidate.requestSent || sentRequestIds.includes(candidate.id)
+                ? { ...candidate, requestSent: true }
+                : candidate,
+            )}
             discoverQuery={discoverQuery}
             onDiscoverQueryChange={setDiscoverQuery}
             discoverLoading={discoverLoading}
@@ -397,7 +387,7 @@ export default function FriendsDashboard() {
                 .map((friend) => (
                   <button
                     key={friend.id}
-                    onClick={() => { setActiveTab(friend); setMessages([]); }}
+                    onClick={() => selectFriend(friend)}
                     className={`flex w-full items-center gap-3 border-l-2 px-3 py-3 transition-all hover:bg-surface-hover ${
                       activeTab?.id === friend.id ? "border-l-accent-primary bg-accent-primary/10" : "border-l-transparent"
                     }`}
@@ -433,7 +423,7 @@ export default function FriendsDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setActiveTab(null)}
+                    onClick={() => selectFriend(null)}
                     aria-label="Back to friend list"
                     className="md:hidden p-1 -ml-1 text-subtle hover:text-fg transition-colors"
                   >
