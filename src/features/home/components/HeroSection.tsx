@@ -177,6 +177,28 @@ const PIXEL_META: (PixelMeta | null)[][] = MATRIX_DATA.map((row, ri) =>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FLAT LIT-CELL INDEX — pointer/scan/glitch frames iterate ONLY lit pixels
+// (one pass over ~300 entries) instead of 15×100 = 1500 null-checked cells.
+// LIT_INDEX maps (ri, ci) → flat slot for the React ref callback.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LIT_RI: number[] = [];
+const LIT_CI: number[] = [];
+const LIT_META: PixelMeta[] = [];
+const LIT_INDEX: number[][] = MATRIX_DATA.map((row, ri) =>
+  row.map((pixel, ci) => {
+    const pm = PIXEL_META[ri][ci];
+    if (!pixel || !pm) return -1;
+    const flat = LIT_RI.length;
+    LIT_RI.push(ri);
+    LIT_CI.push(ci);
+    LIT_META.push(pm);
+    return flat;
+  })
+);
+const LIT_COUNT = LIT_RI.length;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -197,16 +219,42 @@ export const BraceRcePixelArt: React.FC = () => {
   // Refs for pointer RAF loop — zero React state updates ever
   const rafRef = React.useRef<number>(0);
   const pointerRef = React.useRef({ x: -9999, y: -9999, active: false });
-  const trailRef = React.useRef<Map<string, { energy: number; ts: number }>>(new Map());
+  const trailRef = React.useRef<Map<number, { energy: number; ts: number }>>(new Map());
 
   // Pre-allocate 2-D ref matrix at declaration time so ref callbacks fire immediately during render
   const pixelElemsRef = React.useRef<(HTMLDivElement | null)[][]>(
     MATRIX_DATA.map(() => new Array(COLS).fill(null))
   );
-  const pixelRectsRef = React.useRef<({ cx: number; cy: number } | null)[][]>([]);
+  // Flat mirrors: lit-cell element + measured center (index-aligned with LIT_*).
+  const litElsRef = React.useRef<(HTMLDivElement | null)[]>(new Array(LIT_COUNT).fill(null));
+  const litPosRef = React.useRef<({ cx: number; cy: number } | null)[]>(new Array(LIT_COUNT).fill(null));
   const gridBoundsRef = React.useRef<DOMRect | null>(null);
   const isMobileRef = React.useRef(false);
   const prefersReducedRef = React.useRef(false);
+  // IntersectionObserver gate — no frames run while the hero is off-screen.
+  const heroVisibleRef = React.useRef(true);
+
+  // Dirty-flag style cache: only write filter/box-shadow/transform when the
+  // quantised value actually changed. The old loop rewrote all three on every
+  // frame for every lit pixel even when energy was flat.
+  const styleCacheRef = React.useRef<{ f: string; s: string; t: string }[]>([]);
+  const writePixelStyle = React.useCallback(
+    (i: number, patch: { f?: string; s?: string; t?: string }) => {
+      const el = litElsRef.current[i];
+      if (!el) return;
+      let cache = styleCacheRef.current[i];
+      if (!cache) {
+        // First touch snapshots the React-applied inline styles so subsequent
+        // diffs never clobber a value we did not write ourselves.
+        cache = { f: el.style.filter, s: el.style.boxShadow, t: el.style.transform };
+        styleCacheRef.current[i] = cache;
+      }
+      if (patch.f !== undefined && patch.f !== cache.f) { el.style.filter = patch.f; cache.f = patch.f; }
+      if (patch.s !== undefined && patch.s !== cache.s) { el.style.boxShadow = patch.s; cache.s = patch.s; }
+      if (patch.t !== undefined && patch.t !== cache.t) { el.style.transform = patch.t; cache.t = patch.t; }
+    },
+    []
+  );
 
   // Boot state — when the boot already played this session, treat it as done
   // on mount so the pixel grid is fully lit and hover/glow effects work.
@@ -227,27 +275,84 @@ export const BraceRcePixelArt: React.FC = () => {
   }, []);
 
   // ── Measure pixel positions on mount & resize ──────────────────────────
+  // The grid is a uniform CSS grid (repeat(100) cols / repeat(15) rows with
+  // % gaps), so centers derive LINEARLY from three sample cells — three
+  // getBoundingClientRect calls instead of ~1500 per measure.
   const measurePixelPositions = React.useCallback(() => {
     if (!gridRef.current) return;
     gridBoundsRef.current = gridRef.current.getBoundingClientRect();
-    const rects: ({ cx: number; cy: number } | null)[][] = [];
-    for (let ri = 0; ri < ROWS; ri++) {
-      rects[ri] = [];
-      for (let ci = 0; ci < COLS; ci++) {
-        const el = pixelElemsRef.current[ri]?.[ci];
-        if (!el || !MATRIX_DATA[ri][ci]) { rects[ri][ci] = null; continue; }
-        const r = el.getBoundingClientRect();
-        rects[ri][ci] = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+
+    const els = pixelElemsRef.current;
+    const sampleA = els[0]?.[0];
+    const sampleB = els[0]?.[1];
+    const sampleC = els[1]?.[0];
+    const positions: ({ cx: number; cy: number } | null)[] = new Array(LIT_COUNT).fill(null);
+
+    if (sampleA && sampleB && sampleC) {
+      const ra = sampleA.getBoundingClientRect();
+      const rb = sampleB.getBoundingClientRect();
+      const rc = sampleC.getBoundingClientRect();
+      const ax = ra.left + ra.width / 2;
+      const ay = ra.top + ra.height / 2;
+      const pitchX = rb.left + rb.width / 2 - ax;
+      const pitchY = rc.top + rc.height / 2 - ay;
+
+      if (pitchX !== 0 && pitchY !== 0) {
+        for (let i = 0; i < LIT_COUNT; i++) {
+          positions[i] = { cx: ax + LIT_CI[i] * pitchX, cy: ay + LIT_RI[i] * pitchY };
+        }
+        litPosRef.current = positions;
+        return;
       }
     }
-    pixelRectsRef.current = rects;
+
+    // Fallback: non-uniform layout (or missing samples) → measure each lit cell.
+    for (let i = 0; i < LIT_COUNT; i++) {
+      const el = litElsRef.current[i] ?? els[LIT_RI[i]]?.[LIT_CI[i]];
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      positions[i] = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    }
+    litPosRef.current = positions;
   }, []);
 
   React.useEffect(() => {
     const t = setTimeout(measurePixelPositions, 600);
-    const onResize = () => { gridBoundsRef.current = null; measurePixelPositions(); };
+
+    // rAF-throttled resize: the old handler re-measured (1500 rects) on every
+    // resize EVENT; now at most one measurement per frame.
+    let resizeRaf = 0;
+    const onResize = () => {
+      if (resizeRaf) return;
+      resizeRaf = window.requestAnimationFrame(() => {
+        resizeRaf = 0;
+        gridBoundsRef.current = null;
+        measurePixelPositions();
+      });
+    };
     window.addEventListener('resize', onResize, { passive: true });
-    return () => { clearTimeout(t); window.removeEventListener('resize', onResize); };
+
+    // Pause all frame work while the hero is scrolled out of view.
+    const hero = containerRef.current;
+    let observer: IntersectionObserver | undefined;
+    if (hero && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.some((e) => e.isIntersecting);
+          heroVisibleRef.current = visible;
+          if (!visible) trailRef.current.clear();
+        },
+        { rootMargin: '80px' }
+      );
+      observer.observe(hero);
+    }
+
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+      if (resizeRaf) window.cancelAnimationFrame(resizeRaf);
+      observer?.disconnect();
+    };
   }, [measurePixelPositions]);
 
   // ── Boot sequence controller ────────────────────────────────────────────
@@ -268,26 +373,25 @@ export const BraceRcePixelArt: React.FC = () => {
       return;
     }
 
-    const maxDelay = PIXEL_META.flat().reduce((m, pm) => pm ? Math.max(m, pm.delay) : m, 0);
+    const maxDelay = LIT_META.reduce((m, pm) => Math.max(m, pm.delay), 0);
 
     const t1 = setTimeout(() => {
       bootPhaseRef.current = 3;
 
-      // Stabilization flash
-      PIXEL_META.forEach((row, ri) => row.forEach((pm, ci) => {
-        if (!pm) return;
-        const el = pixelElemsRef.current[ri]?.[ci];
-        if (!el) return;
-        el.style.filter = 'brightness(1.35)';
-      }));
+      // Stabilization flash (flat list + dirty-flag writes)
+      for (let i = 0; i < LIT_COUNT; i++) writePixelStyle(i, { f: 'brightness(1.35)' });
 
       setTimeout(() => {
-        PIXEL_META.forEach((row, ri) => row.forEach((pm, ci) => {
-          if (!pm) return;
-          const el = pixelElemsRef.current[ri]?.[ci];
-          if (!el) return;
-          el.style.filter = '';
-        }));
+        for (let i = 0; i < LIT_COUNT; i++) writePixelStyle(i, { f: '' });
+
+        // Coarse-pointer devices skip the signature scan — a 950ms full-grid
+        // RAF loop buys nothing on touch and burns mobile CPU/battery.
+        if (isMobileRef.current) {
+          bootPhaseRef.current = 5;
+          bootDoneRef.current = true;
+          measurePixelPositions();
+          return;
+        }
 
         // Phase 4 — signature energy scan
         bootPhaseRef.current = 4;
@@ -312,44 +416,38 @@ export const BraceRcePixelArt: React.FC = () => {
       const progress = Math.min(elapsed / SCAN_DURATION, 1);
       const wavefront = Math.floor(progress * (COLS + TRAIL_WIDTH));
 
-      for (let ri = 0; ri < ROWS; ri++) {
-        for (let ci = 0; ci < COLS; ci++) {
-          const pm = PIXEL_META[ri][ci];
-          const el = pixelElemsRef.current[ri]?.[ci];
-          if (!pm || !el) continue;
+      for (let i = 0; i < LIT_COUNT; i++) {
+        const pm = LIT_META[i];
+        const ci = LIT_CI[i];
 
-          const dist = wavefront - ci;
-          if (dist < 0 || dist > TRAIL_WIDTH) {
-            el.style.filter = '';
-            el.style.boxShadow = pm.baseShadow;
-            continue;
-          }
-          const t = 1 - dist / TRAIL_WIDTH;
-          const intensity = Math.exp(-4 * (1 - t) * (1 - t));
-          const bright = 1 + intensity * 1.6;
-          el.style.filter = `brightness(${bright}) saturate(${1 + intensity * 0.6})`;
-          el.style.boxShadow = `0 0 ${6 + intensity * 18}px rgba(120,220,255,${0.3 + intensity * 0.7})`;
+        const dist = wavefront - ci;
+        if (dist < 0 || dist > TRAIL_WIDTH) {
+          writePixelStyle(i, { f: '', s: pm.baseShadow });
+          continue;
         }
+        const t = 1 - dist / TRAIL_WIDTH;
+        const intensity = Math.exp(-4 * (1 - t) * (1 - t));
+        const bright = 1 + intensity * 1.6;
+        writePixelStyle(i, {
+          f: `brightness(${bright}) saturate(${1 + intensity * 0.6})`,
+          s: `0 0 ${6 + intensity * 18}px rgba(120,220,255,${0.3 + intensity * 0.7})`,
+        });
       }
 
       if (progress < 1) {
         requestAnimationFrame(tick);
       } else {
         scanActiveRef.current = false;
-        PIXEL_META.forEach((row, ri) => row.forEach((pm, ci) => {
-          if (!pm) return;
-          const el = pixelElemsRef.current[ri]?.[ci];
-          if (!el) return;
-          el.style.filter = '';
-          el.style.boxShadow = pm.baseShadow;
-        }));
+        for (let i = 0; i < LIT_COUNT; i++) {
+          writePixelStyle(i, { f: '', s: LIT_META[i].baseShadow });
+        }
         bootPhaseRef.current = 5;
         bootDoneRef.current = true;
         measurePixelPositions();
       }
     };
     requestAnimationFrame(tick);
-  }, [measurePixelPositions]);
+  }, [measurePixelPositions, writePixelStyle]);
 
   // ── Pointer energy RAF loop ────────────────────────────────────────────
   React.useEffect(() => {
@@ -362,58 +460,58 @@ export const BraceRcePixelArt: React.FC = () => {
       rafRef.current = 0;
 
       if (!bootDoneRef.current) return;
+      // Hero scrolled out of view — skip the whole frame (observer-gated).
+      if (!heroVisibleRef.current) return;
 
       const px = pointerRef.current.x;
       const py = pointerRef.current.y;
 
-      for (let ri = 0; ri < ROWS; ri++) {
-        for (let ci = 0; ci < COLS; ci++) {
-          const pm = PIXEL_META[ri][ci];
-          const el = pixelElemsRef.current[ri]?.[ci];
-          const rect = pixelRectsRef.current[ri]?.[ci];
-          if (!pm || !el || !rect) continue;
+      for (let i = 0; i < LIT_COUNT; i++) {
+        const pm = LIT_META[i];
+        const el = litElsRef.current[i];
+        const rect = litPosRef.current[i];
+        if (!el || !rect) continue;
 
-          const dx = px - rect.cx;
-          const dy = py - rect.cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
+        const dx = px - rect.cx;
+        const dy = py - rect.cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-          let liveEnergy = 0;
-          if (dist < RADIUS) {
-            const t = dist / RADIUS;
-            liveEnergy = 1 - t * t * (3 - 2 * t); // smoothstep
-          }
-
-          const key = `${ri},${ci}`;
-          const trailEntry = trailRef.current.get(key);
-          let trailEnergy = 0;
-          if (trailEntry) {
-            const age = now - trailEntry.ts;
-            if (age < TRAIL_DECAY) {
-              trailEnergy = trailEntry.energy * (1 - age / TRAIL_DECAY);
-            } else {
-              trailRef.current.delete(key);
-            }
-          }
-
-          if (liveEnergy > 0) {
-            trailRef.current.set(key, { energy: liveEnergy, ts: now });
-          }
-
-          const energy = Math.max(liveEnergy, trailEnergy * 0.65);
-
-          if (energy < 0.01) {
-            el.style.filter = '';
-            el.style.boxShadow = pm.baseShadow;
-            el.style.transform = '';
-            continue;
-          }
-
-          const bright = 1 + energy * 0.85;
-          const sat = 1 + energy * 0.55;
-          el.style.filter = `brightness(${bright.toFixed(2)}) saturate(${sat.toFixed(2)})`;
-          el.style.boxShadow = `0 0 ${(6 + energy * 20).toFixed(1)}px rgba(${Math.round(pm.baseR * (1 - energy * 0.5) + 80 * energy)},${Math.round(pm.baseG * (1 - energy * 0.3) + 200 * energy)},${Math.round(pm.baseB * (1 - energy * 0.1) + 255 * energy)},${(0.3 + energy * 0.7).toFixed(2)})`;
-          el.style.transform = energy > 0.4 ? `scale(${(1 + energy * 0.1).toFixed(3)})` : '';
+        let liveEnergy = 0;
+        if (dist < RADIUS) {
+          const t = dist / RADIUS;
+          liveEnergy = 1 - t * t * (3 - 2 * t); // smoothstep
         }
+
+        const trailEntry = trailRef.current.get(i);
+        let trailEnergy = 0;
+        if (trailEntry) {
+          const age = now - trailEntry.ts;
+          if (age < TRAIL_DECAY) {
+            trailEnergy = trailEntry.energy * (1 - age / TRAIL_DECAY);
+          } else {
+            trailRef.current.delete(i);
+          }
+        }
+
+        if (liveEnergy > 0) {
+          trailRef.current.set(i, { energy: liveEnergy, ts: now });
+        }
+
+        const energy = Math.max(liveEnergy, trailEnergy * 0.65);
+
+        if (energy < 0.01) {
+          // Dirty-flag write: no-ops when the pixel is already at rest.
+          writePixelStyle(i, { f: '', s: pm.baseShadow, t: '' });
+          continue;
+        }
+
+        const bright = 1 + energy * 0.85;
+        const sat = 1 + energy * 0.55;
+        writePixelStyle(i, {
+          f: `brightness(${bright.toFixed(2)}) saturate(${sat.toFixed(2)})`,
+          s: `0 0 ${(6 + energy * 20).toFixed(1)}px rgba(${Math.round(pm.baseR * (1 - energy * 0.5) + 80 * energy)},${Math.round(pm.baseG * (1 - energy * 0.3) + 200 * energy)},${Math.round(pm.baseB * (1 - energy * 0.1) + 255 * energy)},${(0.3 + energy * 0.7).toFixed(2)})`,
+          t: energy > 0.4 ? `scale(${(1 + energy * 0.1).toFixed(3)})` : '',
+        });
       }
 
       // Micro-glitch (very rare, only after boot)
@@ -449,35 +547,32 @@ export const BraceRcePixelArt: React.FC = () => {
       hero.removeEventListener('pointerleave', onPointerLeave);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [writePixelStyle]);
 
   // ── Micro glitch ───────────────────────────────────────────────────────
   const triggerMicroGlitch = React.useCallback(() => {
     const startRow = 2 + Math.floor(Math.random() * 10);
     const numRows = 1 + Math.floor(Math.random() * 2);
+    const endRow = Math.min(startRow + numRows, ROWS);
 
-    for (let ri = startRow; ri < Math.min(startRow + numRows, ROWS); ri++) {
-      for (let ci = 0; ci < COLS; ci++) {
-        const pm = PIXEL_META[ri][ci];
-        const el = pixelElemsRef.current[ri]?.[ci];
-        if (!pm || !el) continue;
-        el.style.filter = 'brightness(2.2) saturate(0.5)';
-        el.style.transform = `translateX(${(Math.random() - 0.5) * 3}px)`;
-      }
+    for (let i = 0; i < LIT_COUNT; i++) {
+      const ri = LIT_RI[i];
+      if (ri < startRow || ri >= endRow) continue;
+      writePixelStyle(i, {
+        f: 'brightness(2.2) saturate(0.5)',
+        t: `translateX(${(Math.random() - 0.5) * 3}px)`,
+      });
     }
 
     const DURATION = 50 + Math.random() * 80;
     setTimeout(() => {
-      for (let ri = startRow; ri < Math.min(startRow + numRows, ROWS); ri++) {
-        for (let ci = 0; ci < COLS; ci++) {
-          const el = pixelElemsRef.current[ri]?.[ci];
-          if (!el) continue;
-          el.style.filter = '';
-          el.style.transform = '';
-        }
+      for (let i = 0; i < LIT_COUNT; i++) {
+        const ri = LIT_RI[i];
+        if (ri < startRow || ri >= endRow) continue;
+        writePixelStyle(i, { f: '', t: '' });
       }
     }, DURATION);
-  }, []);
+  }, [writePixelStyle]);
 
   const maxDelay = PIXEL_META.flat().reduce((m, pm) => pm ? Math.max(m, pm.delay) : m, 0);
 
@@ -509,8 +604,11 @@ export const BraceRcePixelArt: React.FC = () => {
         />
 
         {/* ── Pixel matrix ──────────────────────────────────────────── */}
-        <div className="w-full min-w-0 border border-subtle-line bg-surface/30 p-3 sm:p-6">
-          <div className="pixel-grid" ref={gridRef} aria-hidden="true">
+        {/* contain:layout on the frame keeps grid layout work isolated;
+            the matrix itself only needs layout containment so pixel glows
+            (box-shadow) are NOT clipped the way paint containment would. */}
+        <div className="w-full min-w-0 border border-subtle-line bg-surface/30 p-3 sm:p-6" style={{ contain: 'layout paint' }}>
+          <div className="pixel-grid" ref={gridRef} aria-hidden="true" style={{ contain: 'layout' }}>
           {MATRIX_DATA.map((row, ri) => (
             <div key={`row-${ri}`} className="pixel-row">
               {row.map((pixel, ci) => {
@@ -518,7 +616,11 @@ export const BraceRcePixelArt: React.FC = () => {
                 return (
                   <div
                     key={`px-${ri}-${ci}`}
-                    ref={el => { if (pixelElemsRef.current[ri]) pixelElemsRef.current[ri][ci] = el; }}
+                    ref={el => {
+                      if (pixelElemsRef.current[ri]) pixelElemsRef.current[ri][ci] = el;
+                      const flat = LIT_INDEX[ri]?.[ci] ?? -1;
+                      if (flat >= 0) litElsRef.current[flat] = el;
+                    }}
                     className={`pixel-cell ${
                       pixel
                         ? 'border-[0.2px] sm:border-[0.5px]'
