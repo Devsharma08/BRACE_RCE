@@ -380,7 +380,10 @@ try {
 `;
         wrapperCode += `const outVal = isListNode(res) ? listNodeToArray(res) : isRandomNode(res) ? randomListToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && (${isTreeProblem} || ${isListProblem})) ? [] : (isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : (isListNode(arg0) ? listNodeToArray(arg0) : arg0))));
 `;
-        wrapperCode += `console.log(JSON.stringify(outVal).replace(/\s/g, ''));`;
+        // NOTE: the backslash must be doubled. Inside a template literal `/\s/g`
+        // would collapse to `/s/g`, stripping every literal "s" from the output
+        // (e.g. `false` was printed as `fale`).
+        wrapperCode += `console.log(JSON.stringify(outVal).replace(/\\s/g, ''));`;
       }
     }
 

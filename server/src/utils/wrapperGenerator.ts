@@ -55,8 +55,11 @@ if (input.length < ${sig.args.length}) process.exit(0);
             wrapperCode += `${sig.args[i].name} = json.loads(input_lines[${i}])\n`;
         }
 
+        // Must mirror the JavaScript wrapper and strip ALL whitespace, not just
+        // spaces, so both languages produce byte-identical output.
+        wrapperCode += `import re\n`;
         wrapperCode += `res = ${sig.funcName}(${argNames})\n`;
-        wrapperCode += `print(json.dumps(res).replace(' ', ''))`;
+        wrapperCode += `print(re.sub(r'\\s', '', json.dumps(res)))`;
 
         return { code, wrapperCode };
     }
