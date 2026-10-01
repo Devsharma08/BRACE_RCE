@@ -1,10 +1,25 @@
+/**
+ * Home hero — lighter, calmer composition.
+ *
+ * Rebuilds the BRACE RCE signature as a two-column hero (copy + signature card)
+ * plus a protocol trio, using the project's design tokens only (no hardcoded
+ * colours — every surface/accent resolves through index.css custom properties).
+ *
+ * "Stable" specifically means:
+ *   - no `Math.random()` at render time — the boot sequence is fully
+ *     deterministic, so it never re-randomises between renders/hydration;
+ *   - the boot plays at most once per tab session (sessionBoot);
+ *   - `prefers-reduced-motion` skips the sequence entirely;
+ *   - the pointer glow runs on a single rAF loop with zero React state updates.
+ */
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Terminal, Swords } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, CircleDot, Swords, Terminal } from 'lucide-react';
 import { hasBooted, markBooted } from '../../../utils/sessionBoot';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MATRIX DEFINITIONS — unchanged 11-row × 8-col letter templates
+// MATRIX DEFINITIONS — 11-row × 8-col letter templates (artwork unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LETTER_B = [
@@ -78,14 +93,14 @@ const LETTER_E = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BRACE RCE 15×100 binary matrix — never changes
+// BRACE RCE 15×100 binary matrix — artwork never changes
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MATRIX_DATA: number[][] = [];
 MATRIX_DATA.push(new Array(100).fill(0));
 MATRIX_DATA.push(new Array(100).fill(0));
 for (let i = 0; i < 11; i++) {
-  const row = [
+  MATRIX_DATA.push([
     ...new Array(9).fill(0),
     ...LETTER_B[i], ...[0, 0],
     ...LETTER_R[i], ...[0, 0],
@@ -96,633 +111,460 @@ for (let i = 0; i < 11; i++) {
     ...LETTER_C[i], ...[0, 0],
     ...LETTER_E[i],
     ...new Array(9).fill(0),
-  ];
-  MATRIX_DATA.push(row);
+  ]);
 }
 MATRIX_DATA.push(new Array(100).fill(0));
 MATRIX_DATA.push(new Array(100).fill(0));
 
-const ROWS = MATRIX_DATA.length;    // 15
 const COLS = MATRIX_DATA[0].length; // 100
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DETERMINISTIC VISIT SEED — generated ONCE per page life, stable across renders
+// DETERMINISTIC PIXEL METADATA — fixed seed, computed once at module scope.
+//
+// A constant seed is what makes the boot sequence reproducible. The previous
+// implementation seeded from `Date.now() ^ Math.random()`, so the sweep order
+// and per-pixel jitter changed on every page load.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** xorshift32 — small, fast, deterministic. */
 function seededRng(seed: number) {
-  let s = seed;
+  let s = seed >>> 0 || 1;
   return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff;
-    return (s >>> 0) / 0xffffffff;
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    s >>>= 0;
+    return s / 0x100000000;
   };
 }
 
-// Generated once at module init — NOT inside any React function
-const VISIT_SEED = Date.now() ^ (Math.random() * 0x7fffffff | 0);
-const _rng = seededRng(VISIT_SEED);
-
-// Activation pattern: 0=left→right, 1=center→outward, 2=diagonal, 3=scanline
-const ACTIVATION_PATTERN = Math.floor(_rng() * 4);
-
-// Pre-compute stable delay per pixel using the visit seed
-const PIXEL_DELAYS: number[][] = MATRIX_DATA.map((row, ri) =>
-  row.map((pixel, ci) => {
-    if (!pixel) return 0;
-    const rng = seededRng(VISIT_SEED ^ (ri * 997 + ci * 31337));
-    const noise = rng() * 120;
-    let base = 0;
-    switch (ACTIVATION_PATTERN) {
-      case 0: base = (ci / (COLS - 1)) * 700; break;
-      case 1: {
-        const cx = COLS / 2, cy = ROWS / 2;
-        const dist = Math.hypot(ci - cx, ri - cy);
-        const maxDist = Math.hypot(cx, cy);
-        base = (dist / maxDist) * 700;
-        break;
-      }
-      case 2: base = ((ci + ri) / (COLS + ROWS - 2)) * 750; break;
-      case 3: base = (ri / (ROWS - 1)) * 650 + rng() * 60; break;
-    }
-    return Math.round(base + noise + 200);
-  })
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BASE GRADIENT — cyan → amber, computed once, stable
-// ─────────────────────────────────────────────────────────────────────────────
+const BOOT_SEED = 0x5eed1234;
 
 interface PixelMeta {
-  baseColor: string;
-  baseR: number;
-  baseG: number;
-  baseB: number;
-  baseShadow: string;
   delay: number;
 }
 
 const PIXEL_META: (PixelMeta | null)[][] = MATRIX_DATA.map((row, ri) =>
-  row.map((pixel, ci) => {
-    if (!pixel) return null;
-    const ratio = ci / (COLS - 1);
-    const r = Math.round(34 + (245 - 34) * ratio);
-    const g = Math.round(211 + (158 - 211) * ratio);
-    const b = Math.round(238 + (11 - 238) * ratio);
-    return {
-      baseColor: `rgb(${r},${g},${b})`,
-      baseR: r, baseG: g, baseB: b,
-      baseShadow: `0 0 8px rgba(${r},${g},${b},0.45)`,
-      delay: PIXEL_DELAYS[ri][ci],
-    };
+  row.map((lit, ci) => {
+    if (!lit) return null;
+    const rng = seededRng(BOOT_SEED ^ (ri * 997 + ci * 31337));
+    const jitter = rng() * 90; // deterministic per-cell noise
+    const sweep = (ci / (COLS - 1)) * 620; // calm left-to-right wave
+    return { delay: Math.round(sweep + jitter + 160) };
   })
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FLAT LIT-CELL INDEX — pointer/scan/glitch frames iterate ONLY lit pixels
-// (one pass over ~300 entries) instead of 15×100 = 1500 null-checked cells.
-// LIT_INDEX maps (ri, ci) → flat slot for the React ref callback.
+// FLAT LIT-CELL INDEX — effects iterate only lit pixels (~300), not all 1500.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LIT_RI: number[] = [];
-const LIT_CI: number[] = [];
-const LIT_META: PixelMeta[] = [];
+/** Row index per lit pixel, index-aligned with the ref matrix below. */
+const LIT_FLAT: number[] = [];
+
 const LIT_INDEX: number[][] = MATRIX_DATA.map((row, ri) =>
-  row.map((pixel, ci) => {
-    const pm = PIXEL_META[ri][ci];
-    if (!pixel || !pm) return -1;
-    const flat = LIT_RI.length;
-    LIT_RI.push(ri);
-    LIT_CI.push(ci);
-    LIT_META.push(pm);
-    return flat;
+  row.map((lit, ci) => {
+    if (!lit || !PIXEL_META[ri][ci]) return -1;
+    return LIT_FLAT.push(ri) - 1;
   })
 );
-const LIT_COUNT = LIT_RI.length;
+const LIT_COUNT = LIT_FLAT.length;
+
+/**
+ * Read the lit cells out of the grid by their `data-lit` slot index.
+ * Returns an index-aligned array so the glow loop can address cells directly.
+ */
+function collectLitEls(grid: HTMLElement): (HTMLDivElement | null)[] {
+  const out: (HTMLDivElement | null)[] = new Array(LIT_COUNT).fill(null);
+  for (const el of grid.querySelectorAll<HTMLDivElement>('[data-lit]')) {
+    const i = Number(el.dataset.lit);
+    if (Number.isInteger(i) && i >= 0 && i < LIT_COUNT) out[i] = el;
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+const PROTOCOLS = [
+  {
+    tag: '01 / train',
+    accent: 'text-accent-primary',
+    title: 'Practice deliberately.',
+    body: 'Structured problems, clear feedback, measurable progress.',
+  },
+  {
+    tag: '02 / execute',
+    accent: 'text-accent-success',
+    title: 'Run with signal.',
+    body: 'Sandboxed execution with transparent runtime output.',
+  },
+  {
+    tag: '03 / compete',
+    accent: 'text-accent-violet',
+    title: 'Battle in real time.',
+    body: 'Join rooms, challenge friends, and sharpen your edge.',
+  },
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One-shot boot flag, module-scoped.
+ *
+ * Deliberately NOT a ref: reading `ref.current` during render trips React 19's
+ * `react-hooks/refs` rule, and a ref only buys per-instance initialisation that
+ * is wrong here anyway — the flag is per *tab session* (sessionBoot), so the
+ * same value must be shared by every mount of the hero.
+ */
+let bootAlreadyPlayedCache: boolean | null = null;
+function bootAlreadyPlayedOnce(): boolean {
+  if (bootAlreadyPlayedCache === null) {
+    bootAlreadyPlayedCache = hasBooted('hero-boot');
+    markBooted('hero-boot');
+  }
+  return bootAlreadyPlayedCache;
+}
 
 export const BraceRcePixelArt: React.FC = () => {
   const gridRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const litElsRef = React.useRef<(HTMLDivElement | null)[]>(new Array(LIT_COUNT).fill(null));
 
-  // Remount safety: read + mark the boot flag exactly once per mount (even in
-  // StrictMode double-render) so the boot animation only ever plays once per
-  // tab session.
-  const bootAlreadyPlayedRef = React.useRef<boolean | null>(null);
-  if (bootAlreadyPlayedRef.current === null) {
-    bootAlreadyPlayedRef.current = hasBooted('hero-boot');
-    markBooted('hero-boot');
-  }
-  const bootAlreadyPlayed = bootAlreadyPlayedRef.current;
-
-  // Refs for pointer RAF loop — zero React state updates ever
   const rafRef = React.useRef<number>(0);
   const pointerRef = React.useRef({ x: -9999, y: -9999, active: false });
-  const trailRef = React.useRef<Map<number, { energy: number; ts: number }>>(new Map());
+  const visibleRef = React.useRef(true);
+  const reducedMotionRef = React.useRef(false);
 
-  // Pre-allocate 2-D ref matrix at declaration time so ref callbacks fire immediately during render
-  const pixelElemsRef = React.useRef<(HTMLDivElement | null)[][]>(
-    MATRIX_DATA.map(() => new Array(COLS).fill(null))
-  );
-  // Flat mirrors: lit-cell element + measured center (index-aligned with LIT_*).
-  const litElsRef = React.useRef<(HTMLDivElement | null)[]>(new Array(LIT_COUNT).fill(null));
-  const litPosRef = React.useRef<({ cx: number; cy: number } | null)[]>(new Array(LIT_COUNT).fill(null));
-  const gridBoundsRef = React.useRef<DOMRect | null>(null);
-  const isMobileRef = React.useRef(false);
-  const prefersReducedRef = React.useRef(false);
-  // IntersectionObserver gate — no frames run while the hero is off-screen.
-  const heroVisibleRef = React.useRef(true);
+  const bootAlreadyPlayed = bootAlreadyPlayedOnce();
 
-  // Dirty-flag style cache: only write filter/box-shadow/transform when the
-  // quantised value actually changed. The old loop rewrote all three on every
-  // frame for every lit pixel even when energy was flat.
-  const styleCacheRef = React.useRef<{ f: string; s: string; t: string }[]>([]);
-  const writePixelStyle = React.useCallback(
-    (i: number, patch: { f?: string; s?: string; t?: string }) => {
-      const el = litElsRef.current[i];
-      if (!el) return;
-      let cache = styleCacheRef.current[i];
-      if (!cache) {
-        // First touch snapshots the React-applied inline styles so subsequent
-        // diffs never clobber a value we did not write ourselves.
-        cache = { f: el.style.filter, s: el.style.boxShadow, t: el.style.transform };
-        styleCacheRef.current[i] = cache;
-      }
-      if (patch.f !== undefined && patch.f !== cache.f) { el.style.filter = patch.f; cache.f = patch.f; }
-      if (patch.s !== undefined && patch.s !== cache.s) { el.style.boxShadow = patch.s; cache.s = patch.s; }
-      if (patch.t !== undefined && patch.t !== cache.t) { el.style.transform = patch.t; cache.t = patch.t; }
-    },
-    []
-  );
-
-  // Boot state — when the boot already played this session, treat it as done
-  // on mount so the pixel grid is fully lit and hover/glow effects work.
-  const bootPhaseRef = React.useRef(bootAlreadyPlayed ? 5 : 0);
-  const bootDoneRef = React.useRef(bootAlreadyPlayed);
-
-  // Scan sweep state
-  const scanActiveRef = React.useRef(false);
-  const scanStartTimeRef = React.useRef(0);
-
-  // Idle glitch timer
-  const lastGlitchRef = React.useRef(0);
-
-  // ── Detect mobile & reduced-motion ONCE ────────────────────────────────
+  // ── Reduced motion ────────────────────────────────────────────────────────
   React.useEffect(() => {
-    isMobileRef.current = window.matchMedia('(pointer: coarse)').matches;
-    prefersReducedRef.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reducedMotionRef.current = media.matches;
+    const onChange = () => {
+      reducedMotionRef.current = media.matches;
+    };
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
   }, []);
 
-  // ── Measure pixel positions on mount & resize ──────────────────────────
-  // The grid is a uniform CSS grid (repeat(100) cols / repeat(15) rows with
-  // % gaps), so centers derive LINEARLY from three sample cells — three
-  // getBoundingClientRect calls instead of ~1500 per measure.
-  const measurePixelPositions = React.useCallback(() => {
-    if (!gridRef.current) return;
-    gridBoundsRef.current = gridRef.current.getBoundingClientRect();
+  // ── Pointer glow: one rAF loop, zero React renders ────────────────────────
+  React.useEffect(() => {
+    const grid = gridRef.current;
+    const container = containerRef.current;
+    if (!grid || !container) return;
 
-    const els = pixelElemsRef.current;
-    const sampleA = els[0]?.[0];
-    const sampleB = els[0]?.[1];
-    const sampleC = els[1]?.[0];
-    const positions: ({ cx: number; cy: number } | null)[] = new Array(LIT_COUNT).fill(null);
+    // A coarse pointer (touch) gains nothing from the glow, and measuring the
+    // pixel centres is the expensive part, so skip it entirely.
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
 
-    if (sampleA && sampleB && sampleC) {
-      const ra = sampleA.getBoundingClientRect();
-      const rb = sampleB.getBoundingClientRect();
-      const rc = sampleC.getBoundingClientRect();
-      const ax = ra.left + ra.width / 2;
-      const ay = ra.top + ra.height / 2;
-      const pitchX = rb.left + rb.width / 2 - ax;
-      const pitchY = rc.top + rc.height / 2 - ay;
+    /** Write styles straight to the DOM — no React state inside the loop. */
+    const writePixelStyle = (i: number, filter: string) => {
+      const el = litElsRef.current[i];
+      if (el) el.style.filter = filter;
+    };
 
-      if (pitchX !== 0 && pitchY !== 0) {
-        for (let i = 0; i < LIT_COUNT; i++) {
-          positions[i] = { cx: ax + LIT_CI[i] * pitchX, cy: ay + LIT_RI[i] * pitchY };
-        }
-        litPosRef.current = positions;
+    // Collect lit cells from the DOM once. Each cell publishes its flat slot as
+    // `data-lit`, so the render phase never reads or writes a ref — which also
+    // satisfies React 19's `react-hooks/refs` rule.
+    litElsRef.current = collectLitEls(grid);
+
+    let positions: ({ cx: number; cy: number } | null)[] = new Array(LIT_COUNT).fill(null);
+    let bounds: DOMRect | null = null;
+
+    const measure = () => {
+      bounds = grid.getBoundingClientRect();
+      if (coarse) return;
+      positions = litElsRef.current.map((el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+      });
+    };
+
+    const tick = () => {
+      if (reducedMotionRef.current || !visibleRef.current) {
+        rafRef.current = 0;
         return;
       }
-    }
+      if (!bounds) measure();
 
-    // Fallback: non-uniform layout (or missing samples) → measure each lit cell.
-    for (let i = 0; i < LIT_COUNT; i++) {
-      const el = litElsRef.current[i] ?? els[LIT_RI[i]]?.[LIT_CI[i]];
-      if (!el) continue;
-      const r = el.getBoundingClientRect();
-      positions[i] = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
-    }
-    litPosRef.current = positions;
-  }, []);
+      const { x, y, active } = pointerRef.current;
+      if (active && !coarse && bounds) {
+        const R = 130;
+        for (let i = 0; i < LIT_COUNT; i++) {
+          const p = positions[i];
+          if (!p) continue;
+          const d = Math.hypot(p.cx - x, p.cy - y);
+          const k = Math.max(0, 1 - d / R);
+          writePixelStyle(i, k > 0 ? `brightness(${1 + k * 1.5})` : '');
+        }
+      }
+      rafRef.current = window.requestAnimationFrame(tick);
+    };
 
-  React.useEffect(() => {
-    const t = setTimeout(measurePixelPositions, 600);
+    const ensureLoop = () => {
+      if (!rafRef.current && !reducedMotionRef.current) {
+        rafRef.current = window.requestAnimationFrame(tick);
+      }
+    };
 
-    // rAF-throttled resize: the old handler re-measured (1500 rects) on every
-    // resize EVENT; now at most one measurement per frame.
+    const onMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY, active: true };
+      bounds = null; // pointer moved → pixel centres need re-measuring
+      ensureLoop();
+    };
+
+    const onLeave = () => {
+      pointerRef.current = { ...pointerRef.current, active: false };
+      for (let i = 0; i < LIT_COUNT; i++) writePixelStyle(i, '');
+    };
+
+    container.addEventListener('pointermove', onMove, { passive: true });
+    container.addEventListener('pointerleave', onLeave, { passive: true });
+
+    // Re-measure at most once per frame on resize (was 1500 rects per event).
     let resizeRaf = 0;
     const onResize = () => {
       if (resizeRaf) return;
       resizeRaf = window.requestAnimationFrame(() => {
         resizeRaf = 0;
-        gridBoundsRef.current = null;
-        measurePixelPositions();
+        bounds = null;
       });
     };
     window.addEventListener('resize', onResize, { passive: true });
 
-    // Pause all frame work while the hero is scrolled out of view.
-    const hero = containerRef.current;
+    // Stop all frame work while the hero is off-screen.
     let observer: IntersectionObserver | undefined;
-    if (hero && typeof IntersectionObserver !== 'undefined') {
+    if (typeof IntersectionObserver !== 'undefined') {
       observer = new IntersectionObserver(
         (entries) => {
-          const visible = entries.some((e) => e.isIntersecting);
-          heroVisibleRef.current = visible;
-          if (!visible) trailRef.current.clear();
+          visibleRef.current = entries.some((e) => e.isIntersecting);
         },
-        { rootMargin: '80px' }
+        { rootMargin: '80px' },
       );
-      observer.observe(hero);
+      observer.observe(container);
     }
 
     return () => {
-      clearTimeout(t);
+      container.removeEventListener('pointermove', onMove);
+      container.removeEventListener('pointerleave', onLeave);
       window.removeEventListener('resize', onResize);
       if (resizeRaf) window.cancelAnimationFrame(resizeRaf);
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
       observer?.disconnect();
     };
-  }, [measurePixelPositions]);
-
-  // ── Boot sequence controller ────────────────────────────────────────────
-  React.useEffect(() => {
-    if (prefersReducedRef.current) {
-      bootDoneRef.current = true;
-      bootPhaseRef.current = 5;
-      return;
-    }
-
-    // Boot animation already played this tab session — skip straight to the
-    // fully-lit state. The pointer-glow / hover loop below already sees
-    // bootDoneRef === true (set at mount) so glow works from the first frame.
-    if (bootAlreadyPlayedRef.current) {
-      bootPhaseRef.current = 5;
-      bootDoneRef.current = true;
-      measurePixelPositions();
-      return;
-    }
-
-    const maxDelay = LIT_META.reduce((m, pm) => Math.max(m, pm.delay), 0);
-
-    const t1 = setTimeout(() => {
-      bootPhaseRef.current = 3;
-
-      // Stabilization flash (flat list + dirty-flag writes)
-      for (let i = 0; i < LIT_COUNT; i++) writePixelStyle(i, { f: 'brightness(1.35)' });
-
-      setTimeout(() => {
-        for (let i = 0; i < LIT_COUNT; i++) writePixelStyle(i, { f: '' });
-
-        // Coarse-pointer devices skip the signature scan — a 950ms full-grid
-        // RAF loop buys nothing on touch and burns mobile CPU/battery.
-        if (isMobileRef.current) {
-          bootPhaseRef.current = 5;
-          bootDoneRef.current = true;
-          measurePixelPositions();
-          return;
-        }
-
-        // Phase 4 — signature energy scan
-        bootPhaseRef.current = 4;
-        scanActiveRef.current = true;
-        scanStartTimeRef.current = performance.now();
-        startScanRAF();
-      }, 350);
-    }, maxDelay + 900);
-
-    return () => clearTimeout(t1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Signature scan RAF ─────────────────────────────────────────────────
-  const startScanRAF = React.useCallback(() => {
-    const SCAN_DURATION = 950;
-    const TRAIL_WIDTH = 12;
+  // ── Boot: plays at most once per tab, never for reduced motion ────────────
+  const prefersReduced =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const tick = (now: number) => {
-      if (!scanActiveRef.current) return;
-      const elapsed = now - scanStartTimeRef.current;
-      const progress = Math.min(elapsed / SCAN_DURATION, 1);
-      const wavefront = Math.floor(progress * (COLS + TRAIL_WIDTH));
-
-      for (let i = 0; i < LIT_COUNT; i++) {
-        const pm = LIT_META[i];
-        const ci = LIT_CI[i];
-
-        const dist = wavefront - ci;
-        if (dist < 0 || dist > TRAIL_WIDTH) {
-          writePixelStyle(i, { f: '', s: pm.baseShadow });
-          continue;
-        }
-        const t = 1 - dist / TRAIL_WIDTH;
-        const intensity = Math.exp(-4 * (1 - t) * (1 - t));
-        const bright = 1 + intensity * 1.6;
-        writePixelStyle(i, {
-          f: `brightness(${bright}) saturate(${1 + intensity * 0.6})`,
-          s: `0 0 ${6 + intensity * 18}px rgba(120,220,255,${0.3 + intensity * 0.7})`,
-        });
-      }
-
-      if (progress < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        scanActiveRef.current = false;
-        for (let i = 0; i < LIT_COUNT; i++) {
-          writePixelStyle(i, { f: '', s: LIT_META[i].baseShadow });
-        }
-        bootPhaseRef.current = 5;
-        bootDoneRef.current = true;
-        measurePixelPositions();
-      }
-    };
-    requestAnimationFrame(tick);
-  }, [measurePixelPositions, writePixelStyle]);
-
-  // ── Pointer energy RAF loop ────────────────────────────────────────────
-  React.useEffect(() => {
-    if (isMobileRef.current) return;
-
-    const RADIUS = 120;
-    const TRAIL_DECAY = 500;
-
-    const processFrame = (now: number) => {
-      rafRef.current = 0;
-
-      if (!bootDoneRef.current) return;
-      // Hero scrolled out of view — skip the whole frame (observer-gated).
-      if (!heroVisibleRef.current) return;
-
-      const px = pointerRef.current.x;
-      const py = pointerRef.current.y;
-
-      for (let i = 0; i < LIT_COUNT; i++) {
-        const pm = LIT_META[i];
-        const el = litElsRef.current[i];
-        const rect = litPosRef.current[i];
-        if (!el || !rect) continue;
-
-        const dx = px - rect.cx;
-        const dy = py - rect.cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        let liveEnergy = 0;
-        if (dist < RADIUS) {
-          const t = dist / RADIUS;
-          liveEnergy = 1 - t * t * (3 - 2 * t); // smoothstep
-        }
-
-        const trailEntry = trailRef.current.get(i);
-        let trailEnergy = 0;
-        if (trailEntry) {
-          const age = now - trailEntry.ts;
-          if (age < TRAIL_DECAY) {
-            trailEnergy = trailEntry.energy * (1 - age / TRAIL_DECAY);
-          } else {
-            trailRef.current.delete(i);
-          }
-        }
-
-        if (liveEnergy > 0) {
-          trailRef.current.set(i, { energy: liveEnergy, ts: now });
-        }
-
-        const energy = Math.max(liveEnergy, trailEnergy * 0.65);
-
-        if (energy < 0.01) {
-          // Dirty-flag write: no-ops when the pixel is already at rest.
-          writePixelStyle(i, { f: '', s: pm.baseShadow, t: '' });
-          continue;
-        }
-
-        const bright = 1 + energy * 0.85;
-        const sat = 1 + energy * 0.55;
-        writePixelStyle(i, {
-          f: `brightness(${bright.toFixed(2)}) saturate(${sat.toFixed(2)})`,
-          s: `0 0 ${(6 + energy * 20).toFixed(1)}px rgba(${Math.round(pm.baseR * (1 - energy * 0.5) + 80 * energy)},${Math.round(pm.baseG * (1 - energy * 0.3) + 200 * energy)},${Math.round(pm.baseB * (1 - energy * 0.1) + 255 * energy)},${(0.3 + energy * 0.7).toFixed(2)})`,
-          t: energy > 0.4 ? `scale(${(1 + energy * 0.1).toFixed(3)})` : '',
-        });
-      }
-
-      // Micro-glitch (very rare, only after boot)
-      if (bootDoneRef.current && now - lastGlitchRef.current > 15000) {
-        if (Math.random() < 0.003) {
-          triggerMicroGlitch();
-          lastGlitchRef.current = now;
-        }
-      }
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      pointerRef.current = { x: e.clientX, y: e.clientY, active: true };
-      if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(processFrame);
-      }
-    };
-
-    const onPointerLeave = () => {
-      pointerRef.current = { x: -9999, y: -9999, active: false };
-      if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(processFrame);
-      }
-    };
-
-    const hero = containerRef.current;
-    if (!hero) return;
-    hero.addEventListener('pointermove', onPointerMove, { passive: true });
-    hero.addEventListener('pointerleave', onPointerLeave, { passive: true });
-
-    return () => {
-      hero.removeEventListener('pointermove', onPointerMove);
-      hero.removeEventListener('pointerleave', onPointerLeave);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [writePixelStyle]);
-
-  // ── Micro glitch ───────────────────────────────────────────────────────
-  const triggerMicroGlitch = React.useCallback(() => {
-    const startRow = 2 + Math.floor(Math.random() * 10);
-    const numRows = 1 + Math.floor(Math.random() * 2);
-    const endRow = Math.min(startRow + numRows, ROWS);
-
-    for (let i = 0; i < LIT_COUNT; i++) {
-      const ri = LIT_RI[i];
-      if (ri < startRow || ri >= endRow) continue;
-      writePixelStyle(i, {
-        f: 'brightness(2.2) saturate(0.5)',
-        t: `translateX(${(Math.random() - 0.5) * 3}px)`,
-      });
-    }
-
-    const DURATION = 50 + Math.random() * 80;
-    setTimeout(() => {
-      for (let i = 0; i < LIT_COUNT; i++) {
-        const ri = LIT_RI[i];
-        if (ri < startRow || ri >= endRow) continue;
-        writePixelStyle(i, { f: '', t: '' });
-      }
-    }, DURATION);
-  }, [writePixelStyle]);
-
-  const maxDelay = PIXEL_META.flat().reduce((m, pm) => pm ? Math.max(m, pm.delay) : m, 0);
+  // Reduced motion renders the finished artwork immediately; everyone else gets
+  // the CSS boot animation (which is paused by the global reduced-motion rule).
+  const showPixels = bootAlreadyPlayed || prefersReduced;
 
   return (
     <div
       ref={containerRef}
-      className="home-hero z-10 flex min-h-screen w-full flex-col items-center justify-center bg-base text-fg select-none border-b border-subtle-line"
+      className="home-hero relative z-10 w-full border-b border-subtle-line bg-base text-fg select-none"
     >
-      <h1 className="sr-only">BRACE RCE — coding playground and battle arena</h1>
-
-      {/* Blueprint grid canvas */}
-      <div
-        className="relative w-full min-w-0 pt-12 pb-12 sm:pt-16 flex flex-col justify-center items-center overflow-hidden"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right,  rgba(0,212,255,0.025) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0,212,255,0.025) 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px',
-        }}
-      >
-        {/* CRT scanline overlay */}
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-transparent via-accent-primary/[0.01] to-transparent bg-[length:100%_4px] opacity-80" />
-
-        {/* Radial ambient glow behind logo */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 60% 45% at 50% 48%, rgba(34,211,238,0.05) 0%, transparent 70%)' }}
-        />
-
-        {/* ── Pixel matrix ──────────────────────────────────────────── */}
-        {/* contain:layout on the frame keeps grid layout work isolated;
-            the matrix itself only needs layout containment so pixel glows
-            (box-shadow) are NOT clipped the way paint containment would. */}
-        <div className="w-full min-w-0 border border-subtle-line bg-surface/30 p-3 sm:p-6" style={{ contain: 'layout paint' }}>
-          <div className="pixel-grid" ref={gridRef} aria-hidden="true" style={{ contain: 'layout' }}>
-          {MATRIX_DATA.map((row, ri) => (
-            <div key={`row-${ri}`} className="pixel-row">
-              {row.map((pixel, ci) => {
-                const pm = PIXEL_META[ri][ci];
-                return (
-                  <div
-                    key={`px-${ri}-${ci}`}
-                    ref={el => {
-                      if (pixelElemsRef.current[ri]) pixelElemsRef.current[ri][ci] = el;
-                      const flat = LIT_INDEX[ri]?.[ci] ?? -1;
-                      if (flat >= 0) litElsRef.current[flat] = el;
-                    }}
-                    className={`pixel-cell ${
-                      pixel
-                        ? 'border-[0.2px] sm:border-[0.5px]'
-                        : 'bg-transparent border border-transparent'
-                    }`}
-                    style={
-                      pixel && pm
-                        ? (bootAlreadyPlayed
-                          ? ({
-                              '--tc': pm.baseColor,
-                              '--ts': pm.baseShadow,
-                              backgroundColor: pm.baseColor,
-                              borderColor: 'rgba(255,255,255,0.12)',
-                              boxShadow: pm.baseShadow,
-                              opacity: 1,
-                            } as React.CSSProperties)
-                          : ({
-                              '--tc': pm.baseColor,
-                              '--ts': pm.baseShadow,
-                              backgroundColor: pm.baseColor,
-                              borderColor: 'rgba(255,255,255,0.12)',
-                              boxShadow: pm.baseShadow,
-                              opacity: 0,
-                              animation: `bootPixel 0.7s cubic-bezier(0.16,1,0.3,1) ${pm.delay}ms forwards`,
-                            } as React.CSSProperties))
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
-          ))}
-          </div>
-        </div>
-
-        {/* Status lines — boot animation only plays on first screen load per tab */}
-        {!bootAlreadyPlayed && (
-          <>
-            {/* Initialization status — fades out before scan */}
-            <div
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/30 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
-              style={{
-                opacity: 0,
-                animation: `statusFade 0.6s ease-out 100ms forwards, statusFade 0.4s ease-in ${maxDelay + 600}ms reverse forwards`,
-              }}
-            >
-              ▸ INITIALIZING RCE CORE
-            </div>
-
-            {/* Online status — appears after boot */}
-            <div
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap"
-              style={{
-                opacity: 0,
-                animation: `statusFade 0.8s cubic-bezier(0.16,1,0.3,1) ${maxDelay + 1700}ms forwards`,
-              }}
-            >
-              RCE CORE // ONLINE
-            </div>
-          </>
-        )}
-        {/* Static online status on return visits — no re-boot */}
-        {bootAlreadyPlayed && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] text-accent-primary/60 font-mono tracking-[0.3em] uppercase pointer-events-none select-none whitespace-nowrap">
-            RCE CORE // ONLINE
-          </div>
-        )}
-      </div>
-
-      {/* Description subtext — no delayed fade on return visits */}
-      <div
-        className={`mt-6 flex w-full min-w-0 flex-col items-center text-center max-w-2xl ${
-          bootAlreadyPlayed ? "" : "animate-desc-fade opacity-0"
-        }`}
-      >
-        <h2 className="text-xs sm:text-sm font-bold tracking-[0.35em] text-accent-primary/90 uppercase mb-3.5 select-none flex flex-wrap items-center justify-center gap-2">
-          <span className="break-words max-w-full tracking-wider">// CRX // REMOTE_CODE_EXECUTION_IDE</span>
-          <span className="px-1.5 py-0.5 border border-accent-primary/25 text-[9px] font-bold tracking-wider rounded-none uppercase text-accent-warning bg-accent-primary/10 select-none">
-            [ v1.0.0 ]
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
+      <nav className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 border-b border-subtle-line px-5 py-4 sm:flex-nowrap lg:px-8">
+        <Link
+          to="/"
+          aria-label="BRACE RCE home"
+          className="flex items-center gap-3 font-mono text-sm font-bold tracking-[0.18em] transition-colors hover:text-accent-primary"
+        >
+          <span className="grid h-8 w-8 place-items-center border border-accent-primary/40 bg-accent-primary/10 text-accent-primary">
+            <Terminal size={15} />
           </span>
-        </h2>
-        <p className="text-xs sm:text-sm text-subtle font-medium tracking-[0.05em] leading-relaxed max-w-xl">
-          A high-performance sandboxed playground to run, compile, and solve Data Structures and Algorithms challenges live with high-precision execution telemetry.
-        </p>
+          BRACE RCE
+        </Link>
 
-        {/* Action Buttons */}
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            to="/terminal"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-accent-primary/50 bg-accent-primary/10 hover:bg-accent-primary/15 hover:border-accent-primary text-accent-primary hover:text-fg font-mono text-xs font-bold uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(0,212,255,0.2)] active:scale-95"
-          >
-            <Terminal className="w-4 h-4 text-accent-primary" />
-            <span>[ LAUNCH TERMINAL ]</span>
+        <div className="hidden items-center gap-7 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:flex">
+          <a href="#protocols" className="transition-colors hover:text-accent-primary">
+            Protocols
+          </a>
+          {/* #telemetry lives on the About page, so this needs the router,
+              not an in-page anchor. */}
+          <Link to="/about#telemetry" className="transition-colors hover:text-accent-primary">
+            Telemetry
           </Link>
-          <Link
-            to="/lobby"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-none border border-subtle-line bg-raised hover:bg-accent-primary/5 hover:border-accent-primary text-subtle hover:text-fg font-mono text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
-          >
-            <Swords className="w-4 h-4 text-faint" />
-            <span>[ 1V1 BATTLE ARENA ]</span>
+          <Link to="/problems" className="transition-colors hover:text-accent-primary">
+            Problem set
           </Link>
         </div>
+
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-subtle">
+          <CircleDot size={12} className="text-accent-success" />
+          v1.0 / live
+        </div>
+      </nav>
+
+      {/* ── Hero grid ───────────────────────────────────────────────────── */}
+      <section className="mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[1fr_1.1fr] lg:gap-14 lg:px-8 lg:py-20">
+        {/* Copy column */}
+        <div className="min-w-0">
+          <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
+            <span className="h-px w-10 bg-accent-primary/60" />
+            Mission // RCE online
+            <span className="border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
+              SYSTEM READY
+            </span>
+          </div>
+
+          <h1 className="max-w-[10ch] font-mono text-[clamp(2.6rem,9vw,7rem)] font-bold leading-[0.86] tracking-[-0.04em]">
+            COMPILE.
+            <br />
+            <span className="text-accent-primary">COMPETE.</span>
+            <br />
+            <span className="text-faint">CONQUER.</span>
+          </h1>
+
+          <p className="mt-7 max-w-lg text-sm leading-6 text-subtle">
+            A high-performance coding battlefield for operatives who write, execute,
+            and validate under pressure.
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-[0.18em]">
+            <Link
+              to="/problems"
+              className="group inline-flex items-center gap-3 bg-accent-primary px-5 py-3 font-bold text-ink transition-colors hover:bg-fg"
+            >
+              Enter system
+              <ArrowDown size={14} className="transition-transform group-hover:translate-y-0.5" />
+            </Link>
+            <a
+              href="#protocols"
+              className="inline-flex items-center gap-2 border border-subtle-line px-5 py-3 text-subtle transition-colors hover:border-accent-primary/50 hover:text-accent-primary"
+            >
+              Read protocol
+              <ArrowUpRight size={14} />
+            </a>
+          </div>
+
+          <div className="mt-10 grid max-w-lg grid-cols-3 gap-3 border-t border-subtle-line pt-4 font-mono text-[9px] uppercase tracking-widest text-faint">
+            <span>
+              <b className="text-subtle">01</b> realtime
+            </span>
+            <span>
+              <b className="text-subtle">02</b> polyglot
+            </span>
+            <span>
+              <b className="text-subtle">03</b> sandboxed
+            </span>
+          </div>
+        </div>
+
+        {/* Signature card */}
+        <div className="relative min-w-0">
+          {/* Soft ambient wash — deliberately faint to keep the page light */}
+          <div className="pointer-events-none absolute -inset-8 bg-accent-primary/[0.04]" />
+
+          <div className="relative border border-subtle-line bg-raised p-4 sm:p-6">
+            <div className="mb-5 flex items-center justify-between border-b border-subtle-line pb-4 font-mono text-[9px] uppercase tracking-widest text-faint">
+              <span className="flex items-center gap-2">
+                <Terminal size={13} className="text-accent-primary" />
+                brace_signature.bin
+              </span>
+              <span className="text-accent-success">
+                {showPixels ? 'verified' : 'booting'}
+              </span>
+            </div>
+
+            <div className="flex min-h-[200px] items-center justify-center overflow-hidden border border-subtle-line/60 bg-base/60 p-4 sm:min-h-[280px] sm:p-8">
+              <div
+                className="pixel-grid"
+                ref={gridRef}
+                aria-hidden="true"
+                style={{ contain: 'layout' }}
+              >
+                {MATRIX_DATA.map((row, ri) => (
+                  <div key={`row-${ri}`} className="pixel-row">
+                    {row.map((lit, ci) => {
+                      const pm = PIXEL_META[ri][ci];
+                      if (!lit || !pm) {
+                        return (
+                          <div
+                            key={`px-${ri}-${ci}`}
+                            className="pixel-cell border border-transparent"
+                          />
+                        );
+                      }
+                      const flat = LIT_INDEX[ri][ci];
+                      return (
+                        <div
+                          key={`px-${ri}-${ci}`}
+                          // The flat slot is published as a data attribute and
+                          // collected inside the effect below, so nothing reads
+                          // or writes a ref during render.
+                          data-lit={flat >= 0 ? String(flat) : undefined}
+                          className="pixel-cell border-[0.2px] border-line-low sm:border-[0.5px]"
+                          style={
+                            showPixels
+                              ? ({
+                                  '--tc': 'var(--accent-primary)',
+                                  '--ts': 'var(--shadow-glow-accent)',
+                                  backgroundColor: 'var(--accent-primary)',
+                                  opacity: 1,
+                                } as React.CSSProperties)
+                              : ({
+                                  '--tc': 'var(--accent-primary)',
+                                  '--ts': 'var(--shadow-glow-accent)',
+                                  backgroundColor: 'var(--accent-primary)',
+                                  opacity: 0,
+                                  animation: `bootPixel 0.7s cubic-bezier(0.16,1,0.3,1) ${pm.delay}ms forwards`,
+                                } as React.CSSProperties)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between border-t border-subtle-line pt-4 font-mono text-[9px] uppercase tracking-widest text-faint">
+              <span>signature: BRACE RCE</span>
+              <span className="text-accent-success">ready to deploy</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Protocol trio ────────────────────────────────────────────────── */}
+      <section
+        id="protocols"
+        className="mx-auto grid w-full max-w-7xl scroll-mt-16 gap-3 border-t border-subtle-line px-5 pb-12 pt-8 sm:grid-cols-3 lg:px-8"
+      >
+        {PROTOCOLS.map((p) => (
+          <div
+            key={p.tag}
+            className="border border-subtle-line bg-raised p-6 transition-colors hover:border-accent-primary/30"
+          >
+            <p className={`font-mono text-[9px] uppercase tracking-widest ${p.accent}`}>
+              {p.tag}
+            </p>
+            <h2 className="mt-3 font-mono text-lg font-bold">{p.title}</h2>
+            <p className="mt-2 text-xs leading-5 text-faint">{p.body}</p>
+          </div>
+        ))}
+      </section>
+
+      {/* ── Secondary CTA ────────────────────────────────────────────────── */}
+      <div className="mx-auto w-full max-w-7xl px-5 pb-14 lg:px-8">
+        <Link
+          to="/lobby"
+          className="inline-flex items-center gap-2 border border-subtle-line px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-subtle transition-colors hover:border-accent-primary/50 hover:text-accent-primary"
+        >
+          <Swords size={14} className="text-faint" />
+          1v1 battle arena
+        </Link>
       </div>
     </div>
   );
