@@ -377,13 +377,20 @@ export const BraceRcePixelArt: React.FC = () => {
       <nav className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 border-b border-subtle-line px-5 py-4 sm:flex-nowrap lg:px-8">
         <Link
           to="/"
-          aria-label="BRACE RCE home"
+          aria-label="BRACE RCE 2.0 home"
           className="flex items-center gap-3 font-mono text-sm font-bold tracking-[0.18em] transition-colors hover:text-accent-primary"
         >
           <span className="grid h-8 w-8 place-items-center border border-accent-primary/40 bg-accent-primary/10 text-accent-primary">
             <Terminal size={15} />
           </span>
           BRACE RCE
+          {/* Version mark — large and light, sitting inline with the wordmark */}
+          <span
+            aria-hidden="true"
+            className="-ml-1 select-none font-mono text-3xl font-bold leading-none tracking-[-0.05em] text-fg/25 sm:text-4xl"
+          >
+            2.0
+          </span>
         </Link>
 
         <div className="hidden items-center gap-7 font-mono text-[10px] uppercase tracking-[0.2em] text-faint md:flex">
@@ -467,26 +474,12 @@ export const BraceRcePixelArt: React.FC = () => {
           </div>
         </div>
 
-        {/* Signature card — a size container so the "2.0" watermark can size itself
-            in `cqw` and stay proportional to the card at every breakpoint. */}
-        <div className="@container relative min-w-0">
+        {/* Signature card */}
+        <div className="relative min-w-0">
           {/* Soft ambient wash — deliberately faint to keep the page light */}
           <div className="pointer-events-none absolute -inset-8 bg-accent-primary/[0.04]" />
 
-          {/* Oversized "2.0" watermark.
-            `left-[97%]` anchors its LEFT edge just before the card's right edge, so
-            the numerals begin where the artwork ends and bleed off-screen. The
-            parent is a size container (@container), so `cqw` resolves against the
-            card width and the mark always overshoots the card at every size. */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-2 left-[97%] z-0 select-none font-mono font-bold leading-none tracking-[-0.06em] text-fg/[0.07] sm:text-fg/[0.09]"
-            style={{ fontSize: 'clamp(9rem, 44cqw, 21rem)' }}
-          >
-            2.0
-          </div>
-
-          <div className="relative z-10 border border-subtle-line bg-raised p-4 sm:p-6">
+          <div className="relative border border-subtle-line bg-raised p-4 sm:p-6">
             <div className="mb-5 flex items-center justify-between border-b border-subtle-line pb-4 font-mono text-[9px] uppercase tracking-widest text-faint">
               <span className="flex items-center gap-2">
                 <Terminal size={13} className="text-accent-primary" />
