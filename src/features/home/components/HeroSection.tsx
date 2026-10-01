@@ -407,23 +407,29 @@ export const BraceRcePixelArt: React.FC = () => {
       </nav>
 
       {/* ── Hero grid ───────────────────────────────────────────────────── */}
-      <section className="mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[1fr_1.1fr] lg:gap-14 lg:px-8 lg:py-20">
+      <section className="mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[1fr_1.1fr] lg:gap-14 lg:px-8 lg:py-30">
         {/* Copy column */}
         <div className="min-w-0">
           <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
             <span className="h-px w-10 bg-accent-primary/60" />
             Mission // RCE online
-            <span className="border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
-              SYSTEM READY
-            </span>
           </div>
 
           <h1 className="max-w-[10ch] font-mono text-[clamp(2.6rem,9vw,7rem)] font-bold leading-[0.86] tracking-[-0.04em]">
-            COMPILE.
+            {/* Staggered diagonal: the top and bottom lines pull left, the middle
+                line pushes right, so the stack reads as a stepped shape instead
+                of a flat block. Transforms (not margins) keep layout stable. */}
+            <span className="inline-block -translate-x-3 transition-transform duration-500 ease-out hover:-translate-x-6 sm:-translate-x-6 sm:hover:-translate-x-10">
+              COMPILE.
+            </span>
             <br />
-            <span className="text-accent-primary">COMPETE.</span>
+            <span className="inline-block translate-x-4 text-accent-primary transition-transform duration-500 ease-out hover:translate-x-8 sm:translate-x-8 sm:hover:translate-x-14">
+              COMPETE.
+            </span>
             <br />
-            <span className="text-faint">CONQUER.</span>
+            <span className="inline-block -translate-x-3 text-faint transition-transform duration-500 ease-out hover:-translate-x-6 sm:-translate-x-6 sm:hover:-translate-x-10">
+              CONQUER.
+            </span>
           </h1>
 
           <p className="mt-7 max-w-lg text-sm leading-6 text-subtle">
@@ -461,12 +467,26 @@ export const BraceRcePixelArt: React.FC = () => {
           </div>
         </div>
 
-        {/* Signature card */}
-        <div className="relative min-w-0">
+        {/* Signature card — a size container so the "2.0" watermark can size itself
+            in `cqw` and stay proportional to the card at every breakpoint. */}
+        <div className="@container relative min-w-0">
           {/* Soft ambient wash — deliberately faint to keep the page light */}
           <div className="pointer-events-none absolute -inset-8 bg-accent-primary/[0.04]" />
 
-          <div className="relative border border-subtle-line bg-raised p-4 sm:p-6">
+          {/* Oversized "2.0" watermark.
+            `left-[97%]` anchors its LEFT edge just before the card's right edge, so
+            the numerals begin where the artwork ends and bleed off-screen. The
+            parent is a size container (@container), so `cqw` resolves against the
+            card width and the mark always overshoots the card at every size. */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-2 left-[97%] z-0 select-none font-mono font-bold leading-none tracking-[-0.06em] text-fg/[0.07] sm:text-fg/[0.09]"
+            style={{ fontSize: 'clamp(9rem, 44cqw, 21rem)' }}
+          >
+            2.0
+          </div>
+
+          <div className="relative z-10 border border-subtle-line bg-raised p-4 sm:p-6">
             <div className="mb-5 flex items-center justify-between border-b border-subtle-line pb-4 font-mono text-[9px] uppercase tracking-widest text-faint">
               <span className="flex items-center gap-2">
                 <Terminal size={13} className="text-accent-primary" />
