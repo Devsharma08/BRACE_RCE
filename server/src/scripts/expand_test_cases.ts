@@ -19,7 +19,7 @@
 import 'dotenv/config';
 import { prisma } from '../lib/prisma.js';
 import { fmtIn, fmtOut, Rng } from './problemBank/helpers.js';
-import { LEGACY, OPERATION_SEQUENCE } from './problemBank/legacy/index.js';
+import { LEGACY, OPERATION_SEQUENCE, UNREPRESENTABLE_INPUT } from './problemBank/legacy/index.js';
 import type { LegacyEntry } from './problemBank/legacy/types.js';
 import { autoTests } from './problemBank/tests.js';
 
@@ -52,6 +52,11 @@ async function main() {
     }
     if (OPERATION_SEQUENCE.has(e.number)) {
       console.log(`  ! #${e.number} ${problem.name}: operation-sequence, needs a bespoke adapter`);
+      skipped++;
+      continue;
+    }
+    if (UNREPRESENTABLE_INPUT.has(e.number)) {
+      console.log(`  ! #${e.number} ${problem.name}: input encoding cannot express the interesting cases`);
       skipped++;
       continue;
     }

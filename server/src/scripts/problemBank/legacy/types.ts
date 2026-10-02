@@ -29,6 +29,25 @@ export const OPERATION_SEQUENCE = new Set([
   163, // Max Stack
 ]);
 
+/**
+ * Problems whose input encoding cannot express the interesting cases.
+ *
+ * A linked list is passed as a FLAT array of values, so a cycle cannot be
+ * represented: [3,2,0,-4] denotes an acyclic list, yet an index-based cycle
+ * check reads nums[1] as a valid next-pointer and wrongly reports a cycle.
+ * These need an explicit `next` index array before they can be generated.
+ *
+ * Find the Duplicate Number has the same root problem: Floyd's algorithm only
+ * terminates when the cycle is reachable from index 0, and nothing in a flat
+ * array of values guarantees that. Constructing inputs that always work was
+ * attempted and abandoned as too fragile; a `next`-index encoding is the right
+ * fix.
+ */
+export const UNREPRESENTABLE_INPUT = new Set([
+  33, // Linked List Cycle
+  122, // Find the Duplicate Number
+]);
+
 export interface LegacyEntry {
   /** Matches Problem.problem_number in the database. */
   number: number;

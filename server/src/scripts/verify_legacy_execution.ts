@@ -10,7 +10,7 @@ import 'dotenv/config';
 import { prisma } from '../lib/prisma.js';
 import { prepareFinalCode } from '../services/codeExecution.js';
 import { fmtIn, fmtOut, Rng } from './problemBank/helpers.js';
-import { LEGACY, OPERATION_SEQUENCE } from './problemBank/legacy/index.js';
+import { LEGACY, OPERATION_SEQUENCE, UNREPRESENTABLE_INPUT } from './problemBank/legacy/index.js';
 import type { LegacyEntry } from './problemBank/legacy/types.js';
 import { autoTests } from './problemBank/tests.js';
 import { stripBundlerHelpers } from './problemBank/solutionJs.js';
@@ -51,6 +51,7 @@ async function main() {
 
   for (const e of LEGACY) {
     if (OPERATION_SEQUENCE.has(e.number)) continue;
+    if (UNREPRESENTABLE_INPUT.has(e.number)) continue;
 
     const problem = await prisma.problem.findUnique({
       where: { problem_number: e.number },

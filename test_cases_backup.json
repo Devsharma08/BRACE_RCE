@@ -1,6 +1,14 @@
 [
   {
-    "id": "43fcd6aa-8e68-4a41-ba1f-56c94cfb97e9",
+    "id": "1c8eed96-0348-4967-bba4-81f5c2dc75e0",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[5]\n5\n",
+    "expectedOutput": "[]\n",
+    "is_public": false
+  },
+  {
+    "id": "2e56564a-0f90-4f66-bdd1-619bdd91cd21",
     "problem_number": 1,
     "problem_name": "Two Sum",
     "input": "[3,2,4]\n6\n",
@@ -8,7 +16,71 @@
     "is_public": true
   },
   {
-    "id": "4910737c-a81c-4809-a4e2-e99761dbfbcb",
+    "id": "5a3a6691-1d0b-424e-9bf0-2c144adab48c",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[-13,-1,7,-18,7,14,20,11]\n-6\n",
+    "expectedOutput": "[0,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "615ac621-0482-48b5-a419-7643c12de664",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[-17,4,-16,-13,-12,11,17,2,-14,10]\n-2\n",
+    "expectedOutput": "[3,5]\n",
+    "is_public": false
+  },
+  {
+    "id": "7fe8b72b-dac8-4292-a0ae-3ec92ac7cb7e",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[10,-8,5,-12,16,6]\n11\n",
+    "expectedOutput": "[2,5]\n",
+    "is_public": false
+  },
+  {
+    "id": "87404826-f1ce-4316-856b-bc293fc2dc75",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[3,3]\n6\n",
+    "expectedOutput": "[0,1]\n",
+    "is_public": true
+  },
+  {
+    "id": "930bbc35-d430-4797-9b6e-054d76679321",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[-13,17,7]\n-6\n",
+    "expectedOutput": "[0,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "a433f244-44d2-4cf9-981a-36ed5d123f8c",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[]\n0\n",
+    "expectedOutput": "[]\n",
+    "is_public": false
+  },
+  {
+    "id": "a95cb7e7-a1c4-420f-a1b7-d0b80a3e8634",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[-10,-11]\n-21\n",
+    "expectedOutput": "[0,1]\n",
+    "is_public": false
+  },
+  {
+    "id": "b84c286c-67b6-42bf-b321-3065ab4a5c8f",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[-4,7,12,3,-9,6]\n2\n",
+    "expectedOutput": "[0,5]\n",
+    "is_public": false
+  },
+  {
+    "id": "f0ddca22-f8aa-495c-b779-9f1db0274f97",
     "problem_number": 1,
     "problem_name": "Two Sum",
     "input": "[2,7,11,15]\n9\n",
@@ -16,11 +88,19 @@
     "is_public": true
   },
   {
-    "id": "cb68baac-e155-4330-9d78-8e14c8ad3f27",
+    "id": "f195fac7-a06c-489f-856b-8c563c80b3f7",
     "problem_number": 1,
     "problem_name": "Two Sum",
-    "input": "[3,3]\n6\n",
-    "expectedOutput": "[0,1]\n",
+    "input": "[-8,5,-6,9,-14,20,-4]\n-14\n",
+    "expectedOutput": "[0,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "fe57a4a3-c875-4ce4-a5ba-e44fe66854e0",
+    "problem_number": 1,
+    "problem_name": "Two Sum",
+    "input": "[8,-2,-11,-16,16,7,16,15,17,2]\n-14\n",
+    "expectedOutput": "[3,9]\n",
     "is_public": false
   },
   {
@@ -216,15 +296,39 @@
     "is_public": true
   },
   {
-    "id": "2a00e2a9-439c-48dd-b208-221856436ba0",
+    "id": "389e07c4-4287-450e-a6b6-c27aa17e5ea4",
     "problem_number": 10,
     "problem_name": "Palindrome Number",
-    "input": "-121\n",
+    "input": "91007\n",
     "expectedOutput": "false\n",
-    "is_public": true
+    "is_public": false
   },
   {
-    "id": "2d44361b-46fb-479c-bfd5-3dc27ea10336",
+    "id": "66a7ca76-fded-49dc-b8d1-25cc1f515640",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "75553\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "6fb2fd3a-7fc7-4d51-9b0b-57dd5d5af819",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "239935539932\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "7a1a321d-4693-4d8e-804c-751b520042f4",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "562569965265\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "7cc46fd4-0a45-4857-9d81-c65d07a0c4f1",
     "problem_number": 10,
     "problem_name": "Palindrome Number",
     "input": "121\n",
@@ -232,12 +336,68 @@
     "is_public": true
   },
   {
-    "id": "95a98542-e335-4f60-8df1-a9af984fac74",
+    "id": "80144a57-1d47-4adc-b27d-4efd50b22ca9",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "353962269353\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "a4a05bbd-2805-4c76-9da4-0062a806054b",
     "problem_number": 10,
     "problem_name": "Palindrome Number",
     "input": "10\n",
     "expectedOutput": "false\n",
+    "is_public": true
+  },
+  {
+    "id": "b5be809f-ecaf-4139-9629-758dae095d40",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "-34692\n",
+    "expectedOutput": "false\n",
     "is_public": false
+  },
+  {
+    "id": "b6a9eb92-f640-4f45-9d72-6ff6ff990500",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "0\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "d2393bbf-a66d-4b50-acce-1295dcd1d27f",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "592728\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "e44add5d-3686-490f-a53e-473c888251fb",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "195248842591\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "ea19a36a-f801-4f16-aeea-558d7112e4a7",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "1\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "edb71ec4-427f-4c31-89d4-33d915be2040",
+    "problem_number": 10,
+    "problem_name": "Palindrome Number",
+    "input": "-121\n",
+    "expectedOutput": "false\n",
+    "is_public": true
   },
   {
     "id": "48de70a9-7168-4883-84e8-0b7555412104",
@@ -408,27 +568,107 @@
     "is_public": false
   },
   {
-    "id": "4dfb43b1-611f-4369-8f9c-ac52c1b715a2",
+    "id": "2350a0ee-e415-468d-bd63-6a3c51d4dc9c",
     "problem_number": 18,
     "problem_name": "High Five",
-    "input": "[[1,91],[1,92],[2,93],[2,97],[1,60],[2,77],[1,65],[1,87],[1,100],[2,100],[2,76]]\n",
-    "expectedOutput": "[[1,87],[2,88]]\n",
-    "is_public": true
-  },
-  {
-    "id": "a2dc8a87-8cb7-45a0-83c2-7845cad8a12d",
-    "problem_number": 18,
-    "problem_name": "High Five",
-    "input": "[]\n",
-    "expectedOutput": "[]\n",
+    "input": "[[6,3,4,14],[4,2,2,23]]\n",
+    "expectedOutput": "[[4,2],[6,3]]\n",
     "is_public": false
   },
   {
-    "id": "e5177955-cb4e-46cb-b8e9-a038d4108810",
+    "id": "235e605f-adc6-43f3-99d9-112dc64ac34b",
     "problem_number": 18,
     "problem_name": "High Five",
-    "input": "[[1,100],[1,100],[1,100],[1,100],[1,100]]\n",
-    "expectedOutput": "[[1,100]]\n",
+    "input": "[[1,2,90],[3,2,99],[2,2,10]]\n",
+    "expectedOutput": "[[1,2],[2,2],[3,2]]\n",
+    "is_public": true
+  },
+  {
+    "id": "2d688b7b-d6d1-45cd-aa67-00bb3c13381d",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[3,0,100]]\n",
+    "expectedOutput": "[[3,0]]\n",
+    "is_public": true
+  },
+  {
+    "id": "51aab556-0faf-4d13-9e79-5835b58106d3",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[5,2,3,72]]\n",
+    "expectedOutput": "[[5,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "617e81a2-daa0-4ab6-8982-94a7b560b66c",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[5,0,98]]\n",
+    "expectedOutput": "[[5,0]]\n",
+    "is_public": false
+  },
+  {
+    "id": "672c901e-9bc6-4ae5-8c31-3758028282fd",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[2,1,1,33],[5,2,4,56],[1,3,1,76]]\n",
+    "expectedOutput": "[[1,3],[2,1],[5,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8bd59f72-750a-4ffc-b538-6d173141816b",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[6,1,4,99],[4,2,2,29],[2,3,3,89]]\n",
+    "expectedOutput": "[[2,3],[4,2],[6,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8f76826f-0c54-4ec8-86c9-cc2f47dece56",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[5,3,3,60],[6,3,3,5],[5,3,3,73],[1,3,3,46]]\n",
+    "expectedOutput": "[[1,3],[5,6],[6,3]]\n",
+    "is_public": false
+  },
+  {
+    "id": "b761c043-a8ec-4334-986d-eee6d31ae555",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[5,2,2,4]]\n",
+    "expectedOutput": "[[5,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "bcb3677f-61fb-4b36-8656-0f13028d6c24",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[3,1,4,96],[1,3,4,32],[5,1,1,33],[2,3,4,48],[6,3,3,28]]\n",
+    "expectedOutput": "[[1,3],[2,3],[3,1],[5,1],[6,3]]\n",
+    "is_public": false
+  },
+  {
+    "id": "cf7cdbcf-1e4a-4d4f-8c81-5ca5a1c92be3",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[2,2,91],[1,5,90],[3,1,99]]\n",
+    "expectedOutput": "[[1,5],[2,2],[3,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "e41c283c-0f02-427d-bee4-ace2912fa2c1",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[1,2,2,64]]\n",
+    "expectedOutput": "[[1,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "e6a49b88-6a75-439c-bd48-57588012cec6",
+    "problem_number": 18,
+    "problem_name": "High Five",
+    "input": "[[1,1,100],[2,2,200]]\n",
+    "expectedOutput": "[[1,1],[2,2]]\n",
     "is_public": true
   },
   {
@@ -504,15 +744,71 @@
     "is_public": false
   },
   {
-    "id": "654ceea1-2580-4fb2-9b92-0c90304da83b",
+    "id": "02218e52-ba8f-4e82-8857-35c506d4b11e",
     "problem_number": 22,
     "problem_name": "Pascal's Triangle",
-    "input": "0\n",
-    "expectedOutput": "[]\n",
+    "input": "4\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1]]\n",
     "is_public": false
   },
   {
-    "id": "b15628d7-a61d-4845-82cf-1c15d198a390",
+    "id": "19a8488d-08d9-40f7-96fc-c943ee0ec14a",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "14\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1],[1,8,28,56,70,56,28,8,1],[1,9,36,84,126,126,84,36,9,1],[1,10,45,120,210,252,210,120,45,10,1],[1,11,55,165,330,462,462,330,165,55,11,1],[1,12,66,220,495,792,924,792,495,220,66,12,1],[1,13,78,286,715,1287,1716,1716,1287,715,286,78,13,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "4599f83c-38d0-4c7c-b64c-2be51742bb4b",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "6\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "4b36cd1d-90ff-4dea-a870-3ca3ad837f6f",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "7\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "51b180e9-a5f4-4cdf-990d-0e4ba522492e",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "10\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1],[1,8,28,56,70,56,28,8,1],[1,9,36,84,126,126,84,36,9,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "569f8b6c-d272-4544-829f-3d86bed11468",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "3\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "77a0a199-97bc-4d9c-8cde-a424bd0352aa",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "15\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1],[1,8,28,56,70,56,28,8,1],[1,9,36,84,126,126,84,36,9,1],[1,10,45,120,210,252,210,120,45,10,1],[1,11,55,165,330,462,462,330,165,55,11,1],[1,12,66,220,495,792,924,792,495,220,66,12,1],[1,13,78,286,715,1287,1716,1716,1287,715,286,78,13,1],[1,14,91,364,1001,2002,3003,3432,3003,2002,1001,364,91,14,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "7f00b843-ee8c-4fae-b0e1-c9976607fe1e",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "13\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1],[1,8,28,56,70,56,28,8,1],[1,9,36,84,126,126,84,36,9,1],[1,10,45,120,210,252,210,120,45,10,1],[1,11,55,165,330,462,462,330,165,55,11,1],[1,12,66,220,495,792,924,792,495,220,66,12,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8833700c-f453-490c-b950-5533b4146f84",
     "problem_number": 22,
     "problem_name": "Pascal's Triangle",
     "input": "1\n",
@@ -520,12 +816,36 @@
     "is_public": true
   },
   {
-    "id": "f29fceef-eddb-4201-9e77-8050b89d04bc",
+    "id": "8bd21e44-760e-443c-b623-b5948eb22609",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "8\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "b13f0b63-4c15-4820-9607-95489a7163f0",
     "problem_number": 22,
     "problem_name": "Pascal's Triangle",
     "input": "5\n",
     "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "c9d779b4-e26e-4964-9a08-dfb24751e9b4",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "2\n",
+    "expectedOutput": "[[1],[1,1]]\n",
     "is_public": true
+  },
+  {
+    "id": "fdb1588f-2a8e-4f78-b0a4-43bc8410f08f",
+    "problem_number": 22,
+    "problem_name": "Pascal's Triangle",
+    "input": "9\n",
+    "expectedOutput": "[[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1],[1,5,10,10,5,1],[1,6,15,20,15,6,1],[1,7,21,35,35,21,7,1],[1,8,28,56,70,56,28,8,1]]\n",
+    "is_public": false
   },
   {
     "id": "56afa184-ad01-474a-867f-0c17b961f548",
@@ -648,15 +968,79 @@
     "is_public": true
   },
   {
-    "id": "650dbeb1-67c5-4d06-a669-b797d7f90200",
+    "id": "138272f9-afc5-44e5-bd84-23867fe1d838",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[10,-5,12,-1,2,-4,5,9,7,0,13]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "16bd7c4c-2948-48ec-8e10-58b7a2c4d6f2",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[2,11,-4,6,5,-2,12,0,9,7]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "1c368347-b64f-41bd-9c04-911d92d313ed",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[0,3,7,2,5,8,4,6,0,1]\n",
+    "expectedOutput": "9\n",
+    "is_public": true
+  },
+  {
+    "id": "6e477192-42a7-4939-a6fa-f86493ef9c4c",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[12,6,9,7]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "6f00227c-591c-4b6f-bdd9-54d6028c4fc6",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[-17,-16]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "9bc84aab-433b-4179-bfe1-9cc2116c09bb",
     "problem_number": 28,
     "problem_name": "Longest Consecutive Sequence",
     "input": "[]\n",
     "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "9ca8f0e9-ade8-42b4-8ae7-bcfb86ef6d67",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[-10,-16,-7,-5,-8,-19,-13]\n",
+    "expectedOutput": "2\n",
     "is_public": false
   },
   {
-    "id": "82caf479-d9ad-48c3-b466-f4c29e4213a7",
+    "id": "afb6cb61-545c-46f5-94b8-2ce1f71f60cc",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[1,2,0,1]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "b9ac9aa5-532a-4907-bbe9-e028155f2b60",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[1]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "cbad20a9-d7d7-4fb3-aea2-67c0fe09148e",
     "problem_number": 28,
     "problem_name": "Longest Consecutive Sequence",
     "input": "[100,4,200,1,3,2]\n",
@@ -664,12 +1048,28 @@
     "is_public": true
   },
   {
-    "id": "bbfd3282-b8d3-4f41-998e-404c0e846a8a",
+    "id": "d515c82b-75f8-4cd6-8e4a-fc80990ec4e6",
     "problem_number": 28,
     "problem_name": "Longest Consecutive Sequence",
-    "input": "[0,3,7,2,5,8,4,6,0,1]\n",
-    "expectedOutput": "9\n",
-    "is_public": true
+    "input": "[32,10,17,35,25,29,12,27,22,6,14,19,7,11]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "dba3a3a7-9c97-4fe5-adb3-01f2573157b1",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[34,26,39,17,29,19,37,31,33,20,23]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "f284e9e2-8c43-4216-ba5e-4ad71fe72b35",
+    "problem_number": 28,
+    "problem_name": "Longest Consecutive Sequence",
+    "input": "[11,14,21,19,12,16]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
   },
   {
     "id": "02aea424-ed65-4011-aa93-85355d227a59",
@@ -744,15 +1144,31 @@
     "is_public": false
   },
   {
-    "id": "25381c3d-3baf-4567-9e02-b1be466a01df",
+    "id": "121c6ceb-8b89-41b2-af72-c4f23738a0ab",
     "problem_number": 32,
     "problem_name": "Roman to Integer",
-    "input": "\"LVIII\"\n",
-    "expectedOutput": "58\n",
-    "is_public": true
+    "input": "\"MMDCCCXCV\"\n",
+    "expectedOutput": "2895\n",
+    "is_public": false
   },
   {
-    "id": "29555812-6d37-4c4e-8004-62dcf239ba41",
+    "id": "20ed5e92-117f-4590-b597-262d53db4a8f",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"CCCLXXVIII\"\n",
+    "expectedOutput": "378\n",
+    "is_public": false
+  },
+  {
+    "id": "2ee7b803-bc04-4c1a-bd73-9ca7191f5190",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"I\"\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "3283bb20-e462-49a8-b791-3c6258c71490",
     "problem_number": 32,
     "problem_name": "Roman to Integer",
     "input": "\"III\"\n",
@@ -760,11 +1176,75 @@
     "is_public": true
   },
   {
-    "id": "4d46dd80-3f46-48a8-a985-1b6dcae8244b",
+    "id": "48a4108e-8a03-4be1-b157-0883037f184b",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"IV\"\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "610b4243-e652-4c90-a625-a41a3ea0b9bb",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"LVIII\"\n",
+    "expectedOutput": "58\n",
+    "is_public": true
+  },
+  {
+    "id": "6b59b70c-afb3-4885-9159-d147b1875ef8",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"MMCXLV\"\n",
+    "expectedOutput": "2145\n",
+    "is_public": false
+  },
+  {
+    "id": "74887eb6-0a7c-4ef1-8a4b-0f3637d56854",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"CMXVIII\"\n",
+    "expectedOutput": "918\n",
+    "is_public": false
+  },
+  {
+    "id": "7ce7b974-da64-4393-a7cd-85dd2866b05b",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"DLXIV\"\n",
+    "expectedOutput": "564\n",
+    "is_public": false
+  },
+  {
+    "id": "87203f47-5be6-4f36-87e6-1e61a44845aa",
     "problem_number": 32,
     "problem_name": "Roman to Integer",
     "input": "\"MCMXCIV\"\n",
     "expectedOutput": "1994\n",
+    "is_public": true
+  },
+  {
+    "id": "b0909cea-02fa-43b4-810a-3e1f75a27ad1",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"MMMVI\"\n",
+    "expectedOutput": "3006\n",
+    "is_public": false
+  },
+  {
+    "id": "d0ba938c-529f-42b3-a511-2e95de942f35",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"MDCLXXV\"\n",
+    "expectedOutput": "1675\n",
+    "is_public": false
+  },
+  {
+    "id": "ea67ef7a-04cc-459c-8f2a-530615c5bf8d",
+    "problem_number": 32,
+    "problem_name": "Roman to Integer",
+    "input": "\"MMCXXXII\"\n",
+    "expectedOutput": "2132\n",
     "is_public": false
   },
   {
@@ -872,7 +1352,23 @@
     "is_public": true
   },
   {
-    "id": "0f7a0ff7-6958-4ce1-b4c0-9c6a6dc56324",
+    "id": "01b274c2-c521-49eb-a3fc-4b15ebe48f9c",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[3,0,-3,-1,-1,2,-2,2,1]\n",
+    "expectedOutput": "[0,72,0,0,0,0,0,0,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "1544757b-937c-488f-b95a-05cc546404dc",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[1,0,2,3,3,-3,3,-2]\n",
+    "expectedOutput": "[0,324,0,0,0,0,0,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "19593754-72db-4a18-afdb-47484da512da",
     "problem_number": 103,
     "problem_name": "Product of Array Except Self",
     "input": "[-1,1,0,-3,3]\n",
@@ -880,12 +1376,84 @@
     "is_public": true
   },
   {
-    "id": "36aab8e5-618d-4237-9068-1727e4e894dd",
+    "id": "20032719-7780-4d49-b7cd-6e3a1024575b",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[-2,-2,0]\n",
+    "expectedOutput": "[0,0,4]\n",
+    "is_public": false
+  },
+  {
+    "id": "2115bb1a-6903-42b4-81aa-f3c960e6faf2",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[2,3]\n",
+    "expectedOutput": "[3,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "2e618e31-8f9d-4e4a-959f-8a3557fbaf16",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[5]\n",
+    "expectedOutput": "[1]\n",
+    "is_public": false
+  },
+  {
+    "id": "3b0c5a6a-48d7-4c6b-a13c-50cc5ac62b63",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[0,0]\n",
+    "expectedOutput": "[0,0]\n",
+    "is_public": true
+  },
+  {
+    "id": "4be47c39-bcf4-4e9f-915f-0e7ab79f3039",
     "problem_number": 103,
     "problem_name": "Product of Array Except Self",
     "input": "[1,2,3,4]\n",
     "expectedOutput": "[24,12,8,6]\n",
     "is_public": true
+  },
+  {
+    "id": "5464a73d-cf51-4bfd-9dad-af7b936c52fa",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[-2,-2,3]\n",
+    "expectedOutput": "[-6,-6,4]\n",
+    "is_public": false
+  },
+  {
+    "id": "649778d4-8316-45c1-b125-2272de2fd5b9",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[-1,-2]\n",
+    "expectedOutput": "[-2,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "75fdfc58-d7aa-41e3-88fe-8a06471b6a67",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[-3,2,-2,-1,-1,-3]\n",
+    "expectedOutput": "[12,-18,18,36,36,12]\n",
+    "is_public": false
+  },
+  {
+    "id": "929172c2-4a7f-4a6c-81b6-a70ac2b54a95",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[-3,-3,-2,3,-2]\n",
+    "expectedOutput": "[-36,-36,-54,36,-54]\n",
+    "is_public": false
+  },
+  {
+    "id": "d4ec5809-9c06-416b-801f-cf316811c623",
+    "problem_number": 103,
+    "problem_name": "Product of Array Except Self",
+    "input": "[2,-2,0,-1,-3,-2,-1,-2,3]\n",
+    "expectedOutput": "[0,0,144,0,0,0,0,0,0]\n",
+    "is_public": false
   },
   {
     "id": "871610b8-a904-46b9-a97e-28243cb1e8e5",
@@ -920,7 +1488,79 @@
     "is_public": true
   },
   {
-    "id": "1191f55f-3bc1-4500-bdbc-715241048e43",
+    "id": "1701c2f0-ccbf-4566-abdd-9400a2a90b4e",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"ktas\"\n\"stka\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "2c5e775e-4ec1-4e7c-bc63-5a614e331ac4",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"rbmofie\"\n\"obrfiem\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "4e178269-7b47-4e70-a592-74f38f4a365d",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"a\"\n\"ab\"\n",
+    "expectedOutput": "false\n",
+    "is_public": true
+  },
+  {
+    "id": "50143c8a-4cec-4f76-a029-6093051bbc15",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"njog\"\n\"bzc\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "62005e17-4c6d-4939-a0bf-2a3064fe53d7",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"\"\n\"\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "652e4d4e-c0f9-4e12-ad65-960617dd4d67",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"zusuhwh\"\n\"uuzhwhs\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "92489e16-8f63-4e45-a253-1f4b80ba92c4",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"emockgopsm\"\n\"cmespoogkm\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "9482a46a-c434-49d2-b84c-bccb0ef9578a",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"anagram\"\n\"nagaram\"\n",
+    "expectedOutput": "true\n",
+    "is_public": true
+  },
+  {
+    "id": "95cae764-89f8-46b5-adcc-b4b94ed538be",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"ilarc\"\n\"tnj\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "9ac4a573-0f7a-49f7-9957-046acbbc578c",
     "problem_number": 106,
     "problem_name": "Valid Anagram",
     "input": "\"rat\"\n\"car\"\n",
@@ -928,12 +1568,28 @@
     "is_public": true
   },
   {
-    "id": "77868860-0dc9-4db0-aa57-a5e580c39449",
+    "id": "b7b53b6e-e4e5-481f-b3a9-bcb6ae238a23",
     "problem_number": 106,
     "problem_name": "Valid Anagram",
-    "input": "\"anagram\"\n\"nagaram\"\n",
+    "input": "\"gfs\"\n\"sfg\"\n",
     "expectedOutput": "true\n",
-    "is_public": true
+    "is_public": false
+  },
+  {
+    "id": "b8169ac3-1d4b-4fcf-bec9-5188409759c4",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"n\"\n\"sgmu\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "f042f6db-d484-45db-83b5-55a40dcc4586",
+    "problem_number": 106,
+    "problem_name": "Valid Anagram",
+    "input": "\"aacc\"\n\"ccac\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
   },
   {
     "id": "13f34db9-0e43-4898-9fcb-ec9fab5a813c",
@@ -1016,7 +1672,47 @@
     "is_public": true
   },
   {
-    "id": "cfa36387-bc5d-4cf1-b557-150cbd62fd8c",
+    "id": "06451973-9a43-44f0-8c5f-e0496e0c07cd",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[]\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "1d36deff-c193-49f2-a664-a7ac19649dbd",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,0,1,1,2,2,3]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "262cd8e3-925c-40a6-98ba-2988fd20b54b",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "3fbab8c7-dabd-4b4a-aacf-f35e382dae4a",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[1,1,2]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "43e3c503-620c-43e4-9adb-8e1bf1ef1035",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,0,0,0,0,2,2,3,3,3,3,3,3,4,4,4,5,5]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "55407c15-b192-4a37-a715-5a253613ab1a",
     "problem_number": 114,
     "problem_name": "Remove Duplicates from Sorted Array",
     "input": "[0,0,1,1,1,2,2,3,3,4]\n",
@@ -1024,12 +1720,60 @@
     "is_public": true
   },
   {
-    "id": "e0335a8a-c33c-46d3-a5fd-a90d15471f88",
+    "id": "72898c6e-8dd2-402b-a4d0-25b40beb272b",
     "problem_number": 114,
     "problem_name": "Remove Duplicates from Sorted Array",
-    "input": "[1,1,2]\n",
-    "expectedOutput": "\"2\\n[1,2,_]\"\n",
-    "is_public": true
+    "input": "[0,0,1,1,1,2,2,2,3,3]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "7f96be68-9e51-48ac-8c72-86fa6a33195e",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,0,0,1,1,1,1,1,2,2,3,3,3,3,4,4,4]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "87ae3486-d7af-4a2b-b4f4-b738ee6ca107",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[1,2,3]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "c45cea15-3978-4ab0-a92a-8d11e84c98bc",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,1,2,2,3,3,3,3,3,3,4]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "c4fb13c7-91c4-4f0f-84c6-3dbf78d05f78",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[1]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "ce1bab9a-f688-49f2-913e-352ea6c2c576",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,1,2]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "dd32ea74-9509-4020-bd51-c53ffe77c622",
+    "problem_number": 114,
+    "problem_name": "Remove Duplicates from Sorted Array",
+    "input": "[0,0,0,0,1,2,2,2,4,5,5,5]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
   },
   {
     "id": "cebe864a-09ad-4358-8a5c-ac82d5594f64",
@@ -1088,20 +1832,108 @@
     "is_public": true
   },
   {
-    "id": "d3b1339b-29ac-40b2-b0fb-0cec98e38572",
+    "id": "10ef5b73-f12f-44ea-804f-bf659929e46e",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[-1]\n9\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "11e13753-93f1-4260-bde9-29185bb9a033",
     "problem_number": 120,
     "problem_name": "Remove Element",
     "input": "[3,2,2,3]\n3\n",
-    "expectedOutput": "\"2\\n[2,2]\"\n",
+    "expectedOutput": "2\n",
     "is_public": true
   },
   {
-    "id": "f7f10093-6fc9-4e12-83ff-e1c7de6c85b3",
+    "id": "16d83750-bc0a-4916-8d71-77fc66b73953",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[]\n1\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "25173863-1997-4ea7-8f58-c35367b63ef7",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[2,2,2,-1,-1]\n-2\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "6c62c6bf-4138-45a5-87e3-741ebf506cfb",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[-1,0,2,1,0,2,1,-2]\n9\n",
+    "expectedOutput": "8\n",
+    "is_public": false
+  },
+  {
+    "id": "6cc1b8a1-09d7-49ae-8957-9fbb440c03b9",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[-2,-1,1]\n-1\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "72fbdf87-d6ff-4566-909a-d2c9a0c39905",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[1,1,1]\n1\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "9473ad0a-ae53-4300-a655-da371f84be75",
     "problem_number": 120,
     "problem_name": "Remove Element",
     "input": "[0,1,2,2,3,0,4,2]\n2\n",
     "expectedOutput": "5\n",
     "is_public": true
+  },
+  {
+    "id": "9496aaa5-5aca-4444-ba78-2b63e4ba2649",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[2,-1,2,2,-2,-1,1,0]\n0\n",
+    "expectedOutput": "7\n",
+    "is_public": false
+  },
+  {
+    "id": "a5f89fbd-c4cf-4d2c-a9ba-5b8935453abf",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[0,2,-2,2,-2,-2,-2]\n-2\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "a7a19789-1d63-4d59-b0f9-0f78a4cb707b",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[7]\n7\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "bb3e38df-96f2-49f6-9fbe-bb54b6be8c3e",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[1,-2,-1,2,0]\n-1\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "f6604e21-46ae-4065-a35e-df7111b2663f",
+    "problem_number": 120,
+    "problem_name": "Remove Element",
+    "input": "[-1,0,1,-1,2,2,0,-2]\n0\n",
+    "expectedOutput": "6\n",
+    "is_public": false
   },
   {
     "id": "6fc681ea-20e6-4af6-a4c6-143b7619a39c",
