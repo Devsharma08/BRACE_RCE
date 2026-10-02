@@ -1,6 +1,10 @@
 import { BANK } from './problemBank/banks/index.js';
+import { buildUserSolution } from './problemBank/solutionJs.js';
 import { fmtIn, fmtOut } from './problemBank/helpers.js';
 import type { ProblemBankEntry } from './problemBank/types.js';
+
+const seenNumbers = new Set<number>();
+const seenKeys = new Set<string>();
 
 let failures = 0;
 const fail = (msg: string) => {
@@ -47,6 +51,43 @@ for (const p of BANK) {
   }
   const pubCount = p.tests.filter((t) => t.isPublic).length;
   if (pubCount === 0) fail('no public test cases');
+
+  // 3. The reference must be SELF-CONTAINED. buildUserSolution serializes it
+  // with Function.prototype.toString, so any module-scope binding it closes
+  // over would be undefined in the sandboxed submission.
+  const src = buildUserSolution(p);
+  if (/\b__name\s*\(/.test(src)) fail('generated solution still contains __name(...)');
+  // Known module-scope helpers from the problemBank package that must never
+  // appear as free identifiers inside a reference body.
+  const freeHelpers = [
+    'buildTrie',
+    'arrayToTree',
+    'treeToArray',
+    'arrayToList',
+    'listToArray',
+    'arrayToListNode',
+    'listNodeToArray',
+    'node',
+  ];
+  const bodySrc = src.slice(src.indexOf('return (') + 8, src.lastIndexOf('})(['));
+  for (const helper of freeHelpers) {
+    // Built with a character class (no backslash escapes) so there is no
+    // double-escaping ambiguity between the JS string and the RegExp source.
+    const re = new RegExp(`(?<![.A-Za-z0-9_$])${helper}[ ]*\\(`);
+    if (re.test(bodySrc)) fail(`reference closes over module-scope helper ${helper}()`);
+  }
+
+  // 4. Problem number and key must be globally unique.
+  if (seenNumbers.has(p.number)) fail(`duplicate problem number #${p.number}`);
+  seenNumbers.add(p.number);
+  if (seenKeys.has(p.key)) fail(`duplicate key ${p.key}`);
+  seenKeys.add(p.key);
+
+  // 5. The signature must line up with the argument count actually used.
+  const fnArity = p.solve.length;
+  if (fnArity !== 1) {
+    fail(`solve must take exactly 1 args array (got arity ${fnArity})`);
+  }
   console.log(
     `  cases: ${p.tests.length} (${pubCount} public) | hints: ${p.hints.length} | def: ${p.definition.length} chars`,
   );
