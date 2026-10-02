@@ -18,7 +18,11 @@
     "start": "cross-env NODE_MODE='production' node dist/index.js",
     "seed": "tsx prisma/seed.ts",
     "seed:learning-paths": "tsx prisma/seed-learning-paths.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "problem:verify-ops": "tsx src/scripts/verify_operation_problems.ts",
+    "problem:fix-ops": "tsx src/scripts/fix_operation_expected.ts",
+    "problem:expand": "tsx src/scripts/expand_test_cases.ts",
+    "problem:verify-legacy": "tsx src/scripts/verify_legacy_execution.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
