@@ -36,7 +36,7 @@ import type { ProblemBankEntry } from './types.js';
  * that stack traces keep the original name. That annotation is meaningless
  * outside the bundler, so remove it and keep the bare function expression.
  */
-function stripBundlerHelpers(src: string): string {
+export function stripBundlerHelpers(src: string): string {
   let out = src;
   for (let i = 0; i < 20; i++) {
     const at = out.indexOf('__name(');
