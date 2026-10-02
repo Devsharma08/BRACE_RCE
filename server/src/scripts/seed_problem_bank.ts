@@ -23,9 +23,16 @@ async function main() {
 
   let inserted = 0;
   let skipped = 0;
+  const collisions: { number: number; name: string }[] = [];
 
   for (const p of BANK) {
     if (takenNames.has(p.name.toLowerCase())) {
+      const already = existing.find((x) => x.name.toLowerCase() === p.name.toLowerCase());
+      // Same number means it was seeded before; otherwise it is a real
+      // collision with an unrelated problem and needs renaming.
+      if (already && already.problem_number !== p.number) {
+        collisions.push({ number: p.number, name: p.name });
+      }
       console.log(`  = ${p.name} (already present)`);
       skipped++;
       continue;
@@ -67,6 +74,13 @@ async function main() {
     takenNumbers.add(p.number);
     takenNames.add(p.name.toLowerCase());
     inserted++;
+  }
+
+  // A name collision silently skips an entry, which reads as success but
+  // leaves a problem unseeded. Report those separately so they are noticed.
+  if (collisions.length) {
+    console.log('\n⚠ Name collisions (not seeded — rename these entries):');
+    for (const c of collisions) console.log(`    #${c.number} ${c.name}`);
   }
 
   const total = await prisma.problem.count();
