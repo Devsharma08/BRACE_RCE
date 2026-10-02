@@ -3160,7 +3160,15 @@
     "is_public": false
   },
   {
-    "id": "5a67eb2a-e951-4643-9dee-9f57283f59e3",
+    "id": "19d2190d-402f-4724-a1f2-9b6a427b2d00",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "empty(),pop(),empty(),pop(),empty(),push(23),push(20),push(28),pop(),empty(),push(29),empty()\n",
+    "expectedOutput": "true,true,true,23,false,false\n",
+    "is_public": false
+  },
+  {
+    "id": "20f2c3e0-57ea-404e-8ed5-04c03cb61978",
     "problem_number": 101,
     "problem_name": "Implement Queue using Stacks",
     "input": "push(1),push(2),peek(),pop(),empty()\n",
@@ -3168,12 +3176,92 @@
     "is_public": true
   },
   {
-    "id": "eb2cee91-70f2-4113-a485-efc9c382247e",
+    "id": "6c091842-20cc-4838-b067-3da0552b2be6",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "push(24),empty(),pop(),empty(),peek(),push(17),push(5),empty()\n",
+    "expectedOutput": "false,24,true,false\n",
+    "is_public": false
+  },
+  {
+    "id": "72e6e6f3-1301-4e43-b024-2afe7cd4d601",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "push(10),pop(),empty(),empty(),pop(),empty(),peek(),push(17),push(5),pop(),empty()\n",
+    "expectedOutput": "10,true,true,true,17,false\n",
+    "is_public": false
+  },
+  {
+    "id": "8d93a0e1-9abe-48e1-a0eb-37c53dba997e",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "peek(),empty(),empty(),peek(),push(50),peek(),pop(),peek(),empty(),empty(),push(18),peek(),empty()\n",
+    "expectedOutput": "true,true,50,true,true,18,true\n",
+    "is_public": false
+  },
+  {
+    "id": "96f84684-35f3-4b02-93e3-4e7c40f36f65",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "push(4),pop(),pop(),pop(),empty(),empty(),peek(),push(27),push(11),empty()\n",
+    "expectedOutput": "4,true,true,false\n",
+    "is_public": false
+  },
+  {
+    "id": "a89fd1e1-d370-40d3-90d3-c5240dd62595",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "empty(),pop(),empty(),push(9),empty(),peek(),pop(),empty(),peek(),empty()\n",
+    "expectedOutput": "true,true,false,9,true,true\n",
+    "is_public": false
+  },
+  {
+    "id": "af022d3f-3a09-4838-9178-844580b0c1e8",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "push(16),push(36),push(4),push(44),peek(),push(9),push(31),empty()\n",
+    "expectedOutput": "16,false\n",
+    "is_public": true
+  },
+  {
+    "id": "bdfcc595-40f6-4388-843f-e5adb4f62922",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "empty()\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "cfc75869-d605-4c75-8c5c-3aef0321feef",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "empty(),push(32),peek(),empty(),empty(),peek(),peek(),peek(),empty(),push(15),peek(),empty()\n",
+    "expectedOutput": "true,32,true,true,true,15,true\n",
+    "is_public": false
+  },
+  {
+    "id": "d4b02fdb-35ff-414b-a5cd-5208af08174f",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "push(28),push(49),empty(),push(32),pop(),push(19),peek(),pop(),push(11),empty(),pop(),empty()\n",
+    "expectedOutput": "false,28,49,32,false,19,false\n",
+    "is_public": false
+  },
+  {
+    "id": "d7f0ef9b-ac07-4d30-9e30-79aa7a3dd721",
     "problem_number": 101,
     "problem_name": "Implement Queue using Stacks",
     "input": "push(1),pop(),empty()\n",
     "expectedOutput": "1,true\n",
     "is_public": true
+  },
+  {
+    "id": "fe305eac-f6a7-4ba8-ba68-3348015c8f29",
+    "problem_number": 101,
+    "problem_name": "Implement Queue using Stacks",
+    "input": "peek(),pop(),push(49),push(26),empty()\n",
+    "expectedOutput": "false\n",
+    "is_public": false
   },
   {
     "id": "0a7dc249-6139-48d4-8406-4ac4bacc61da",
@@ -3816,7 +3904,103 @@
     "is_public": true
   },
   {
-    "id": "326cfe48-573d-429e-b826-49c9ceec86d6",
+    "id": "0c082d89-222b-4720-b1e5-08381a7b9101",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "count(),count(),wait(120),count()\n",
+    "expectedOutput": "0,0,0\n",
+    "is_public": false
+  },
+  {
+    "id": "1c3332b1-7161-4cc0-8159-5785a3a0cc5f",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "set('c',44,28),set('b',58,14),count(),set('d',84,18),get('d'),wait(120),count()\n",
+    "expectedOutput": "2,84,3\n",
+    "is_public": false
+  },
+  {
+    "id": "2a414b7f-5f4b-4dd6-b1f5-56bae22c9962",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "count(),wait(120),count()\n",
+    "expectedOutput": "0,0\n",
+    "is_public": true
+  },
+  {
+    "id": "3bef9321-b614-4384-a739-ad199d250584",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "count(),set('d',91,38),get('d'),wait(120),count()\n",
+    "expectedOutput": "0,91,1\n",
+    "is_public": false
+  },
+  {
+    "id": "5cd241c1-e3fe-477f-881f-e4ef15c7e18b",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "get('c'),get('d'),get('d'),count(),get('c'),wait(120),count()\n",
+    "expectedOutput": "-1,-1,-1,0,-1,0\n",
+    "is_public": false
+  },
+  {
+    "id": "5df36723-b5f1-44aa-8a66-9aab39ceb501",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "get('b'),count(),get('b'),get('d'),get('d'),wait(120),count()\n",
+    "expectedOutput": "-1,0,-1,-1,-1,0\n",
+    "is_public": false
+  },
+  {
+    "id": "848f28be-10e3-4ff6-905f-8de70bbf8f1e",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "set('c',90,28),get('c'),count(),wait(120),count()\n",
+    "expectedOutput": "90,1,1\n",
+    "is_public": false
+  },
+  {
+    "id": "94eb844d-acb8-40a1-9792-852da7139b89",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "get('c'),wait(120),count()\n",
+    "expectedOutput": "-1,0\n",
+    "is_public": false
+  },
+  {
+    "id": "9fbc6cea-8e87-4405-abfa-c4ae66171aef",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "count(),count(),set('c',16,30),wait(120),count()\n",
+    "expectedOutput": "0,0,1\n",
+    "is_public": true
+  },
+  {
+    "id": "d0928a47-e9a2-449e-bd9a-e804ffda0f52",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "get('a'),get('a'),set('c',44,8),wait(120),count()\n",
+    "expectedOutput": "-1,-1,1\n",
+    "is_public": false
+  },
+  {
+    "id": "eaff5f8e-d9a8-41f9-a11e-83ff3b63f8cf",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "set('a',19,39),get('b'),count(),set('d',3,20),wait(120),count()\n",
+    "expectedOutput": "-1,1,2\n",
+    "is_public": false
+  },
+  {
+    "id": "f3c65502-1df2-4f7a-94cb-564d3b835b18",
+    "problem_number": 109,
+    "problem_name": "Cache With Time Limit",
+    "input": "count(),get('b'),set('b',7,21),count(),wait(120),count()\n",
+    "expectedOutput": "0,-1,1,1\n",
+    "is_public": false
+  },
+  {
+    "id": "fb9d7bde-d18c-4a77-a278-32124985f9a0",
     "problem_number": 109,
     "problem_name": "Cache With Time Limit",
     "input": "set('a',1,100),get('a'),wait(150),get('a')\n",
@@ -4440,12 +4624,108 @@
     "is_public": false
   },
   {
-    "id": "b88bbc0b-fec9-4e15-861c-c03c1db55f41",
+    "id": "054e04f2-db1c-435a-9e72-885b0d362d36",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(60),addNum(36),findMedian()\n",
+    "expectedOutput": "36\n",
+    "is_public": false
+  },
+  {
+    "id": "104cfa17-5ecb-4735-a8a8-94554bdf60f8",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(2)\n",
+    "expectedOutput": "\n",
+    "is_public": false
+  },
+  {
+    "id": "18e496f9-47cb-493c-8122-ac01fd55ad5e",
     "problem_number": 124,
     "problem_name": "Find Median from Data Stream",
     "input": "addNum(1),addNum(2),findMedian(),addNum(3),findMedian()\n",
     "expectedOutput": "1.5,3\n",
     "is_public": true
+  },
+  {
+    "id": "4ddf80b3-1c67-46f6-a664-841894b379be",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(97),findMedian(),addNum(44),findMedian(),addNum(46),findMedian(),addNum(66),findMedian(),addNum(53),findMedian(),findMedian(),findMedian()\n",
+    "expectedOutput": "97,44,44,55,53,53,53\n",
+    "is_public": false
+  },
+  {
+    "id": "552f695b-437e-4d2b-84a3-6d422b1035f6",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(13),findMedian(),addNum(69),addNum(98),findMedian(),findMedian(),findMedian(),findMedian()\n",
+    "expectedOutput": "13,98,98,98,98\n",
+    "is_public": true
+  },
+  {
+    "id": "93b92bb1-7946-4147-86ff-9d8b943ba806",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(97)\n",
+    "expectedOutput": "\n",
+    "is_public": false
+  },
+  {
+    "id": "bbc3b178-1b7f-44ee-bc43-1a1c9e4d8b7f",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(83),findMedian(),findMedian(),findMedian(),findMedian(),addNum(43),findMedian(),addNum(48),findMedian()\n",
+    "expectedOutput": "83,83,83,83,43,43\n",
+    "is_public": false
+  },
+  {
+    "id": "c9ce967c-0a43-432e-ab0a-5da82226f75d",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(72),addNum(76),addNum(77),addNum(93),findMedian(),findMedian()\n",
+    "expectedOutput": "93,93\n",
+    "is_public": true
+  },
+  {
+    "id": "d11af9fc-9cea-4ba7-9de1-8e43703873e3",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(66),findMedian(),findMedian()\n",
+    "expectedOutput": "66,66\n",
+    "is_public": false
+  },
+  {
+    "id": "d87974ee-daf1-4ae8-9bb5-eb8bbd191b25",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(54),addNum(46),addNum(67),addNum(76),addNum(48),findMedian(),findMedian()\n",
+    "expectedOutput": "48,48\n",
+    "is_public": false
+  },
+  {
+    "id": "e2bb9ff0-2c1e-410b-9ba8-5478fb81b8bf",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(49)\n",
+    "expectedOutput": "\n",
+    "is_public": false
+  },
+  {
+    "id": "edf98681-3e9c-4518-9477-7d55cc7b0067",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(17),addNum(93),addNum(55),findMedian(),addNum(55),addNum(76),findMedian()\n",
+    "expectedOutput": "55,76\n",
+    "is_public": false
+  },
+  {
+    "id": "f8511684-9f92-4ac4-8c79-66feec92483c",
+    "problem_number": 124,
+    "problem_name": "Find Median from Data Stream",
+    "input": "addNum(31),findMedian(),findMedian(),findMedian(),addNum(98),findMedian()\n",
+    "expectedOutput": "31,31,31,64.5\n",
+    "is_public": false
   },
   {
     "id": "0fd96426-7b5a-463c-ae81-6034befa79e0",
@@ -5088,12 +5368,108 @@
     "is_public": false
   },
   {
-    "id": "10e12bcb-ebf7-449b-b8dc-d760ca2b3c43",
+    "id": "0a7780d7-bcfc-4f24-a647-5b47c2e91369",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "follow(1,1),follow(2,1),postTweet(3,1),unfollow(3,1),getNewsFeed(3),getNewsFeed(3),follow(1,1),getNewsFeed(1)\n",
+    "expectedOutput": "[1],[1],[]\n",
+    "is_public": false
+  },
+  {
+    "id": "0ad412a1-f75e-44ac-9179-b4eb125ff19d",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "follow(3,1),unfollow(1,1),unfollow(1,2),getNewsFeed(2),getNewsFeed(2),unfollow(3,2),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[]\n",
+    "is_public": true
+  },
+  {
+    "id": "0cddada9-91fe-4de1-918d-fe2d5929fe9a",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "getNewsFeed(2),unfollow(2,1),follow(2,3),follow(3,1),follow(2,1),getNewsFeed(3),follow(2,1),follow(2,2),postTweet(3,1),unfollow(3,3),postTweet(1,2),unfollow(1,3),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[2]\n",
+    "is_public": false
+  },
+  {
+    "id": "15fe8399-705a-45a0-b0df-e98fa8676c2e",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "unfollow(2,2),follow(3,3),getNewsFeed(3),postTweet(2,1),follow(3,1),getNewsFeed(1),follow(1,1),follow(2,1),unfollow(2,2),unfollow(3,2),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[]\n",
+    "is_public": false
+  },
+  {
+    "id": "1e49288c-25fc-40b9-9cc9-7af5d9547a8c",
     "problem_number": 132,
     "problem_name": "Design Twitter",
     "input": "postTweet(1,1),getNewsFeed(1),follow(1,2),postTweet(2,2),getNewsFeed(1)\n",
     "expectedOutput": "[1],[2,1]\n",
     "is_public": true
+  },
+  {
+    "id": "5deab11c-901c-4f68-aac3-d8f2c51629be",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "follow(3,3),follow(2,2),follow(2,1),postTweet(1,1),getNewsFeed(1),getNewsFeed(1),getNewsFeed(3),postTweet(3,2),follow(2,3),getNewsFeed(1)\n",
+    "expectedOutput": "[1],[1],[],[1]\n",
+    "is_public": false
+  },
+  {
+    "id": "77187ce7-9904-411d-be2f-a044f14b0d85",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "unfollow(1,2),postTweet(3,1),unfollow(1,1),follow(1,1),postTweet(3,2),getNewsFeed(3),follow(3,2),unfollow(2,3),postTweet(2,3),postTweet(2,4),getNewsFeed(1)\n",
+    "expectedOutput": "[2,1],[]\n",
+    "is_public": false
+  },
+  {
+    "id": "8b78de2b-a761-46bf-b626-95898c9c1b86",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "unfollow(1,1),getNewsFeed(2),postTweet(1,1),postTweet(1,2),getNewsFeed(2),postTweet(3,3),unfollow(2,2),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[2,1]\n",
+    "is_public": true
+  },
+  {
+    "id": "91b010f3-7fa8-476a-b767-1535c43ae7a4",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "postTweet(3,1),getNewsFeed(3),unfollow(1,1),follow(1,1),unfollow(3,1),follow(1,1),postTweet(1,2),getNewsFeed(1)\n",
+    "expectedOutput": "[1],[2]\n",
+    "is_public": false
+  },
+  {
+    "id": "943c4a94-2c7c-4fae-8eb9-c9283f2815a3",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "unfollow(3,1),getNewsFeed(3),postTweet(1,1),getNewsFeed(2),getNewsFeed(2),postTweet(2,2),getNewsFeed(2),postTweet(1,3),postTweet(3,4),follow(1,2),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[],[2],[3,2,1]\n",
+    "is_public": false
+  },
+  {
+    "id": "af867abb-2fab-4ce6-b347-3afd68e8e33d",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "follow(1,3),unfollow(1,1),getNewsFeed(2),unfollow(1,3),getNewsFeed(1)\n",
+    "expectedOutput": "[],[]\n",
+    "is_public": false
+  },
+  {
+    "id": "bde3b142-f3a1-48dc-9e5a-8126d48fb5cf",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "postTweet(3,1),postTweet(3,2),getNewsFeed(3),getNewsFeed(2),getNewsFeed(3),getNewsFeed(3),follow(1,2),follow(3,3),getNewsFeed(1)\n",
+    "expectedOutput": "[2,1],[],[2,1],[2,1],[]\n",
+    "is_public": false
+  },
+  {
+    "id": "f4a2c30c-af14-44cf-8e2b-50d12361d07f",
+    "problem_number": 132,
+    "problem_name": "Design Twitter",
+    "input": "getNewsFeed(2),getNewsFeed(2),postTweet(2,1),postTweet(3,2),postTweet(2,3),getNewsFeed(2),follow(2,2),follow(3,1),unfollow(3,2),getNewsFeed(1)\n",
+    "expectedOutput": "[],[],[3,1],[]\n",
+    "is_public": false
   },
   {
     "id": "154322ff-23fd-4768-bc88-3b073ed04ccc",
@@ -6856,12 +7232,108 @@
     "is_public": false
   },
   {
-    "id": "4f7e0163-06c4-4a4b-a893-5eae40980497",
+    "id": "2360491f-3565-4985-a6aa-74f937fe252d",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(3)\nFront()\ndeQueue()\nRear()\nRear()\nFront()\nRear()\ndeQueue()\nenQueue(1)\nenQueue(2)\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,false,-1,-1,-1,-1,false,true,true,false,false\n",
+    "is_public": false
+  },
+  {
+    "id": "24132a8b-bee7-4e82-bfea-9ed097e4c57a",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(2)\nFront()\ndeQueue()\nFront()\nFront()\nFront()\nRear()\nenQueue(1)\nenQueue(2)\nenQueue(3)\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,false,-1,-1,-1,-1,true,true,false,true,false\n",
+    "is_public": false
+  },
+  {
+    "id": "25e802b4-8679-4579-818b-8aa0a488d615",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(4)\ndeQueue()\nFront()\ndeQueue()\ndeQueue()\nFront()\ndeQueue()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "false,-1,false,false,-1,false,false,false,true\n",
+    "is_public": true
+  },
+  {
+    "id": "2dc01215-2d8f-4b5f-a835-4e4e01add83e",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(3)\nFront()\ndeQueue()\nFront()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,false,-1,false,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "302525a9-f7cd-45d6-acf9-5f1864b13be2",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(4)\nRear()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "31436d41-dda8-4a23-a3b1-133c6101da8c",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(4)\nFront()\nFront()\nFront()\nRear()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,-1,-1,-1,false,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "3587fe27-3289-460a-94a8-cdb335eb680d",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(1)\ndeQueue()\ndeQueue()\nRear()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "false,false,-1,false,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "58ea2830-fdbe-480b-8289-7c1179657166",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(3)\ndeQueue()\ndeQueue()\nenQueue(1)\nRear()\ndeQueue()\ndeQueue()\nFront()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "false,false,true,1,true,false,-1,false,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "878ea928-9dd9-4d3a-a33b-44eac9f685d7",
     "problem_number": 150,
     "problem_name": "Design Circular Queue",
     "input": "enQueue(1),enQueue(2),enQueue(3),enQueue(4),enQueue(5),deQueue()\n",
     "expectedOutput": "true,true,true,true,true,true\n",
     "is_public": true
+  },
+  {
+    "id": "927a3e3a-1f86-42da-a551-8ec7ef28c94c",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(1)\ndeQueue()\nRear()\nFront()\nRear()\nRear()\nRear()\nRear()\ndeQueue()\nenQueue(1)\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "false,-1,-1,-1,-1,-1,-1,false,true,true,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "a4f87737-b58f-4a68-a302-b382c01a2417",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(1)\nFront()\nFront()\nFront()\nenQueue(1)\nFront()\ndeQueue()\nenQueue(2)\nenQueue(3)\ndeQueue()\nFront()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,-1,-1,true,1,true,true,false,true,-1,false,true\n",
+    "is_public": false
+  },
+  {
+    "id": "d21ca52f-7951-4c48-9e14-b443082bc238",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(2)\ndeQueue()\nenQueue(1)\nFront()\nRear()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "false,true,1,1,false,false\n",
+    "is_public": true
+  },
+  {
+    "id": "e860c2c5-1f26-45b8-9f0a-f672339715d6",
+    "problem_number": 150,
+    "problem_name": "Design Circular Queue",
+    "input": "MyCircularQueue(1)\nRear()\ndeQueue()\nisFull()\nisEmpty()\n",
+    "expectedOutput": "-1,false,false,true\n",
+    "is_public": false
   },
   {
     "id": "1c43883c-1f3f-4b4e-bdd4-f7643dadf2dc",
@@ -7800,12 +8272,108 @@
     "is_public": false
   },
   {
-    "id": "a94258eb-ba87-444b-8c11-7a36e48d8975",
+    "id": "03382a36-41b5-4515-8d2b-eb26c1bd19ea",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(2,[])\nadd(13)\nadd(3)\nadd(34)\nadd(40)\n",
+    "expectedOutput": "3,13,34\n",
+    "is_public": true
+  },
+  {
+    "id": "12f5c272-3519-477c-a77e-fd629dbd9def",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[34,40,5])\nadd(21)\nadd(40)\nadd(25)\nadd(24)\n",
+    "expectedOutput": "5,21,25,25\n",
+    "is_public": false
+  },
+  {
+    "id": "18f16f6f-4455-43eb-9fee-994e546c7269",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(3,[3])\nadd(45)\nadd(19)\nadd(22)\nadd(2)\nadd(43)\nadd(41)\nadd(48)\n",
+    "expectedOutput": "3,19,19,22,41,43\n",
+    "is_public": false
+  },
+  {
+    "id": "5e382111-cbd7-42e6-b69c-292aed0ce0b2",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(1,[25])\nadd(38)\nadd(42)\nadd(26)\nadd(45)\n",
+    "expectedOutput": "38,42,42,45\n",
+    "is_public": false
+  },
+  {
+    "id": "5ef2ae73-5580-4386-864d-40c49ef52e74",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(2,[34,8])\nadd(34)\nadd(10)\nadd(48)\nadd(46)\n",
+    "expectedOutput": "34,34,34,46\n",
+    "is_public": false
+  },
+  {
+    "id": "6c49c257-62b8-417d-8b86-fa3b622f24e8",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[7,3,40,17])\nadd(12)\nadd(45)\nadd(18)\nadd(29)\nadd(4)\n",
+    "expectedOutput": "7,12,17,18,18\n",
+    "is_public": false
+  },
+  {
+    "id": "6dbd6153-a2fd-40df-a97f-b9077bf8ed1f",
     "problem_number": 160,
     "problem_name": "Kth Largest Element in a Stream",
     "input": "KthLargest(3,[4,5,8,2])\nadd(3),add(5),add(10),add(9),add(4)\n",
     "expectedOutput": "4,5,5,8,8\n",
     "is_public": true
+  },
+  {
+    "id": "79b5184b-7cf9-4a7a-a022-a81fe9c90f15",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(3,[42])\nadd(14)\nadd(3)\n",
+    "expectedOutput": "3\n",
+    "is_public": true
+  },
+  {
+    "id": "7e9b3d7e-ffe9-476f-b9a2-12e3f44a56e9",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[])\nadd(25)\nadd(34)\nadd(17)\nadd(29)\nadd(6)\nadd(21)\nadd(16)\n",
+    "expectedOutput": "17,17,21,21\n",
+    "is_public": false
+  },
+  {
+    "id": "8d7e322d-1bea-4455-8aa6-594e7e2794d6",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[24,24])\nadd(17)\nadd(2)\nadd(23)\nadd(10)\nadd(43)\nadd(5)\nadd(33)\nadd(19)\n",
+    "expectedOutput": "2,17,17,23,23,24,24\n",
+    "is_public": false
+  },
+  {
+    "id": "e516a2a2-e8a6-49ed-b1ae-7ca00c1a7c0a",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[17,2,29])\nadd(47)\nadd(5)\nadd(18)\nadd(4)\nadd(47)\nadd(29)\nadd(48)\nadd(46)\n",
+    "expectedOutput": "2,5,17,17,18,29,29,46\n",
+    "is_public": false
+  },
+  {
+    "id": "ece4befb-05d1-4e7a-bd57-6dc6ff5495fe",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(3,[38,25,27])\nadd(11)\nadd(27)\nadd(39)\nadd(4)\nadd(8)\n",
+    "expectedOutput": "25,27,27,27,27\n",
+    "is_public": false
+  },
+  {
+    "id": "f144872b-1a2e-4597-96be-8aade6ab852d",
+    "problem_number": 160,
+    "problem_name": "Kth Largest Element in a Stream",
+    "input": "KthLargest(4,[35,22,10])\nadd(18)\n",
+    "expectedOutput": "10\n",
+    "is_public": false
   },
   {
     "id": "3206059c-7fd1-41cb-99a7-5e95ae42755c",
@@ -8016,12 +8584,108 @@
     "is_public": false
   },
   {
-    "id": "f2b22214-10c4-417e-86be-12f047379e87",
+    "id": "061e7144-e9ca-4022-bfda-0a506ec405f7",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "push(7),push(99),popMax()\n",
+    "expectedOutput": "99\n",
+    "is_public": false
+  },
+  {
+    "id": "391438d3-59ca-4de2-af15-ec321c9d273c",
     "problem_number": 163,
     "problem_name": "Max Stack",
     "input": "push(5),push(1),push(5),top(),popMax(),top(),peekMax()\n",
     "expectedOutput": "5,5,1,5\n",
     "is_public": true
+  },
+  {
+    "id": "3f46649e-8186-4d39-810a-753a69afdfa6",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "top(),peekMax(),top(),top(),push(17),top(),push(33),top(),top(),pop(),push(99),popMax()\n",
+    "expectedOutput": "17,33,33,33,99\n",
+    "is_public": false
+  },
+  {
+    "id": "49f3af9f-29b2-4660-aec5-0cd69e5e3131",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "top(),top(),push(44),push(8),peekMax(),push(14),push(99),popMax()\n",
+    "expectedOutput": "44,99\n",
+    "is_public": false
+  },
+  {
+    "id": "613da94d-c1b9-48ca-b1b7-fd38d9636c91",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "top(),peekMax(),push(17),peekMax(),push(30),peekMax(),top(),top(),peekMax(),push(28),peekMax(),pop(),push(99),popMax()\n",
+    "expectedOutput": "17,30,30,30,30,30,28,99\n",
+    "is_public": false
+  },
+  {
+    "id": "67f13d16-4a7a-42fe-841a-f40d74b2aac5",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "peekMax(),top(),top(),pop(),peekMax(),peekMax(),peekMax(),push(8),push(39),push(99),popMax()\n",
+    "expectedOutput": "99\n",
+    "is_public": true
+  },
+  {
+    "id": "930ab067-e548-4473-8220-7c9dcd522d9a",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "peekMax(),top(),top(),pop(),pop(),pop(),peekMax(),pop(),pop(),push(22),peekMax(),push(34),top(),push(99),popMax()\n",
+    "expectedOutput": "22,34,99\n",
+    "is_public": false
+  },
+  {
+    "id": "98390ed4-4829-474c-8659-97c98ccde4ed",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "pop(),pop(),top(),peekMax(),push(30),pop(),push(40),push(9),push(18),top(),push(99),popMax()\n",
+    "expectedOutput": "30,18,99\n",
+    "is_public": false
+  },
+  {
+    "id": "ad3d4e67-3546-4a9b-bda9-0b8237e4fc6a",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "push(17),pop(),push(6),peekMax(),top(),peekMax(),top(),pop(),pop(),pop(),push(99),popMax()\n",
+    "expectedOutput": "17,6,6,6,6,6,99\n",
+    "is_public": false
+  },
+  {
+    "id": "ae658d2d-24f9-43a3-8da3-9e8135715ccf",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "peekMax(),peekMax(),peekMax(),peekMax(),peekMax(),push(99),popMax()\n",
+    "expectedOutput": "99\n",
+    "is_public": false
+  },
+  {
+    "id": "dff9acb8-d966-4a91-9cf2-1e7c362f82f4",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "peekMax(),push(99),popMax()\n",
+    "expectedOutput": "99\n",
+    "is_public": false
+  },
+  {
+    "id": "f8c28cfb-fdc4-4a3c-81c2-986ffa4bde51",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "push(41),pop(),pop(),top(),push(40),top(),push(48),push(99),popMax()\n",
+    "expectedOutput": "41,40,99\n",
+    "is_public": true
+  },
+  {
+    "id": "fa3544fe-ef4a-4e02-a849-278a7cc16345",
+    "problem_number": 163,
+    "problem_name": "Max Stack",
+    "input": "pop(),pop(),pop(),push(36),top(),push(12),pop(),push(26),pop(),push(99),popMax()\n",
+    "expectedOutput": "36,12,26,99\n",
+    "is_public": false
   },
   {
     "id": "1017eb3c-d1dd-4a85-97b5-1cad967c6969",
