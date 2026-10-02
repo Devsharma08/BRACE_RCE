@@ -14398,5 +14398,629 @@
     "input": "11\n11\n775\n",
     "expectedOutput": "86\n",
     "is_public": false
+  },
+  {
+    "id": "198814d2-ccef-4fe9-b639-9bccae54b5f9",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"{[]}\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "473440f0-4561-4a39-9b1f-27c4af135543",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"(()\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "5d452338-ba8b-4d5b-a9c3-10f8a1f64a48",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"](\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "69850d5a-5b8d-4b8d-a908-82bc4dff9a71",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\")[\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "7aa7aa72-db1c-47a7-9d9c-7401ac3706dc",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"]\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "882c608e-0a23-4e09-9b46-91c81636f165",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "b1a1c51d-b166-49b1-9d4f-2098b203469b",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"{))}}\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "b63c93d5-8f99-462b-b013-e024f7d3937d",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"(\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "bbcdd52e-5495-40e6-832f-0238df2187a4",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"([)]\"\n",
+    "expectedOutput": "false\n",
+    "is_public": true
+  },
+  {
+    "id": "bfd09d8c-0ed0-43da-87ac-7f7060774ae7",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"([{}])\"\n",
+    "expectedOutput": "true\n",
+    "is_public": true
+  },
+  {
+    "id": "c58db35d-7298-4e54-bdfb-d82048881c63",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"()(\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "ec4776f5-33bd-4e40-a1bc-4f81d3fcab3f",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\"()[]{}\"\n",
+    "expectedOutput": "true\n",
+    "is_public": true
+  },
+  {
+    "id": "ed763e52-6374-4c9a-b157-adcce75d14f4",
+    "problem_number": 250,
+    "problem_name": "Balanced Bracket Validation",
+    "input": "\")\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "15a613f8-5359-4d6d-9e82-f838ac01896c",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:-2,0,-3|getMin|pop|top|getMin\"\n",
+    "expectedOutput": "[null,null,null,-3,null,0,-2]\n",
+    "is_public": true
+  },
+  {
+    "id": "2334d152-da74-4477-bad8-35cb311d2f60",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:1,5,-1|top|getMin\"\n",
+    "expectedOutput": "[null,null,null,-1,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "348e1464-9a16-419f-bc2c-248f036c59d1",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:0,-3|getMin\"\n",
+    "expectedOutput": "[null,null,-3]\n",
+    "is_public": false
+  },
+  {
+    "id": "39138f49-b656-4575-9be9-50021226eb5e",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:6|getMin|pop|push:-8,-8|push:3,4|getMin\"\n",
+    "expectedOutput": "[null,6,null,null,null,null,null,-8]\n",
+    "is_public": false
+  },
+  {
+    "id": "41bc7124-9cc3-43f3-82a9-d43cece1decd",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:1,2|getMin|getMin\"\n",
+    "expectedOutput": "[null,null,1,1]\n",
+    "is_public": true
+  },
+  {
+    "id": "5feeefc6-85d8-495d-8cc5-c5606c58cf31",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:1|push:1|pop|getMin\"\n",
+    "expectedOutput": "[null,null,null,1]\n",
+    "is_public": false
+  },
+  {
+    "id": "615b54bf-f9bb-44de-ab63-d1bdfe1671f5",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:2|pop|getMin\"\n",
+    "expectedOutput": "[null,null,null]\n",
+    "is_public": true
+  },
+  {
+    "id": "a6eb9947-9f6d-4f64-9dee-00401533ff67",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:-7,8|top|pop|getMin|getMin\"\n",
+    "expectedOutput": "[null,null,8,null,-7,-7]\n",
+    "is_public": false
+  },
+  {
+    "id": "a791ad3e-a137-427a-aedc-dde74a2a277d",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:-7|getMin\"\n",
+    "expectedOutput": "[null,-7]\n",
+    "is_public": false
+  },
+  {
+    "id": "c86047d8-247f-4744-974a-2bef51ab6ada",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:5|getMin\"\n",
+    "expectedOutput": "[null,5]\n",
+    "is_public": false
+  },
+  {
+    "id": "e42db20c-f472-4391-9f82-ba802031d51e",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:1,5,-2|pop|getMin|getMin\"\n",
+    "expectedOutput": "[null,null,null,null,1,1]\n",
+    "is_public": false
+  },
+  {
+    "id": "e72deb66-5ebd-4be9-9f50-029e54cec2c0",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:-9|top|pop|push:7|pop|push:-4|getMin|pop\"\n",
+    "expectedOutput": "[null,-9,null,null,null,null,-4,null]\n",
+    "is_public": false
+  },
+  {
+    "id": "eb015978-e648-47ac-bd76-d0ac63d97808",
+    "problem_number": 251,
+    "problem_name": "Stack with Minimum Query",
+    "input": "\"push:-1,-2|pop|getMin\"\n",
+    "expectedOutput": "[null,null,null,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "09e57395-086f-4d08-8f7e-08d2d2128a0e",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"2\",\"1\",\"+\",\"3\",\"*\"]\n",
+    "expectedOutput": "9\n",
+    "is_public": true
+  },
+  {
+    "id": "301daff0-27eb-4d06-aa59-7747aa5732cb",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"-9\",\"-3\",\"2\",\"7\",\"/\",\"+\",\"-\"]\n",
+    "expectedOutput": "-6\n",
+    "is_public": false
+  },
+  {
+    "id": "36de9355-c1be-43c3-a2d3-a2020cbd561e",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"7\",\"2\",\"-\"]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "46f7dc61-8ae2-4497-8a4f-e240ca97b0e0",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"4\",\"13\",\"5\",\"/\",\"+\"]\n",
+    "expectedOutput": "6\n",
+    "is_public": true
+  },
+  {
+    "id": "667d1b08-6007-406a-a9fb-d4d6c87635aa",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"1\",\"9\",\"+\"]\n",
+    "expectedOutput": "10\n",
+    "is_public": false
+  },
+  {
+    "id": "8935c4f3-9455-4009-9900-e1d4d69bfcd8",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"5\"]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "8c55e232-aaab-4922-81fb-56da8cb6e5cd",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"10\",\"6\",\"9\",\"3\",\"+\",\"-11\",\"*\",\"/\",\"*\",\"17\",\"+\",\"5\",\"+\"]\n",
+    "expectedOutput": "22\n",
+    "is_public": true
+  },
+  {
+    "id": "9d02fbb3-030c-4711-9d68-7ecbb88a5e40",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"-5\"]\n",
+    "expectedOutput": "-5\n",
+    "is_public": false
+  },
+  {
+    "id": "c5139a63-7dfb-4154-9e38-3148de30885a",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"0\",\"0\",\"/\",\"1\"]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "c7977e0c-2443-40e0-bfae-7cf611250bce",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"-2\",\"-6\",\"-1\",\"-6\",\"+\",\"+\",\"-\"]\n",
+    "expectedOutput": "11\n",
+    "is_public": false
+  },
+  {
+    "id": "cfd3f26d-aa95-437e-8154-e27d09e541a7",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"-6\",\"6\",\"8\",\"2\",\"-4\",\"+\",\"-\",\"+\",\"/\"]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "d64e2471-1bcd-41b6-9540-d6656787fb4f",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"3\",\"3\",\"+\"]\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "fb81e079-474a-46a4-91d2-4242f78a7c1a",
+    "problem_number": 252,
+    "problem_name": "Evaluate Reverse Polish Notation",
+    "input": "[\"-2\",\"1\",\"-1\",\"4\",\"*\",\"-\",\"*\"]\n",
+    "expectedOutput": "-10\n",
+    "is_public": false
+  },
+  {
+    "id": "02d298f9-0288-472e-8633-c1e58818ba39",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()())()((()))(())\"\n",
+    "expectedOutput": "\"()()(())()\"\n",
+    "is_public": false
+  },
+  {
+    "id": "1f71296c-e1f5-4176-b3a4-830f57b10390",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"()\"\n",
+    "expectedOutput": "\"\"\n",
+    "is_public": false
+  },
+  {
+    "id": "252cc885-7d0e-44f9-b5f2-684b32f742b5",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"((())(()))((()())(()())())()\"\n",
+    "expectedOutput": "\"(())(())(()())(()())()\"\n",
+    "is_public": false
+  },
+  {
+    "id": "4c748e84-23d6-446f-8cb5-db1488dfb093",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"()()\"\n",
+    "expectedOutput": "\"\"\n",
+    "is_public": true
+  },
+  {
+    "id": "68512bdf-6c7c-4ddc-892d-5c46c6256285",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"\"\n",
+    "expectedOutput": "\"\"\n",
+    "is_public": false
+  },
+  {
+    "id": "8002ddb1-c300-47ca-b053-ed28132fb166",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()(()))\"\n",
+    "expectedOutput": "\"()(())\"\n",
+    "is_public": true
+  },
+  {
+    "id": "83141545-06b9-45f5-8ec2-8a45243f81f7",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()(())(()))()((()())(()())(()()))\"\n",
+    "expectedOutput": "\"()(())(())(()())(()())(()())\"\n",
+    "is_public": false
+  },
+  {
+    "id": "9487c5cc-4d3c-4585-9b10-ef19055f754c",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"((())(()))\"\n",
+    "expectedOutput": "\"(())(())\"\n",
+    "is_public": false
+  },
+  {
+    "id": "9cd6fc77-8ac7-4746-aa67-3f218adc327f",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()())\"\n",
+    "expectedOutput": "\"()()\"\n",
+    "is_public": false
+  },
+  {
+    "id": "a0ed8840-7791-4cb5-b104-ed057ca2611d",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"()((())())((()())(()())(()))\"\n",
+    "expectedOutput": "\"(())()(()())(()())(())\"\n",
+    "is_public": false
+  },
+  {
+    "id": "c1908053-3c8f-42e5-b622-3e499ec9a4f6",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(())\"\n",
+    "expectedOutput": "\"()\"\n",
+    "is_public": false
+  },
+  {
+    "id": "d2e6f3df-4023-4f47-b0c8-ac2959e5730f",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()()())()\"\n",
+    "expectedOutput": "\"()()()\"\n",
+    "is_public": false
+  },
+  {
+    "id": "f012d9e0-d907-4634-aa18-85525efe3e0f",
+    "problem_number": 253,
+    "problem_name": "Remove Outermost Parentheses",
+    "input": "\"(()())(())\"\n",
+    "expectedOutput": "\"()()()\"\n",
+    "is_public": true
+  },
+  {
+    "id": "1707d17c-b1ec-4b24-8b5e-a6cc1b1e47d7",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"2[bb]2[bbb]\"\n",
+    "expectedOutput": "\"bbbbbbbbbb\"\n",
+    "is_public": false
+  },
+  {
+    "id": "219e55fd-214b-4bb6-9ec9-94c30ea0fae7",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"2[abc]3[cd]ef\"\n",
+    "expectedOutput": "\"abcabccdcdcdef\"\n",
+    "is_public": true
+  },
+  {
+    "id": "32fcb1d9-67d1-4d24-9232-95c6333a747b",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"2[3[]]1[2[b]]\"\n",
+    "expectedOutput": "\"bb\"\n",
+    "is_public": false
+  },
+  {
+    "id": "54cfbc11-9b1b-4f8f-b76d-8fffb3339dfd",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"1[aaa]3[]\"\n",
+    "expectedOutput": "\"aaa\"\n",
+    "is_public": false
+  },
+  {
+    "id": "6227101b-0ae8-4762-90ca-6bf83a9fb29f",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"2[]2[baa]\"\n",
+    "expectedOutput": "\"baabaa\"\n",
+    "is_public": false
+  },
+  {
+    "id": "75e32238-0c2b-4b5e-bb57-ec1217be66a8",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"1[]3[abb]\"\n",
+    "expectedOutput": "\"abbabbabb\"\n",
+    "is_public": false
+  },
+  {
+    "id": "ae6320c7-c651-487d-b9f5-a261ff4a6666",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"3[1[baa]3[a]]1[abb]\"\n",
+    "expectedOutput": "\"baaaaabaaaaabaaaaaabb\"\n",
+    "is_public": false
+  },
+  {
+    "id": "c11873c4-9a28-4e18-b4cb-fb6be13e1798",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"10[a]\"\n",
+    "expectedOutput": "\"aaaaaaaaaa\"\n",
+    "is_public": false
+  },
+  {
+    "id": "d9a0b7b4-5e46-476e-a09f-adc3517b73c3",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"2[][]\"\n",
+    "expectedOutput": "\"\"\n",
+    "is_public": false
+  },
+  {
+    "id": "dee53188-d5e2-4343-b4c4-a06b6df4341a",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"3[a]2[bc]\"\n",
+    "expectedOutput": "\"aaabcbc\"\n",
+    "is_public": true
+  },
+  {
+    "id": "e11d8e10-edb5-44e3-a891-a8003f43ff80",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"abc\"\n",
+    "expectedOutput": "\"abc\"\n",
+    "is_public": false
+  },
+  {
+    "id": "edb1d763-49fc-4930-bea7-245ee83395a7",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"b\"\n",
+    "expectedOutput": "\"b\"\n",
+    "is_public": false
+  },
+  {
+    "id": "ffc5fd68-1c96-4638-8d92-d5eb6da3d470",
+    "problem_number": 254,
+    "problem_name": "Decode Nested Bracket String",
+    "input": "\"3[a2[c]]\"\n",
+    "expectedOutput": "\"accaccacc\"\n",
+    "is_public": true
+  },
+  {
+    "id": "12eaeacb-744a-4f88-ad51-e8eeb4ccf4e5",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"zyx\"\n",
+    "expectedOutput": "\"zyx\"\n",
+    "is_public": false
+  },
+  {
+    "id": "5a29736c-e13c-4c46-b46e-eee9c5f56e9c",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"cbacdcbc\"\n",
+    "expectedOutput": "\"acdb\"\n",
+    "is_public": true
+  },
+  {
+    "id": "5fa68961-284a-426c-aa51-1b3da71094e1",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"cacaaac\"\n",
+    "expectedOutput": "\"ac\"\n",
+    "is_public": false
+  },
+  {
+    "id": "65215b19-e91d-46cb-9845-3947e3ac54b2",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"a\"\n",
+    "expectedOutput": "\"a\"\n",
+    "is_public": false
+  },
+  {
+    "id": "7d4b2a11-dbb6-4583-ad08-1cc4e96bf0e7",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"abcd\"\n",
+    "expectedOutput": "\"abcd\"\n",
+    "is_public": false
+  },
+  {
+    "id": "8cfaf29b-6cf1-4918-8d9a-80565529eaa7",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"aaa\"\n",
+    "expectedOutput": "\"a\"\n",
+    "is_public": true
+  },
+  {
+    "id": "9e1fa8e4-127e-4e17-8d85-48b399f61564",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"bcacaaaa\"\n",
+    "expectedOutput": "\"bac\"\n",
+    "is_public": false
+  },
+  {
+    "id": "b0af74c6-4843-4dfb-a271-a9709e685017",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"bcabc\"\n",
+    "expectedOutput": "\"abc\"\n",
+    "is_public": true
+  },
+  {
+    "id": "b8067c1f-4409-46de-aa0c-cd6be9d9d717",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"aab\"\n",
+    "expectedOutput": "\"ab\"\n",
+    "is_public": false
+  },
+  {
+    "id": "e1051cf4-1762-4192-b18e-35231a8bd30e",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"ccb\"\n",
+    "expectedOutput": "\"cb\"\n",
+    "is_public": false
+  },
+  {
+    "id": "efdbd6d0-ba06-4839-93fc-b2d3c5c60d65",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"c\"\n",
+    "expectedOutput": "\"c\"\n",
+    "is_public": false
+  },
+  {
+    "id": "f495cd5c-84f6-4dc1-ab11-5c346a53ee6c",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"cbacbaacaaac\"\n",
+    "expectedOutput": "\"abc\"\n",
+    "is_public": false
+  },
+  {
+    "id": "f8c44843-6a63-435d-aa71-ee189d0597c6",
+    "problem_number": 255,
+    "problem_name": "Remove Duplicate Letters",
+    "input": "\"acbaaac\"\n",
+    "expectedOutput": "\"abc\"\n",
+    "is_public": false
   }
 ]
