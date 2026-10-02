@@ -148,6 +148,8 @@ const getFileName = (language: SupportedLanguage) => {
 
 import { buildOperationWrapper, detectOperationSignature } from './operationWrapper.js';
 
+import { buildSpecialWrapper, detectSpecialKind } from './specialWrapper.js';
+
 export function prepareFinalCode(
   executionLanguage: SupportedLanguage,
   sourceCode: string,
@@ -250,6 +252,15 @@ export function prepareFinalCode(
     // through a scripted call sequence rather than a single call with JSON
     // arguments, so they need a different driver. Detected from the starter
     // snippet: only these problems declare `X.prototype.method = ...`.
+    // ── Graph and async problems ─────────────────────────────────────────
+    // Clone Graph takes an adjacency list that the generic tree heuristic
+    // would mangle, and Debounce / Promise Time Limit / promiseAll take
+    // functions and return promises. Both need their own driver.
+    const specialKind = detectSpecialKind(snippet?.code || sourceCode);
+    if (specialKind) {
+      return `${sourceCode}\n${buildSpecialWrapper(specialKind)}`;
+    }
+
     const operationSig = detectOperationSignature(snippet?.code || sourceCode);
     if (operationSig) {
       return `${sourceCode}\n${buildOperationWrapper(operationSig)}`;
