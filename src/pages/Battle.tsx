@@ -7,7 +7,10 @@ import { useSocket } from "../context/SocketContext";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import OutputPanel from "../features/terminal/components/OutputPanel";
-import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
+import {
+  outputGridTemplateRows,
+  useTerminalLayout,
+} from "../features/terminal/hooks/useTerminalLayout";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
@@ -970,7 +973,7 @@ export const Battle = () => {
   }
 
   return (
-    <div className={`relative flex h-screen w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
+    <div className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
       {(countdown > 0 || commencing) && (
         <div className="ds-overlay fixed inset-0 z-[100] flex select-none flex-col items-center justify-center px-4 text-center">
           <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
@@ -1433,10 +1436,11 @@ export const Battle = () => {
           }}
         />
 
-        {/* monaco editor */}
+        {/* monaco editor — the grid clips and the output track is capped in CSS
+            (see outputGridTemplateRows) so the split can never outgrow it */}
         <div
-          className="grid min-h-0 flex-1"
-          style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
+          className="grid min-h-0 flex-1 overflow-hidden"
+          style={{ gridTemplateRows: outputGridTemplateRows(outputHeight) }}
         >
           <MonacoIDE
             code={code}

@@ -5,6 +5,27 @@ import { useCallback, useEffect, useState, useRef, type PointerEvent as ReactPoi
 // as "the list is cut off and there is no scrollbar".
 const MIN_EDITOR_PX = 200;
 
+/**
+ * CSS floor for the editor track. The JS clamp above keeps 200px (desktop) /
+ * 180px (mobile); this is the backstop for when a measurement is stale (zoom,
+ * a container that shrank between measurement and drag), so a too-large output
+ * height can never squeeze the editor out of the split.
+ */
+export const MIN_EDITOR_TRACK_PX = 160;
+
+/**
+ * Grid rows for the editor + output split.
+ *
+ * The output row is a MAXIMUM (`minmax(0, N)`), not a hard `Npx`. A hard track
+ * cannot shrink, so whenever the stored height exceeded the space the grid
+ * actually had the row spilled out of its own grid — the panel's bottom and its
+ * scrollbar ended up past the workspace box, clipped by the page, which read as
+ * "the output section is no longer scroll-locked". Capping the track in CSS
+ * makes the layout safe regardless of what the drag state holds.
+ */
+export const outputGridTemplateRows = (outputHeight: number) =>
+  `minmax(${MIN_EDITOR_TRACK_PX}px, 1fr) minmax(0, ${outputHeight}px)`;
+
 const getInitialOutputHeight = () => {
   if (typeof window === "undefined") return 320;
   return window.innerWidth < 768
@@ -49,7 +70,12 @@ export const useTerminalLayout = (opts?: {
       Math.floor(window.innerHeight - (isMobile ? 120 : MIN_EDITOR_PX)),
     );
     const provided = optsRef.current?.getMaxOutputHeight?.();
-    if (typeof provided !== "number" || !Number.isFinite(provided)) return fallback;
+    // <= 0 means "the caller could not measure the container yet" (no layout
+    // pass / detached node) — fall back to the viewport estimate instead of
+    // clamping the track down to the 120px hard floor.
+    if (typeof provided !== "number" || !Number.isFinite(provided) || provided <= 0) {
+      return fallback;
+    }
     return Math.max(120, Math.min(fallback, provided));
   }, []);
 
@@ -153,6 +179,10 @@ export const useTerminalLayout = (opts?: {
 
     const handlePointerUp = () => {
       setIsOutputDragging(false);
+      // The workspace can shrink mid-drag (a resize or an observer tick while
+      // the pointer is down leaves the state above the real ceiling). Re-clamp
+      // on release so the stored height matches what the grid can host.
+      clampOutputHeight();
       document.body.style.userSelect = "auto";
       document.body.style.cursor = "default";
       document.body.classList.remove("dragging-active");
@@ -169,7 +199,7 @@ export const useTerminalLayout = (opts?: {
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [isOutputDragging, outputHeight, resolveMaxOutputHeight]);
+  }, [isOutputDragging, outputHeight, resolveMaxOutputHeight, clampOutputHeight]);
 
   return {
     outputHeight,

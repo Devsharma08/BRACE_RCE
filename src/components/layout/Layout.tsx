@@ -45,12 +45,21 @@ const Layout = () => {
     pathname === '/create-room';
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-base text-fg">
+    // Full-screen routes pin the SHELL (not just each page) to the dynamic
+    // viewport: a 100vh wrapper on a phone is taller than the visible area, so
+    // the document picks up a phantom scroll strip and the page's bottom edge
+    // (e.g. the terminal output panel) sits under the browser chrome.
+    <div
+      className={`flex flex-col w-full bg-base text-fg ${isFullscreen ? "viewport-shell" : "min-h-screen"}`}
+    >
       <GlobalModals />
 
       {isFullscreen ? (
-        /* Full-screen routes: no header, no footer, no padding */
-        <main className="flex-1 h-screen w-full bg-base">
+        /* Full-screen routes: no header, no footer, no padding. Main fills the
+           pinned shell (min-h-0) instead of re-declaring 100vh; pages taller
+           than the viewport still overflow visibly, so /signin and /signup keep
+           scrolling normally. */
+        <main className="flex-1 min-h-0 w-full bg-base">
           <Outlet />
         </main>
       ) : (

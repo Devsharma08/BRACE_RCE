@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Loader2, Check, X, AlertTriangle } from "lucide-react";
 import type { ExecutionDetail, ExecutionResult, ProblemTestCase } from "../types";
 import type { MouseEvent } from "react";
-import { Maximize2 } from 'lucide-react';
 import { TestCaseCard } from './TestCaseCard';
 
 type OutputPanelProps = {
@@ -116,7 +115,7 @@ const OutputPanel = ({
   }, [isCustomInputRun, output?.details, testCases]);
 
   return (
-    <div className="flex h-full flex-col border-t border-subtle-line bg-terminal-bg">
+    <div className="flex h-full min-h-0 flex-col border-t border-subtle-line bg-terminal-bg">
       {/* Resizer handle — 4px line visually, ~20px hit strip for touch/fat
           fingers (the pseudo-element extends the pointer target only). */}
       <div

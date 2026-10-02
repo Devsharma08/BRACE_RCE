@@ -12,7 +12,10 @@ import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import OutputPanel from "../features/terminal/components/OutputPanel";
 import PracticeSidebar, { type PracticeProblem } from "../features/terminal/components/PracticeSidebar";
 import { buildProblemTestCases, formatExecutionOutput } from "../features/terminal/executionOutput";
-import { useTerminalLayout } from "../features/terminal/hooks/useTerminalLayout";
+import {
+  outputGridTemplateRows,
+  useTerminalLayout,
+} from "../features/terminal/hooks/useTerminalLayout";
 import type { ExecutionMode, SupportedLanguage } from "../features/terminal/types";
 import type { ProblemTimerRef } from "../features/terminal/components/ProblemTimer";
 import { NotesPanel } from "../components/ui/NotesPanel";
@@ -74,10 +77,29 @@ const Terminal = () => {
   const [problemsNonce, setProblemsNonce] = useState(0);
   const retryProblems = useCallback(() => setProblemsNonce((n) => n + 1), []);
 
-  // Output-track ceiling, measured from the workspace grid (ResizeObserver
-  // below) and consumed by useTerminalLayout via getMaxOutputHeight.
+  // Output-track ceiling, read from the workspace grid (see
+  // measureWorkspaceCeiling) and consumed by useTerminalLayout.
   const workspaceGridRef = useRef<HTMLDivElement | null>(null);
-  const maxOutputHeightRef = useRef(0);
+
+  /**
+   * Ceiling the output track may occupy right now, measured from the workspace
+   * grid. Returns 0 before the first layout pass so the hook keeps its viewport
+   * estimate instead of clamping the track down to its hard floor.
+   *
+   * Deliberately measured on demand: the previous cached (observer-written)
+   * value could be stale-high at drag time — a resize between measurements let
+   * the drag push the row past the workspace, which is what left the panel's
+   * own scrollbar off-screen.
+   */
+  const measureWorkspaceCeiling = useCallback(() => {
+    const el = workspaceGridRef.current;
+    const height = el ? el.getBoundingClientRect().height : 0;
+    if (height <= 0) return 0;
+    // Floors: desktop keeps MIN_EDITOR_PX (200) for the editor row; mobile
+    // keeps a usable 180px editor above the output track.
+    const isCompact = window.innerWidth < 768;
+    return Math.max(120, height - (isCompact ? 180 : 200));
+  }, []);
   const [loading, setLoading] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executingMode, setExecutingMode] = useState<ExecutionMode | null>(null);
@@ -132,23 +154,21 @@ const Terminal = () => {
     clampOutputHeight,
   } = useTerminalLayout({
     autoCloseBelowPx: 220,
-    getMaxOutputHeight: () => maxOutputHeightRef.current,
+    getMaxOutputHeight: measureWorkspaceCeiling,
   });
 
   // The output track's true ceiling is the WORKSPACE height minus the editor
   // floor — window.innerHeight ignores the toolbar, status bar, and stacked
   // mobile layout, so dragging could push the grid past its own container and
-  // make the output scrollbar unreachable. Re-clamp on every container resize.
+  // make the output scrollbar unreachable. Re-clamp on every container resize
+  // (the same ceiling also caps the CSS track itself; see outputGridTemplateRows).
   useEffect(() => {
     const el = workspaceGridRef.current;
     if (!el) return;
     const measure = () => {
-      const height = el.getBoundingClientRect().height;
-      if (height <= 0) return;
-      const isMobile = window.innerWidth < 768;
-      // Floors: desktop keeps MIN_EDITOR_PX (200) for the editor row; mobile
-      // keeps a usable 180px editor above the output track.
-      maxOutputHeightRef.current = Math.max(120, height - (isMobile ? 180 : 200));
+      // 0 while the grid has no layout yet — the hook then keeps its viewport
+      // estimate instead of clamping the track down to its hard floor.
+      if (measureWorkspaceCeiling() <= 0) return;
       clampOutputHeight();
     };
     measure();
@@ -156,7 +176,7 @@ const Terminal = () => {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [clampOutputHeight]);
+  }, [clampOutputHeight, measureWorkspaceCeiling]);
 
   // Below md the shell stacks vertically. If the sidebar stayed in flow it would
   // take the full column height and push the editor + output panel off-screen
@@ -434,9 +454,11 @@ const Terminal = () => {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    // dvh tracks the mobile URL bar as it collapses; plain 100vh overflowed
-    // behind the browser chrome and clipped the output panel's bottom edge.
-    <div className="flex h-[100vh] h-[100dvh] min-h-0 flex-col overflow-hidden bg-base pt-2 text-fg font-mono select-none md:flex-row">
+    // .viewport-shell keeps the dynamic-viewport height (with a vh fallback) in
+    // ONE rule — as the old `h-[100vh] h-[100dvh]` utility pair the vh value won,
+    // so on phones the shell was taller than the visible area and the page
+    // scrolled behind the browser chrome, clipping the output panel's bottom.
+    <div className="viewport-shell flex min-h-0 flex-col overflow-hidden bg-base pt-2 text-fg font-mono select-none md:flex-row">
       {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ────────────────
           On mobile this is an overlay drawer (absolute + backdrop) rather than a
           flex child, so opening it never pushes the workspace off-screen. */}
@@ -598,10 +620,15 @@ const Terminal = () => {
                       initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
                     />
 
+                    {/* The grid clips: the output track is capped in CSS
+                        (outputGridTemplateRows) so it can never claim more
+                        room than the workspace has, but clipping here also
+                        stops a mid-drag stale height from painting the panel's
+                        scrollbar past the page and off-screen. */}
                     <div
                       ref={workspaceGridRef}
-                      className="grid min-h-0 flex-1"
-                      style={{ gridTemplateRows: `minmax(0, 1fr) ${outputHeight}px` }}
+                      className="grid min-h-0 flex-1 overflow-hidden"
+                      style={{ gridTemplateRows: outputGridTemplateRows(outputHeight) }}
                     >
                       {/* No inline min-height here: this cell sits in a minmax(0,1fr)
                           grid row, so a hard floor made the editor overflow its own row

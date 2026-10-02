@@ -118,6 +118,22 @@ describe('OutputPanel — Test Cases tab', () => {
     expect(screen.getByText('12 CASES RENDERED')).toBeInTheDocument();
   });
 
+  test('locks the panel to the track it was given so the list scrolls, not the panel', () => {
+    // The panel is a grid row sized by the workspace (`h-full`); without the
+    // min-h-0 guard its flex children can inflate it past that track, which is
+    // how the output area used to spill out of its own container.
+    const { container } = renderTestsTab({
+      testCases: Array.from({ length: 12 }, (_, i) => makeCase(`in-${i}`, `out-${i}`)),
+    });
+
+    const panel = container.firstElementChild as HTMLElement;
+    expect(panel).toHaveClass('h-full');
+    expect(panel).toHaveClass('min-h-0');
+    expect(panel).toHaveClass('flex-col');
+
+    expect(panel).toContainElement(container.querySelector('.themed-scroll') as HTMLElement);
+  });
+
   test('shows the empty state when no case is known yet', () => {
     renderTestsTab();
     expect(

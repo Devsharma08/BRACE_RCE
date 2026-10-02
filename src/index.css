@@ -290,6 +290,16 @@ body {
   min-height: 100vh;
 }
 
+/* Full-screen shells (terminal, battle, auth): pin to the DYNAMIC viewport so a
+   collapsing mobile URL bar cannot leave a phantom scroll strip below the app.
+   Deliberately one rule rather than `h-[100vh] h-[100dvh]`: Tailwind emitted the
+   vh utility AFTER the dvh one, so the dvh intent silently lost and the shells
+   stayed 100vh tall (i.e. taller than the visible area on phones). */
+.viewport-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* Keep every button within its parent on narrow screens. Text CTAs may
    ellipsize; icon buttons retain their explicit square dimensions. */
 button {
