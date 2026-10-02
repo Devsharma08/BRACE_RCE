@@ -15022,5 +15022,421 @@
     "input": "\"acbaaac\"\n",
     "expectedOutput": "\"abc\"\n",
     "is_public": false
+  },
+  {
+    "id": "19728282-4927-431b-931f-00471080960e",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[1,2],[],[]]\n0\n",
+    "expectedOutput": "[0,1,1]\n",
+    "is_public": true
+  },
+  {
+    "id": "1c9efb93-c6b8-419b-b237-0f7a301888d6",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[],[1]]\n1\n",
+    "expectedOutput": "[-1,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "2204c53e-c701-48df-9004-6b0eee35871f",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[2],[2],[0,1]]\n2\n",
+    "expectedOutput": "[1,1,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "3bd5f946-8982-4fc3-bb37-f5780a62f2a7",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[],[],[]]\n0\n",
+    "expectedOutput": "[0,-1,-1]\n",
+    "is_public": true
+  },
+  {
+    "id": "66a8634d-cb6c-451c-aa7e-acae0683ee56",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[],[],[],[]]\n0\n",
+    "expectedOutput": "[0,-1,-1,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "95b280d5-2e24-4415-989f-a20223b7ec71",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[1],[0],[],[],[],[]]\n5\n",
+    "expectedOutput": "[-1,-1,-1,-1,-1,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "9a5439cb-c030-4504-959b-06cecbf6863b",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[1],[0,2],[1],[],[],[],[]]\n4\n",
+    "expectedOutput": "[-1,-1,-1,-1,0,-1,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "ad2dd23f-daea-4b32-b84d-b960712f76a9",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[2],[3],[4],[]]\n0\n",
+    "expectedOutput": "[0,-1,1,-1]\n",
+    "is_public": true
+  },
+  {
+    "id": "ba5c6b73-e546-4b1b-83b1-f23023dcfeaf",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[2,5],[],[0,5],[],[],[0,2],[]]\n5\n",
+    "expectedOutput": "[1,-1,1,-1,-1,0,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "bec89791-53bf-4054-bb52-d5ad9c9302c0",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[]]\n0\n",
+    "expectedOutput": "[0]\n",
+    "is_public": false
+  },
+  {
+    "id": "c4eab307-edc9-4267-8011-c74e669ecd70",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[1],[0]]\n1\n",
+    "expectedOutput": "[1,0]\n",
+    "is_public": false
+  },
+  {
+    "id": "db9ade4e-a829-4dc9-a918-fcc904a8429a",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[],[],[],[]]\n2\n",
+    "expectedOutput": "[-1,-1,0,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "e0120ecc-5eb0-45a1-b4a3-eb8cdd0ac713",
+    "problem_number": 256,
+    "problem_name": "Shortest Path in an Unweighted Graph",
+    "input": "[[1,2],[0,2],[0,1],[],[],[]]\n2\n",
+    "expectedOutput": "[1,1,0,-1,-1,-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "072454c8-ca93-44e8-8373-0ba62914c47d",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[10]\n1\n",
+    "expectedOutput": "[10]\n",
+    "is_public": false
+  },
+  {
+    "id": "19ed65c1-0d7d-4c0a-ad1f-ae2d7422abc7",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[7,2,4]\n2\n",
+    "expectedOutput": "[7,4]\n",
+    "is_public": false
+  },
+  {
+    "id": "1b2c02b8-9b63-43a7-a195-e776d59b398a",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[1]\n1\n",
+    "expectedOutput": "[1]\n",
+    "is_public": true
+  },
+  {
+    "id": "348a5a3e-fc76-43c6-a702-0e1edab3f039",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[4,8,9,6,6,9,-4,7,-5]\n3\n",
+    "expectedOutput": "[9,9,9,9,9,9,7]\n",
+    "is_public": false
+  },
+  {
+    "id": "55d0d892-cc9a-43fd-abc0-f5e5707f7f89",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[-1,-4,-5,4,-3,6,10,10]\n4\n",
+    "expectedOutput": "[4,4,6,10,10]\n",
+    "is_public": false
+  },
+  {
+    "id": "5d79ea69-ce8e-4760-8a99-6a079ba45db6",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[9,11]\n2\n",
+    "expectedOutput": "[11]\n",
+    "is_public": true
+  },
+  {
+    "id": "901931c5-00b4-4f71-bb27-e46c0275b2dc",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[3,-2,-1,7]\n1\n",
+    "expectedOutput": "[3,-2,-1,7]\n",
+    "is_public": false
+  },
+  {
+    "id": "9615d9aa-2f0a-4330-bf18-2a97dd823158",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[1,2,3]\n1\n",
+    "expectedOutput": "[1,2,3]\n",
+    "is_public": false
+  },
+  {
+    "id": "af5f0160-d0a0-4fe6-a8a4-d625b7a43d2f",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[4,-2]\n2\n",
+    "expectedOutput": "[4]\n",
+    "is_public": false
+  },
+  {
+    "id": "ba412e12-47a2-44fb-9b79-aea491192f07",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[10,3,4,4,6,-4,-4,2,2]\n4\n",
+    "expectedOutput": "[10,6,6,6,6,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "f92c70e6-0f87-4a68-a50a-12373375c2dd",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[3,7,-3,-2,10,10,11,8,-1,4,8]\n8\n",
+    "expectedOutput": "[11,11,11,11]\n",
+    "is_public": false
+  },
+  {
+    "id": "f9459568-6322-4d1c-b6c6-ad06f155cbba",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[1,3,-1,-3,5,3,6,7]\n3\n",
+    "expectedOutput": "[3,3,5,5,6,7]\n",
+    "is_public": true
+  },
+  {
+    "id": "fbfaafe7-1cc4-4955-996e-942efc9fc24e",
+    "problem_number": 257,
+    "problem_name": "Windowed Maximum via Monotonic Queue",
+    "input": "[0,1,-5,-5,12,1,-1]\n6\n",
+    "expectedOutput": "[12,12]\n",
+    "is_public": false
+  },
+  {
+    "id": "01d31ed4-f501-4f1f-88c7-f42d9151479b",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"A\"]\n2\n",
+    "expectedOutput": "10\n",
+    "is_public": false
+  },
+  {
+    "id": "22b71174-ee7d-4329-b99e-022b5f124d7b",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"B\",\"A\",\"B\",\"A\",\"A\",\"A\"]\n4\n",
+    "expectedOutput": "31\n",
+    "is_public": false
+  },
+  {
+    "id": "465faba2-343a-4c42-b64e-6c6b923d1076",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"B\",\"B\",\"C\"]\n0\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "6d2560ff-fe49-4344-823e-8568accbb06b",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"B\",\"C\",\"D\"]\n0\n",
+    "expectedOutput": "4\n",
+    "is_public": true
+  },
+  {
+    "id": "7783fbac-9c40-4dd9-bfa0-b2957cc754a5",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\"]\n1\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "799cfc70-a665-4ecc-85b7-4983f2752fb4",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"B\",\"D\",\"D\",\"D\",\"A\",\"C\",\"C\",\"A\",\"D\",\"B\"]\n1\n",
+    "expectedOutput": "10\n",
+    "is_public": false
+  },
+  {
+    "id": "898ad7c2-a5d0-4c7c-a1b5-28b773e3044e",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\"]\n4\n",
+    "expectedOutput": "46\n",
+    "is_public": false
+  },
+  {
+    "id": "994c15aa-838d-4af2-923f-8271399a8506",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"B\",\"B\",\"C\"]\n2\n",
+    "expectedOutput": "7\n",
+    "is_public": true
+  },
+  {
+    "id": "b01808a8-b06f-444b-aa5d-0f63298035fc",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"B\",\"A\",\"B\",\"B\"]\n4\n",
+    "expectedOutput": "11\n",
+    "is_public": false
+  },
+  {
+    "id": "b7e4e2d2-a573-444b-b845-cfd41ddbe2d4",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"B\",\"B\",\"A\",\"B\",\"A\",\"B\",\"B\",\"B\"]\n2\n",
+    "expectedOutput": "16\n",
+    "is_public": false
+  },
+  {
+    "id": "c3028e9b-3167-47ac-91d2-91eb07a22178",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\"]\n3\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "d43343d2-8f79-45f9-b604-9d10d3498d38",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\",\"A\"]\n1\n",
+    "expectedOutput": "17\n",
+    "is_public": false
+  },
+  {
+    "id": "df5e759b-e196-4d79-9669-b3013361c90c",
+    "problem_number": 258,
+    "problem_name": "Task Scheduler with Cooldown",
+    "input": "[\"A\",\"A\",\"A\",\"B\",\"B\",\"C\",\"B\",\"B\"]\n1\n",
+    "expectedOutput": "8\n",
+    "is_public": true
+  },
+  {
+    "id": "018553bd-9da0-4642-8f99-a9bda7c218ba",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[]\n",
+    "expectedOutput": "[]\n",
+    "is_public": true
+  },
+  {
+    "id": "05f3d0f9-3e82-4631-a268-3d7d73aaae96",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[2,1,4,3,5,9,8,10,6,7]\n",
+    "expectedOutput": "[[2],[1,4],[3,5,9,8],[10,6,7]]\n",
+    "is_public": false
+  },
+  {
+    "id": "0e1b90a4-6b62-45ac-8f77-26952858080d",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[7,6,4,1,3,2,5]\n",
+    "expectedOutput": "[[7],[6,4],[1,3,2,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "0f2e67eb-b887-4879-8590-3c5b7b1be62a",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[1,null,2]\n",
+    "expectedOutput": "[[1],[2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "121d19b3-8210-4f58-9b62-ae7840f99a65",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[7,1,10,2,9,3,4,8,6,5]\n",
+    "expectedOutput": "[[7],[1,10],[2,9,3,4],[8,6,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "518fb2b0-52e4-42c1-b749-de041abb6a77",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[4,2,3,1]\n",
+    "expectedOutput": "[[4],[2,3],[1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "5bbb1fa1-230a-46bd-a131-d3bd6a093595",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[1,2]\n",
+    "expectedOutput": "[[1],[2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "60750cdd-8652-4bd7-a406-0040db81658f",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[9,7,2,3,5,1,6,4,8]\n",
+    "expectedOutput": "[[9],[7,2],[3,5,1,6],[4,8]]\n",
+    "is_public": false
+  },
+  {
+    "id": "99d2337e-903a-48ce-93fc-8241dd0c782f",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[6,4,2,3,9,8,7,10,1,5]\n",
+    "expectedOutput": "[[6],[4,2],[3,9,8,7],[10,1,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "c0d223f9-99a5-4ab3-9785-5bfe3fefea21",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[2,1]\n",
+    "expectedOutput": "[[2],[1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "dee1742f-ce4d-47cf-a8fc-9ef98b19fb5f",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[1,2,3,4,null,null,5]\n",
+    "expectedOutput": "[[1],[2,3],[4,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "e104a3de-5557-412e-b0b5-550f0f183c6b",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[1]\n",
+    "expectedOutput": "[[1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "f620e413-496b-422d-9792-0643aaf0861e",
+    "problem_number": 259,
+    "problem_name": "Level Order Grouping",
+    "input": "[3,9,20,null,null,15,7]\n",
+    "expectedOutput": "[[3],[9,20],[15,7]]\n",
+    "is_public": true
   }
 ]
