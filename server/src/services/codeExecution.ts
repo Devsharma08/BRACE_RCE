@@ -146,6 +146,8 @@ const getFileName = (language: SupportedLanguage) => {
   return `main.${getExtension(language)}`;
 };
 
+import { buildOperationWrapper, detectOperationSignature } from './operationWrapper.js';
+
 export function prepareFinalCode(
   executionLanguage: SupportedLanguage,
   sourceCode: string,
@@ -243,6 +245,16 @@ export function prepareFinalCode(
   //  1. JAVASCRIPT
   // ═══════════════════════════════════════════════════════════
   if (executionLanguage === "javascript") {
+    // ── Operation-sequence problems ─────────────────────────────────────
+    // Design problems (MaxStack, Twitter, KthLargest, ...) exercise a CLASS
+    // through a scripted call sequence rather than a single call with JSON
+    // arguments, so they need a different driver. Detected from the starter
+    // snippet: only these problems declare `X.prototype.method = ...`.
+    const operationSig = detectOperationSignature(snippet?.code || sourceCode);
+    if (operationSig) {
+      return `${sourceCode}\n${buildOperationWrapper(operationSig)}`;
+    }
+
     const userFuncMatch = sourceCode.match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
     const userFuncName = userFuncMatch ? (userFuncMatch[1] || userFuncMatch[3] || userFuncMatch[5]) : null;
 
