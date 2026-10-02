@@ -43,10 +43,7 @@ export const OPERATION_SEQUENCE = new Set([
  * attempted and abandoned as too fragile; a `next`-index encoding is the right
  * fix.
  */
-export const UNREPRESENTABLE_INPUT = new Set([
-  33, // Linked List Cycle
-  122, // Find the Duplicate Number
-]);
+export const UNREPRESENTABLE_INPUT = new Set<number>([]);
 
 export interface LegacyEntry {
   /** Matches Problem.problem_number in the database. */
