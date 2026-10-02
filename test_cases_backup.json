@@ -16478,5 +16478,525 @@
     "input": "[2,1,2,2,3,3]\n[2,4,4,3,3]\n",
     "expectedOutput": "[1,0,0,1,1]\n",
     "is_public": false
+  },
+  {
+    "id": "116b8e20-1699-467f-a9d3-c5e821f8f64b",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[2,2,8,6,3,3,2,3,5,3,1]\n2\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "1703881e-a6f0-4a10-85f8-bd338f4ddc1b",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[2,4,3,7,7,8,5,5,3,1,7]\n9\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "3a4760b1-0265-4cd1-b169-4e8bf45f4002",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[2,1]\n1\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "5277e974-783f-4b3a-830d-7384629cd3f6",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[1]\n1\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "53f8921c-9ce4-489d-b6eb-a6a68fe64798",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[2,7,6,7,2,8,6,7]\n4\n",
+    "expectedOutput": "7\n",
+    "is_public": false
+  },
+  {
+    "id": "55f20076-cee5-46b0-b146-29a413d47b3a",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[5]\n1\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "6c755743-5e2e-46c9-969f-bafd5e5147ca",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[1,8,8,6,3,5,7,2]\n4\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "71268c11-43a4-446a-be9c-8aad25cd0700",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[5,4,2,6,7,5]\n2\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "97e3c57c-4892-4b61-a4d8-1ee61f121a55",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[3,2,1,5,6,4]\n2\n",
+    "expectedOutput": "5\n",
+    "is_public": true
+  },
+  {
+    "id": "b0b9e580-d7b1-4be4-998e-f14367523069",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[7,7,7]\n2\n",
+    "expectedOutput": "7\n",
+    "is_public": false
+  },
+  {
+    "id": "d6bf6832-faa0-40ee-b2eb-7a29ba8b2359",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[7,7,6,1]\n2\n",
+    "expectedOutput": "7\n",
+    "is_public": false
+  },
+  {
+    "id": "e6d355c8-33ae-4782-8024-ee71374a3fca",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[3,2,3,1,2,4,5,5,6]\n4\n",
+    "expectedOutput": "4\n",
+    "is_public": true
+  },
+  {
+    "id": "f469713d-2a93-4127-9d2a-9e85bc539502",
+    "problem_number": 270,
+    "problem_name": "Kth Largest Element",
+    "input": "[3,1,4,1,5]\n3\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "179fe008-0a01-4db4-98c8-61e267b7d2db",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "1\n[5,3,7]\n",
+    "expectedOutput": "[5,3,3]\n",
+    "is_public": true
+  },
+  {
+    "id": "17eb5424-626d-4b1a-9b74-97a93f50d1d6",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "1\n[5,6,3,1,5,8]\n",
+    "expectedOutput": "[5,5,3,1,1,1]\n",
+    "is_public": false
+  },
+  {
+    "id": "26031d5e-685e-4f10-9f0b-132dde2fb8a8",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "2\n[3,2]\n",
+    "expectedOutput": "[-1,3]\n",
+    "is_public": false
+  },
+  {
+    "id": "29a41a38-9407-4b12-bc46-7b35cd99fff4",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "2\n[4,2,3,3,4,1]\n",
+    "expectedOutput": "[-1,4,3,3,3,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "2cc1561f-8fb0-4fb2-b001-ee18a17b6590",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "1\n[7,7,3,7,4,5]\n",
+    "expectedOutput": "[7,7,3,3,3,3]\n",
+    "is_public": false
+  },
+  {
+    "id": "3c00963d-5991-4282-aeb6-1c74588e6f2a",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "4\n[9,8,7,6,5]\n",
+    "expectedOutput": "[-1,-1,-1,9,8]\n",
+    "is_public": false
+  },
+  {
+    "id": "4f8f7c84-f238-44f2-bcb3-baf239eecc0d",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "2\n[1,2]\n",
+    "expectedOutput": "[-1,2]\n",
+    "is_public": true
+  },
+  {
+    "id": "81915ade-07ae-421c-abf3-8b365a8dd1c6",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "3\n[1]\n",
+    "expectedOutput": "[-1]\n",
+    "is_public": false
+  },
+  {
+    "id": "8629e55a-c640-4218-b7a1-0c5069f83c42",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "2\n[8,2,1]\n",
+    "expectedOutput": "[-1,8,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "94cc95b0-0290-490f-a04e-8977a3742b6f",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "4\n[2,4,2,2]\n",
+    "expectedOutput": "[-1,-1,-1,4]\n",
+    "is_public": false
+  },
+  {
+    "id": "98fda6d2-cdaa-443d-9dc9-6a7a996f61a5",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "4\n[7,3,8,5,7,4]\n",
+    "expectedOutput": "[-1,-1,-1,8,7,7]\n",
+    "is_public": false
+  },
+  {
+    "id": "a69b9a20-2a30-44e1-a27d-a468462813dd",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "1\n[4,4]\n",
+    "expectedOutput": "[4,4]\n",
+    "is_public": false
+  },
+  {
+    "id": "e16adc72-8864-4d63-8e00-3091c6b8b6a7",
+    "problem_number": 271,
+    "problem_name": "Kth Smallest from a Stream",
+    "input": "3\n[4,5,8,2]\n",
+    "expectedOutput": "[-1,-1,8,5]\n",
+    "is_public": true
+  },
+  {
+    "id": "11fa33c7-dfbd-4f54-8ca3-077eeb501514",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[5,5]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "2ce1d8b9-2362-478a-83cb-25ca3e0b96d9",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[1,1,1]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "41c210c4-c246-43ee-8e8b-29366b57b51a",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[2,7,4,1,8,1]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "4305d240-0a03-49f4-b6fe-57ee11777cfb",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[6,9,12,2,6,5]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "46e42ae2-fc95-443a-a900-22c6f8bc12be",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[3]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "6309ae87-c3a1-4cf6-be8d-a2347d6cad54",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[8,1,5,11,8]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "639f377e-32d5-44e0-99bf-ed5fac9a451b",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[8,2]\n",
+    "expectedOutput": "6\n",
+    "is_public": false
+  },
+  {
+    "id": "a127b962-436e-486e-ba4b-397b446f4dae",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[10,10,12,4]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "a97d6105-973a-42e0-9c53-e6770f3e6448",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[4,6,11,10,1,7,6,5,8]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "ae4e5dbf-7e60-4c15-81aa-687446e4f1f0",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[3,6,2]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "bd78a3ac-15de-4d1f-84ec-53ef0fee6739",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[7]\n",
+    "expectedOutput": "7\n",
+    "is_public": false
+  },
+  {
+    "id": "beab2344-75a8-4be7-8425-81df2439abb2",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[31,26,33,21,40]\n",
+    "expectedOutput": "5\n",
+    "is_public": true
+  },
+  {
+    "id": "dd1f930d-aff7-4af6-a454-7341992fca21",
+    "problem_number": 272,
+    "problem_name": "Last Stone Weight II",
+    "input": "[1,2]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "315eb7ee-c70e-49c5-b8be-dc9bf3ff63ff",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[3,3],[5,-1],[-2,4]]\n2\n",
+    "expectedOutput": "[[3,3],[-2,4]]\n",
+    "is_public": true
+  },
+  {
+    "id": "37614e7c-14d6-4227-8367-258544442e50",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[3,2],[-4,-5],[-5,-2],[6,0]]\n3\n",
+    "expectedOutput": "[[3,2],[-5,-2],[6,0]]\n",
+    "is_public": false
+  },
+  {
+    "id": "444ed11a-fd85-4007-8555-a04dd467b1e0",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[1,1]]\n1\n",
+    "expectedOutput": "[[1,1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "80512bcf-e454-4fe2-b6b3-1abdd892018d",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[-3,-1],[5,6],[-5,5],[-1,-1],[-3,-2],[0,-5],[1,3],[5,0]]\n7\n",
+    "expectedOutput": "[[-1,-1],[-3,-1],[1,3],[-3,-2],[0,-5],[5,0],[-5,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8741e085-67b9-4cc4-8285-3c89497e8a32",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[-5,-5]]\n1\n",
+    "expectedOutput": "[[-5,-5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "87f8d9e6-1421-48a9-af9b-84d748cebf9f",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[-1,2],[-5,-5],[-6,6]]\n1\n",
+    "expectedOutput": "[[-1,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "9fc32c55-e023-4920-8daa-9d1c6441204a",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[2,2],[1,1],[3,3]]\n2\n",
+    "expectedOutput": "[[1,1],[2,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "cc83fa3e-f319-4df1-8af6-56a3934b55d2",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[0,3]]\n1\n",
+    "expectedOutput": "[[0,3]]\n",
+    "is_public": false
+  },
+  {
+    "id": "d59c9bd4-35de-4082-8c57-171afe3af263",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[-1,0],[1,0]]\n1\n",
+    "expectedOutput": "[[-1,0]]\n",
+    "is_public": false
+  },
+  {
+    "id": "e311bc41-9368-43b3-909f-34ad664b8d74",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[1,3],[-2,2]]\n1\n",
+    "expectedOutput": "[[-2,2]]\n",
+    "is_public": true
+  },
+  {
+    "id": "e67b5735-579b-4290-a906-fd068b84a532",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[3,6],[-4,2],[-6,1]]\n3\n",
+    "expectedOutput": "[[-4,2],[-6,1],[3,6]]\n",
+    "is_public": false
+  },
+  {
+    "id": "eef0a7ef-0d49-41f1-8de2-4e64b2ea28a3",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[0,0],[0,1]]\n2\n",
+    "expectedOutput": "[[0,0],[0,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "f89df125-95b2-4a84-91f5-eabbeaf941c3",
+    "problem_number": 273,
+    "problem_name": "K Closest Points Using a Heap",
+    "input": "[[0,-3],[3,-4],[2,-5],[-6,-5]]\n4\n",
+    "expectedOutput": "[[0,-3],[3,-4],[2,-5],[-6,-5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "078b3e59-16c4-46c4-9e03-441561b6dff9",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[6]\n",
+    "expectedOutput": "[6]\n",
+    "is_public": false
+  },
+  {
+    "id": "28744b4a-3b0e-4090-b384-c6431dd333d4",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[6,4,2,5,8]\n",
+    "expectedOutput": "[6,5,4,4.5,5]\n",
+    "is_public": false
+  },
+  {
+    "id": "2ad31e9b-2c9f-4ec6-867a-0e9d22dc8474",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[4,6,5,1,9,9]\n",
+    "expectedOutput": "[4,5,5,4.5,5,5.5]\n",
+    "is_public": false
+  },
+  {
+    "id": "30069518-7e46-4b20-be5c-a78c8bb1c437",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[3,1,2]\n",
+    "expectedOutput": "[3,2,2]\n",
+    "is_public": true
+  },
+  {
+    "id": "3524b953-5803-467a-9ba2-bc23149211c9",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[5]\n",
+    "expectedOutput": "[5]\n",
+    "is_public": true
+  },
+  {
+    "id": "3a19dd2d-f1f5-462d-af91-c5bbf728e830",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[4,10]\n",
+    "expectedOutput": "[4,7]\n",
+    "is_public": false
+  },
+  {
+    "id": "3d903bd8-46cd-4ccb-8bf2-68c1c37fa94e",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[1]\n",
+    "expectedOutput": "[1]\n",
+    "is_public": false
+  },
+  {
+    "id": "5de9e1d8-9bd0-4dd2-83a7-89de1a60f51c",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[3,8,6,9,2,10,5,7,7]\n",
+    "expectedOutput": "[3,5.5,6,7,6,7,6,6.5,7]\n",
+    "is_public": false
+  },
+  {
+    "id": "7c43f151-f00c-4591-8937-77e6f37ea71a",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[1,2,3]\n",
+    "expectedOutput": "[1,1.5,2]\n",
+    "is_public": true
+  },
+  {
+    "id": "8ec572c5-d41f-48d7-855e-4ec7da9d7298",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[7]\n",
+    "expectedOutput": "[7]\n",
+    "is_public": false
+  },
+  {
+    "id": "aaaa4073-5e0b-487d-8c80-a335db31cd7f",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[7,1,2]\n",
+    "expectedOutput": "[7,4,2]\n",
+    "is_public": false
+  },
+  {
+    "id": "b1d47a34-825b-425f-aa02-a81c0a95331d",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[2,4]\n",
+    "expectedOutput": "[2,3]\n",
+    "is_public": false
+  },
+  {
+    "id": "ec215b4a-73b9-4f79-8527-985ba0e6e0ff",
+    "problem_number": 274,
+    "problem_name": "Median from a Running Sequence",
+    "input": "[4,7,3,1,6,4,7]\n",
+    "expectedOutput": "[4,5.5,4,3.5,4,4,4]\n",
+    "is_public": false
   }
 ]
