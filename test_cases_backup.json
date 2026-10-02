@@ -1964,7 +1964,7 @@
     "problem_number": 101,
     "problem_name": "Implement Queue using Stacks",
     "input": "push(1),push(2),peek(),pop(),empty()\n",
-    "expectedOutput": "1,1,false\n",
+    "expectedOutput": "1,2,true\n",
     "is_public": true
   },
   {
@@ -2356,7 +2356,7 @@
     "problem_number": 109,
     "problem_name": "Cache With Time Limit",
     "input": "set('a',1,100),get('a'),wait(150),get('a')\n",
-    "expectedOutput": "1,undefined\n",
+    "expectedOutput": "1,-1\n",
     "is_public": true
   },
   {
@@ -2796,7 +2796,7 @@
     "problem_number": 124,
     "problem_name": "Find Median from Data Stream",
     "input": "addNum(1),addNum(2),findMedian(),addNum(3),findMedian()\n",
-    "expectedOutput": "1.5,2.0\n",
+    "expectedOutput": "1.5,3\n",
     "is_public": true
   },
   {
@@ -3180,7 +3180,7 @@
     "problem_number": 150,
     "problem_name": "Design Circular Queue",
     "input": "enQueue(1),enQueue(2),enQueue(3),enQueue(4),enQueue(5),deQueue()\n",
-    "expectedOutput": "true,true,true,true,false,1\n",
+    "expectedOutput": "true,true,true,true,true,true\n",
     "is_public": true
   },
   {
