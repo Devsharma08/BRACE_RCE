@@ -11,7 +11,7 @@
  * sequences for the general case.
  */
 
-export type OpGen = (r: import('../helpers.js').Rng) => string;
+export type OpGen = (r: import('./helpers.js').Rng) => string;
 
 export interface OperationTestSpec {
   number: number;

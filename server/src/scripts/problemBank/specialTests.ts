@@ -5,7 +5,7 @@
  * is produced by running the reference through the real pipeline (see
  * expand_special_test_cases.ts).
  */
-import type { Rng } from '../helpers.js';
+import type { Rng } from './helpers.js';
 
 export interface SpecialTestSpec {
   number: number;
