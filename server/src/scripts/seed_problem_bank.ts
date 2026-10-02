@@ -11,10 +11,7 @@ import { prisma } from '../lib/prisma.js';
 import { Level } from '../generated/prisma/client.js';
 import { fmtIn, fmtOut } from './problemBank/helpers.js';
 import { buildSnippets } from './problemBank/snippets.js';
-import type { ProblemBankEntry } from './problemBank/types.js';
-import trieBank from './problemBank/banks/trie.js';
-
-const BANK: ProblemBankEntry[] = [...trieBank];
+import { BANK } from './problemBank/banks/index.js';
 const WRITE = process.argv.includes('--write');
 
 async function main() {
