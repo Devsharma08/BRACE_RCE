@@ -3016,28 +3016,100 @@
     "is_public": false
   },
   {
-    "id": "470a1d68-c7e9-4fe2-998f-ec2ec2076826",
+    "id": "24c0d49d-4204-4ed3-9c1f-0fbac5a71f61",
     "problem_number": 30,
     "problem_name": "Clone Graph",
-    "input": "[]\n",
-    "expectedOutput": "[]\n",
+    "input": "[[23,[29]],[29,[23,8]],[8,[29]]]\n",
+    "expectedOutput": "[[23,[29]],[29,[23,8]],[8,[29]]]\n",
     "is_public": false
   },
   {
-    "id": "ac59e84e-d24b-41a5-ab82-c96555f7ff16",
+    "id": "253bf190-8e64-49b0-b822-6f89097e3b65",
     "problem_number": 30,
     "problem_name": "Clone Graph",
-    "input": "[[]]\n",
-    "expectedOutput": "[[]]\n",
+    "input": "[[6,[18,26]],[18,[6,26]],[26,[18,7,6]],[7,[26]]]\n",
+    "expectedOutput": "[[6,[18,26]],[18,[6,26]],[26,[6,18,7]],[7,[26]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "256155cd-aa6b-4147-9a26-906337144e2f",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[9,[14]],[14,[9,22]],[22,[14]]]\n",
+    "expectedOutput": "[[9,[14]],[14,[9,22]],[22,[14]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "30470036-d76a-4a4b-a516-c53eca9be803",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[1,[]]]\n",
+    "expectedOutput": "[[1,[]]]\n",
     "is_public": true
   },
   {
-    "id": "f8503179-90ec-4700-a2be-55511eb475b0",
+    "id": "3e0db452-955d-4422-81dc-55ad79b8bac2",
     "problem_number": 30,
     "problem_name": "Clone Graph",
-    "input": "[[2,4],[1,3],[2,4],[1,3]]\n",
-    "expectedOutput": "[[2,4],[1,3],[2,4],[1,3]]\n",
+    "input": "[[16,[20,19]],[20,[16,21]],[21,[20,19]],[19,[21,16]]]\n",
+    "expectedOutput": "[[16,[20,19]],[20,[16,21]],[19,[16,21]],[21,[20,19]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "49a75f35-facc-4345-8c8f-7dc4df919c35",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[1,[8,14]],[8,[1,14]],[14,[8,1]]]\n",
+    "expectedOutput": "[[1,[8,14]],[8,[1,14]],[14,[1,8]]]\n",
     "is_public": true
+  },
+  {
+    "id": "70a95299-bf55-4c95-b87a-6d4f1ae587b4",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[22,[9]],[9,[22,14]],[14,[9,26]],[26,[14]]]\n",
+    "expectedOutput": "[[22,[9]],[9,[22,14]],[14,[9,26]],[26,[14]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8bbe1ef5-390d-4512-88a6-ea0754ec9a8d",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[23,[14]],[14,[23,6]],[6,[14,4]],[4,[6,15]],[15,[4]]]\n",
+    "expectedOutput": "[[23,[14]],[14,[23,6]],[6,[14,4]],[4,[6,15]],[15,[4]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "9151a480-6399-422c-9b0a-97024ad3f9f0",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[17,[]]]\n",
+    "expectedOutput": "[[17,[]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "9f7bf085-8b3a-4141-b461-ed1add73f9cb",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[12,[2]],[2,[12]]]\n",
+    "expectedOutput": "[[12,[2]],[2,[12]]]\n",
+    "is_public": true
+  },
+  {
+    "id": "cf1400c4-a3a0-4f6b-bf83-7fb978743914",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[19,[]]]\n",
+    "expectedOutput": "[[19,[]]]\n",
+    "is_public": false
+  },
+  {
+    "id": "ff93dcd8-c930-4f87-ba63-633601c58ac1",
+    "problem_number": 30,
+    "problem_name": "Clone Graph",
+    "input": "[[13,[]]]\n",
+    "expectedOutput": "[[13,[]]]\n",
+    "is_public": false
   },
   {
     "id": "0b850dea-43d6-4f56-b050-74b3a0da7cff",
@@ -4600,19 +4672,195 @@
     "is_public": false
   },
   {
-    "id": "a4dd2f8b-76ef-48fa-9a5f-ec203692238d",
+    "id": "0b4bd9de-bfc2-44d9-8162-c52033a3b523",
     "problem_number": 111,
     "problem_name": "Debounce",
-    "input": "debounce(100)\n",
-    "expectedOutput": "Delayed execution\n",
+    "input": "[27,74]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "5f4c3dee-bbfc-4612-becc-5be49db124ca",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[16]\n",
+    "expectedOutput": "2\n",
     "is_public": true
   },
   {
-    "id": "b64b9fe6-4442-4eeb-973f-438144323eb5",
+    "id": "72fe5cac-dbcd-4d95-b1fd-8d30d5e3d0cf",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[30,12,30,16]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "73919ac3-b322-4e2d-a9aa-d49b37bb34c2",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[21,18]\n",
+    "expectedOutput": "3\n",
+    "is_public": true
+  },
+  {
+    "id": "802ef677-23ba-46b3-8cc5-960c20b5a774",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[18,90]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "865e74bd-f08c-44f3-8b80-e4d696d722ab",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[27,21,30]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "8f5e7b85-aafd-4dd8-8cde-734435824b29",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[18]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "955abeaf-1e1e-482c-bc4e-fc67b9744f72",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[78]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "9e893854-05db-4bba-a947-8d53e2f8f87f",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[103]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "d2519949-0bf8-4d42-bf72-fb69e58a05e6",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[16,11,103]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "f025b036-cd8b-494d-a4ba-766a28085b80",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[27,11,25]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "f6ab11d4-6386-4a01-8320-6baefb691c2f",
+    "problem_number": 111,
+    "problem_name": "Debounce",
+    "input": "[23,105,14,5]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "00d752d1-ad29-4085-8eb2-01c853bbf2f4",
     "problem_number": 112,
     "problem_name": "Promise Time Limit",
-    "input": "\"async function,100ms\"\n",
-    "expectedOutput": "\"Result or timeout\"\n",
+    "input": "[67,34]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": true
+  },
+  {
+    "id": "1155e1ed-1fb4-4c54-9bcf-e731e889e970",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[3,48]\n",
+    "expectedOutput": "\"result\"\n",
+    "is_public": false
+  },
+  {
+    "id": "1eeae399-9037-42b2-b34b-9405ebf203d5",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[48,82]\n",
+    "expectedOutput": "\"result\"\n",
+    "is_public": false
+  },
+  {
+    "id": "2afb1814-2670-4993-acaa-a108727716dd",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[117,76]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": false
+  },
+  {
+    "id": "2d839d1c-56c8-4a97-9410-f1dc25178424",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[118,48]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": false
+  },
+  {
+    "id": "433e642a-a77c-48cf-ad32-083d644b5e16",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[77,39]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": true
+  },
+  {
+    "id": "5dfd017e-f446-458c-a3b8-f1f15bb5ec02",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[13,57]\n",
+    "expectedOutput": "\"result\"\n",
+    "is_public": false
+  },
+  {
+    "id": "7a3398dd-d7e1-4c9f-beb8-0d4a5ba1aa50",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[12,42]\n",
+    "expectedOutput": "\"result\"\n",
+    "is_public": false
+  },
+  {
+    "id": "7fdada9d-d5b8-4c48-b830-a224d8b7460c",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[130,79]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": false
+  },
+  {
+    "id": "ad4c69f2-6148-4ac3-8a82-f664ff8fe585",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[16,46]\n",
+    "expectedOutput": "\"result\"\n",
+    "is_public": false
+  },
+  {
+    "id": "d2e4444c-b83d-4c74-b444-a0e37a04e259",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[138,89]\n",
+    "expectedOutput": "\"timeout\"\n",
+    "is_public": false
+  },
+  {
+    "id": "ec68d769-96b6-4dfa-ae10-d611034f7dad",
+    "problem_number": 112,
+    "problem_name": "Promise Time Limit",
+    "input": "[26,58]\n",
+    "expectedOutput": "\"result\"\n",
     "is_public": true
   },
   {
@@ -5032,12 +5280,100 @@
     "is_public": true
   },
   {
-    "id": "b5370f31-0464-46ac-9f95-203045fd5c13",
+    "id": "23b05661-f99e-423c-8114-3e0822dad238",
     "problem_number": 117,
     "problem_name": "Execute Asynchronous Functions in Parallel",
-    "input": "\"Two async functions\"\n",
-    "expectedOutput": "\"Both resolved\"\n",
+    "input": "[[40,\"resolve\",\"v1\"],[18,\"resolve\",\"v2\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "564c91b9-32d1-4022-ac41-a56d891c356a",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[56,\"reject\",\"boom\"],[23,\"resolve\",\"v2\"],[49,\"resolve\",\"v3\"]]\n",
+    "expectedOutput": "[\"rejected\",\"boom\"]\n",
+    "is_public": false
+  },
+  {
+    "id": "57bfc35d-eca8-4d0b-9ead-b66fd54740b0",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[52,\"resolve\",\"v1\"],[29,\"resolve\",\"v2\"],[44,\"resolve\",\"v3\"],[31,\"resolve\",\"v4\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\",\"v3\",\"v4\"]]\n",
     "is_public": true
+  },
+  {
+    "id": "5d8fea89-f467-4162-9aed-d1bc10e186b3",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[45,\"resolve\",\"v1\"],[48,\"resolve\",\"v2\"],[34,\"resolve\",\"v3\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\",\"v3\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "76a2128c-effe-4bf5-bca6-c901676601d2",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[6,\"resolve\",\"v1\"],[24,\"reject\",\"boom\"],[32,\"resolve\",\"v3\"],[53,\"resolve\",\"v4\"]]\n",
+    "expectedOutput": "[\"rejected\",\"boom\"]\n",
+    "is_public": true
+  },
+  {
+    "id": "9a521837-eb20-47b4-b83e-83968e3ed7a5",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[8,\"resolve\",\"v1\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\"]]\n",
+    "is_public": true
+  },
+  {
+    "id": "9df72198-4340-429d-af9c-4278db5c9bba",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[11,\"resolve\",\"v1\"],[59,\"resolve\",\"v2\"],[21,\"resolve\",\"v3\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\",\"v3\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "b92a579a-d86c-4d2b-837c-1eb9d6a27a4f",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[55,\"resolve\",\"v1\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "cd319f06-48b5-4326-9226-00dbc4e21533",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[18,\"resolve\",\"v1\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "cfb1f54e-1f03-4e3f-9823-cabd0bc62287",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[43,\"resolve\",\"v1\"],[16,\"resolve\",\"v2\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\"]]\n",
+    "is_public": false
+  },
+  {
+    "id": "d67d1728-8e98-45fe-9656-5e10360358f3",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[15,\"resolve\",\"v1\"],[46,\"reject\",\"boom\"]]\n",
+    "expectedOutput": "[\"rejected\",\"boom\"]\n",
+    "is_public": false
+  },
+  {
+    "id": "f42838da-7643-4176-b8d6-4f0df9aec178",
+    "problem_number": 117,
+    "problem_name": "Execute Asynchronous Functions in Parallel",
+    "input": "[[28,\"resolve\",\"v1\"],[37,\"resolve\",\"v2\"],[23,\"resolve\",\"v3\"],[42,\"resolve\",\"v4\"]]\n",
+    "expectedOutput": "[\"resolved\",[\"v1\",\"v2\",\"v3\",\"v4\"]]\n",
+    "is_public": false
   },
   {
     "id": "026d9598-4860-4082-80f8-9b21b682e2b9",
