@@ -1,8 +1,6 @@
-import trieBank from './problemBank/banks/trie.js';
+import { BANK } from './problemBank/banks/index.js';
 import { fmtIn, fmtOut } from './problemBank/helpers.js';
 import type { ProblemBankEntry } from './problemBank/types.js';
-
-const BANK: ProblemBankEntry[] = [...trieBank];
 
 let failures = 0;
 const fail = (msg: string) => {

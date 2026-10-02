@@ -1,22 +1,6 @@
 import { bank } from '../dsl.js';
 import { autoTests, pub, priv } from '../tests.js';
 
-/** Shared trie reference helpers (mirrors codeExecution tree helpers). */
-export type TN = { ch: Map<string, TN>; end: boolean };
-
-export const buildTrie = (words: string[]): TN => {
-  const root: TN = { ch: new Map(), end: false };
-  for (const w of words) {
-    let cur = root;
-    for (const c of w) {
-      if (!cur.ch.has(c)) cur.ch.set(c, { ch: new Map(), end: false });
-      cur = cur.ch.get(c)!;
-    }
-    cur.end = true;
-  }
-  return root;
-};
-
 export default bank([
   {
     k: 'trie-shortest-key',
@@ -124,10 +108,23 @@ export default bank([
     ],
     sig: ['boolean', 'string[]', 'string'],
     fn: ['search', 'words', 'query'],
+    // NOTE: the reference must be self-contained. `buildUserSolution` serializes
+    // this function with Function.prototype.toString, so it cannot close over
+    // module-scope helpers like `buildTrie` — they would be undefined in the
+    // sandboxed submission. Build the trie inline instead.
     s: (args) => {
-      const [words, query] = args as [string[], string];
-      const trie = buildTrie(words);
-      const go = (node: TN, i: number): boolean => {
+      const words = args[0];
+      const query = args[1];
+      const root = { ch: new Map(), end: false };
+      for (const w of words) {
+        let cur = root;
+        for (const c of w) {
+          if (!cur.ch.has(c)) cur.ch.set(c, { ch: new Map(), end: false });
+          cur = cur.ch.get(c);
+        }
+        cur.end = true;
+      }
+      const go = (node, i) => {
         if (i === query.length) return node.end;
         const c = query[i];
         if (c === '.') {
@@ -137,7 +134,7 @@ export default bank([
         const child = node.ch.get(c);
         return child ? go(child, i + 1) : false;
       };
-      return go(trie, 0);
+      return go(root, 0);
     },
     t: autoTests(
       [

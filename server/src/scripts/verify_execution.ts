@@ -1,11 +1,20 @@
+/**
+ * Proves the stored expected outputs are actually reachable.
+ *
+ * For every bank entry we build a JavaScript submission from the reference
+ * implementation (`buildUserSolution`), push it through the REAL
+ * `prepareFinalCode` used in production, and run it on Piston against every
+ * generated test case. The stdout must equal the expected output exactly.
+ *
+ * This is the check that catches mismatches a pure unit test cannot: wrapper
+ * argument parsing, the whitespace-stripping serializer, and stdin framing.
+ */
 import 'dotenv/config';
-import { prisma } from '../lib/prisma.js';
-import { prepareFinalCode } from '../services/codeExecution.js';
-import trieBank from './problemBank/banks/trie.js';
-import type { ProblemBankEntry } from './problemBank/types.js';
+import { BANK } from './problemBank/banks/index.js';
+import { fmtIn, fmtOut } from './problemBank/helpers.js';
+import { buildUserSolution } from './problemBank/solutionJs.js';
 
 const PISTON = process.env.PISTON_URL ?? 'http://localhost:2000';
-const BANK: ProblemBankEntry[] = [...trieBank];
 
 async function piston(code: string, stdin: string) {
   const res = await fetch(`${PISTON}/api/v2/execute`, {
@@ -25,87 +34,49 @@ async function piston(code: string, stdin: string) {
   return (j.run.stdout as string).trim();
 }
 
-/**
- * A correct solution, written the way a user would: it uses the same starter
- * signature the platform hands them. We push it through the REAL
- * `prepareFinalCode` + Piston pipeline so the stored expected outputs are
- * proven to match what the platform will actually print.
- */
-const SOLUTIONS: Record<string, string> = {
-  'trie-shortest-key': `var shortestSubstring = function(s1, s2) {
-    if (!s2.length) return '';
-    const need = new Map();
-    for (const c of s2) need.set(c, (need.get(c) || 0) + 1);
-    const cnt = new Map();
-    let missing = s2.length, left = 0, bestStart = -1, bestLen = Infinity;
-    for (let r = 0; r < s1.length; r++) {
-      const c = s1[r];
-      cnt.set(c, (cnt.get(c) || 0) + 1);
-      if (need.has(c) && cnt.get(c) <= need.get(c)) missing--;
-      while (missing === 0) {
-        const len = r - left + 1;
-        if (len < bestLen) { bestLen = len; bestStart = left; }
-        const lc = s1[left];
-        cnt.set(lc, (cnt.get(lc) || 1) - 1);
-        if (need.has(lc) && cnt.get(lc) < need.get(lc)) missing++;
-        left++;
-      }
-    }
-    return bestStart === -1 ? '' : s1.slice(bestStart, bestStart + bestLen);
-};`,
-  'trie-design-add-search': `class TrieNode { constructor(){this.ch=new Map();this.end=false;} }
-class Trie {
-  constructor(){this.root=new TrieNode();}
-  insert(w){let n=this.root;for(const c of w){if(!n.ch.has(c))n.ch.set(c,new TrieNode());n=n.ch.get(c);}n.end=true;}
-  go(node,q,i){if(i===q.length)return node.end;const c=q[i];
-    if(c==='.'){for(const k of node.ch.values())if(this.go(k,q,i+1))return true;return false;}
-    const nx=node.ch.get(c);return nx?this.go(nx,q,i+1):false;}
-  search(q){return this.go(this.root,q,0);}
-}
-var search = function(words, query) {
-  const t = new Trie();
-  for (const w of words) t.insert(w);
-  return t.search(query);
-};`,
-};
-
 async function main() {
+  // Imported lazily so the Piston check still reports a clean error if the
+  // Prisma-generated client is unavailable in some environment.
+  const { prepareFinalCode } = await import('../services/codeExecution.js');
+
   let pass = 0;
   let fail = 0;
+  const failures: string[] = [];
 
   for (const p of BANK) {
-    const sol = SOLUTIONS[p.key];
-    if (!sol) {
-      console.log(`  ? ${p.key}: no reference user solution defined`);
-      continue;
-    }
-    console.log(`\n${p.key} — running ${p.tests.length} cases through Piston`);
-
-    // Feed the real starter snippet + a user solution through the real pipeline.
-    const full = sol;
-    const prepared = prepareFinalCode('javascript', full);
+    const source = buildUserSolution(p);
+    const prepared = prepareFinalCode('javascript', source);
+    let ok = 0;
+    let bad = 0;
 
     for (const [i, tc] of p.tests.entries()) {
-      const stdin = tc.args
-        .map((a) => JSON.stringify(a))
-        .join('\n');
-      const expected = JSON.stringify(p.solve(tc.args)).replace(/\s/g, '');
+      const stdin = fmtIn(tc.args).replace(/\n$/, '');
+      const expected = fmtOut(p.solve(tc.args)).trim();
       try {
         const got = await piston(prepared, stdin);
         if (got === expected) {
-          pass++;
+          ok++;
         } else {
-          fail++;
-          console.log(`  ✗ case ${i}: got ${got} expected ${expected}`);
+          bad++;
+          failures.push(`${p.key} case ${i}: got ${got} expected ${expected}`);
         }
       } catch (e: any) {
-        fail++;
-        console.log(`  ✗ case ${i}: ${e.message.slice(0, 120)}`);
+        bad++;
+        failures.push(`${p.key} case ${i}: ${String(e.message).slice(0, 140)}`);
       }
     }
+
+    pass += ok;
+    fail += bad;
+    const mark = bad === 0 ? 'PASS' : 'FAIL';
+    console.log(`  ${mark}  ${p.key.padEnd(30)} ${ok}/${p.tests.length} cases`);
   }
 
   console.log(`\n==== EXECUTION VERIFICATION ====\npassed: ${pass}, failed: ${fail}`);
+  if (failures.length) {
+    console.log('\nFailures:');
+    for (const f of failures.slice(0, 40)) console.log('  ✗ ' + f);
+  }
   process.exitCode = fail === 0 ? 0 : 1;
 }
 
