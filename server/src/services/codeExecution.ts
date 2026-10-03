@@ -580,23 +580,12 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
 
-class ListNode {
-  public int val;
-  public ListNode next;
-  public ListNode() {}
-  public ListNode(int val) { this.val = val; }
-  public ListNode(int val, ListNode next) { this.val = val; this.next = next; }
-}
-
-class TreeNode {
-  public int val;
-  public TreeNode left;
-  public TreeNode right;
-  public TreeNode() {}
-  public TreeNode(int val) { this.val = val; }
-  public TreeNode(int val, TreeNode left, TreeNode right) { this.val = val; this.left = left; this.right = right; }
-}
-
+// NOTE: Main must be the FIRST top-level class in this file. Piston runs Java in
+// source-launcher mode, which executes the first class declared; when ListNode
+// came first the launcher picked it and failed with
+// "can't find main(String[]) method in class: ListNode". The node helper classes
+// are therefore emitted AFTER Main, which Java permits since forward references
+// between top-level classes are legal.
 public class Main {
   public static void main(String[] args) throws Exception {
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
@@ -847,6 +836,23 @@ public class Main {
   private static List<String> parseOperationNames(String raw){List<String>items=getArrayItems(raw);List<String>ops=new ArrayList<>();for(String item:items){String t=item.trim();if(!isQuoted(t))return Collections.emptyList();ops.add(unquote(t));}return ops;}
   private static Object constructInstance(Class<?>clazz,String rawArgs)throws Exception{for(Constructor<?>ctor:clazz.getDeclaredConstructors()){try{ctor.setAccessible(true);return ctor.newInstance(parseArgumentGroup(ctor.getGenericParameterTypes(),rawArgs));}catch(Exception ignored){}}throw new IllegalArgumentException("Cannot construct "+clazz.getSimpleName()+" from: "+rawArgs);}
   private static Method findMethod(Class<?>clazz,String name,String rawArgs)throws Exception{for(Method m:clazz.getDeclaredMethods()){if(!Modifier.isPublic(m.getModifiers())||!m.getName().equals(name))continue;try{parseArgumentGroup(m.getGenericParameterTypes(),rawArgs);return m;}catch(Exception ignored){}}throw new IllegalArgumentException("No matching method: "+name+"("+rawArgs+")");}
+}
+
+class ListNode {
+  public int val;
+  public ListNode next;
+  public ListNode() {}
+  public ListNode(int val) { this.val = val; }
+  public ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+
+class TreeNode {
+  public int val;
+  public TreeNode left;
+  public TreeNode right;
+  public TreeNode() {}
+  public TreeNode(int val) { this.val = val; }
+  public TreeNode(int val, TreeNode left, TreeNode right) { this.val = val; this.left = left; this.right = right; }
 }
 `;
 

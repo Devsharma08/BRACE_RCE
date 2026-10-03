@@ -20,28 +20,53 @@ cd server && NODE_MODE=development npx tsx src/scripts/verify_languages.ts
 
 ## 1. Findings, ranked
 
-### P0 — Java is entirely non-functional (environment + wrapper size)
+### P0 — Java never ran at all: CPU limit + wrong entry-point class (FIXED, needs a Piston env change to deploy)
 
-Every Java submission times out, on every problem.
+Java failed for **two independent reasons**. Neither was in the problem bank, which
+only ever verifies JavaScript.
 
-| Language | Trivial-program CPU | Limit | Result |
-|---|---|---|---|
-| Java | **2502–2670 ms** | 3000 ms | 83–89% of budget spent before user code |
-| JavaScript | 68–72 ms | 3000 ms | ok |
-| Python | 33–34 ms | 3000 ms | ok |
+**(a) Piston killed it on CPU time, not wall time.** Piston launches each job with
+`systemd-run --wall-time=<run_timeout> --time=<run_cpu_time>` (`piston/api/src/job.js`).
+`--time` is total CPU across *all threads*. A JVM spawns GC and JIT threads, so a
+bare `System.out.println` measured:
 
-A bare `System.out.println` costs ~2.6 s. Our wrapper adds ~500 ms (3115 ms total),
-which tips it over. Two compounding causes:
+| | Wall | CPU |
+|---|---|---|
+| trivial Java | ~1.1 s | **2502–2670 ms** |
+| with our 19.7 KB wrapper | ~1.3 s | **3024–3342 ms** (killed) |
 
-1. **Piston caps `run_timeout` at 3000 ms** (`piston/api/src/config.js`). The app sends
-   exactly 3000, i.e. the ceiling. Verified: requesting 8000 returns
-   `{"message":"run_timeout cannot exceed the configured limit of 3000"}`.
-2. **The Java wrapper is 19.7 KB** of reflection-based helpers regardless of the
-   problem, which costs real JVM time to load.
+`run_cpu_time` **also defaults to 3000 ms** and the app never sends it, so Java was
+always ~300 ms over. Verified in-container: the identical wrapper file runs in
+**87–110 ms wall** and prints the correct answer — it was never slow, it was being
+killed for burning CPU in parallel with its own wall clock.
 
-Fix: raise Piston's `run_timeout` (config default, currently 3 s) *and* trim the
-wrapper to only the helpers the detected signature needs. Raising the limit alone
-buys headroom but leaves the JVM cost on every request.
+The app *can* send `run_cpu_time`, but Piston rejects it:
+`{"message":"run_cpu_time cannot exceed the configured limit of 3000"}`. The cap is
+server-side, so this is a **deployment change, not an app change**:
+
+```
+docker run -e PISTON_RUN_CPU_TIME=20000 -e PISTON_RUN_TIMEOUT=10000 ...
+# or per-language, without touching the global default:
+docker run -e PISTON_LIMIT_OVERRIDES='{"java":{"run_cpu_time":20000,"run_timeout":10000}}' ...
+```
+
+Verified locally by patching both defaults and restarting: Java then ran.
+
+**(b) Our wrapper declared `ListNode` before `Main`.** Piston runs Java in
+source-launcher mode, which executes the **first** top-level class in the file.
+Generated order was `ListNode` (line 6), `TreeNode` (14), `Main` (23), so the
+launcher picked `ListNode` and reported:
+
+```
+error: can't find main(String[]) method in class: ListNode
+```
+
+Fixed by emitting `Main` first and the node classes after it — legal in Java since
+forward references between top-level classes are permitted.
+
+With both fixed, **5/5 languages pass**. Note Java's memory is ~150 MB against a
+268 MB limit, so it is the tightest resource in the sandbox.
+
 
 ### P0 — C wrapper read every argument from the wrong stdin line (FIXED)
 
@@ -158,21 +183,19 @@ Same problem (two-sum) implemented five ways, each pushed through the **real**
 
 | Language | Verdict | Wall | Code | Request | Notes |
 |---|---|---|---|---|---|
-| javascript | PASS | 120 ms | 9325 B | 9798 B | |
-| python | PASS | 129 ms | 2961 B | 3270 B | |
-| **java** | **FAIL** | 1251 ms | 19729 B | 20457 B | Time limit exceeded (SIGKILL) |
-| cpp | PASS | 2701 ms | 5018 B | 5370 B | slowest; compile-dominated |
-| **c** | PASS *(was FAIL)* | 325 ms | 2640 B | 2962 B | fixed: wrong stdin line |
+| javascript | PASS | 167 ms | 9325 B | 9798 B | |
+| python | PASS | 134 ms | 2961 B | 3270 B | |
+| java | PASS *(was FAIL)* | 2796 ms | 20147 B | 20883 B | fixed: entry-point class + CPU limit |
+| cpp | PASS | 3063 ms | 5018 B | 5370 B | slowest; compile-dominated |
+| c | PASS *(was FAIL)* | 385 ms | 2640 B | 2962 B | fixed: wrong stdin line |
 
-Before the fixes: **3 passed, 2 failed**. After: **4 passed, 1 failed**, the remaining
-failure being the P0 environment limit rather than a code defect.
+Before the fixes: **3 passed, 2 failed**. After: **5 passed, 0 failed**.
 
 Notes:
-- `compile`/`run` are absent from Piston responses on success here, so the audit reads
-  wall time; the app's new `cpu_time` path is exercised on the timeout case.
+- Java's ~150 MB peak against the 268 MB cap makes it the tightest resource in the
+  sandbox; CPP at ~3.0 s wall sits right on the 3 s run limit.
 - C expects a **free function**, not a struct method — the wrapper generates a bare
   `twoSum(...)` call. A struct-method C submission will not link. Worth documenting.
-- CPP at 2.7 s is close to the same 3 s ceiling; it passes, but with little margin.
 
 ---
 
@@ -183,21 +206,22 @@ Notes:
 | `tsc --noEmit` (production) | exit 0 |
 | `verify_execution.ts` (JS problem bank, real Piston) | **893/893 passed** |
 | `codeExecution.test.ts` (jest) | **11/11 passed** |
-| `verify_languages.ts` | 4/5 (Java blocked by P0) |
+| `verify_languages.ts` | **5/5 passed** |
 
 ---
 
 ## 5. Suggested order of work
 
-1. **Raise Piston's `run_timeout`** (config default) — unblocks Java outright, one line.
-2. **Trim the Java wrapper** to only the helpers the signature needs — cuts JVM load
-   for every Java request and buys margin for CPP too.
-3. **Generate python/c/cpp snippets** so all five advertised languages have starters.
-4. **Make the Prometheus port configurable** and non-fatal on bind failure.
-5. **Split the problems list response** into summaries vs. detail.
-6. **Bound the metrics registry** or document that it is per-process.
+1. **Deploy the Piston CPU/wall limit change** (`PISTON_RUN_CPU_TIME`, `PISTON_RUN_TIMEOUT`
+   or `PISTON_LIMIT_OVERRIDES` for java only). Without it Java cannot run anywhere,
+   regardless of app changes. This is the single blocking item.
+2. **Generate python/c/cpp snippets** so all five advertised languages have starters.
+3. **Make the Prometheus port configurable** and non-fatal on bind failure.
+4. **Split the problems list response** into summaries vs. detail.
+5. **Bound the metrics registry** or document that it is per-process.
+6. Watch Java's ~150 MB peak against the 268 MB cap; it has the least headroom.
 
-Items 1 and 2 together are what stand between Java being advertised and Java working.
+Item 1 is the only true blocker for the core feature. Items 2–5 are quality work.
 
 `tracing.ts` binds a hard-coded `:9464`. A stale process holding the port makes the
 server exit before it ever calls `listen` — the API simply never comes up, with an
