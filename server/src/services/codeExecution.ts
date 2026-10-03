@@ -839,11 +839,11 @@ public class Main {
   }
   private static boolean looksLikeArray(String s){s=s==null?"":s.trim();return s.startsWith("[")&&s.endsWith("]");}
   private static boolean isNull(String s){return s==null||s.trim().equalsIgnoreCase("null")||s.trim().isEmpty();}
-  private static boolean isQuoted(String s){if(s.length()<2)return false;char f=s.charAt(0),l=s.charAt(s.length()-1);return(f=='"'&&l=='"')||(f=='\\''&&l=='\'');}
+  private static boolean isQuoted(String s){if(s.length()<2)return false;char f=s.charAt(0),l=s.charAt(s.length()-1);return(f=='"'&&l=='"')||(f=='\\''&&l=='\\'');}
   private static String unquote(String s){s=s==null?"":s.trim();return isQuoted(s)?s.substring(1,s.length()-1):s;}
   private static int parseInt(String s){String c=unquote(s).trim();if(c.equalsIgnoreCase("INF")||c.equalsIgnoreCase("INTEGER.MAX_VALUE"))return Integer.MAX_VALUE;if(c.equalsIgnoreCase("-INF")||c.equalsIgnoreCase("INTEGER.MIN_VALUE"))return Integer.MIN_VALUE;return Integer.parseInt(c);}
   private static List<String> getArrayItems(String raw){String t=raw==null?"":raw.trim();if(!looksLikeArray(t))throw new IllegalArgumentException("Expected array, got: "+raw);if(t.equals("[]"))return new ArrayList<>();return splitTopLevel(t.substring(1,t.length()-1));}
-  private static List<String> splitTopLevel(String raw){List<String>result=new ArrayList<>();int depth=0;boolean inStr=false;char q='\0';StringBuilder sb=new StringBuilder();for(int i=0;i<raw.length();i++){char c=raw.charAt(i);if(inStr){if(c==q)inStr=false;sb.append(c);continue;}if(c=='\\'||c=='"'){inStr=true;q=c;sb.append(c);continue;}if(c=='['||c=='{'||c=='(')depth++;else if(c==']'||c=='}'||c==')')depth--;else if(c==','&&depth==0){result.add(sb.toString().trim());sb.setLength(0);continue;}sb.append(c);}if(sb.length()>0)result.add(sb.toString().trim());return result;}
+  private static List<String> splitTopLevel(String raw){List<String>result=new ArrayList<>();int depth=0;boolean inStr=false;char q='\0';StringBuilder sb=new StringBuilder();for(int i=0;i<raw.length();i++){char c=raw.charAt(i);if(inStr){if(c==q)inStr=false;sb.append(c);continue;}if(c=='\\\\'||c=='"'){inStr=true;q=c;sb.append(c);continue;}if(c=='['||c=='{'||c=='(')depth++;else if(c==']'||c=='}'||c==')')depth--;else if(c==','&&depth==0){result.add(sb.toString().trim());sb.setLength(0);continue;}sb.append(c);}if(sb.length()>0)result.add(sb.toString().trim());return result;}
   private static List<String> parseOperationNames(String raw){List<String>items=getArrayItems(raw);List<String>ops=new ArrayList<>();for(String item:items){String t=item.trim();if(!isQuoted(t))return Collections.emptyList();ops.add(unquote(t));}return ops;}
   private static Object constructInstance(Class<?>clazz,String rawArgs)throws Exception{for(Constructor<?>ctor:clazz.getDeclaredConstructors()){try{ctor.setAccessible(true);return ctor.newInstance(parseArgumentGroup(ctor.getGenericParameterTypes(),rawArgs));}catch(Exception ignored){}}throw new IllegalArgumentException("Cannot construct "+clazz.getSimpleName()+" from: "+rawArgs);}
   private static Method findMethod(Class<?>clazz,String name,String rawArgs)throws Exception{for(Method m:clazz.getDeclaredMethods()){if(!Modifier.isPublic(m.getModifiers())||!m.getName().equals(name))continue;try{parseArgumentGroup(m.getGenericParameterTypes(),rawArgs);return m;}catch(Exception ignored){}}throw new IllegalArgumentException("No matching method: "+name+"("+rawArgs+")");}
@@ -1078,6 +1078,17 @@ static void printListNode(struct ListNode* head) {
 
     const callArgNames: string[] = [];
     let outSizeVar = "";
+    // Stdin line index, tracked SEPARATELY from the parameter index.
+    //
+    // C signatures carry a synthetic size parameter for every array
+    // (`int* nums, int numsSize`). That size param is derived from the array
+    // and consumes NO stdin line, but it still occupies a parameter slot. Using
+    // the parameter index as the line index therefore shifted every parameter
+    // after the first array onto the wrong line: for
+    // twoSum(int* nums, int numsSize, int target, int* returnSize) the wrapper
+    // read `target` from lines[2] instead of lines[1], so every such program
+    // saw target 0 and returned an empty answer.
+    let lineIdx = 0;
     params.forEach((p, i) => {
       const pName = p.name.toLowerCase();
       if (p.kind === 'out_size_ptr') {
@@ -1086,27 +1097,34 @@ static void printListNode(struct ListNode* head) {
         cMain += `    int ${v} = 0;
 `;
         callArgNames.push(`&${v}`);
-      } else if (pName.endsWith("size") && i > 0 && params[i-1]!.kind.includes("array")) {
-        // Redundant size param for previous array in C - szVar was already added by previous array param
+        // Output-only parameter: consumes no stdin line.
         return;
-      } else if (p.kind === 'list_node') {
+      }
+      if (pName.endsWith("size") && i > 0 && params[i-1]!.kind.includes("array")) {
+        // Redundant size param for previous array in C - szVar was already
+        // added by the previous array param. Consumes no stdin line.
+        return;
+      }
+      // Everything below this point reads exactly one stdin line.
+      const ln = lineIdx++;
+      if (p.kind === 'list_node') {
         const v = `arg${i}`; callArgNames.push(v);
-        cMain += `    struct ListNode* ${v} = parseListNode(lineCount>${i}?lines[${i}]:"[]");
+        cMain += `    struct ListNode* ${v} = parseListNode(lineCount>${ln}?lines[${ln}]:"[]");
 `;
       } else if (p.kind === 'int_array') {
         const szV = `sz${i}`, arrV = `arg${i}`;
         callArgNames.push(arrV, szV);
         cMain += `    int ${arrV}[4096]; int ${szV}=0;
-    {char tmp[8192];strncpy(tmp,lineCount>${i}?lines[${i}]:"[]",8191);char*p=tmp;while(*p&&*p!='[')p++;if(*p)p++;char*e=p;while(*e&&*e!=']')e++;*e='\\0';char*t=strtok(p,",");while(t&&${szV}<4096){while(*t==' ')t++;if(*t)${arrV}[${szV}++]=atoi(t);t=strtok(NULL,",");}}
+    {char tmp[8192];strncpy(tmp,lineCount>${ln}?lines[${ln}]:"[]",8191);char*p=tmp;while(*p&&*p!='[')p++;if(*p)p++;char*e=p;while(*e&&*e!=']')e++;*e='\\0';char*t=strtok(p,",");while(t&&${szV}<4096){while(*t==' ')t++;if(*t)${arrV}[${szV}++]=atoi(t);t=strtok(NULL,",");}}
 `;
       } else if (p.kind === 'string') {
         const v = `arg${i}`; callArgNames.push(v);
         cMain += `    char ${v}[8192]={0};
-    {char* p=lineCount>${i}?lines[${i}]:"";if(*p=='"')p++;strncpy(${v},p,8191);int len=strlen(${v});if(len>0&&${v}[len-1]=='"')${v}[len-1]='\\0';}
+    {char* p=lineCount>${ln}?lines[${ln}]:"";if(*p=='"')p++;strncpy(${v},p,8191);int len=strlen(${v});if(len>0&&${v}[len-1]=='"')${v}[len-1]='\\0';}
 `;
       } else {
         const v = `arg${i}`; callArgNames.push(v);
-        cMain += `    int ${v}=lineCount>${i}?atoi(lines[${i}]):0;
+        cMain += `    int ${v}=lineCount>${ln}?atoi(lines[${ln}]):0;
 `;
       }
     });
@@ -1246,7 +1264,18 @@ export const executeCode = async (req: Request, res: Response) => {
         let caseMemoryKb = 0;
 
         if (data.run) {
-          if (typeof data.run.time === "number") {
+          // Piston reports `cpu_time` (ms) and `wall_time` (ms), not `time`
+          // (seconds). The old `data.run.time` check therefore never matched,
+          // so every submission reported the HTTP round trip as its runtime,
+          // network and sandbox startup included. Prefer real CPU time, fall
+          // back to wall time, and only then to the round trip.
+          const cpuMs = Number(data.run.cpu_time);
+          const wallMs = Number(data.run.wall_time);
+          if (Number.isFinite(cpuMs) && cpuMs > 0) {
+            caseRuntimeMs = Math.round(cpuMs);
+          } else if (Number.isFinite(wallMs) && wallMs > 0) {
+            caseRuntimeMs = Math.round(wallMs);
+          } else if (typeof data.run.time === "number") {
             caseRuntimeMs = Math.round(data.run.time * 1000);
           } else if (typeof data.run.time === "string") {
             caseRuntimeMs = Math.round(parseFloat(data.run.time) * 1000);
@@ -1300,13 +1329,28 @@ export const executeCode = async (req: Request, res: Response) => {
         // (some runtimes write warnings/info to stderr even on success)
         const storeRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
 
+        // A timeout kills the process with SIGKILL and leaves stderr EMPTY, so
+        // the check above produced no message at all and the user saw a bare
+        // "FAILED" with nothing to act on. Piston does report a reason in
+        // `run.message` ("Time limit exceeded", "Out of memory", ...), so
+        // surface that whenever stderr gives us nothing to show.
+        const sandboxReason =
+          data.run?.message ||
+          data.run?.status ||
+          (data.run?.signal ? `Process terminated by ${data.run.signal}` : "");
+        const runtimeErrorText = storeRuntimeError
+          ? sanitizeErrorMessage(String(data.run.stderr))
+          : sandboxReason
+            ? sanitizeErrorMessage(String(sandboxReason))
+            : null;
+
         results.push({
           testCaseIndex: index,
           output: runOutput,
           expectedOutput: currentCase.expectedOutput,
           passed,
           ...problemIdPayload(currentCase),
-          runtimeError: storeRuntimeError ? sanitizeErrorMessage(String(data.run.stderr)) : null,
+          runtimeError: runtimeErrorText,
         });
 
         if (executionMode === "SUBMIT" && !passed) {
