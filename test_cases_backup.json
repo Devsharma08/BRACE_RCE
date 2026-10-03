@@ -18038,5 +18038,525 @@
     "input": "[4,2,3,3,4,4,4,2]\n",
     "expectedOutput": "0\n",
     "is_public": false
+  },
+  {
+    "id": "0a3867d2-62c1-47dc-b740-2a5642617818",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[]\n[4,3,0,3]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "20bae93c-565e-486d-8ab3-8dbb141210c9",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[4,2,1]\n[0,2,2,5,0]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "589b8dd1-92fc-4fe0-b5d9-c1763436e89c",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[]\n[1]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "6b2450ec-a03a-4b26-939c-9f94b42d43ba",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[1,2]\n[1]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "7ddc8ece-d4af-4709-b3fb-9bafe5dd68cb",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[3]\n[1,2,3]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "891cd126-a7aa-4b94-9311-5e0dbe7fa6bd",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[1,0,5,5,5,3]\n[4,4,0,5]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "a35a3780-9198-4ead-b9c1-3fa83fd4a4e8",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[1,2]\n[1,2,3]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "c6b1e993-8c20-4db8-9065-96d817c14658",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[5,5]\n[1,0,0,2,3,3]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "daab8115-c9d4-490e-be04-a3f00fc1c968",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[]\n[]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "e7324613-c5dc-42e8-955f-f8147f40988b",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[1,2,3]\n[1,1]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "ed40a70e-e3d5-410e-b2f0-4cb634353b4c",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[0,0]\n[0]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "ee4e10b8-b4dc-43b9-a641-a5827dd4ac9a",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[]\n[2]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "f9c4b389-b63b-4c0b-84cd-255beb2edc48",
+    "problem_number": 295,
+    "problem_name": "Assign Cookies",
+    "input": "[4,5,0,4,0]\n[2,4,5,2,2,3,5,3]\n",
+    "expectedOutput": "5\n",
+    "is_public": false
+  },
+  {
+    "id": "05656172-bc06-4aca-8997-608cc95bf04f",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[4,1,1,3,3,4,1,4,2]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "1daf9be3-3e06-4f68-8625-0075a1061902",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[2]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "35936b39-d174-4cef-823e-2f6908ec00a9",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[4,2,2,4,4,2,2,3,4]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "49a421d9-4abd-46ec-b5e0-e18fa566421c",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[1,2,4,3,4]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "539e97fb-6ce7-4124-8bed-78b5595ea983",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[3,4,3,3,4,4,2,2,2]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "624bac72-6bcb-482f-9ed3-b971926cb57f",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[4]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "64b1a126-f5b2-4fad-bdaf-c7a64c797a41",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[1]\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "660b4778-6c0a-4b90-b2a3-5f63775536d0",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[0]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "81ef236f-38a1-442f-84ce-38d2655387cb",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[2,3,1,1,4]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "83b2a653-542e-4070-8f12-de7cc00afcb5",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[1,1,1,1]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "910ab1f0-251d-4fc8-9ca4-f54902197a55",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[2,1,1,1,2,3]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "9787f6e9-41f4-4ec6-9d50-8d41e222506a",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[2,3,0,1,4]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "d97c40b1-04ba-4b38-82a0-b75a9d5214a4",
+    "problem_number": 296,
+    "problem_name": "Jump Game II",
+    "input": "[3,2,1,0,4]\n",
+    "expectedOutput": "-1\n",
+    "is_public": false
+  },
+  {
+    "id": "075c8c37-cd39-4afe-a041-de585dd4067d",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[5,3,5,2]\n[4,0,0,2]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "0cf75bb2-03d3-451b-a403-8563979e9403",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[5]\n[4]\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "140ad61b-17f8-4714-b8e0-ff63c8c11f86",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[2]\n[1]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "22b53ffe-5b03-4e66-8007-1f8549e08125",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[3,6]\n[0,1]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "242b6c96-1348-4580-bb97-9c87d2615fc5",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[4,3,3,5,3]\n[0,5,4,1,5]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "4058eb8d-b795-4fdd-8a86-28948f5ef760",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[2,3,4]\n[2,3,4]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "56af3b03-b4f9-4064-98b3-d76722062952",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[1,6,4,4,5]\n[2,1,3,2,6]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "85c24dc7-1d47-4994-a8f5-4b5e5b5e3b94",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[1,2,3,4,5]\n[3,4,5,1,2]\n",
+    "expectedOutput": "3\n",
+    "is_public": true
+  },
+  {
+    "id": "8cd9656d-bf8f-4447-8010-9ebf0b3f818c",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[5,3,6,5,1,5,0,4]\n[1,2,0,6,1,5,4,3]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "b7cd9ab2-1224-4647-b9b4-b84cf0335d7d",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[2,3,4]\n[3,4,3]\n",
+    "expectedOutput": "-1\n",
+    "is_public": true
+  },
+  {
+    "id": "c57de3fe-0383-4038-9b1a-0936016bdedc",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[5,1,5,0,1]\n[5,2,2,6,2]\n",
+    "expectedOutput": "-1\n",
+    "is_public": false
+  },
+  {
+    "id": "db14550d-1fd2-4bf6-beac-40ca5a26ced0",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[3,3,4]\n[3,4,3]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "ed3f4eb0-7e96-409f-921b-384ce557966b",
+    "problem_number": 297,
+    "problem_name": "Gas Station Route",
+    "input": "[4]\n[5]\n",
+    "expectedOutput": "-1\n",
+    "is_public": false
+  },
+  {
+    "id": "103f46ad-0468-4470-9a2a-0b21752abf32",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "10\n2\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "2041a5bc-be92-4c25-a7e0-d41a57e61f25",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "1\n2\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "23f6f805-dd96-4a24-9e53-bd90f302331c",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "19\n5\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "34b3eda5-fb14-4ba9-88f9-6912136f8f94",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "0\n5\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "57ceeecd-d79b-4d15-880c-2aec3198eb29",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "18\n11\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "58a7a748-0d5d-4403-9217-dc9db0ad0ab3",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "2\n6\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "8302ceca-80d8-4436-bcee-37f7089d929a",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "2\n1\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "8da3a013-9543-4dc1-9366-604b012e8d3d",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "29\n7\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "bb35ae8b-dcf4-4fa9-ba5d-58aa7c099d04",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "1\n4\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "d6f1f065-5ed0-47ad-8f8f-db01bd41b307",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "26\n2\n",
+    "expectedOutput": "12\n",
+    "is_public": false
+  },
+  {
+    "id": "dc4d7f82-9602-48dc-9acf-69fd2a3ebe95",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "5\n4\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "f26c0e65-f6c6-43bb-9431-7b2733d3543e",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "0\n2\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "fa2db7bb-64d0-4eb6-8c26-6aa16c931b71",
+    "problem_number": 298,
+    "problem_name": "Largest Number After Digit Subtraction",
+    "input": "6\n3\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "13621a97-57c9-4435-9303-84d1baf02709",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[5,6],[1,2]]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "21f19359-b57d-473c-8e92-a5b85e81f5b6",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[1,3],[2,4],[3,5]]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "2f90b1a3-6736-42ba-b7db-50d61bf04a2d",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[1,2],[2,3],[3,4]]\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "34e5a2b6-bca1-4910-a805-f33f43fd6eae",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[3,5],[1,2]]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
+  },
+  {
+    "id": "37703ee2-6cab-4d8e-a305-eebf005bac20",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[2,3],[1,4],[0,1],[6,9]]\n",
+    "expectedOutput": "3\n",
+    "is_public": false
+  },
+  {
+    "id": "5231cbad-e33f-4836-b029-38bc4c635e1d",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[6,7],[8,10],[1,1],[3,3],[4,7],[1,4],[7,10]]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "7f2648fa-22a0-40b9-bf99-f0f3b0cf1ae7",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[1,2],[2,3]]\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "b6ffabb7-8d26-4d2d-8781-016a98e73ceb",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[6,7],[0,0],[5,7],[7,7],[2,5],[6,6]]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "c6f3d232-259c-4f40-bd1a-8b7e94ae3c4e",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[5,6]]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "d6e6da3e-dec3-43d6-a344-af74c7c43cb9",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[1,4],[2,5]]\n",
+    "expectedOutput": "1\n",
+    "is_public": false
+  },
+  {
+    "id": "dd0fb23f-0324-46c3-80d0-21ee30cf0af2",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[4,5],[0,0],[2,2],[6,7],[4,4],[6,9]]\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "eef4d88f-5505-4930-b1b0-a85ba6c67cdb",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[]\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "f8d3b89b-73be-4c08-96d5-88f481602943",
+    "problem_number": 299,
+    "problem_name": "Maximum Non Overlapping Intervals",
+    "input": "[[3,4],[2,4],[3,6],[8,11],[8,10]]\n",
+    "expectedOutput": "2\n",
+    "is_public": false
   }
 ]
