@@ -19,6 +19,137 @@ const PISTON_URL = (() => {
   return url;
 })();
 
+/**
+ * Per-language sandbox budgets.
+ *
+ * The previous code sent the same 5000/3000 ms to every runtime, which is fine
+ * for JavaScript and Python but wrong twice over for the compiled and VM
+ * languages: g++ needs seconds just to compile, and the JVM burns several
+ * seconds of CPU across its GC/JIT threads before executing a single line.
+ *
+ * `runCpuTimeMs` is the important one. Piston enforces BOTH a wall limit
+ * (--wall-time, from run_timeout) and a CPU limit summed across every thread
+ * (--time, from run_cpu_time), and the JVM routinely exceeds 3s of CPU while
+ * running in well under a second of wall time. Leaving run_cpu_time unset let
+ * Piston apply its 3000ms default, which killed every Java submission.
+ *
+ * These are REQUEST-side values. Piston caps each one server-side and rejects
+ * anything higher, so they are upper bounds that are also clamped by the
+ * deployment. If a request is rejected outright the failure is reported
+ * per-language rather than silently degrading every language.
+ */
+type SandboxBudget = {
+  compileTimeoutMs: number;
+  runTimeoutMs: number;
+  runCpuTimeMs: number;
+  compileMemoryLimitBytes: number;
+  runMemoryLimitBytes: number;
+};
+
+const MB = 1024 * 1024;
+
+const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
+  javascript: {
+    compileTimeoutMs: 5000,
+    runTimeoutMs: 3000,
+    runCpuTimeMs: 4000,
+    compileMemoryLimitBytes: 268435456,
+    runMemoryLimitBytes: 268435456,
+  },
+  python: {
+    compileTimeoutMs: 5000,
+    runTimeoutMs: 3000,
+    runCpuTimeMs: 4000,
+    compileMemoryLimitBytes: 268435456,
+    runMemoryLimitBytes: 268435456,
+  },
+  c: {
+    compileTimeoutMs: 10000,
+    runTimeoutMs: 3000,
+    runCpuTimeMs: 4000,
+    compileMemoryLimitBytes: 512 * MB,
+    runMemoryLimitBytes: 268435456,
+  },
+  cpp: {
+    compileTimeoutMs: 15000,
+    runTimeoutMs: 4000,
+    runCpuTimeMs: 6000,
+    compileMemoryLimitBytes: 512 * MB,
+    runMemoryLimitBytes: 268435456,
+  },
+  java: {
+    compileTimeoutMs: 15000,
+    runTimeoutMs: 8000,
+    // The JVM needs seconds of CPU across GC/JIT threads for a trivial program.
+    runCpuTimeMs: 20000,
+    compileMemoryLimitBytes: 768 * MB,
+    runMemoryLimitBytes: 512 * MB,
+  },
+};
+
+/**
+ * Caps learned from Piston at runtime.
+ *
+ * Piston rejects any request whose limit exceeds what the deployment allows
+ * ("compile_timeout cannot exceed the configured limit of 10000"), and those
+ * ceilings are deployment-specific. Hard-coding values therefore either breaks
+ * on a stock Piston or under-uses a tuned one.
+ *
+ * Instead we start from the requested budget, learn the real ceiling from the
+ * rejection, and clamp. The learned value is cached per language+key so the
+ * clamp happens once, not on every submission.
+ */
+type BudgetKey = "compile_timeout" | "run_timeout" | "run_cpu_time";
+const learnedCaps = new Map<string, number>();
+
+const capCacheKey = (lang: SupportedLanguage, key: BudgetKey) => `${lang}:${key}`;
+
+/**
+ * Pull the ceiling out of a Piston rejection.
+ *
+ * Matches messages like:
+ *   "compile_timeout cannot exceed the configured limit of 10000"
+ *   "run_cpu_time cannot exceed the configured limit of 3000"
+ * Returns undefined for anything unrecognised so we can fail loudly instead.
+ */
+function parseCapFromError(message: string): { key: BudgetKey; cap: number } | null {
+  const m = message.match(
+    /(compile_timeout|run_timeout|run_cpu_time)\s+cannot exceed the configured limit of\s+(\d+)/i,
+  );
+  if (!m) return null;
+  const key = m[1]!.toLowerCase() as BudgetKey;
+  const cap = Number(m[2]);
+  if (!Number.isFinite(cap) || cap <= 0) return null;
+  return { key, cap };
+}
+
+/** Apply any ceiling Piston has already taught us for this language. */
+function applyLearnedCaps(
+  lang: SupportedLanguage,
+  payload: Record<string, unknown>,
+): void {
+  for (const key of ["compile_timeout", "run_timeout", "run_cpu_time"] as BudgetKey[]) {
+    const cap = learnedCaps.get(capCacheKey(lang, key));
+    if (cap !== undefined) {
+      const current = Number(payload[key]);
+      if (Number.isFinite(current) && current > cap) payload[key] = cap;
+    }
+  }
+}
+
+/**
+ * Ceiling for the whole HTTP call to Piston.
+ *
+ * A sandbox cannot outlive compile + run, so this is derived from the budget
+ * with generous headroom rather than fixed. The old hard-coded 6000 ms was
+ * already below what a healthy g++ request costs end to end (~3.1s measured,
+ * and much more when the box is loaded). Worse, `errorThresholdPercentage: 50`
+ * meant that once half of the recent requests timed out, the breaker opened and
+ * EVERY language failed fast -- one slow C++ submission could take down
+ * execution for JavaScript users.
+ */
+const PISTON_CALL_TIMEOUT_MS = 45000;
+
 /** Circuit breaker for Piston API — fails fast after repeated failures. */
 const pistonBreaker = new CircuitBreaker(
   async (payload: any) => {
@@ -26,7 +157,7 @@ const pistonBreaker = new CircuitBreaker(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(6000),
+      signal: AbortSignal.timeout(PISTON_CALL_TIMEOUT_MS),
     });
     if (!response.ok) {
       const errText = await response.text();
@@ -35,11 +166,15 @@ const pistonBreaker = new CircuitBreaker(
     return response.json();
   },
   {
-    timeout: 6000,
-    errorThresholdPercentage: 50,
+    timeout: PISTON_CALL_TIMEOUT_MS,
+    // Only genuine infrastructure failures should open the circuit. A timeout
+    // inside the sandbox is a USER problem and returns a normal 200 response
+    // with a time-limit status, so it never reaches the breaker at all.
+    errorThresholdPercentage: 75,
     resetTimeout: 30000,
-    rollingCountTimeout: 10000,
+    rollingCountTimeout: 20000,
     rollingCountBuckets: 10,
+    volumeThreshold: 10,
   }
 );
 
@@ -95,6 +230,28 @@ type ExecutionDetail = {
   passed: boolean;
   problemId?: string;
   runtimeError: string | null;
+  /**
+   * Per-case resource usage. `metrics` is the shape the frontend already reads
+   * (src/features/terminal/types.ts) but which the backend never populated, so
+   * the UI has always shown blanks for time and space.
+   */
+  metrics: {
+    durationMs: number;
+    memoryKb: number;
+    cpuMs: number;
+    wallMs: number;
+    compileMs: number;
+    compileMemoryKb: number;
+    roundTripMs: number;
+    exitCode: number | null;
+    signal: string | null;
+    sandboxStatus: string | null;
+    sandboxMessage: string | null;
+    outputTruncated: boolean;
+    stderr: string;
+    stdout: string;
+    compileOutput: string;
+  };
 };
 
 const normalize = (value: string) => (value || "").replace(/\r\n/g, "\n").trim();
@@ -167,8 +324,17 @@ export function prepareFinalCode(
     | 'void' | 'unknown';
 
   function detectKind(rawType: string): TypeKind {
+    // Strip the `std::` namespace before matching.
+    //
+    // Fully-qualified names are the idiomatic C++ style, and they slipped
+    // through every pattern: `std::vector<std::string>` does not contain the
+    // literal `vector<string` (there is a `std::` between `<` and `string`), so
+    // it fell through to the `string` fallback and the generated main() declared
+    // `string arg0` instead of `vector<string>`, which failed to compile.
+    // `std::vector<std::vector<int>>` was likewise mis-detected as int_array.
     const t = rawType
       .replace(/public:|private:|protected:|static|inline|const|virtual/gi, '')
+      .replace(/\bstd::/g, '')
       .replace(/\s+/g, '')
       .toLowerCase();
     if (t === 'void') return 'void';
@@ -1128,6 +1294,15 @@ static void printListNode(struct ListNode* head) {
         cMain += `    char ${v}[8192]={0};
     {char* p=lineCount>${ln}?lines[${ln}]:"";if(*p=='"')p++;strncpy(${v},p,8191);int len=strlen(${v});if(len>0&&${v}[len-1]=='"')${v}[len-1]='\\0';}
 `;
+      } else if (p.kind === 'string_array') {
+        // char** arrays. Without this branch a `char** words` parameter fell
+        // through to the generic int branch, so the generated call became
+        // solve(arg0) with arg0 an int -- which failed to compile.
+        const szV = `sz${i}`, arrV = `arg${i}`;
+        callArgNames.push(arrV, szV);
+        cMain += `    char* ${arrV}[256]; char ${arrV}_buf[256][256]; int ${szV}=0;
+    {char tmp[8192];strncpy(tmp,lineCount>${ln}?lines[${ln}]:"[]",8191);char*p=tmp;while(*p&&*p!='[')p++;if(*p)p++;char*e=p;while(*e&&*e!=']')e++;*e='\\0';char*t=strtok(p,",");while(t&&${szV}<256){while(*t==' '||*t=='\\r')t++;if(*t){if(*t=='"')t++;char*w=${arrV}_buf[${szV}];int k=0;while(*t&&*t!='"'){if(k<255)w[k++]=*t;t++;}w[k]='\\0';${arrV}[${szV}++]=w;}t=strtok(NULL,",");}}
+`;
       } else {
         const v = `arg${i}`; callArgNames.push(v);
         cMain += `    int ${v}=lineCount>${ln}?atoi(lines[${ln}]):0;
@@ -1222,11 +1397,21 @@ export const executeCode = async (req: Request, res: Response) => {
     let totalPassed = 0;
     let totalRuntimeMs = 0;
     let totalMemoryKb = 0;
+    let maxRuntimeMs = 0;
+    let maxMemoryKb = 0;
+    let totalCompileMs = 0;
+    let maxCompileMemoryKb = 0;
+    let totalCpuMs = 0;
     let runCount = 0;
+    let payloadBytes = 0;
+    const budget = SANDBOX_BUDGETS[executionLanguage];
+    const submissionStart = performance.now();
 
     for (const [index, currentCase] of casesToRun.entries()) {
       const testCaseInput = currentCase.input || "";
       const startTime = performance.now();
+      // One clamped retry per case is enough; two would just hammer Piston.
+      let retriedWithCap = false;
 
       const payload = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
@@ -1238,16 +1423,22 @@ export const executeCode = async (req: Request, res: Response) => {
           }
         ],
         "stdin": testCaseInput,
-        "compile_timeout": 5000,
-        "run_timeout": 3000,
-        "compile_memory_limit": 268435456, 
-        "run_memory_limit": 268435456, 
+        "compile_timeout": budget.compileTimeoutMs,
+        "run_timeout": budget.runTimeoutMs,
+        // Explicit, because Piston otherwise applies its own 3000ms default,
+        // which the JVM exceeds on startup alone.
+        "run_cpu_time": budget.runCpuTimeMs,
+        "compile_memory_limit": budget.compileMemoryLimitBytes,
+        "run_memory_limit": budget.runMemoryLimitBytes,
       };
+      payloadBytes += Buffer.byteLength(JSON.stringify(payload), "utf8");
 
       let data: any;
 
       try {
-        // Execute via Piston with circuit breaker protection
+        // Clamp anything we already know this deployment will not accept, then
+        // execute with circuit breaker protection.
+        applyLearnedCaps(executionLanguage, payload);
         data = await pistonBreaker.fire(payload);
 
         if (data.message && data.message.includes("runtime is unknown")) {
@@ -1258,16 +1449,58 @@ export const executeCode = async (req: Request, res: Response) => {
         }
 
       } catch (apiError) {
-        // Circuit breaker open or Piston unavailable — fail fast, no local fallback
         const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
         console.error("Piston execution failed:", apiErrMsg);
-        throw new Error("Code execution service unavailable");
+
+        // A rejection because a requested limit is above the deployment ceiling
+        // is recoverable: learn the ceiling and retry once, clamped. Without
+        // this the whole language is dead on any Piston whose limits differ
+        // from ours, and the user just sees a generic 500.
+        const parsed = parseCapFromError(apiErrMsg);
+        if (parsed && !retriedWithCap) {
+          retriedWithCap = true;
+          const cacheKey = capCacheKey(executionLanguage, parsed.key);
+          const current = Number((payload as Record<string, unknown>)[parsed.key]);
+          if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
+            learnedCaps.set(cacheKey, parsed.cap);
+            console.warn(
+              `[piston] ${executionLanguage}: clamping ${parsed.key} to ${parsed.cap}ms ` +
+              `(learned from Piston; deployment limit is below what we request)`,
+            );
+          }
+          applyLearnedCaps(executionLanguage, payload);
+          try {
+            data = await pistonBreaker.fire(payload);
+            if (data && !data.run) {
+              throw new Error(`Piston rejected the clamped request: ${JSON.stringify(data)}`);
+            }
+          } catch (retryError) {
+            const retryMsg =
+              retryError instanceof Error ? retryError.message : String(retryError);
+            console.error("Piston retry after clamp failed:", retryMsg);
+            // Surface the real reason. A generic "service unavailable" for what
+            // is actually a misconfiguration makes this undiagnosable in
+            // production, which is how the Java CPU-limit bug stayed hidden.
+            throw new Error(
+              `Code execution is misconfigured for ${executionLanguage}: ${retryMsg}`,
+            );
+          }
+        } else {
+          // Circuit breaker open or Piston genuinely unavailable.
+          throw new Error(
+            /cannot exceed the configured limit/i.test(apiErrMsg)
+              ? `Code execution is misconfigured for ${executionLanguage}: ${apiErrMsg}`
+              : "Code execution service unavailable",
+          );
+        }
       }
 
       if (data) {
         const endTime = performance.now();
         let caseRuntimeMs = Math.round(endTime - startTime);
         let caseMemoryKb = 0;
+        let caseCpuMs = 0;
+        let caseWallMs = Math.round(endTime - startTime);
 
         if (data.run) {
           // Piston reports `cpu_time` (ms) and `wall_time` (ms), not `time`
@@ -1279,8 +1512,10 @@ export const executeCode = async (req: Request, res: Response) => {
           const wallMs = Number(data.run.wall_time);
           if (Number.isFinite(cpuMs) && cpuMs > 0) {
             caseRuntimeMs = Math.round(cpuMs);
+            caseCpuMs = Math.round(cpuMs);
           } else if (Number.isFinite(wallMs) && wallMs > 0) {
             caseRuntimeMs = Math.round(wallMs);
+            caseWallMs = Math.round(wallMs);
           } else if (typeof data.run.time === "number") {
             caseRuntimeMs = Math.round(data.run.time * 1000);
           } else if (typeof data.run.time === "string") {
@@ -1292,10 +1527,39 @@ export const executeCode = async (req: Request, res: Response) => {
           } else if (typeof data.run.memory === "string") {
             caseMemoryKb = Math.round(parseFloat(data.run.memory) / 1024);
           }
+
         }
+        // Compile stage cost, which dominates every compiled language.
+        const caseCompileMs = Math.round(Number(data.compile?.time ?? 0) * 1000);
+        const caseCompileMemoryKb = Math.round(Number(data.compile?.memory ?? 0) / 1024);
+
+        // One closure so all three push sites (compile failure, normal, early
+        // exit) emit an identical shape and none can drift from the type.
+        const buildMetrics = () => ({
+          durationMs: caseRuntimeMs,
+          memoryKb: caseMemoryKb,
+          cpuMs: caseCpuMs,
+          wallMs: caseWallMs,
+          compileMs: caseCompileMs,
+          compileMemoryKb: caseCompileMemoryKb,
+          roundTripMs: Math.round(endTime - startTime),
+          exitCode: data?.run?.code ?? null,
+          signal: data?.run?.signal ?? null,
+          sandboxStatus: data?.run?.status ?? null,
+          sandboxMessage: data?.run?.message ?? null,
+          outputTruncated: Boolean(data?.run?.output && data.run.output.length > 64 * 1024),
+          stdout: String(data?.run?.stdout ?? "").substring(0, 64 * 1024),
+          stderr: String(data?.run?.stderr ?? "").substring(0, 64 * 1024),
+          compileOutput: String(data?.compile?.output ?? "").substring(0, 64 * 1024),
+        });
 
         totalRuntimeMs += caseRuntimeMs;
         if (caseMemoryKb > 0) totalMemoryKb += caseMemoryKb;
+        if (caseRuntimeMs > maxRuntimeMs) maxRuntimeMs = caseRuntimeMs;
+        if (caseMemoryKb > maxMemoryKb) maxMemoryKb = caseMemoryKb;
+        totalCpuMs += caseCpuMs;
+        if (caseCompileMs > 0) totalCompileMs += caseCompileMs;
+        if (caseCompileMemoryKb > maxCompileMemoryKb) maxCompileMemoryKb = caseCompileMemoryKb;
         runCount++;
         const MAX_OUTPUT_BYTES = 64*1024;
         let runOutput = data.run?.output || "";
@@ -1310,7 +1574,8 @@ export const executeCode = async (req: Request, res: Response) => {
             output: "",
             expectedOutput: currentCase.expectedOutput,
             passed: false,
-            runtimeError: compileOutput || "Compilation Error",
+            runtimeError: sanitizeErrorMessage(compileOutput) || "Compilation Error",
+            metrics: buildMetrics(),
           });
           break;
         }
@@ -1357,6 +1622,7 @@ export const executeCode = async (req: Request, res: Response) => {
           passed,
           ...problemIdPayload(currentCase),
           runtimeError: runtimeErrorText,
+          metrics: buildMetrics(),
         });
 
         if (executionMode === "SUBMIT" && !passed) {
@@ -1519,8 +1785,41 @@ export const executeCode = async (req: Request, res: Response) => {
       passedCases: totalPassed,
       status: totalPassed === casesToRun.length ? "PASSED" : "FAILED",
       problemId: casesToRun[0]?.problemId || "",
+      // Retained at the top level: analytics, leaderboards and history all read
+      // these two, so they must keep their original meaning (per-case average).
       runtimeMs: avgRuntimeMs,
       memoryKb: avgMemoryKb,
+      language: executionLanguage,
+      // Full resource picture for the whole submission. `runtimeMs`/`memoryKb`
+      // above are averages and are NOT enough on their own: a submission that
+      // is fast on average can still peak badly on one case, and compile cost
+      // is invisible in the per-case averages.
+      metrics: {
+        casesExecuted: runCount,
+        avgRuntimeMs,
+        maxRuntimeMs,
+        totalRuntimeMs,
+        avgMemoryKb,
+        maxMemoryKb,
+        totalMemoryKb,
+        avgCpuMs: runCount > 0 ? Math.round(totalCpuMs / runCount) : 0,
+        totalCpuMs,
+        totalCompileMs,
+        maxCompileMemoryKb,
+        // End-to-end for the whole request, including every sandbox round trip.
+        wallMs: Math.round(performance.now() - submissionStart),
+        requestPayloadBytes: payloadBytes,
+        codeBytes: Buffer.byteLength(finalCode, "utf8"),
+      },
+      // The limits actually requested, so a user hitting a ceiling can see it.
+      budget: {
+        language: executionLanguage,
+        compileTimeoutMs: budget.compileTimeoutMs,
+        runTimeoutMs: budget.runTimeoutMs,
+        runCpuTimeMs: budget.runCpuTimeMs,
+        runMemoryLimitBytes: budget.runMemoryLimitBytes,
+        compileMemoryLimitBytes: budget.compileMemoryLimitBytes,
+      },
       details: results,
     });
   } catch (error) {
