@@ -19,6 +19,7 @@ import linkedListBank from './linkedList.js';
 import mathBank from './math.js';
 import queueBank from './queue.js';
 import searchingBank from './searching.js';
+import slidingWindowBank from './slidingWindow.js';
 import segmentTreeBank from './segmentTree.js';
 import stackBank from './stack.js';
 import trieBank from './trie.js';
@@ -41,6 +42,7 @@ export const BANK: ProblemBankEntry[] = [
   ...segmentTreeBank,
   ...fenwickBank,
   ...searchingBank,
+  ...slidingWindowBank,
   ...dpBank,
   ...mathBank,
   ...greedyBank,
