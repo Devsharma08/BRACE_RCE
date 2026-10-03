@@ -80,11 +80,28 @@ export const executeCode = async (request: ExecuteCodeRequest): Promise<Executio
   const controller = new AbortController();
   inFlightRequests.set(key, controller);
 
-  // Auto-cleanup after 30s timeout
+  // Ceiling for the whole request, including compilation.
+  //
+  // This used to be 30s, which was shorter than a single compiled-language
+  // submission can legitimately take: measured end to end through this API, a
+  // 13-case C++ submission needs ~16s and Java ~9s now that cases run
+  // concurrently (51s and 31s when they ran one at a time). Under the old
+  // serial loop C++ and Java were aborted by the browser *after* the server had
+  // already computed the correct answer, so users saw a network error for
+  // solutions that were right.
+  //
+  // Compilation is a large part of this: the sandbox budget allows up to 15s for
+  // g++/javac alone, plus queueing behind other users' submissions on a shared
+  // Piston. 120s leaves headroom without letting a runaway request pin a
+  // connection indefinitely.
+  const EXECUTE_REQUEST_TIMEOUT_MS = 120000;
+
+  let timedOut = false;
   const timeoutId = setTimeout(() => {
+    timedOut = true;
     controller.abort();
     inFlightRequests.delete(key);
-  }, 30000);
+  }, EXECUTE_REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(`${API_BASE_URL}/execute`, {
@@ -101,6 +118,18 @@ export const executeCode = async (request: ExecuteCodeRequest): Promise<Executio
     }
 
     return await readJson<ExecutionResult>(response);
+  } catch (error) {
+    // Distinguish our own timeout from the "superseded by a newer submission"
+    // abort, which is a normal user action and must keep its existing behaviour.
+    if (timedOut) {
+      throw new Error(
+        "Execution took longer than " +
+          Math.round(EXECUTE_REQUEST_TIMEOUT_MS / 1000) +
+          "s and was stopped. Compiled languages are slower to run and to " +
+          "compile — try again, or switch to a lighter language.",
+      );
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
     inFlightRequests.delete(key);
