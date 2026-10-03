@@ -206,7 +206,30 @@ Notes:
 | `tsc --noEmit` (production) | exit 0 |
 | `verify_execution.ts` (JS problem bank, real Piston) | **893/893 passed** |
 | `codeExecution.test.ts` (jest) | **11/11 passed** |
-| `verify_languages.ts` | **5/5 passed** |
+| `verify_languages.ts` (one problem, 5 languages) | **5/5 passed** |
+| `verify_wrapper_shapes.ts` (10 shapes × 5 languages) | **50/50 passed** |
+
+See `EXECUTION_VERIFICATION_PLAN.md` for the full coverage strategy.
+
+## 4a. Fixed after the first pass
+
+A dedicated wrapper conformance suite (`verify_wrapper_shapes.ts`) then found two
+more defects, both invisible to the JavaScript-only bank:
+
+- **`detectKind` ignored the `std::` namespace.** `std::vector<std::string>` does
+  not contain the literal `vector<string`, so it fell through to the `string`
+  fallback and the generated C++ declared `string arg0` where a vector was
+  expected. Fully-qualified names are the idiomatic C++ style, so this broke the
+  most common way a user would write it. `std::vector<std::vector<int>>` was also
+  mis-detected as `int_array` rather than `int_array_2d`.
+- **The C wrapper had no `string_array` branch.** A `char**` parameter fell
+  through to the generic int branch, so the generated call was `solve(arg0)`
+  with `arg0` an int, which failed to compile.
+
+Both are fixed. Sandbox budgets are now per-language and adapt to whatever
+ceiling the deployed Piston enforces, and the response carries full per-case and
+aggregate telemetry (CPU, wall, round trip, compile time, peak memory, exit code,
+signal, sandbox status, stdout/stderr).
 
 ---
 
