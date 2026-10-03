@@ -8,6 +8,7 @@ import type { ProblemBankEntry } from '../types.js';
 
 import arraysBank from './arrays.js';
 import backtrackingBank from './backtracking.js';
+import bitBank from './bit.js';
 import bstBank from './bst.js';
 import fenwickBank from './fenwick.js';
 import graphBank from './graph.js';
@@ -27,6 +28,7 @@ import treeBank from './tree.js';
 export const BANK: ProblemBankEntry[] = [
   ...arraysBank,
   ...backtrackingBank,
+  ...bitBank,
   ...stackBank,
   ...queueBank,
   ...linkedListBank,

@@ -18558,5 +18558,485 @@
     "input": "[[3,4],[2,4],[3,6],[8,11],[8,10]]\n",
     "expectedOutput": "2\n",
     "is_public": false
+  },
+  {
+    "id": "0993faf4-c8ab-4b01-88c0-108fd6683556",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "12\n",
+    "expectedOutput": "14200\n",
+    "is_public": false
+  },
+  {
+    "id": "22642abd-9b4e-4c3e-9ab3-5273d5d5cd56",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "7\n",
+    "expectedOutput": "40\n",
+    "is_public": false
+  },
+  {
+    "id": "411026d5-81e0-44cf-a638-7994d3eaf486",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "6\n",
+    "expectedOutput": "4\n",
+    "is_public": false
+  },
+  {
+    "id": "5e058e2d-c2ae-499a-84ea-9dad39b3c4d2",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "2\n",
+    "expectedOutput": "0\n",
+    "is_public": true
+  },
+  {
+    "id": "65d16862-7e48-487b-a4c1-776a721134f3",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "4\n",
+    "expectedOutput": "2\n",
+    "is_public": true
+  },
+  {
+    "id": "729eabe2-4b72-48a5-bce9-c7b8819017dc",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "11\n",
+    "expectedOutput": "2680\n",
+    "is_public": false
+  },
+  {
+    "id": "76cbe372-6d13-4c2d-8e34-bac256fd1033",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "3\n",
+    "expectedOutput": "0\n",
+    "is_public": false
+  },
+  {
+    "id": "7b8792ec-2fbb-4426-b460-f2bf94f9c1dc",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "5\n",
+    "expectedOutput": "10\n",
+    "is_public": false
+  },
+  {
+    "id": "827a887f-d0d9-48c6-b119-cc256128125e",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "9\n",
+    "expectedOutput": "352\n",
+    "is_public": false
+  },
+  {
+    "id": "b0277ea5-6796-4df7-aff0-bef5498248ac",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "10\n",
+    "expectedOutput": "724\n",
+    "is_public": false
+  },
+  {
+    "id": "c1f32da6-fd6f-4cc2-ac17-93755cb3bb9f",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "1\n",
+    "expectedOutput": "1\n",
+    "is_public": true
+  },
+  {
+    "id": "c3a5f5e9-cdba-414c-9f0a-df3b68788b17",
+    "problem_number": 300,
+    "problem_name": "N Queens Puzzle",
+    "input": "8\n",
+    "expectedOutput": "92\n",
+    "is_public": false
+  },
+  {
+    "id": "11273fc3-a3be-49cd-92df-2e5fcd6b09a5",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "5\n2\n",
+    "expectedOutput": "[[1,2],[1,3],[1,4],[1,5],[2,3],[2,4],[2,5],[3,4],[3,5],[4,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "168f7687-3376-4b70-b598-11c828db476d",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "6\n6\n",
+    "expectedOutput": "[[1,2,3,4,5,6]]\n",
+    "is_public": false
+  },
+  {
+    "id": "2a5e71a0-f066-4097-9753-0b7919bd63ac",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "4\n3\n",
+    "expectedOutput": "[[1,2,3],[1,2,4],[1,3,4],[2,3,4]]\n",
+    "is_public": false
+  },
+  {
+    "id": "414363fc-fe52-42b6-93ee-e690628c960f",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "4\n2\n",
+    "expectedOutput": "[[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]\n",
+    "is_public": true
+  },
+  {
+    "id": "47db8753-6d48-41b8-a2c8-7dbcdfbf7eac",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "2\n1\n",
+    "expectedOutput": "[[1],[2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "65e40b44-8ba0-4d07-b3f7-bdc8eb306ddd",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "1\n1\n",
+    "expectedOutput": "[[1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "6892c1ec-742a-45f4-90c5-f10a12eaec87",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "4\n4\n",
+    "expectedOutput": "[[1,2,3,4]]\n",
+    "is_public": false
+  },
+  {
+    "id": "8f325fdc-5832-42cb-8bdc-0e4f8f2c741a",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "8\n5\n",
+    "expectedOutput": "[[1,2,3,4,5],[1,2,3,4,6],[1,2,3,4,7],[1,2,3,4,8],[1,2,3,5,6],[1,2,3,5,7],[1,2,3,5,8],[1,2,3,6,7],[1,2,3,6,8],[1,2,3,7,8],[1,2,4,5,6],[1,2,4,5,7],[1,2,4,5,8],[1,2,4,6,7],[1,2,4,6,8],[1,2,4,7,8],[1,2,5,6,7],[1,2,5,6,8],[1,2,5,7,8],[1,2,6,7,8],[1,3,4,5,6],[1,3,4,5,7],[1,3,4,5,8],[1,3,4,6,7],[1,3,4,6,8],[1,3,4,7,8],[1,3,5,6,7],[1,3,5,6,8],[1,3,5,7,8],[1,3,6,7,8],[1,4,5,6,7],[1,4,5,6,8],[1,4,5,7,8],[1,4,6,7,8],[1,5,6,7,8],[2,3,4,5,6],[2,3,4,5,7],[2,3,4,5,8],[2,3,4,6,7],[2,3,4,6,8],[2,3,4,7,8],[2,3,5,6,7],[2,3,5,6,8],[2,3,5,7,8],[2,3,6,7,8],[2,4,5,6,7],[2,4,5,6,8],[2,4,5,7,8],[2,4,6,7,8],[2,5,6,7,8],[3,4,5,6,7],[3,4,5,6,8],[3,4,5,7,8],[3,4,6,7,8],[3,5,6,7,8],[4,5,6,7,8]]\n",
+    "is_public": false
+  },
+  {
+    "id": "9e808353-0cc2-4b59-833e-f24c89a630b0",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "3\n3\n",
+    "expectedOutput": "[[1,2,3]]\n",
+    "is_public": true
+  },
+  {
+    "id": "a29112a4-2b07-4164-81ad-2cd969ebc86d",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "5\n5\n",
+    "expectedOutput": "[[1,2,3,4,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "b1fdb7cc-ab77-472f-94f5-b2d86466bab5",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "4\n1\n",
+    "expectedOutput": "[[1],[2],[3],[4]]\n",
+    "is_public": false
+  },
+  {
+    "id": "f74ae97f-dfdc-4ac7-800c-01daa43880cd",
+    "problem_number": 301,
+    "problem_name": "Combinations",
+    "input": "8\n7\n",
+    "expectedOutput": "[[1,2,3,4,5,6,7],[1,2,3,4,5,6,8],[1,2,3,4,5,7,8],[1,2,3,4,6,7,8],[1,2,3,5,6,7,8],[1,2,4,5,6,7,8],[1,3,4,5,6,7,8],[2,3,4,5,6,7,8]]\n",
+    "is_public": false
+  },
+  {
+    "id": "08324bf8-06c3-4e6c-9e74-bf1fde4734ea",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[1]\n",
+    "expectedOutput": "[[1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "0f97f3ad-6031-4c78-854a-754222874ae4",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[-1,0,3,-2]\n",
+    "expectedOutput": "[[-1,0,3,-2],[-1,0,-2,3],[-1,3,0,-2],[-1,3,-2,0],[-1,-2,0,3],[-1,-2,3,0],[0,-1,3,-2],[0,-1,-2,3],[0,3,-1,-2],[0,3,-2,-1],[0,-2,-1,3],[0,-2,3,-1],[3,-1,0,-2],[3,-1,-2,0],[3,0,-1,-2],[3,0,-2,-1],[3,-2,-1,0],[3,-2,0,-1],[-2,-1,0,3],[-2,-1,3,0],[-2,0,-1,3],[-2,0,3,-1],[-2,3,-1,0],[-2,3,0,-1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "41c1f4e7-9164-4cce-bdda-02c59138dcc1",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[-1,0,1]\n",
+    "expectedOutput": "[[-1,0,1],[-1,1,0],[0,-1,1],[0,1,-1],[1,-1,0],[1,0,-1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "4d357718-5c9a-4804-9134-1501b56d369b",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[-2,4]\n",
+    "expectedOutput": "[[-2,4],[4,-2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "56cb8793-7402-49c1-a69b-e74fcfb6d815",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[2,-1,3,2]\n",
+    "expectedOutput": "[[2,-1,3,2],[2,-1,2,3],[2,3,-1,2],[2,3,2,-1],[2,2,-1,3],[2,2,3,-1],[-1,2,3,2],[-1,2,2,3],[-1,3,2,2],[-1,3,2,2],[-1,2,2,3],[-1,2,3,2],[3,2,-1,2],[3,2,2,-1],[3,-1,2,2],[3,-1,2,2],[3,2,2,-1],[3,2,-1,2],[2,2,-1,3],[2,2,3,-1],[2,-1,2,3],[2,-1,3,2],[2,3,2,-1],[2,3,-1,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "69c9d10d-bc6b-47b0-a336-c0f5e4d34542",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[2]\n",
+    "expectedOutput": "[[2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "88b7d84b-dc68-4198-9504-ed4bcfa718d0",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[2,4]\n",
+    "expectedOutput": "[[2,4],[4,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "d6d08db7-1c8f-4448-bc0e-da98d0ca5dfc",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[1,2,3]\n",
+    "expectedOutput": "[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]\n",
+    "is_public": true
+  },
+  {
+    "id": "ed8bf792-0f0b-49f2-8550-dc1f5fa94021",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[1,2,3,4]\n",
+    "expectedOutput": "[[1,2,3,4],[1,2,4,3],[1,3,2,4],[1,3,4,2],[1,4,2,3],[1,4,3,2],[2,1,3,4],[2,1,4,3],[2,3,1,4],[2,3,4,1],[2,4,1,3],[2,4,3,1],[3,1,2,4],[3,1,4,2],[3,2,1,4],[3,2,4,1],[3,4,1,2],[3,4,2,1],[4,1,2,3],[4,1,3,2],[4,2,1,3],[4,2,3,1],[4,3,1,2],[4,3,2,1]]\n",
+    "is_public": false
+  },
+  {
+    "id": "f6f29f6a-c898-4a6c-abd0-a6b03cd252c7",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[0,1]\n",
+    "expectedOutput": "[[0,1],[1,0]]\n",
+    "is_public": true
+  },
+  {
+    "id": "fc083134-11e1-4df7-aca3-7a05a1831b76",
+    "problem_number": 302,
+    "problem_name": "Permutations",
+    "input": "[2,0,2,0]\n",
+    "expectedOutput": "[[2,0,2,0],[2,0,0,2],[2,2,0,0],[2,2,0,0],[2,0,0,2],[2,0,2,0],[0,2,2,0],[0,2,0,2],[0,2,2,0],[0,2,0,2],[0,0,2,2],[0,0,2,2],[2,2,0,0],[2,2,0,0],[2,0,2,0],[2,0,0,2],[2,0,2,0],[2,0,0,2],[0,2,0,2],[0,2,2,0],[0,0,2,2],[0,0,2,2],[0,2,2,0],[0,2,0,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "03885357-c658-4b8f-89e3-4fac5b09338b",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[1,4,4]\n4\n",
+    "expectedOutput": "[[1,1,1,1],[4],[4]]\n",
+    "is_public": false
+  },
+  {
+    "id": "234042ae-ed45-466b-baa2-79da6e52fac7",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[2,3,5]\n8\n",
+    "expectedOutput": "[[2,2,2,2],[2,3,3],[3,5]]\n",
+    "is_public": true
+  },
+  {
+    "id": "2444c760-9297-4240-bfa5-3c7872efc678",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[2,3]\n9\n",
+    "expectedOutput": "[[2,2,2,3],[3,3,3]]\n",
+    "is_public": false
+  },
+  {
+    "id": "2aeb62f8-1123-4fb2-96a0-80f5cacdfb29",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[5,4,5,3,3]\n9\n",
+    "expectedOutput": "[[3,3,3],[3,3,3],[3,3,3],[3,3,3],[4,5],[4,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "30860d26-fd4e-485d-bd74-140bb55a06a5",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[2,3,6,7]\n7\n",
+    "expectedOutput": "[[2,2,3],[7]]\n",
+    "is_public": true
+  },
+  {
+    "id": "465b517c-a7ef-4979-8f75-1fc94afa9f7b",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[2]\n4\n",
+    "expectedOutput": "[[2,2]]\n",
+    "is_public": false
+  },
+  {
+    "id": "4e0be6da-e4aa-47a3-baa7-cf84d5170b3b",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[5]\n1\n",
+    "expectedOutput": "[]\n",
+    "is_public": false
+  },
+  {
+    "id": "58829ce0-3f50-4721-ab32-d23df280cfa2",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[3]\n2\n",
+    "expectedOutput": "[]\n",
+    "is_public": false
+  },
+  {
+    "id": "60231258-a153-4ab9-9436-5b47cde68282",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[5,2,5,1]\n11\n",
+    "expectedOutput": "[[1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,2],[1,1,1,1,1,1,1,2,2],[1,1,1,1,1,1,5],[1,1,1,1,1,1,5],[1,1,1,1,1,2,2,2],[1,1,1,1,2,5],[1,1,1,1,2,5],[1,1,1,2,2,2,2],[1,1,2,2,5],[1,1,2,2,5],[1,2,2,2,2,2],[1,5,5],[1,5,5],[1,5,5],[2,2,2,5],[2,2,2,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "67ba128b-c45c-4795-a3b3-30257bcd9d18",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[1,6,3]\n10\n",
+    "expectedOutput": "[[1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,3],[1,1,1,1,3,3],[1,1,1,1,6],[1,3,3,3],[1,3,6]]\n",
+    "is_public": false
+  },
+  {
+    "id": "705d7291-378c-4de9-9894-6b22b05a61ce",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[2]\n1\n",
+    "expectedOutput": "[]\n",
+    "is_public": true
+  },
+  {
+    "id": "8158bc81-4a17-4099-af43-65127b470926",
+    "problem_number": 303,
+    "problem_name": "Combination Sum",
+    "input": "[3,4,5]\n9\n",
+    "expectedOutput": "[[3,3,3],[4,5]]\n",
+    "is_public": false
+  },
+  {
+    "id": "2a1fae59-6740-42c9-b6fd-e61f06db5d1d",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\"]]\n\"A\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "3c29c769-b508-470f-b751-294e75ae77b6",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"A\",\"A\"],[\"B\",\"C\",\"B\"]]\n\"BBC\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "3f5358ff-a9cb-4d5d-8cab-758ab7073559",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"B\",\"B\",\"B\"],[\"B\",\"B\",\"B\"]]\n\"AB\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "43c5da60-b0e6-4fff-8043-d4a494bd8d02",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"B\"],[\"C\",\"D\"]]\n\"BA\"\n",
+    "expectedOutput": "true\n",
+    "is_public": true
+  },
+  {
+    "id": "55c62ed9-8df5-41b8-b88d-a282207e9846",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"B\",\"B\",\"A\"]]\n\"BBA\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "611613c5-c6a6-406c-9eba-f26a51b02589",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"B\"],[\"C\",\"D\"]]\n\"DX\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "7eb08727-a44e-4055-b69f-04a7d01952fa",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"B\"]]\n\"AB\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "d56a9fb3-a5cf-4430-ac3e-1e5606657d26",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"B\"],[\"C\",\"D\"]]\n\"AB\"\n",
+    "expectedOutput": "true\n",
+    "is_public": true
+  },
+  {
+    "id": "da04db7c-442e-496e-a120-d7ed3be37922",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"C\",\"B\",\"A\"],[\"A\",\"C\",\"B\"]]\n\"A\"\n",
+    "expectedOutput": "true\n",
+    "is_public": false
+  },
+  {
+    "id": "e0fd353a-a575-44cd-a7b3-39ff01b60f95",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\"]]\n\"CCC\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "ea069260-a054-412c-ac97-d460b5c57c2f",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"C\",\"A\",\"B\"]]\n\"AA\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
+  },
+  {
+    "id": "ef716f72-1277-4c95-bf0d-0aee45a2a4bd",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"A\",\"B\"],[\"C\",\"D\"]]\n\"AD\"\n",
+    "expectedOutput": "false\n",
+    "is_public": true
+  },
+  {
+    "id": "fefd0034-1424-4771-8dd3-cd3f4ef11f33",
+    "problem_number": 304,
+    "problem_name": "Word Search in Grid",
+    "input": "[[\"B\",\"C\",\"A\"],[\"B\",\"B\",\"B\"]]\n\"BCC\"\n",
+    "expectedOutput": "false\n",
+    "is_public": false
   }
 ]
