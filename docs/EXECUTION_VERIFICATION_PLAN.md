@@ -1,6 +1,91 @@
 # Plan: verifying every language executes every problem correctly
 
-Status: the tooling for stages 1–3 exists and runs today. Stages 4–5 need work.
+Status: stages 1–3 exist and run today. Stages 4–5 need work. **Phase 0 and 1a of
+the remediation plan below are now done.**
+
+---
+
+# Remediation log — what changed to make submissions actually complete
+
+This section records fixes made after the plan below was written. It exists
+because the fixes were driven by measurement, and several contradicted the
+original assumptions.
+
+## Done: client request budget (was 30s, now 120s)
+
+`src/features/terminal/api.ts` aborted at 30s. Measured through this API, a
+13-case C++ submission legitimately needs ~23s and Java ~39s, so the browser
+gave up **after the server had already computed the correct answer**. The abort
+now also raises a distinct "took longer than 120s" error rather than a generic
+network failure, so the cause is visible.
+
+## Done: test cases run concurrently (with a per-language bound)
+
+Test cases used to run one at a time, recompiling identical code per case.
+Measured on Two Sum (13 cases), end to end through `/api/execute`:
+
+| | before | after |
+|---|---|---|
+| javascript | 3.4s | 3.1–3.4s |
+| cpp | 51.4s | 18–23s |
+| java | 31s | 39s (see below) |
+
+Concurrency is **4 for javascript/python/c/cpp and 2 for java**. Not a single
+global number: one Java case measured 2930ms wall but 8274ms CPU — the JVM
+burns roughly 2.8 cores during startup. Running four at once made them contend,
+CPU time crossed `run_cpu_time`, cases were SIGKILLed, and a 13-case submission
+failed at 3/13 — *worse* than the serial version it replaced.
+
+The short-circuit semantics are preserved exactly: the original loop stopped at
+the first failure (SUBMIT) or first compile error, and the concurrent version
+re-derives the same stopping point after all cases return, so the response is
+byte-identical. This matters because 893 bank assertions depend on it.
+
+## Done: three more P0-class execution bugs
+
+All found by end-to-end testing that the per-case suites could not reach,
+because those suites call the wrapper directly and never go through
+`executeCode`:
+
+1. **`totalPassed` was incremented twice** — once in the worker, once in the
+   aggregation loop. A 13-case all-pass submission reported `26/13` and status
+   `FAILED`. Every user submitting correct JavaScript/C++ saw a failure.
+2. **Java emitted `class Solution` before `public class Main`.** Java compiles a
+   file whose public class matches the filename but runs the **first** class in
+   source-launcher mode, so it launched `Solution` and died with
+   `can't find main(String[]) method in class: Solution`. Affected all 187 Java
+   snippets that stored a wrapper.
+3. **Stored placeholder wrappers took precedence over the working generated
+   ones.** The seeder writes `// Wrapper` (90 of 194 JavaScript snippets) and
+   `public class Main { /* Test wrapper */ }` (all 187 Java). The old guard
+   rejected only the literal `"TODO"`. Java compiled cleanly, ran an empty
+   `main`, printed nothing, and failed on empty output **with no error message**
+   — the hardest kind of failure to diagnose. The guard now requires a wrapper
+   to actually invoke the solution *and* emit output.
+
+Also raised Java's `runTimeoutMs` from 8000 to 20000: at 8s a concurrent JVM
+crossed the wall clock and was killed with "Time limit exceeded" **while still
+starting up**, which has nothing to do with the user's code.
+
+## Still required from you (ops, not code)
+
+The Piston CPU ceiling is **server-side** and was raised only in the local
+container. Production will still cap `run_cpu_time` at 3000ms, which the JVM
+exceeds on startup alone:
+
+```
+docker run -e PISTON_RUN_CPU_TIME=20000 -e PISTON_RUN_TIMEOUT=10000 ...
+# or per-language, leaving other runtimes untouched:
+docker run -e PISTON_LIMIT_OVERRIDES='{"java":{"run_cpu_time":20000,"run_timeout":10000}}' ...
+```
+
+The adaptive clamp keeps Java *working* without this (it learns the ceiling and
+retries), but Java will be slow and near the limit. A `docker rm` also discards
+the local patch, so it will silently revert.
+
+---
+
+# Plan: verifying every language executes every problem correctly
 
 ## Why the current coverage is not enough
 

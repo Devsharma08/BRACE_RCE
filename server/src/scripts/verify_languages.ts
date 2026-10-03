@@ -16,7 +16,7 @@
  *     that shows up directly in the user's response time.
  */
 import 'dotenv/config';
-import { prepareFinalCode } from '../services/codeExecution.js';
+import { prepareFinalCode, SANDBOX_BUDGETS, fireOnPiston } from '../services/codeExecution.js';
 
 const PISTON = process.env.PISTON_URL ?? 'http://localhost:2000';
 
@@ -140,38 +140,33 @@ function blank(lang: string, note: string, reqBytes: number, codeBytes: number, 
 async function runOne(lang: string): Promise<Row> {
   // EXACTLY the payload production builds.
   const finalCode = prepareFinalCode(lang as any, SRC[lang], SNIPPET[lang] as any);
+  const budget = SANDBOX_BUDGETS[lang as keyof typeof SANDBOX_BUDGETS];
   const payload = {
     language: LANG[lang],
     version: '*',
     files: [{ name: FILE_NAME[lang], content: finalCode }],
     stdin: STDIN,
-    compile_timeout: 5000,
-    run_timeout: 3000,
-    compile_memory_limit: 268435456,
-    run_memory_limit: 268435456,
+    // Production budgets, not local guesses. Hardcoding these made the harness
+    // disagree with the product: it ran Java under run_timeout=3000 and sent no
+    // run_cpu_time at all, so it reported failures that cannot happen in
+    // production and could not reproduce the ones that do.
+    compile_timeout: budget.compileTimeoutMs,
+    run_timeout: budget.runTimeoutMs,
+    run_cpu_time: budget.runCpuTimeMs,
+    compile_memory_limit: budget.compileMemoryLimitBytes,
+    run_memory_limit: budget.runMemoryLimitBytes,
   };
   const body = JSON.stringify(payload);
 
   const t0 = performance.now();
-  let res: Response;
-  try {
-    res = await fetch(`${PISTON}/api/v2/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      signal: AbortSignal.timeout(20000),
-    });
-  } catch (e) {
-    return blank(lang, `fetch failed: ${String(e).slice(0, 60)}`, body.length, finalCode.length, performance.now() - t0);
-  }
-  const wallMs = performance.now() - t0;
-
   let j: any;
   try {
-    j = await res.json();
-  } catch {
-    return blank(lang, `non-JSON response (HTTP ${res.status})`, body.length, finalCode.length, wallMs);
+    // Same request path as production, including the adaptive ceiling clamp.
+    j = await fireOnPiston(lang as any, payload as Record<string, unknown>);
+  } catch (e) {
+    return blank(lang, String(e).slice(0, 70), body.length, finalCode.length, performance.now() - t0);
   }
+  const wallMs = performance.now() - t0;
 
   const compileMs = Number(j?.compile?.time ?? 0) * 1000;
   const runMs = Number(j?.run?.time ?? 0) * 1000;

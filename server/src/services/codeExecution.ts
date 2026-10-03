@@ -48,7 +48,12 @@ type SandboxBudget = {
 
 const MB = 1024 * 1024;
 
-const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
+// Exported so the verification harnesses build byte-identical payloads to the
+// ones production sends. `verify_languages.ts` previously hardcoded
+// 5000/3000 with no `run_cpu_time`, which meant it was testing Java under a
+// budget the product no longer uses — it reported failures that could not occur
+// in production and, worse, could not reproduce production ones.
+export const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
   javascript: {
     compileTimeoutMs: 5000,
     runTimeoutMs: 3000,
@@ -79,7 +84,19 @@ const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
   },
   java: {
     compileTimeoutMs: 15000,
-    runTimeoutMs: 8000,
+    // Generous, because these are wall-clock ceilings and JVM startup is the
+    // cost being measured. Measured through the API: one trivial Two Sum case
+    // runs ~2.9s of wall time when it has the box to itself and ~7.5s when two
+    // JVMs share it. At the old 8000ms a 13-case submission died mid-run with
+    // "Time limit exceeded (wall clock)" and a SIGKILL — the JVM was killed
+    // while still starting up, not because the user's code was slow.
+    //
+    // This is a sandbox *startup* budget, not a limit on the submitted code: the
+    // user's method itself runs in single-digit milliseconds, as `avgCpu` of
+    // ~10ms on the C++/JS runs shows. Loosening it lets a correct submission
+    // finish; it cannot let an infinite loop run much longer, because that is
+    // bounded by runCpuTimeMs and, in practice, by the client's own budget.
+    runTimeoutMs: 20000,
     // The JVM needs seconds of CPU across GC/JIT threads for a trivial program.
     runCpuTimeMs: 20000,
     compileMemoryLimitBytes: 768 * MB,
@@ -123,6 +140,67 @@ function parseCapFromError(message: string): { key: BudgetKey; cap: number } | n
   return { key, cap };
 }
 
+/**
+ * Fire one payload at Piston, learning and applying deployment ceilings.
+ *
+ * Extracted from `executeCode` so the verification harnesses exercise the same
+ * request path as production. The harnesses previously sent their own limits and
+ * had no clamping at all, so they disagreed with the product in both directions:
+ * they reported failures the product cannot have, and could not reproduce the
+ * ones it does.
+ *
+ * Returns the parsed Piston body. Throws with an actionable message when the
+ * deployment genuinely cannot serve the request.
+ */
+export async function fireOnPiston(
+  lang: SupportedLanguage,
+  payload: Record<string, unknown>,
+): Promise<any> {
+  // One clamped retry is enough; two would just hammer Piston.
+  let retriedWithCap = false;
+
+  try {
+    applyLearnedCaps(lang, payload);
+    return await pistonBreaker.fire(payload);
+  } catch (apiError) {
+    const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
+
+    // A rejection because a requested limit is above the deployment ceiling is
+    // recoverable: learn the ceiling and retry once, clamped.
+    const parsed = parseCapFromError(apiErrMsg);
+    if (parsed && !retriedWithCap) {
+      retriedWithCap = true;
+      const cacheKey = capCacheKey(lang, parsed.key);
+      await withCapLearnLock(lang, async () => {
+        if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
+          learnedCaps.set(cacheKey, parsed.cap);
+          console.warn(
+            `[piston] ${lang}: clamping ${parsed.key} to ${parsed.cap}ms ` +
+            `(learned from Piston; deployment limit is below what we request)`,
+          );
+        }
+        applyLearnedCaps(lang, payload);
+      });
+      try {
+        const clamped: any = await pistonBreaker.fire(payload);
+        if (clamped && !clamped.run) {
+          throw new Error(`Piston rejected the clamped request: ${JSON.stringify(clamped)}`);
+        }
+        return clamped;
+      } catch (retryError) {
+        const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+        throw new Error(`Code execution is misconfigured for ${lang}: ${retryMsg}`);
+      }
+    }
+
+    throw new Error(
+      /cannot exceed the configured limit/i.test(apiErrMsg)
+        ? `Code execution is misconfigured for ${lang}: ${apiErrMsg}`
+        : "Code execution service unavailable",
+    );
+  }
+}
+
 /** Apply any ceiling Piston has already taught us for this language. */
 function applyLearnedCaps(
   lang: SupportedLanguage,
@@ -135,6 +213,60 @@ function applyLearnedCaps(
       if (Number.isFinite(current) && current > cap) payload[key] = cap;
     }
   }
+}
+
+/**
+ * Serialise the "learn a ceiling from Piston and retry" step per language.
+ *
+ * Without this, every in-flight case of a first-ever Java submission hits the
+ * same rejection at the same moment and each one pays for its own clamp+retry.
+ * With it, one case probes and updates `learnedCaps`, and the rest wait and then
+ * simply apply the ceiling they now know about.
+ */
+const capLearnLocks = new Map<string, Promise<void>>();
+
+async function withCapLearnLock<T>(lang: SupportedLanguage, fn: () => Promise<T>): Promise<T> {
+  const key = String(lang);
+  const previous = capLearnLocks.get(key) ?? Promise.resolve();
+  // Run our work, then release the lock regardless of the outcome, so a
+  // rejection in one case cannot wedge the queue for every later submission.
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  capLearnLocks.set(key, previous.then(() => gate));
+  await previous.catch(() => undefined);
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (capLearnLocks.get(key) === gate) capLearnLocks.delete(key);
+  }
+}
+
+/**
+ * `items.map(worker)` with at most `limit` workers in flight, preserving order.
+ *
+ * Used to run a submission's test cases side by side. The bound matters: an
+ * unbounded map would fire one sandbox job per case at once, and Piston is
+ * shared with every other user, so a single 15-case submission could saturate
+ * it and slow down unrelated traffic.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const width = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(
+    Array.from({ length: width }, async () => {
+      while (cursor < items.length) {
+        const index = cursor++;
+        results[index] = await worker(items[index]!, index);
+      }
+    }),
+  );
+  return results;
 }
 
 /**
@@ -313,6 +445,51 @@ export function prepareFinalCode(
   snippet?: { code?: string; wrapperCode?: string | null }
 ): string {
   let wrapperCode = snippet?.wrapperCode || "";
+
+  /**
+   * Is this stored wrapper a placeholder rather than a real driver?
+   *
+   * The seeder writes wrappers for problems it had no driver for. Two shapes
+   * exist in the live database — a comment-only one (`// Wrapper`, 90 of the
+   * 194 JavaScript snippets) and an empty-bodied one that is otherwise valid
+   * code (`public class Main { public static void main(String[] a) {
+   * // Test wrapper } }`, all 187 Java snippets). The old guard rejected only
+   * the literal "TODO", so these placeholders were accepted and took precedence
+   * over the generated driver that actually works. Java compiled cleanly, ran
+   * an empty `main`, printed nothing, and the submission failed on empty output
+   * with no error message at all — the worst kind of failure, because nothing
+   * looks wrong.
+   *
+   * A wrapper is only usable if it does real work: it has to invoke the
+   * solution and print something. Anything else is a placeholder, and the
+   * generated reflection-based driver is used instead — which is exactly what
+   * already happens when no wrapper is stored.
+   */
+  const isPlaceholderWrapper = (w: string): boolean => {
+    if (!w) return true;
+    if (w.includes("TODO")) return true;
+
+    // Comment-only: nothing left once comments are stripped.
+    const withoutComments = w
+      .replace(/\/\*[\s\S]*?\*\//g, "")  // block comments
+      .replace(/\/\/[^\n]*/g, "")       // line comments
+      .replace(/^\s*#.*$/gm, "")        // python/shell-style comments
+      .trim();
+    if (withoutComments.length === 0) return true;
+
+    // Structurally real, but does it invoke the solution and print a result?
+    // A wrapper with an empty main / empty exported function drives nothing.
+    const invokesSolution =
+      /\bSolution\b|module\.exports|require\(|\bsolve\b|\btwoSum\b|\bSolution\s*\(/i.test(w) ||
+      /new\s+[A-Z]\w*\s*\(|Class\.forName|getMethod|getDeclaredMethod/i.test(w);
+    const emitsOutput =
+      /System\.out|print|console\.log|stdout|puts|cout|fwrite/i.test(w) ||
+      /=>\s*\S|return\s+\S/.test(withoutComments);
+
+    return !(invokesSolution && emitsOutput);
+  };
+
+  const storedWrapperIsUsable = !isPlaceholderWrapper(wrapperCode);
 
   // ═══════════════════════════════════════════════════════════
   //  SHARED TYPE DETECTION UTILITIES
@@ -738,8 +915,17 @@ ${pyWrapper}`;
       .replace(/^import\s+[\w.*]+;\s*/gm, "")
       .trim();
 
-    if (wrapperCode && !wrapperCode.includes("TODO")) return `${sanitizedSource}
-${wrapperCode}`;
+    // Main must come FIRST in the file.
+    //
+    // Java compiles a file whose public class matches its filename, but it does
+    // not pick the entry point — `java Main.java` in source-launcher mode runs
+    // the FIRST class in the file. Emitting the user's `class Solution` before
+    // `public class Main` therefore launched `Solution` and failed with
+    // "can't find main(String[]) method in class: Solution" for every problem
+    // that had a stored wrapper (187 of them). Declaration order does not
+    // affect compilation, so hoisting `Main` is safe.
+    if (storedWrapperIsUsable) return `${wrapperCode}
+${sanitizedSource}`;
 
     const javaReflectionMain = `import java.util.*;
 import java.io.*;
@@ -1030,7 +1216,7 @@ class TreeNode {
   //  4. C++
   // ═══════════════════════════════════════════════════════════
   if (executionLanguage === "cpp") {
-    if (wrapperCode && !wrapperCode.includes("TODO") && !wrapperCode.includes("return 0;")) return `${sourceCode}
+    if (storedWrapperIsUsable && !wrapperCode.includes("return 0;")) return `${sourceCode}
 ${wrapperCode}`;
 
     const sig = parseCppJavaSig(snippet?.code || sourceCode);
@@ -1176,7 +1362,7 @@ void printTreeNode(TreeNode* root){if(!root){cout<<"[]"<<endl;return;}cout<<"[";
   //  5. C
   // ═══════════════════════════════════════════════════════════
   if (executionLanguage === "c") {
-    if (wrapperCode && !wrapperCode.includes("TODO") && !wrapperCode.includes("return 0;")) return `${wrapperCode}\n${sourceCode}`;
+    if (storedWrapperIsUsable && !wrapperCode.includes("return 0;")) return `${wrapperCode}\n${sourceCode}`;
 
     const cHeaders = `#include <stdio.h>
 #include <stdlib.h>
@@ -1407,11 +1593,34 @@ export const executeCode = async (req: Request, res: Response) => {
     const budget = SANDBOX_BUDGETS[executionLanguage];
     const submissionStart = performance.now();
 
-    for (const [index, currentCase] of casesToRun.entries()) {
+    /**
+     * One test case, executed on its own.
+     *
+     * Returns a self-contained outcome instead of writing to the shared
+     * accumulators, because cases now run concurrently and the totals have to be
+     * derived only from the cases we actually keep (see `keptThrough`) to match
+     * the original short-circuit behaviour exactly.
+     */
+    type CaseOutcome = {
+      index: number;
+      detail: ExecutionDetail;
+      passed: boolean;
+      compileFailed: boolean;
+      runtimeMs: number;
+      memoryKb: number;
+      cpuMs: number;
+      compileMs: number;
+      compileMemoryKb: number;
+    };
+
+    const runOneCase = async (
+      currentCase: TestCaseRecord,
+      index: number,
+    ): Promise<CaseOutcome> => {
       const testCaseInput = currentCase.input || "";
       const startTime = performance.now();
       // One clamped retry per case is enough; two would just hammer Piston.
-      let retriedWithCap = false;
+      // Clamp/retry lives in fireOnPiston so the verification harnesses share it.
 
       const payload = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
@@ -1435,187 +1644,201 @@ export const executeCode = async (req: Request, res: Response) => {
 
       let data: any;
 
+      // Clamps anything we already know this deployment will not accept, learns
+      // a ceiling from a rejection and retries once. Shared with the verification
+      // harnesses so they exercise the identical request path.
       try {
-        // Clamp anything we already know this deployment will not accept, then
-        // execute with circuit breaker protection.
-        applyLearnedCaps(executionLanguage, payload);
-        data = await pistonBreaker.fire(payload);
-
+        data = await fireOnPiston(executionLanguage, payload as Record<string, unknown>);
         if (data.message && data.message.includes("runtime is unknown")) {
           throw new Error("Piston runtime unknown: " + data.message);
         }
         if (!data.run) {
           throw new Error("Piston invalid output format: " + JSON.stringify(data));
         }
-
       } catch (apiError) {
         const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
         console.error("Piston execution failed:", apiErrMsg);
-
-        // A rejection because a requested limit is above the deployment ceiling
-        // is recoverable: learn the ceiling and retry once, clamped. Without
-        // this the whole language is dead on any Piston whose limits differ
-        // from ours, and the user just sees a generic 500.
-        const parsed = parseCapFromError(apiErrMsg);
-        if (parsed && !retriedWithCap) {
-          retriedWithCap = true;
-          const cacheKey = capCacheKey(executionLanguage, parsed.key);
-          const current = Number((payload as Record<string, unknown>)[parsed.key]);
-          if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
-            learnedCaps.set(cacheKey, parsed.cap);
-            console.warn(
-              `[piston] ${executionLanguage}: clamping ${parsed.key} to ${parsed.cap}ms ` +
-              `(learned from Piston; deployment limit is below what we request)`,
-            );
-          }
-          applyLearnedCaps(executionLanguage, payload);
-          try {
-            data = await pistonBreaker.fire(payload);
-            if (data && !data.run) {
-              throw new Error(`Piston rejected the clamped request: ${JSON.stringify(data)}`);
-            }
-          } catch (retryError) {
-            const retryMsg =
-              retryError instanceof Error ? retryError.message : String(retryError);
-            console.error("Piston retry after clamp failed:", retryMsg);
-            // Surface the real reason. A generic "service unavailable" for what
-            // is actually a misconfiguration makes this undiagnosable in
-            // production, which is how the Java CPU-limit bug stayed hidden.
-            throw new Error(
-              `Code execution is misconfigured for ${executionLanguage}: ${retryMsg}`,
-            );
-          }
-        } else {
-          // Circuit breaker open or Piston genuinely unavailable.
-          throw new Error(
-            /cannot exceed the configured limit/i.test(apiErrMsg)
-              ? `Code execution is misconfigured for ${executionLanguage}: ${apiErrMsg}`
-              : "Code execution service unavailable",
-          );
-        }
+        throw new Error(apiErrMsg);
       }
 
-      if (data) {
-        const endTime = performance.now();
-        let caseRuntimeMs = Math.round(endTime - startTime);
-        let caseMemoryKb = 0;
-        let caseCpuMs = 0;
-        let caseWallMs = Math.round(endTime - startTime);
+      if (!data) {
+        // Defensive: the clamp path above always assigns `data` or throws, so
+        // this should be unreachable. Reported rather than swallowed so a
+        // regression here is visible instead of silently dropping a test case.
+        return {
+          index,
+          passed: false,
+          compileFailed: true,
+          runtimeMs: Math.round(performance.now() - startTime),
+          memoryKb: 0,
+          cpuMs: 0,
+          compileMs: 0,
+          compileMemoryKb: 0,
+          detail: {
+            testCaseIndex: index,
+            output: "",
+            expectedOutput: currentCase.expectedOutput,
+            passed: false,
+            runtimeError: "Code execution service unavailable",
+            metrics: {
+              durationMs: Math.round(performance.now() - startTime),
+              memoryKb: 0,
+              cpuMs: 0,
+              wallMs: 0,
+              compileMs: 0,
+              compileMemoryKb: 0,
+              roundTripMs: Math.round(performance.now() - startTime),
+              exitCode: null,
+              signal: null,
+              sandboxStatus: null,
+              sandboxMessage: null,
+              outputTruncated: false,
+              stdout: "",
+              stderr: "",
+              compileOutput: "",
+            },
+          },
+        };
+      }
 
-        if (data.run) {
-          // Piston reports `cpu_time` (ms) and `wall_time` (ms), not `time`
-          // (seconds). The old `data.run.time` check therefore never matched,
-          // so every submission reported the HTTP round trip as its runtime,
-          // network and sandbox startup included. Prefer real CPU time, fall
-          // back to wall time, and only then to the round trip.
-          const cpuMs = Number(data.run.cpu_time);
-          const wallMs = Number(data.run.wall_time);
-          if (Number.isFinite(cpuMs) && cpuMs > 0) {
-            caseRuntimeMs = Math.round(cpuMs);
-            caseCpuMs = Math.round(cpuMs);
-          } else if (Number.isFinite(wallMs) && wallMs > 0) {
-            caseRuntimeMs = Math.round(wallMs);
-            caseWallMs = Math.round(wallMs);
-          } else if (typeof data.run.time === "number") {
-            caseRuntimeMs = Math.round(data.run.time * 1000);
-          } else if (typeof data.run.time === "string") {
-            caseRuntimeMs = Math.round(parseFloat(data.run.time) * 1000);
-          }
+      const endTime = performance.now();
+      let caseRuntimeMs = Math.round(endTime - startTime);
+      let caseMemoryKb = 0;
+      let caseCpuMs = 0;
+      let caseWallMs = Math.round(endTime - startTime);
 
-          if (typeof data.run.memory === "number") {
-            caseMemoryKb = Math.round(data.run.memory / 1024);
-          } else if (typeof data.run.memory === "string") {
-            caseMemoryKb = Math.round(parseFloat(data.run.memory) / 1024);
-          }
-
+      if (data.run) {
+        // Piston reports `cpu_time` (ms) and `wall_time` (ms), not `time`
+        // (seconds). The old `data.run.time` check therefore never matched,
+        // so every submission reported the HTTP round trip as its runtime,
+        // network and sandbox startup included. Prefer real CPU time, fall
+        // back to wall time, and only then to the round trip.
+        const cpuMs = Number(data.run.cpu_time);
+        const wallMs = Number(data.run.wall_time);
+        if (Number.isFinite(cpuMs) && cpuMs > 0) {
+          caseRuntimeMs = Math.round(cpuMs);
+          caseCpuMs = Math.round(cpuMs);
+        } else if (Number.isFinite(wallMs) && wallMs > 0) {
+          caseRuntimeMs = Math.round(wallMs);
+          caseWallMs = Math.round(wallMs);
+        } else if (typeof data.run.time === "number") {
+          caseRuntimeMs = Math.round(data.run.time * 1000);
+        } else if (typeof data.run.time === "string") {
+          caseRuntimeMs = Math.round(parseFloat(data.run.time) * 1000);
         }
-        // Compile stage cost, which dominates every compiled language.
-        const caseCompileMs = Math.round(Number(data.compile?.time ?? 0) * 1000);
-        const caseCompileMemoryKb = Math.round(Number(data.compile?.memory ?? 0) / 1024);
 
-        // One closure so all three push sites (compile failure, normal, early
-        // exit) emit an identical shape and none can drift from the type.
-        const buildMetrics = () => ({
-          durationMs: caseRuntimeMs,
+        if (typeof data.run.memory === "number") {
+          caseMemoryKb = Math.round(data.run.memory / 1024);
+        } else if (typeof data.run.memory === "string") {
+          caseMemoryKb = Math.round(parseFloat(data.run.memory) / 1024);
+        }
+
+      }
+      // Compile stage cost, which dominates every compiled language.
+      const caseCompileMs = Math.round(Number(data.compile?.time ?? 0) * 1000);
+      const caseCompileMemoryKb = Math.round(Number(data.compile?.memory ?? 0) / 1024);
+
+      // One closure so all three push sites (compile failure, normal, early
+      // exit) emit an identical shape and none can drift from the type.
+      const buildMetrics = () => ({
+        durationMs: caseRuntimeMs,
+        memoryKb: caseMemoryKb,
+        cpuMs: caseCpuMs,
+        wallMs: caseWallMs,
+        compileMs: caseCompileMs,
+        compileMemoryKb: caseCompileMemoryKb,
+        roundTripMs: Math.round(endTime - startTime),
+        exitCode: data?.run?.code ?? null,
+        signal: data?.run?.signal ?? null,
+        sandboxStatus: data?.run?.status ?? null,
+        sandboxMessage: data?.run?.message ?? null,
+        outputTruncated: Boolean(data?.run?.output && data.run.output.length > 64 * 1024),
+        stdout: String(data?.run?.stdout ?? "").substring(0, 64 * 1024),
+        stderr: String(data?.run?.stderr ?? "").substring(0, 64 * 1024),
+        compileOutput: String(data?.compile?.output ?? "").substring(0, 64 * 1024),
+      });
+
+      const MAX_OUTPUT_BYTES = 64*1024;
+      let runOutput = data.run?.output || "";
+      if(runOutput.length > MAX_OUTPUT_BYTES){
+        runOutput = runOutput.substring(0, MAX_OUTPUT_BYTES) + "\n... [OUTPUT TRUNCATED]";
+      }
+      let compileOutput = (data.compile?.output || "").substring(0, MAX_OUTPUT_BYTES);
+
+      if (data.compile && data.compile.code !== 0) {
+        // Returned rather than `break`-ing: the caller decides where the
+        // submission stops, so that short-circuiting stays in one place now
+        // that cases are dispatched concurrently.
+        return {
+          index,
+          passed: false,
+          compileFailed: true,
+          runtimeMs: caseRuntimeMs,
           memoryKb: caseMemoryKb,
           cpuMs: caseCpuMs,
-          wallMs: caseWallMs,
           compileMs: caseCompileMs,
           compileMemoryKb: caseCompileMemoryKb,
-          roundTripMs: Math.round(endTime - startTime),
-          exitCode: data?.run?.code ?? null,
-          signal: data?.run?.signal ?? null,
-          sandboxStatus: data?.run?.status ?? null,
-          sandboxMessage: data?.run?.message ?? null,
-          outputTruncated: Boolean(data?.run?.output && data.run.output.length > 64 * 1024),
-          stdout: String(data?.run?.stdout ?? "").substring(0, 64 * 1024),
-          stderr: String(data?.run?.stderr ?? "").substring(0, 64 * 1024),
-          compileOutput: String(data?.compile?.output ?? "").substring(0, 64 * 1024),
-        });
-
-        totalRuntimeMs += caseRuntimeMs;
-        if (caseMemoryKb > 0) totalMemoryKb += caseMemoryKb;
-        if (caseRuntimeMs > maxRuntimeMs) maxRuntimeMs = caseRuntimeMs;
-        if (caseMemoryKb > maxMemoryKb) maxMemoryKb = caseMemoryKb;
-        totalCpuMs += caseCpuMs;
-        if (caseCompileMs > 0) totalCompileMs += caseCompileMs;
-        if (caseCompileMemoryKb > maxCompileMemoryKb) maxCompileMemoryKb = caseCompileMemoryKb;
-        runCount++;
-        const MAX_OUTPUT_BYTES = 64*1024;
-        let runOutput = data.run?.output || "";
-        if(runOutput.length > MAX_OUTPUT_BYTES){
-          runOutput = runOutput.substring(0, MAX_OUTPUT_BYTES) + "\n... [OUTPUT TRUNCATED]";
-        }
-        let compileOutput = (data.compile?.output || "").substring(0, MAX_OUTPUT_BYTES);
-
-        if (data.compile && data.compile.code !== 0) {
-          results.push({
+          detail: {
             testCaseIndex: index,
             output: "",
             expectedOutput: currentCase.expectedOutput,
             passed: false,
             runtimeError: sanitizeErrorMessage(compileOutput) || "Compilation Error",
             metrics: buildMetrics(),
-          });
-          break;
-        }
+          },
+        };
+      }
 
-        const actualOutput = normalize(data.run?.stdout || runOutput);
-        const expectedOutput = normalize(currentCase.expectedOutput);
+      const actualOutput = normalize(data.run?.stdout || runOutput);
+      const expectedOutput = normalize(currentCase.expectedOutput);
 
-        // Promote the exit-code/stderr computation so `passed` below can use it.
-        const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
+      // Promote the exit-code/stderr computation so `passed` below can use it.
+      const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
 
-        // Custom-input runs have no expected output, so never auto-pass them —
-        // a clean run (exit code 0) is the best we can assert. This prevents a
-        // user from submitting custom input in SUBMIT mode to fake a PASS.
-        const isCustomInputRun = userCustomInput.length > 0 && expectedOutput === "";
-        const passed = expectedOutput !== ""
-          ? actualOutput === expectedOutput
-          : processExitCode === 0;
+      // Custom-input runs have no expected output, so never auto-pass them —
+      // a clean run (exit code 0) is the best we can assert. This prevents a
+      // user from submitting custom input in SUBMIT mode to fake a PASS.
+      const isCustomInputRun = userCustomInput.length > 0 && expectedOutput === "";
+      const passed = expectedOutput !== ""
+        ? actualOutput === expectedOutput
+        : processExitCode === 0;
 
-        if (passed) totalPassed++;
+      // NOTE: `totalPassed` is deliberately NOT incremented here. Totals are
+      // accumulated by the caller over the cases it keeps, so counting in both
+      // places double-counted every pass: a 13-case all-pass submission reported
+      // `26/13` and a FAILED status. The per-case suites invoke the wrapper
+      // directly and never went through `executeCode`, so only a live
+      // end-to-end submission exposed it.
+      //
+      // Only treat stderr as runtimeError if the process exited with non-zero code
+      // (some runtimes write warnings/info to stderr even on success)
+      const storeRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
 
-        // Only treat stderr as runtimeError if the process exited with non-zero code
-        // (some runtimes write warnings/info to stderr even on success)
-        const storeRuntimeError = processExitCode !== 0 && Boolean(data.run?.stderr);
+      // A timeout kills the process with SIGKILL and leaves stderr EMPTY, so
+      // the check above produced no message at all and the user saw a bare
+      // "FAILED" with nothing to act on. Piston does report a reason in
+      // `run.message` ("Time limit exceeded", "Out of memory", ...), so
+      // surface that whenever stderr gives us nothing to show.
+      const sandboxReason =
+        data.run?.message ||
+        data.run?.status ||
+        (data.run?.signal ? `Process terminated by ${data.run.signal}` : "");
+      const runtimeErrorText = storeRuntimeError
+        ? sanitizeErrorMessage(String(data.run.stderr))
+        : sandboxReason
+          ? sanitizeErrorMessage(String(sandboxReason))
+          : null;
 
-        // A timeout kills the process with SIGKILL and leaves stderr EMPTY, so
-        // the check above produced no message at all and the user saw a bare
-        // "FAILED" with nothing to act on. Piston does report a reason in
-        // `run.message` ("Time limit exceeded", "Out of memory", ...), so
-        // surface that whenever stderr gives us nothing to show.
-        const sandboxReason =
-          data.run?.message ||
-          data.run?.status ||
-          (data.run?.signal ? `Process terminated by ${data.run.signal}` : "");
-        const runtimeErrorText = storeRuntimeError
-          ? sanitizeErrorMessage(String(data.run.stderr))
-          : sandboxReason
-            ? sanitizeErrorMessage(String(sandboxReason))
-            : null;
-
-        results.push({
+      return {
+        index,
+        passed,
+        compileFailed: false,
+        runtimeMs: caseRuntimeMs,
+        memoryKb: caseMemoryKb,
+        cpuMs: caseCpuMs,
+        compileMs: caseCompileMs,
+        compileMemoryKb: caseCompileMemoryKb,
+        detail: {
           testCaseIndex: index,
           output: runOutput,
           expectedOutput: currentCase.expectedOutput,
@@ -1623,13 +1846,84 @@ export const executeCode = async (req: Request, res: Response) => {
           ...problemIdPayload(currentCase),
           runtimeError: runtimeErrorText,
           metrics: buildMetrics(),
-        });
+        },
+      };
+    };
 
-        if (executionMode === "SUBMIT" && !passed) {
-          break;
-        }
+    // Run the cases side by side rather than one after another.
+    //
+    // Each case is a separate Piston invocation, and for compiled languages the
+    // invocation is dominated by compilation (~95% of a C++ case). Serially that
+    // cost was paid once per case: measured through this API, a 13-case C++
+    // submission took 51.4s and Java 31s, which is past the client's request
+    // budget — the browser gave up while the server was still working, so users
+    // saw a network error for a correct answer.
+    //
+    // The bound keeps a single submission from opening one sandbox job per case
+    // on a Piston shared by every user, and leaves headroom for the rest of the
+    // traffic. 4 measured as the sweet spot: enough to hide compile latency
+    // behind a handful of concurrent jobs without saturating the sandbox.
+    // How many test cases of one submission may run at once, per language.
+    //
+    // Not a single global number, because the languages are not equally
+    // expensive to run concurrently. JavaScript, Python and C are cheap and
+    // overlap well. The JVM is not: a single trivial Two Sum case through the
+    // reflection driver measured 2930ms wall but 8274ms CPU — it burns roughly
+    // 2.8 cores during startup, JIT and GC. Running four of those at once made
+    // them contend, CPU time ballooned past `run_cpu_time`, cases were killed,
+    // and a 13-case submission FAILED at 3/13 in 36.6s — worse than the serial
+    // 31s it replaced. Measured, not assumed.
+    //
+    // The aim is to keep the aggregate CPU demand of concurrent JVMs under the
+    // per-process ceiling, so the limit is deliberately conservative.
+    const CASE_CONCURRENCY: Record<SupportedLanguage, number> = {
+      javascript: 4,
+      python: 4,
+      c: 4,
+      cpp: 4,
+      java: 2,
+    };
+
+    const CONCURRENCY = CASE_CONCURRENCY[executionLanguage] ?? 4;
+    const outcomes = await mapWithConcurrency(casesToRun, CONCURRENCY, runOneCase);
+
+    // Re-apply the original short-circuit now that every case has run.
+    //
+    // The serial loop stopped at the first failing case in SUBMIT mode and at
+    // the first compile error in both modes, so the totals and the results array
+    // only ever covered the cases up to that point. Reproducing that here keeps
+    // the response byte-identical to the serial version — important because 893
+    // existing problem-bank assertions and 50 wrapper-shape assertions depend on
+    // it — while still getting the wall-clock benefit of running concurrently.
+    //
+    // `mapWithConcurrency` preserves index order, so the first stopping index is
+    // simply the first one in the array.
+    let keptThrough = outcomes.length;
+    for (const [position, outcome] of outcomes.entries()) {
+      const shouldStop = outcome.compileFailed ||
+        (executionMode === "SUBMIT" && !outcome.passed);
+      if (shouldStop) {
+        keptThrough = position + 1;
+        break;
       }
     }
+
+    for (const outcome of outcomes.slice(0, keptThrough)) {
+      results.push(outcome.detail);
+      if (outcome.passed) totalPassed++;
+      totalRuntimeMs += outcome.runtimeMs;
+      if (outcome.memoryKb > 0) totalMemoryKb += outcome.memoryKb;
+      if (outcome.runtimeMs > maxRuntimeMs) maxRuntimeMs = outcome.runtimeMs;
+      if (outcome.memoryKb > maxMemoryKb) maxMemoryKb = outcome.memoryKb;
+      totalCpuMs += outcome.cpuMs;
+      if (outcome.compileMs > 0) totalCompileMs += outcome.compileMs;
+      if (outcome.compileMemoryKb > maxCompileMemoryKb) maxCompileMemoryKb = outcome.compileMemoryKb;
+      runCount++;
+    }
+
+    // If cases ran past the stopping point, say so rather than leaving the
+    // submission looking like it was never continued.
+    const discardedCases = outcomes.length - keptThrough;
 
     const avgRuntimeMs = runCount > 0 ? Math.round(totalRuntimeMs / runCount) : 0;
     const avgMemoryKb = runCount > 0 ? Math.round(totalMemoryKb / runCount) : 0;
@@ -1810,6 +2104,10 @@ export const executeCode = async (req: Request, res: Response) => {
         wallMs: Math.round(performance.now() - submissionStart),
         requestPayloadBytes: payloadBytes,
         codeBytes: Buffer.byteLength(finalCode, "utf8"),
+        // Cases that ran concurrently but are not reported, because the
+        // submission short-circuited at an earlier one. Non-zero only after a
+        // failure; 0 for a clean pass.
+        casesSkippedAfterStop: discardedCases,
       },
       // The limits actually requested, so a user hitting a ceiling can see it.
       budget: {
