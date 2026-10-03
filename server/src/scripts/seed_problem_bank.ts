@@ -21,9 +21,35 @@ async function main() {
   const takenNumbers = new Set(existing.map((p) => p.problem_number));
   const takenNames = new Set(existing.map((p) => p.name.toLowerCase()));
 
+  /**
+   * Reduce a name to its comparable essence: lowercase, alphanumerics only.
+   *
+   * "Longest Substring Without Repeating Characters" and "Longest Substring
+   * Without Repeating" normalise to keys differing only by a trailing word, so
+   * a containment test catches the near-duplicate that strict equality missed.
+   */
+  const normalise = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  /**
+   * True when one name is the other plus a short trailing qualifier.
+   *
+   * Containment alone is far too eager: "Subsets" is contained in
+   * "Subset Sum", but those are genuinely different problems. Requiring a long
+   * shared stem plus one short trailing word separates the real duplicates
+   * from coincidental prefix overlap.
+   */
+  const isNearDuplicate = (mine: string, theirs: string): boolean => {
+    if (theirs === mine) return false;
+    if (!theirs.includes(mine) && !mine.includes(theirs)) return false;
+    const [short, long] =
+      theirs.length <= mine.length ? [theirs, mine] : [mine, theirs];
+    const extra = long.slice(short.length);
+    return short.length >= 12 && /^[a-z]{1,11}$/.test(extra);
+  };
+
   let inserted = 0;
   let skipped = 0;
-  const collisions: { number: number; name: string }[] = [];
+  const collisions: { number: number; name: string; near?: string }[] = [];
 
   for (const p of BANK) {
     if (takenNames.has(p.name.toLowerCase())) {
@@ -37,6 +63,20 @@ async function main() {
       skipped++;
       continue;
     }
+
+    // Near-duplicate guard: a strict-equality check is not enough. "Longest
+    // Substring Without Repeating" is a prefix of #4 "Longest Substring
+    // Without Repeating Characters" and would otherwise seed as a new
+    // problem even though it is the same task.
+    const mine = normalise(p.name);
+    const near = existing.find((x) => isNearDuplicate(mine, normalise(x.name)));
+    if (near) {
+      collisions.push({ number: p.number, name: p.name, near: `#${near.problem_number} ${near.name}` });
+      console.log(`  = ${p.name} (near-duplicate of #${near.problem_number} ${near.name})`);
+      skipped++;
+      continue;
+    }
+
     if (takenNumbers.has(p.number)) {
       console.log(`  ! ${p.name}: number #${p.number} already used — skipped`);
       skipped++;
@@ -73,6 +113,9 @@ async function main() {
 
     takenNumbers.add(p.number);
     takenNames.add(p.name.toLowerCase());
+    // Track newly seeded names too, so two entries in the SAME bank that are
+    // near-duplicates of each other are caught on the first pass.
+    existing.push({ problem_number: p.number, name: p.name });
     inserted++;
   }
 
@@ -80,7 +123,10 @@ async function main() {
   // leaves a problem unseeded. Report those separately so they are noticed.
   if (collisions.length) {
     console.log('\n⚠ Name collisions (not seeded — rename these entries):');
-    for (const c of collisions) console.log(`    #${c.number} ${c.name}`);
+    for (const c of collisions) {
+      const suffix = c.near ? `  ← near-duplicate of ${c.near}` : '';
+      console.log(`    #${c.number} ${c.name}${suffix}`);
+    }
   }
 
   const total = await prisma.problem.count();
