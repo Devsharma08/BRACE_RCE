@@ -411,3 +411,51 @@ found two real bugs on its first run. Currently 50/50.
 
 Growth rule: **every new branch in `prepareFinalCode` must add a shape here.**
 The C `string_array` branch did not exist until this suite pointed at it.
+
+---
+
+# Coverage — what is actually verified, and what "893" does not mean
+
+**893 is not 893 of everything.** It is the case count of ONE suite
+(`verify_execution.ts`) covering 70 of the 194 problems. Quoting it without its
+denominator made the suite sound like full coverage when it is 36% of the bank.
+This section exists so that cannot happen again.
+
+## All three reference sets
+
+The bank is not one list. There are three, and they are keyed differently —
+`BANK` by `problem_number`, `LEGACY` by `number` — which is exactly why an
+earlier audit matched them by NAME, found zero overlap, and wrongly concluded
+that 124 problems had no reference at all. They do; the join key was wrong.
+
+| Suite | Source | Problems | Cases | Result |
+|---|---|---|---|---|
+| `verify_execution.ts` | `BANK` | 70 | 893 | **893 passed, 0 failed** |
+| `verify_legacy_execution.ts` | `LEGACY` | 113 | 1,468 | **1,468 passed, 0 failed** |
+| `verify_operation_problems.ts` | `OPERATION_SEQUENCE` | 10 | 127 | **91 passed, 0 failed** |
+| **Total** | | **193 / 194** | **2,452 / 2,500** | |
+
+The one gap is **Clone Graph (#30)**, 12 cases — it belongs to none of the three
+sets and has no reference, so nothing has ever executed it.
+
+`OPERATION_SEQUENCE` exists because those problems (LRU cache, MinStack,
+Design Twitter, …) cannot be expressed as a single pure function; they get a
+bespoke driver and their own suite.
+
+## Language coverage is the real gap, not problem coverage
+
+Every one of the 2,452 passing cases is **JavaScript only**. The other four
+languages are verified by:
+
+- `verify_wrapper_shapes.ts` — 10 synthetic shapes × 5 languages, plus the
+  batched framing check
+- `verify_matrix.ts` — 3 real problems × 5 languages, 86 cases
+
+So: **problem coverage in JavaScript is ~99%; language coverage is 3/194.**
+Closing the latter is a content problem — it needs correct references per
+language — not an engine problem. The wrapper, batching and sandbox are now
+tested; the gap is that almost nothing has been written in Python, C, C++ or
+Java for these problems.
+
+Growth rule for `verify_matrix.ts`: add a problem once references exist for
+each language, and it becomes a permanent gate.
