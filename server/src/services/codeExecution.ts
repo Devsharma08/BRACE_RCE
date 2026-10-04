@@ -450,11 +450,11 @@ const BATCH_ERR_MARK = "__ERR__";
  * Languages whose generated driver understands the `__CASE__<lineCount>`
  * framing. Anything not listed here keeps the per-case path, which is proven.
  *
- * Only Java is enabled so far. Its driver was restructured for this; the C, C++
- * and JavaScript drivers still read a single case, and pointing the batch
- * builder at them would frame stdin their wrappers cannot parse.
+ * Only Java and C++ are enabled so far. Their drivers were restructured for
+ * this; the C and JavaScript drivers still read a single case, and pointing the
+ * batch builder at them would frame stdin their wrappers cannot parse.
  */
-const BATCHABLE_LANGUAGES: ReadonlySet<string> = new Set<SupportedLanguage>(["java"]);
+const BATCHABLE_LANGUAGES: ReadonlySet<string> = new Set<SupportedLanguage>(["java", "cpp"]);
 
 export function supportsBatching(language: string): boolean {
   return BATCHABLE_LANGUAGES.has(language as SupportedLanguage);
@@ -1423,10 +1423,12 @@ void printTreeNode(TreeNode* root){if(!root){cout<<"[]"<<endl;return;}cout<<"[";
 `;
 
     let cppMain = '';
-    cppMain += `int main(){
-    vector<string>lines;
-    string line;
-    while(getline(cin,line)){if(!line.empty()){if(line.back()=='\\r')line.pop_back();lines.push_back(line);}}
+    // One case is a function so it can be called either once (legacy single case)
+    // or once per framed chunk (batched). The argument parsing below only ever
+    // references `lines`, so moving it unchanged into a function is safe.
+    cppMain += `static void runOneCase(const vector<string>& lines){
+`;
+    cppMain += `    (void)lines;
 `;
 
     const callArgNames: string[] = [];
@@ -1448,7 +1450,39 @@ void printTreeNode(TreeNode* root){if(!root){cout<<"[]"<<endl;return;}cout<<"[";
 `;
       cppMain += cppPrint(returnKind, 'res');
     }
-    cppMain += `    return 0;
+    cppMain += `}
+`;
+
+    // The driver: stdin with no header is one legacy case and is printed exactly
+    // as before, including letting any exception (e.g. a bad_alloc from a huge
+    // input) terminate the process so the backend sees a real failure. With
+    // headers, each case is wrapped in try/catch so one bad case cannot take the
+    // rest of the batch down; the backend treats an __ERR__ line as a signal to
+    // re-run per case and get the real error.
+    cppMain += `int main(){
+    vector<string> all;
+    string line;
+    while(getline(cin,line)){if(line.back()=='\\r')line.pop_back();all.push_back(line);}
+    size_t i=0;
+    while(i<all.size()&&all[i].empty())i++;
+    if(i>=all.size()||all[i].compare(0,8,"__CASE__")!=0){
+        vector<string> lines;
+        for(size_t k=i;k<all.size();k++)if(!all[k].empty())lines.push_back(all[k]);
+        runOneCase(lines);
+        return 0;
+    }
+    while(i<all.size()){
+        string header=all[i++];
+        if(header.empty())continue;
+        if(header.compare(0,8,"__CASE__")!=0)break;
+        int count=atoi(header.c_str()+8);
+        vector<string> lines;
+        for(int k=0;k<count&&i<all.size();k++){if(!all[i].empty())lines.push_back(all[i]);i++;}
+        cout.flush();
+        try{runOneCase(lines);}catch(const exception& e){cout<<"__ERR__"<<e.what()<<endl;}catch(...){cout<<"__ERR__unknown error"<<endl;}
+        cout.flush();
+    }
+    return 0;
 }
 `;
 
