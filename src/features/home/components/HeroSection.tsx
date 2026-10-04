@@ -118,11 +118,7 @@ export const BraceRcePixelArt: FC = () => {
         <div className="relative">
           <div className="absolute -inset-10 bg-cyan-400/10 blur-3xl" />
           <div className="relative w-full min-w-0">
-            <div className="absolute right-4 top-3 z-20 flex h-11 w-20 items-center justify-center whitespace-nowrap rounded-xl border border-cyan-300/50 bg-[#090d14] text-sm font-bold text-cyan-300 shadow-lg shadow-cyan-950/30 transition duration-300 hover:scale-105 hover:border-white/60 hover:text-white">
-              2<span className="text-white">.</span>0
-            </div>
-
-            <div className="relative w-full min-w-0 rounded-[28px] border border-cyan-300/20 bg-[#090d14]/90 p-4 shadow-2xl shadow-cyan-950/30 sm:p-6">
+            <div className="relative w-full min-w-0 rounded-[28px] border border-cyan-300/20 bg-[#090d14]/90 p-4 shadow-2xl shadow-cyan-950/30 sm:p-5">
               <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4 font-mono text-[9px] uppercase tracking-widest text-slate-500">
                 <span className="flex items-center gap-2">
                   <Terminal size={13} className="text-cyan-300" />
@@ -131,9 +127,13 @@ export const BraceRcePixelArt: FC = () => {
                 <span className="text-lime-300">{booted ? 'verified' : 'booting'}</span>
               </div>
 
-              <div className="flex min-h-[210px] items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-[#05070b] p-4 sm:min-h-[300px] sm:p-8">
+              {/* Canvas trimmed so the BRACE word art reads as a compact
+                  signature block rather than a full-bleed panel. Cells are
+                  aspect-square on a fixed column count, so the art scales with
+                  the width and can never overflow the card. */}
+              <div className="flex min-h-[150px] items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-[#05070b] p-3 sm:min-h-[200px] sm:p-5">
                 <div
-                  className="grid w-full max-w-[560px] gap-[3px] sm:gap-1"
+                  className="grid w-full max-w-[430px] gap-[2px] sm:gap-[3px]"
                   style={{ gridTemplateColumns: `repeat(${word[0]!.length}, minmax(0, 1fr))` }}
                 >
                   {pixels.map((pixel, index) => (

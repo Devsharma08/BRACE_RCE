@@ -94,6 +94,19 @@ export const Footer = ({ variant = "full", offsetRail = false }: FooterProps) =>
               <br />
               Structured practice
             </div>
+            {/* Version mark — moved off the hero card, where it collided with
+                the signature art. `flex-1` lets it grow into the grid row so it
+                spans the footer's full height on the right, and the very low
+                alpha keeps it a background wash rather than competing with the
+                wordmark or the links. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none flex flex-1 items-center justify-end select-none"
+            >
+              <span className="font-mono font-bold leading-[0.8] tracking-[-0.08em] text-fg/[0.06] text-[clamp(4.5rem,11vw,10rem)]">
+                2.0
+              </span>
+            </div>
             <div className="flex flex-wrap gap-3 lg:justify-end">
               <Link
                 to="/terminal"
