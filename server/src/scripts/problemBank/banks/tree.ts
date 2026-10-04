@@ -62,26 +62,31 @@ const BANK_TREE: RawProblem[] = [
     sig: ['int[]', 'TreeNode'],
     fn: ['inorderTraversal', 'root'],
     s: (args) => {
-      const lv = args[0] || [];
-      if (!lv.length) return [];
-      // BFS level-order construction, matching `arrayToTree` in the execution
-      // wrapper exactly. Heap indexing (child of i is 2i+1 / 2i+2) is WRONG for
-      // anything but a complete tree: in [1,null,2,3] the 3 is 2's LEFT child,
-      // but heap indexing strands it and the traversal drops it.
-      const build = () => {
-        const root = { val: lv[0], left: null, right: null };
+      // Accepts EITHER a level-order array or an already-built TreeNode.
+      //
+      // At seed time the reference is called with the raw args array, but in
+      // the sandbox the generated wrapper converts a TreeNode-typed argument
+      // with arrayToTree BEFORE calling the function. A reference that assumes
+      // the array silently gets undefined lv.length and returns an empty answer,
+      // which is why these all passed the static audit and failed end to end.
+      const asTree = (input) => {
+        if (input == null) return null;
+        if (!Array.isArray(input)) return input;
+        if (input.length === 0) return null;
+        const root = { val: input[0], left: null, right: null };
         const q = [root];
         let i = 1;
-        while (q.length && i < lv.length) {
+        while (q.length && i < input.length) {
           const c = q.shift();
-          if (lv[i] !== null && lv[i] !== undefined) { c.left = { val: lv[i], left: null, right: null }; q.push(c.left); }
+          if (input[i] != null) { c.left = { val: input[i], left: null, right: null }; q.push(c.left); }
           i++;
-          if (lv[i] !== null && lv[i] !== undefined) { c.right = { val: lv[i], left: null, right: null }; q.push(c.right); }
+          if (input[i] != null) { c.right = { val: input[i], left: null, right: null }; q.push(c.right); }
           i++;
         }
         return root;
       };
-      const root = build();
+      const root = asTree(args[0]);
+      if (!root) return [];
       const out = [];
       const stack = [];
       let cur = root;
@@ -142,26 +147,31 @@ const BANK_TREE: RawProblem[] = [
     sig: ['int', 'TreeNode'],
     fn: ['maxPathSum', 'root'],
     s: (args) => {
-      const lv = args[0] || [];
-      if (!lv.length) return 0;
-      // BFS level-order construction, matching `arrayToTree` in the execution
-      // wrapper exactly. Heap indexing (child of i is 2i+1 / 2i+2) is WRONG for
-      // anything but a complete tree: in [1,null,2,3] the 3 is 2's LEFT child,
-      // but heap indexing strands it and the traversal drops it.
-      const build = () => {
-        const root = { val: lv[0], left: null, right: null };
+      // Accepts EITHER a level-order array or an already-built TreeNode.
+      //
+      // At seed time the reference is called with the raw args array, but in
+      // the sandbox the generated wrapper converts a TreeNode-typed argument
+      // with arrayToTree BEFORE calling the function. A reference that assumes
+      // the array silently gets undefined lv.length and returns an empty answer,
+      // which is why these all passed the static audit and failed end to end.
+      const asTree = (input) => {
+        if (input == null) return null;
+        if (!Array.isArray(input)) return input;
+        if (input.length === 0) return null;
+        const root = { val: input[0], left: null, right: null };
         const q = [root];
         let i = 1;
-        while (q.length && i < lv.length) {
+        while (q.length && i < input.length) {
           const c = q.shift();
-          if (lv[i] !== null && lv[i] !== undefined) { c.left = { val: lv[i], left: null, right: null }; q.push(c.left); }
+          if (input[i] != null) { c.left = { val: input[i], left: null, right: null }; q.push(c.left); }
           i++;
-          if (lv[i] !== null && lv[i] !== undefined) { c.right = { val: lv[i], left: null, right: null }; q.push(c.right); }
+          if (input[i] != null) { c.right = { val: input[i], left: null, right: null }; q.push(c.right); }
           i++;
         }
         return root;
       };
-      const root = build();
+      const root = asTree(args[0]);
+      if (!root) return 0;
       let best = -Infinity;
       const down = (n) => {
         if (!n) return 0;

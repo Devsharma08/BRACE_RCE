@@ -19,6 +19,9 @@
  *     visible rather than silent.
  *  5. DUPLICATE NUMBERS — two entries sharing a problem_number would silently
  *     overwrite each other on seed.
+ *  6. WRAPPER CONTRACT — a TreeNode/ListNode argument reaches the reference as a
+ *     built object in the sandbox, but as a raw array at seed time. A reference
+ *     handling only the array passes 1-5 and still fails every case for real.
  *
  *   npx tsx src/scripts/audit_bank.ts
  */
@@ -81,6 +84,58 @@ for (const p of BANK as any[]) {
   };
 
   tests.forEach((t, i) => check(t.args, `case ${i}`));
+
+  // 6. WRAPPER CONTRACT. A TreeNode-typed argument is converted by arrayToTree
+  // in the generated wrapper BEFORE the reference is called, so at run time the
+  // reference receives a tree OBJECT. At seed time it receives the raw array.
+  // A reference that only handles the array passes every check above and then
+  // fails every case in the real sandbox — which is exactly what happened to the
+  // tree and BST entries. Each TreeNode/ListNode argument is therefore fed
+  // through once in its converted form; a reference that returns a different
+  // answer has a contract bug, not a seeding bug.
+  const converted = (arg: unknown): unknown => {
+    if (!Array.isArray(arg)) return arg;
+    if (arg.length === 0) return arg;
+    if (arg[0] === null) return arg;
+    // Only the head is validated: a tree is an array of scalars (or nulls) and a
+    // list is an array of scalars. A 2D array of scalars (e.g. [[1,2],[3,4]]) is
+    // not a tree, so the head check is on the first element being scalar.
+    if (typeof arg[0] === 'object' && arg[0] !== null) return arg;
+    const node: any = { val: arg[0], left: null, right: null };
+    const q = [node];
+    let i = 1;
+    while (q.length && i < arg.length) {
+      const c = q.shift();
+      if (arg[i] !== null && arg[i] !== undefined) { c.left = { val: arg[i], left: null, right: null }; q.push(c.left); }
+      i++;
+      if (arg[i] !== null && arg[i] !== undefined) { c.right = { val: arg[i], left: null, right: null }; q.push(c.right); }
+      i++;
+    }
+    return node;
+  };
+
+  for (const a of p.signature.args) {
+    if (a.type !== 'TreeNode' && a.type !== 'ListNode') continue;
+    for (const [i, t] of (tests as any[]).entries()) {
+      const asObj = t.args.map((v: unknown, k: number) =>
+        p.signature.args[k]!.type === 'TreeNode' ? converted(v) : v);
+      let rawOut: string, objOut: string;
+      try {
+        rawOut = fmtOut(p.solve(t.args)).trim();
+        objOut = fmtOut(p.solve(asObj)).trim();
+      } catch {
+        continue;
+      }
+      if (rawOut !== objOut) {
+        failures.push(
+          `${label} case ${i}: reference disagrees when arg "${a.name}" arrives as a ` +
+            `${a.type} object instead of the raw array — the sandbox passes the built ` +
+            `tree, so this case would fail in production (array form gave ` +
+            `"${rawOut.slice(0, 40)}", object form "${objOut.slice(0, 40)}")`,
+        );
+      }
+    }
+  }
 
   for (const ex of p.examples as any[]) {
     check(ex.args, `example "${ex.input.slice(0, 40)}"`);
