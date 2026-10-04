@@ -1,0 +1,105 @@
+name: Execution Canary
+
+# The expensive, database-backed execution suites.
+#
+# Tiering is by cost and by what they need:
+#
+#   per-PR   (ci.yml)            no DB   - build, lint, unit tests, 50 wrapper
+#                                       shapes + batched framing
+#   nightly  (this file)         DB      - 893-case problem bank, real
+#                                       problem x language matrix, 5-language
+#                                       smoke test, legacy/operation/special
+#                                       suites
+#
+# The bank suite is ~4 minutes and the matrix needs Postgres, so neither is a
+# sensible per-PR gate. Nightly is the point: the P0s this closes were only
+# ever caught by a human running things by hand, so something has to run them
+# without anyone remembering to.
+on:
+  schedule:
+    - cron: "23 3 * * *"   # nightly, off the hour to avoid the rush
+  workflow_dispatch:
+
+jobs:
+  canary:
+    name: Problem bank + matrix + legacy suites
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: brace_rce
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 10
+
+      piston:
+        image: ghcr.io/engineer-man/piston:latest
+        ports: ["2000:2000"]
+        options: >-
+          --health-cmd "wget -qO- http://localhost:2000/api/v2/runtimes || exit 1"
+          --health-interval 15s --health-timeout 10s --health-retries 40
+
+    env:
+      NODE_MODE: development
+      PISTON_URL: http://localhost:2000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/brace_rce
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/brace_rce
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11
+
+      - name: Approve build scripts
+        run: pnpm approve-builds @prisma/engines bcrypt esbuild prisma @scarf/scarf @sentry/node-cpu-profiler protobufjs
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: cd server && npx prisma generate
+
+      # Schema only. This repo has no prisma/migrations directory, so
+      # `migrate deploy` would fail on a fresh CI database — `db push` applies
+      # schema.prisma directly. Seeding the 194-problem bank is a separate,
+      # deliberate operation: a canary must never mutate problem data.
+      - name: Apply schema
+        run: cd server && npx prisma db push --skip-generate --accept-data-loss
+
+      - name: Wrapper shapes + batched framing
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_wrapper_shapes.ts
+
+      - name: Problem x language matrix (real stored cases)
+        # Self-serving: the three problems carry an embedded copy of their stored
+        # cases, so this runs even on an unseeded CI database. When the database
+        # does have them it prefers those and fails on drift.
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL DATABASE_URL=$DATABASE_URL tsx src/scripts/verify_matrix.ts
+
+      - name: Five-language smoke test
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_languages.ts
+
+      - name: Problem bank, all 893 JavaScript cases
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_execution.ts
+
+      - name: Legacy execution suite
+        continue-on-error: true
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_legacy_execution.ts
+
+      - name: Operation problems
+        continue-on-error: true
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_operation_problems.ts
+
+      - name: Special problems
+        continue-on-error: true
+        run: cd server && pnpm exec cross-env NODE_MODE=development PISTON_URL=$PISTON_URL tsx src/scripts/verify_special_problems.ts

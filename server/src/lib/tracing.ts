@@ -16,11 +16,23 @@ if (process.env.NODE_MODE !== 'production') {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
 }
 
-// Prometheus exporter for metrics
-const prometheusExporter = new PrometheusExporter(
-  { port: 9464 }, // metrics available at http://localhost:9464/metrics
-  () => console.log('[tracing] Prometheus exporter started on port 9464')
-);
+// Prometheus exporter for metrics.
+//
+// The port is configurable and the exporter can be switched off entirely. It
+// used to bind a hardcoded 9464 at module load, so if that port was already
+// taken the exporter rejected during sdk.start() and took the whole server
+// down with it — a metrics port collision should never be able to stop the API
+// from booting. Defaults are unchanged: 9464, enabled.
+const PROMETHEUS_ENABLED = process.env.PROMETHEUS_ENABLED !== 'false';
+const PROMETHEUS_PORT = Number(process.env.PROMETHEUS_PORT ?? 9464);
+
+const prometheusExporter = PROMETHEUS_ENABLED
+  ? new PrometheusExporter(
+      { port: PROMETHEUS_PORT },
+      () =>
+        console.log(`[tracing] Prometheus exporter started on port ${PROMETHEUS_PORT}`),
+    )
+  : undefined;
 
 // SDK configuration
 const sdk = new NodeSDK({
@@ -42,7 +54,7 @@ const sdk = new NodeSDK({
       '@opentelemetry/instrumentation-pg': { enabled: true },
     }),
   ],
-  metricReader: prometheusExporter,
+  ...(prometheusExporter ? { metricReader: prometheusExporter } : {}),
 });
 
 /**

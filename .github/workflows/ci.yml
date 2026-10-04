@@ -52,3 +52,37 @@ jobs:
         run: |
           cd server
           pnpm test --passWithNoTests
+
+      # ────────────────────────────────────────────────────────────
+      # EXECUTION SANDBOX GATE
+      #
+      # Every P0 fixed this session passed `pnpm test` and still reached main,
+      # because the unit suites call the wrapper directly and never touch
+      # executeCode. These run against a real Piston container.
+      #
+      # verify_wrapper_shapes needs no database, so it is safe to gate on here.
+      # The problem-bank suites do need PostgreSQL and are therefore nightly
+      # (see execution-canary.yml) rather than a per-PR gate.
+      # ────────────────────────────────────────────────────────────
+      - name: Start Piston sandbox
+        run: |
+          docker run -d --name piston-ci -p 2000:2000 \
+            ghcr.io/engineer-man/piston:latest || true
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:2000/api/v2/runtimes >/dev/null; then
+              echo "Piston is up after ${i}s"; break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:2000/api/v2/runtimes >/dev/null \
+            || { echo "::error::Piston failed to start"; exit 1; }
+
+      - name: Wrapper shapes + batched framing (10 shapes x 5 languages)
+        run: |
+          cd server
+          pnpm exec cross-env NODE_MODE=development PISTON_URL=http://localhost:2000 \
+            tsx src/scripts/verify_wrapper_shapes.ts
+
+      - name: Piston container logs on failure
+        if: failure()
+        run: docker logs piston-ci || true
