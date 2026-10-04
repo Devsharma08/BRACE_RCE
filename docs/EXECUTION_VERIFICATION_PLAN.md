@@ -304,6 +304,81 @@ folded into an already-large session.
 - a new shape that feeds 3 cases and asserts 3 output lines
 - A/B the live API timings above to confirm the ~15x, not just that it is green
 
+---
+
+# Phase 2 — language and compilation strategy
+
+The premise going in was: *compilation is ~80% of execution time for compiled
+languages, so cut it with compiler flags and by preferring interpreters.*
+Measured on this deployment (Piston, c++/gcc, 4–5 samples, best-of):
+
+| Experiment | best wall | note |
+|---|---|---|
+| C++ `int main(){}`, no includes | 331 ms | baseline: container + exec |
+| C++ `#include<vector>,<unordered_map>` | 699 ms | |
+| C++ `#include<bits/stdc++.h>` | **3310 ms** | 10x for one header |
+| C++ **production wrapper** (15 explicit headers) | 2540 ms | what users actually run |
+| C++ production wrapper, headers trimmed to 5 | 970 ms | **did not compile** — see below |
+| C++ production wrapper + `queue`,`stack` | 2141 ms | correct, saves ~330 ms |
+| C `int main(){}` | 237 ms | |
+| Python `print("x")` | 58 ms | |
+| Java trivial `Main` | 1034 ms wall / **2409 ms CPU** | JVM startup |
+| Java **production wrapper** | 2018 ms wall / **6609 ms CPU** | |
+| JavaScript, 13 cases through the API | 3.4 s | already cheap |
+
+## Finding 1 — the `-O0` / `-O2` recommendation does not apply here
+
+Benchmarked `compile_args` directly:
+
+| `compile_args` | best wall |
+|---|---|
+| default (none) | 3633 ms |
+| `-O0` | 3919 ms |
+| `-O2` | 3422 ms |
+
+`-O0` came out *slower* than the default, and the spread (3.4–3.9 s) is within
+run-to-run noise. **All three land in the same band, so compiler optimisation
+level is not the cost.** GCC spends that time parsing headers and instantiating
+templates, which happens at `-O0` as well. Passing `compile_args: ["-O0"]`
+would buy nothing measurable while risking a slower user binary, so it is
+deliberately **not** applied. Revisit only if a case ever fails on runtime
+limits, which today none do (`avgCpu` for C++ is 11 ms).
+
+## Finding 2 — the real lever is header weight, and we are already near it
+
+`bits/stdc++.h` alone is 3.3 s. Our wrapper already avoids it (15 explicit
+includes, no `bits`), which is why production is 2540 ms rather than 3.3 s+.
+Trimming to 5 headers *looked* like a 2.6x win at 970 ms but **produced empty
+output and a failed compile** — the header block was removed faster than it
+could be proven safe. Only the conservative trim (`queue`/`stack` retained)
+compiled correctly, at 2141 ms: a real ~13% win, but it requires knowing which
+headers each generated driver needs, and an over-trim is a silent
+wrong-answer-or-compile-error class of bug — the same failure mode as the four
+P0s already fixed in this file. **Held as a possible follow-up, not applied
+now.** The safe version is to compute the include set from the TypeKinds the
+generated driver actually emits, and verify per shape.
+
+## Finding 3 — Java is dominated by JVM startup, which no compile flag touches
+
+Java reports **6609 ms CPU for 2008 ms wall** on the production wrapper, and
+even a trivial `Main` costs **2409 ms CPU**. GC/JIT threads run concurrently,
+so CPU exceeds wall. The compile portion is real but secondary; the dominant
+term is VM startup, paid once per Piston invocation. This is the same root
+cause as 4d — and it is why batching is the only large win available.
+
+## Conclusion — order of work for Phase 2
+
+1. **Batching (4d) stays the top item.** It is the only change that removes
+   the fixed per-invocation cost, which the table above shows is ~95% of C++
+   and most of Java. Flags and includes trim the variable part, which is small.
+2. Do **not** add `compile_args`; measured to be noise.
+3. Header trimming is worth ~13% on C++ but needs a per-shape include set
+   before it can be safe. Revisit after batching, when the risk/benefit is
+   re-measured on a much smaller fixed cost.
+
+If Piston later exposes a compile-once/run-many or package-caching API, that
+supersedes batching entirely and should be revisited first.
+
 
 10 shapes × 5 languages = **50 cases**: int, int[], int[]+int, two args after an
 array, string, string[], int[] return, empty array, negatives/zero, void with
