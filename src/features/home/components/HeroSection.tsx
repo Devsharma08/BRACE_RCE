@@ -4,14 +4,24 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FC } from 'react'
 import { ArrowDown, ArrowUpRight, Terminal } from 'lucide-react'
 
+/**
+ * Pixel word art for "BRACE": a 5x7 glyph per letter with a 1-column gap, so 29
+ * columns x 7 rows.
+ *
+ * The previous bitmap was 38 columns and the strokes merged at render size — at
+ * a ~400px cap each cell was about 10px, the letters ran together, and the glow
+ * bled across the gaps so it read as "RARE MF" rather than BRACE. Narrowing to 29
+ * columns makes every cell roughly a third larger at the same card width, which
+ * is what makes the word legible; the glow was pulled back for the same reason.
+ */
 const word = [
-  [1,1,1,1,1,1,0,0, 0,1,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,1,0, 0,1,1,1,1,1,1,1],
-  [1,1,0,0,0,1,1,0, 0,1,1,0,0,0,1,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,0,1,1, 0,1,1,0,0,0,0,0],
-  [1,1,0,0,0,0,1,1, 0,1,1,0,0,0,1,0, 0,1,1,0,0,1,1,0, 1,1,0,0,0,0,0,0, 0,1,1,0,0,0,0,0],
-  [1,1,1,1,1,1,0,0, 0,1,1,1,1,1,1,0, 0,1,1,1,1,1,1,1, 1,1,0,0,0,0,0,0, 0,1,1,1,1,1,1,1],
-  [1,1,0,0,0,1,1,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0, 1,1,0,0,0,0,0,0, 0,1,1,0,0,0,0,0],
-  [1,1,0,0,0,0,1,1, 0,1,1,0,0,0,1,0, 0,1,1,0,0,1,1,0, 1,1,0,0,0,0,0,0, 0,1,1,1,1,1,1,1],
-  [1,1,0,0,0,0,1,1, 0,1,1,0,0,0,1,0, 0,1,1,0,0,1,1,0, 1,1,0,0,0,0,0,0, 0,1,1,0,0,0,0,0],
+  [1,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,1],
+  [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
+  [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
+  [1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1,1,0,1,0,0,0,0,0,1,1,1,1,0],
+  [1,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
+  [1,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
+  [1,1,1,1,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,1,0,1,1,1,1,1],
 ]
 
 /**
@@ -64,32 +74,34 @@ export const BraceRcePixelArt: FC = () => {
       <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-400/[0.045] blur-3xl" />
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
 
-      {/* `lg:items-end` bottom-aligns the COMPILE/COMPETE/CONQUER column with the
-          signature card, so both share a base line instead of the shorter card
-          floating centred against a much taller headline. Single-column (mobile)
-          still stacks normally via items-start. */}
-      <div className="relative z-10 mx-auto grid max-w-7xl items-start gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[.9fr_1.1fr] lg:items-end lg:gap-10 lg:px-8 lg:py-20">
-        {/* Headline */}
-        <div>
-          <div className="mb-7 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-cyan-300">
-            <span className="h-px w-10 bg-cyan-300" />
-            Mission // RCE online
-            <span className="rounded-full border border-lime-300/25 bg-lime-300/[0.06] px-2 py-1 text-[8px] tracking-widest text-lime-300">
-              SYSTEM READY
-            </span>
-          </div>
+      {/* The card is placed in the SAME grid row as the headline and bottom-aligned
+          within it, so its base lines up with CONQUER. rather than with the base of
+          the whole left column — which also contains the description, the CTAs and
+          the stats strip, and would otherwise drop the card far below the text. */}
+      <div className="relative z-10 mx-auto grid max-w-7xl items-start gap-x-10 gap-y-8 px-5 py-12 sm:py-16 lg:grid-cols-[.9fr_1.1fr] lg:px-8 lg:py-20">
+        {/* Row 1 — eyebrow */}
+        <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-cyan-300 lg:col-start-1 lg:row-start-1">
+          <span className="h-px w-10 bg-cyan-300" />
+          Mission // RCE online
+          <span className="rounded-full border border-lime-300/25 bg-lime-300/[0.06] px-2 py-1 text-[8px] tracking-widest text-lime-300">
+            SYSTEM READY
+          </span>
+        </div>
 
-          <h1 className="group max-w-[9ch] font-mono text-[clamp(2.9rem,10vw,8.5rem)] font-bold leading-[.84] tracking-[-.09em]">
-            <span className="animate-brace-cycle inline-block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent transition duration-500 group-hover:from-cyan-300 group-hover:via-white group-hover:to-lime-300 group-hover:drop-shadow-[0_0_18px_rgba(103,232,249,.35)]">
-              COMPILE.
-              <br />
-              <span className="text-cyan-300">COMPETE.</span>
-              <br />
-              <span className="text-slate-500">CONQUER.</span>
-            </span>
-          </h1>
+        {/* Row 2 — headline, with the signature card sharing this row */}
+        <h1 className="group max-w-[9ch] font-mono text-[clamp(2.9rem,10vw,8.5rem)] font-bold leading-[.84] tracking-[-.09em] lg:col-start-1 lg:row-start-2">
+          <span className="animate-brace-cycle inline-block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent transition duration-500 group-hover:from-cyan-300 group-hover:via-white group-hover:to-lime-300 group-hover:drop-shadow-[0_0_18px_rgba(103,232,249,.35)]">
+            COMPILE.
+            <br />
+            <span className="text-cyan-300">COMPETE.</span>
+            <br />
+            <span className="text-slate-500">CONQUER.</span>
+          </span>
+        </h1>
 
-          <p className="mt-8 max-w-lg text-sm leading-6 text-slate-400 sm:text-base">
+        {/* Row 3 — description, CTAs and stats, under the headline only */}
+        <div className="lg:col-start-1 lg:row-start-3">
+          <p className="max-w-lg text-sm leading-6 text-slate-400 sm:text-base">
             A high-performance coding battlefield for operatives who write,
             execute, and validate under pressure.
           </p>
@@ -118,8 +130,9 @@ export const BraceRcePixelArt: FC = () => {
           </div>
         </div>
 
-        {/* Pixel-art signature card */}
-        <div className="relative">
+        {/* Pixel-art signature card — shares row 2 with the headline and sits at
+            its base, so the card bottom aligns with CONQUER. */}
+        <div className="relative lg:col-start-2 lg:row-start-2 lg:self-end">
           <div className="absolute -inset-10 bg-cyan-400/10 blur-3xl" />
           <div className="relative w-full min-w-0">
             <div className="relative w-full min-w-0 rounded-[28px] border border-cyan-300/20 bg-[#090d14]/90 p-4 shadow-2xl shadow-cyan-950/30 sm:p-5">
@@ -149,7 +162,7 @@ export const BraceRcePixelArt: FC = () => {
                       className={`aspect-square rounded-[2px] transition-all duration-500 ${
                         pixel.lit
                           ? booted
-                            ? 'bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,.75)]'
+                            ? 'bg-cyan-300 shadow-[0_0_4px_rgba(103,232,249,.5)]'
                             : 'bg-cyan-300/10'
                           : 'bg-transparent'
                       }`}
