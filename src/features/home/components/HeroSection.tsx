@@ -64,7 +64,11 @@ export const BraceRcePixelArt: FC = () => {
       <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-400/[0.045] blur-3xl" />
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
 
-      <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[.9fr_1.1fr] lg:gap-10 lg:px-8 lg:py-20">
+      {/* `lg:items-end` bottom-aligns the COMPILE/COMPETE/CONQUER column with the
+          signature card, so both share a base line instead of the shorter card
+          floating centred against a much taller headline. Single-column (mobile)
+          still stacks normally via items-start. */}
+      <div className="relative z-10 mx-auto grid max-w-7xl items-start gap-10 px-5 py-12 sm:py-16 lg:grid-cols-[.9fr_1.1fr] lg:items-end lg:gap-10 lg:px-8 lg:py-20">
         {/* Headline */}
         <div>
           <div className="mb-7 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-cyan-300">
@@ -76,7 +80,7 @@ export const BraceRcePixelArt: FC = () => {
           </div>
 
           <h1 className="group max-w-[9ch] font-mono text-[clamp(2.9rem,10vw,8.5rem)] font-bold leading-[.84] tracking-[-.09em]">
-            <span className="inline-block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent transition duration-500 group-hover:from-cyan-300 group-hover:via-white group-hover:to-lime-300 group-hover:drop-shadow-[0_0_18px_rgba(103,232,249,.35)]">
+            <span className="animate-brace-cycle inline-block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent transition duration-500 group-hover:from-cyan-300 group-hover:via-white group-hover:to-lime-300 group-hover:drop-shadow-[0_0_18px_rgba(103,232,249,.35)]">
               COMPILE.
               <br />
               <span className="text-cyan-300">COMPETE.</span>
@@ -128,12 +132,15 @@ export const BraceRcePixelArt: FC = () => {
               </div>
 
               {/* Canvas trimmed so the BRACE word art reads as a compact
-                  signature block rather than a full-bleed panel. Cells are
-                  aspect-square on a fixed column count, so the art scales with
-                  the width and can never overflow the card. */}
-              <div className="flex min-h-[150px] items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-[#05070b] p-3 sm:min-h-[200px] sm:p-5">
+                  signature block rather than a full-bleed panel, with enough
+                  inset that the outermost lit cells never touch the rounded
+                  edge — at p-3 the art ran flush to the border and the first and
+                  last columns were visually cropped. Cells are aspect-square on a
+                  fixed 38-column grid, so the art scales with the available
+                  width and still cannot overflow. */}
+              <div className="flex min-h-[150px] items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-[#05070b] p-6 sm:min-h-[200px] sm:p-8">
                 <div
-                  className="grid w-full max-w-[430px] gap-[2px] sm:gap-[3px]"
+                  className="grid w-full max-w-[400px] gap-[2px] sm:gap-[3px]"
                   style={{ gridTemplateColumns: `repeat(${word[0]!.length}, minmax(0, 1fr))` }}
                 >
                   {pixels.map((pixel, index) => (

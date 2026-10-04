@@ -699,6 +699,24 @@ body.dragging-active * {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Headline gradient cycle.
+   The COMPILE/COMPETE/CONQUER gradient used to animate only on hover, so the
+   page sat static until the pointer happened to land on it. This sweeps the
+   gradient continuously instead.
+
+   Animates background-POSITION over a 200%-wide gradient rather than the colour
+   stops: it composites on the GPU, it cannot retrigger layout, and the existing
+   group-hover: from/via/to overrides still work alongside it because they swap
+   the gradient's colours, not its position. */
+@keyframes braceGradientCycle {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+.animate-brace-cycle {
+  background-size: 200% 100%;
+  animation: braceGradientCycle 7s ease-in-out infinite;
+}
+
 @keyframes descFade {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
