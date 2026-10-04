@@ -24,7 +24,8 @@
     "problem:expand": "tsx src/scripts/expand_test_cases.ts",
     "problem:verify-legacy": "tsx src/scripts/verify_legacy_execution.ts",
     "problem:verify-matrix": "tsx src/scripts/verify_matrix.ts",
-    "problem:refresh-cases": "tsx src/scripts/refresh_bank_cases.ts"
+    "problem:refresh-cases": "tsx src/scripts/refresh_bank_cases.ts",
+    "problem:audit-bank": "tsx src/scripts/audit_bank.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

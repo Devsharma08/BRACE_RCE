@@ -64,6 +64,15 @@ jobs:
       # The problem-bank suites do need PostgreSQL and are therefore nightly
       # (see execution-canary.yml) rather than a per-PR gate.
       # ────────────────────────────────────────────────────────────
+      # Static bank audit: no database, no sandbox, runs in about a second. It
+      # catches an unwinnable case (expected output past Piston's stdout cap), a
+      # published example that disagrees with its own reference, a reference that
+      # mutates its input, and duplicate problem numbers.
+      - name: Audit the problem bank
+        run: |
+          cd server
+          pnpm exec cross-env NODE_MODE=development tsx src/scripts/audit_bank.ts
+
       - name: Start Piston sandbox
         run: |
           docker run -d --name piston-ci -p 2000:2000 \
