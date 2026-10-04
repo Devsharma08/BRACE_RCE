@@ -76,7 +76,7 @@ export default bank([
         // A small range produces many equal values and short LIS results.
         return [r.nums(n, 1, 8)];
       },
-      13,
+      15,
       901,
     ),
   },
@@ -140,7 +140,7 @@ export default bank([
         // Sign mix exercises both the extending and restarting branches.
         return [r.nums(n, -6, 8)];
       },
-      13,
+      15,
       902,
     ),
   },
@@ -219,7 +219,7 @@ export default bank([
         }
         return [grid, m, n];
       },
-      13,
+      15,
       903,
     ),
   },
@@ -292,7 +292,7 @@ export default bank([
         const mk = () => r.str(r.int(0, 8), 'abc');
         return [mk(), mk()];
       },
-      13,
+      15,
       904,
     ),
   },
@@ -365,7 +365,7 @@ export default bank([
         }
         return [coins, r.int(0, 30)];
       },
-      13,
+      15,
       905,
     ),
   },

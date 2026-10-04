@@ -82,7 +82,7 @@ export default bank([
         priv('', 'a'),
       ],
       (r) => [r.str(r.int(1, 12)), r.str(r.int(1, 3))],
-      12,
+      15,
       201,
     ),
   },
@@ -163,7 +163,7 @@ export default bank([
         ).join('');
         return [words, q];
       },
-      12,
+      15,
       202,
     ),
   },

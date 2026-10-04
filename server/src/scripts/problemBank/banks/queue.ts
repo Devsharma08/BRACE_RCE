@@ -90,7 +90,7 @@ export default bank([
         for (const list of graph) list.sort((x, y) => x - y);
         return [graph, r.int(0, n - 1)];
       },
-      13,
+      15,
       501,
     ),
   },
@@ -158,7 +158,7 @@ export default bank([
         // A narrow value range produces ties, which the tie-break must handle.
         return [r.nums(n, -5, 12), r.int(1, n)];
       },
-      13,
+      15,
       502,
     ),
   },
@@ -228,7 +228,7 @@ export default bank([
         for (let i = 0; i < total; i++) tasks.push(r.pick(pool));
         return [tasks, r.int(0, 4)];
       },
-      13,
+      15,
       503,
     ),
   },  {
@@ -313,7 +313,7 @@ export default bank([
         priv([1, null, 2]),
       ],
       (r) => [r.tree(r.int(0, 10))],
-      13,
+      15,
       504,
     ),
   },

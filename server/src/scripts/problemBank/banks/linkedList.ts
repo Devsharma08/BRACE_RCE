@@ -84,7 +84,7 @@ export default bank([
         };
         return [mk(), mk()];
       },
-      13,
+      15,
       601,
     ),
   },
@@ -145,7 +145,7 @@ export default bank([
         const idx = n === 0 || r.next() < 0.4 ? -1 : r.int(0, n - 1);
         return [values, idx];
       },
-      13,
+      15,
       602,
     ),
   },
@@ -214,7 +214,7 @@ export default bank([
         }
         return [r.nums(r.int(0, 10), 1, 4)];
       },
-      13,
+      15,
       603,
     ),
   },
@@ -278,7 +278,7 @@ export default bank([
         for (let i = 0; i < n; i++) values.push(r.int(1, 99));
         return [values, r.int(1, n)];
       },
-      13,
+      15,
       604,
     ),
   },
@@ -337,7 +337,7 @@ export default bank([
         priv([8, 7, 6, 5]),
       ],
       (r) => [r.nums(r.int(0, 12), 1, 99)],
-      13,
+      15,
       605,
     ),
   },

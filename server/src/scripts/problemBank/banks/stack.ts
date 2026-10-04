@@ -79,7 +79,7 @@ export default bank([
         }
         return [s];
       },
-      13,
+      15,
       401,
     ),
   },
@@ -177,7 +177,7 @@ export default bank([
         if (depth > 0) parts.push('getMin');
         return [parts.join('|')];
       },
-      13,
+      15,
       402,
     ),
   },
@@ -256,7 +256,7 @@ export default bank([
         }
         return [out];
       },
-      13,
+      15,
       403,
     ),
   },
@@ -334,7 +334,7 @@ export default bank([
         }
         return [s];
       },
-      13,
+      15,
       404,
     ),
   },
@@ -423,7 +423,7 @@ export default bank([
         };
         return [mk(r.int(1, 2))];
       },
-      13,
+      15,
       405,
     ),
   },
@@ -495,7 +495,7 @@ export default bank([
         for (let i = 0; i < n; i++) s += 'abc'[r.int(0, 2)];
         return [s];
       },
-      13,
+      15,
       406,
     ),
   },

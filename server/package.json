@@ -23,7 +23,8 @@
     "problem:fix-ops": "tsx src/scripts/fix_operation_expected.ts",
     "problem:expand": "tsx src/scripts/expand_test_cases.ts",
     "problem:verify-legacy": "tsx src/scripts/verify_legacy_execution.ts",
-    "problem:verify-matrix": "tsx src/scripts/verify_matrix.ts"
+    "problem:verify-matrix": "tsx src/scripts/verify_matrix.ts",
+    "problem:refresh-cases": "tsx src/scripts/refresh_bank_cases.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

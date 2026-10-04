@@ -79,7 +79,7 @@ export default bank([
         const bad = r.next() < 0.2 ? 0 : r.int(1, n);
         return [n, bad];
       },
-      13,
+      15,
       901,
     ),
   },
@@ -143,7 +143,7 @@ export default bank([
         priv(10000),
       ],
       (r) => [r.int(0, 100000)],
-      13,
+      15,
       902,
     ),
   },
@@ -219,7 +219,7 @@ export default bank([
         const target = r.next() < 0.6 && n > 0 ? nums[r.int(0, n - 1)] : r.int(1, 7);
         return [nums, target];
       },
-      13,
+      15,
       903,
     ),
   },
@@ -289,7 +289,7 @@ export default bank([
         const pivot = r.int(0, n);
         return [nums.slice(pivot).concat(nums.slice(0, pivot))];
       },
-      13,
+      15,
       904,
     ),
   },
@@ -361,7 +361,7 @@ export default bank([
         // A small range makes plateaus, the tricky case, common.
         return [r.nums(n, 1, 4)];
       },
-      13,
+      15,
       905,
     ),
   },

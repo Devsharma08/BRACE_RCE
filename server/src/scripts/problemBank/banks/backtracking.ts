@@ -90,7 +90,7 @@ export default bank([
       ],
       // Every n from 1 to 12 is a distinct case, so just walk the range.
       (r) => [r.int(1, 12)],
-      12,
+      15,
       300,
     ),
   },
@@ -165,7 +165,7 @@ export default bank([
         const n = r.int(1, 8);
         return [n, r.int(1, n)];
       },
-      12,
+      15,
       301,
     ),
   },
@@ -242,10 +242,15 @@ export default bank([
         priv([-1,0,1]),
       ],
       (r) => {
-        const n = r.int(1, 5);
+        // n is capped at 4 on purpose. With n=5 and five DISTINCT values the
+        // answer is 5! = 120 permutations, about 1.8 kB, which is past Piston's
+        // stdout cap — the sandbox SIGKILLs the process with "stdout length
+        // exceeded", so a CORRECT submission is killed and the case can never be
+        // passed. At n=4 the worst case is 24 permutations, comfortably inside.
+        const n = r.int(1, 4);
         return [r.nums(n, -4, 4)];
       },
-      11,
+      15,
       302,
     ),
   },
@@ -325,7 +330,7 @@ export default bank([
         const n = r.int(1, 5);
         return [r.nums(n, 1, 6), r.int(1, 14)];
       },
-      12,
+      15,
       303,
     ),
   },
@@ -415,7 +420,7 @@ export default bank([
         for (let i = 0; i < len; i++) word += letters[r.int(0, 2)];
         return [board, word];
       },
-      13,
+      15,
       304,
     ),
   },

@@ -69,7 +69,7 @@ export default bank([
         const nums = r.nums(n, 1, 8);
         return [nums, r.int(1, n)];
       },
-      13,
+      15,
       801,
     ),
   },
@@ -172,7 +172,7 @@ export default bank([
         const values = r.nums(n, 1, 8);
         return [k, values];
       },
-      13,
+      15,
       802,
     ),
   },
@@ -248,7 +248,7 @@ export default bank([
         // Small weights keep the DP table tiny and make odd totals common.
         return [r.nums(n, 1, 12)];
       },
-      13,
+      15,
       803,
     ),
   },
@@ -312,7 +312,7 @@ export default bank([
         for (let i = 0; i < n; i++) points.push([r.int(-6, 6), r.int(-6, 6)]);
         return [points, r.int(1, n)];
       },
-      13,
+      15,
       804,
     ),
   },
@@ -452,7 +452,7 @@ export default bank([
         // A tight range makes the even/odd median distinction matter.
         return [r.nums(n, 1, 10)];
       },
-      13,
+      15,
       805,
     ),
   },

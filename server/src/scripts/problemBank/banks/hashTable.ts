@@ -77,7 +77,7 @@ export default bank([
         // A small range and sign mix make zero-sum runs common.
         return [r.nums(n, -3, 3), r.int(-3, 6)];
       },
-      13,
+      15,
       701,
     ),
   },
@@ -148,7 +148,7 @@ export default bank([
         // Positive values are required by the problem.
         return [r.nums(n, 1, 9), r.int(1, 20)];
       },
-      13,
+      15,
       702,
     ),
   },
@@ -211,7 +211,7 @@ export default bank([
         const b = r.nums(r.int(0, 10), 1, 6);
         return [a, b];
       },
-      13,
+      15,
       703,
     ),
   },
@@ -308,7 +308,7 @@ export default bank([
         }
         return [parts.join('|')];
       },
-      13,
+      15,
       704,
     ),
   },
@@ -374,7 +374,7 @@ export default bank([
         for (let i = 0; i < qn; i++) queries.push(r.int(1, 4));
         return [nums, queries];
       },
-      13,
+      15,
       705,
     ),
   },

@@ -84,7 +84,7 @@ export default bank([
         const x = r.nums(m, 0, 5);
         return [g, x];
       },
-      13,
+      15,
       911,
     ),
   },
@@ -160,7 +160,7 @@ export default bank([
         const n = r.int(1, 10);
         return [r.nums(n, 1, 4)];
       },
-      13,
+      15,
       912,
     ),
   },
@@ -237,7 +237,7 @@ export default bank([
         const cost = r.nums(n, 0, 6);
         return [gas, cost];
       },
-      13,
+      15,
       913,
     ),
   },
@@ -308,7 +308,7 @@ export default bank([
         priv(10, 2),
       ],
       (r) => [r.int(0, 30), r.int(0, 12)],
-      13,
+      15,
       914,
     ),
   },
@@ -386,7 +386,7 @@ export default bank([
         }
         return [intervals];
       },
-      13,
+      15,
       915,
     ),
   },

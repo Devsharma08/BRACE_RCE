@@ -64,7 +64,7 @@ async function main() {
     const tests = autoTests(
       e.edge.map((a) => ({ args: a, isPublic: false })),
       (r) => e.gen(r),
-      13,
+      15,
       9000 + e.number,
     );
     if (tests.length < 10) {

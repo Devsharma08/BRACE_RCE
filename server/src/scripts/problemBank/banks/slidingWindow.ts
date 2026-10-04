@@ -81,7 +81,7 @@ export default bank([
         const nums = r.nums(n, 1, 6);
         return [nums, r.int(0, 20)];
       },
-      12,
+      15,
       310,
     ),
   },
@@ -177,7 +177,7 @@ export default bank([
         const nums = r.nums(n, -3, 3);
         return [nums, r.int(1, 4)];
       },
-      12,
+      15,
       311,
     ),
   },
@@ -247,7 +247,7 @@ export default bank([
         // Small value range so repeats are common and frequencies above 1 occur.
         return [r.nums(n, 1, 3)];
       },
-      12,
+      15,
       312,
     ),
   },
@@ -338,7 +338,7 @@ export default bank([
         const a = r.int(0, n - 2);
         return [nums, a, a + 1];
       },
-      12,
+      15,
       313,
     ),
   },
@@ -422,7 +422,7 @@ export default bank([
         };
         return [mk(10), mk(3)];
       },
-      12,
+      15,
       314,
     ),
   },
