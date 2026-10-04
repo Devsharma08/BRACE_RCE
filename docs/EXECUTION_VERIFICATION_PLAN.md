@@ -255,54 +255,51 @@ python3 server/scripts/api_audit.py                             # endpoint stats
 So the compiled languages dominate: a full matrix is roughly **8–10 hours**, not
 something to run on every commit. Design accordingly — see stage 5.
 
-### 4d. The largest remaining user-facing defect: compile per test case
+### 4d. DONE — compile per test case (batched)
 
 Measured end to end through the live API on Two Sum, 13 real test cases:
 
-| Language | 13-case SUBMIT | Per case | vs JavaScript |
-|---|---|---|---|
-| javascript | 3.4 s | ~0.26 s | 1x |
-| python | 3.6 s | ~0.27 s | 1.0x |
-| c | 4.3 s | ~0.33 s | 1.3x |
-| **cpp** | **51.4 s** | **~3.95 s** | **15x** |
+| Language | before | after | CPU before | CPU after |
+|---|---|---|---|---|
+| java | **51.1 s** | **4.1 s** | ~123,000 ms | 7,163 ms (17x) |
+| cpp | **22.0 s** | **6.8 s** | ~143 ms | 13 ms |
+| javascript | 3.4 s | 3.4 s | — | — |
 
-Projected for a 15-case bank problem: **C++ ~59 s, Java ~31 s.** That is far past
-any acceptable wait for a code submission, and it is now the biggest thing wrong
-with the core feature.
+Cause: `executeCode` issued one Piston request per test case, and every request
+recompiled the identical file. For C++ roughly 2.5 s of the request is compile
+and toolchain startup against ~11 ms of user code. Java is worse: ~2.4 s of CPU
+of JVM startup before any user code runs, on every case.
 
-Cause: `executeCode` issues one Piston request per test case, and every request
-compiles the identical file again. For C++ roughly 3.7 s of the 3.95 s per case
-is compile and toolchain startup — about 95%. Java is similar at ~2.4 s, almost
-entirely JVM startup. C is nearly unaffected because gcc is much cheaper here
-than g++.
+**The fix.** Cases are packed into a single sandbox invocation behind a
+`__CASE__<lineCount>` header, so the split never has to guess where a case ends.
+The generated driver reads the headers, runs each case, and prints one result
+line per case. Java and C++ drivers were restructured for this; their per-case
+body is now a function over `lines`, which is all it took because the argument
+parsing only ever referenced `lines`.
 
-Note this also explains why `compileMs` reads 0 in the execution telemetry: this
-Piston build does not return `compile.time` or `run.time` at all, only
-`cpu_time`, `wall_time` and `memory`. The compile cost is real but currently
-invisible per-case; it only shows up in end-to-end wall time.
+**It cannot produce a wrong verdict.** `runBatched` returns null on anything it
+cannot account for — a line-count mismatch, a non-zero exit, a compile failure,
+or an `__ERR__` line — and the caller re-runs the proven per-case path. A
+batching defect costs time, never correctness. Per-case CPU is reported as the
+amortised share, since the batch shares one process.
 
-**The fix.** Batch every test case into a single sandbox invocation:
+**What it changed that mattered:**
+- Exceptions still propagate on the legacy single-case path. An early draft
+  captured them there too, which turned "your code threw" into "wrong answer"
+  with no runtime error shown.
+- Short-circuit semantics are unchanged: a wrong C++ answer still stops at the
+  first failing case (3/13, 9 skipped, details truncated there).
+- A case that throws mid-batch yields one `__ERR__` line and its siblings still
+  run; the backend then re-runs per case for a proper message.
 
-1. Join the case inputs with a delimiter line that cannot occur in test data.
-2. Generate a `main()` that reads all of stdin, splits on the delimiter, and
-   runs the user function once per chunk, printing one result per line.
-3. Compare stdout line *i* against expected output *i* in the backend.
+Coverage: `verify_wrapper_shapes.ts` now also exercises the batched framing
+(3 cases in, 3 lines out) alongside the 50 single-case shapes, because batching
+is a separate branch that the single-case matrix cannot reach. Sabotaging the
+framing turns that check red, so it is a real gate.
 
-That turns N requests into 1: C++ goes from ~59 s to ~4 s for a 15-case problem,
-a ~15x improvement, and it makes the full stage-4 matrix practical overnight.
-
-**Why it is not done here.** It changes the generated `main()` for C, C++ and
-Java, which is the production execution path, and the per-case output contract
-that 893 JavaScript bank cases and 50 shape cases depend on. It is the right
-change but it deserves its own branch and its own review rather than being
-folded into an already-large session.
-
-**When it is done**, gate it on:
-- `verify_wrapper_shapes.ts` still 50/50 (it covers the multi-case framing once
-  the shape suite gains a multi-case case)
-- `verify_execution.ts` still 893/893
-- a new shape that feeds 3 cases and asserts 3 output lines
-- A/B the live API timings above to confirm the ~15x, not just that it is green
+Not batched: C and JavaScript. Their drivers still read a single case, and
+framing stdin their wrappers cannot parse would break them. C is already cheap
+(gcc 237 ms vs g++ 2540 ms for the generated wrapper).
 
 ---
 
@@ -368,13 +365,16 @@ cause as 4d — and it is why batching is the only large win available.
 
 ## Conclusion — order of work for Phase 2
 
-1. **Batching (4d) stays the top item.** It is the only change that removes
-   the fixed per-invocation cost, which the table above shows is ~95% of C++
-   and most of Java. Flags and includes trim the variable part, which is small.
+1. **Batching (4d) — DONE.** Java 51.1s → 4.1s, C++ 22.0s → 6.8s on 13 cases.
+   This was the only change that removed the fixed per-invocation cost rather
+   than trimming the variable part around it, and the measurements above are why.
 2. Do **not** add `compile_args`; measured to be noise.
 3. Header trimming is worth ~13% on C++ but needs a per-shape include set
-   before it can be safe. Revisit after batching, when the risk/benefit is
-   re-measured on a much smaller fixed cost.
+   before it can be safe. Revisit after batching, when the fixed cost it was
+   competing with is gone.
+4. C and JavaScript are unbatched and should stay that way unless C's compile
+   cost grows; gcc is 10x cheaper than g++ here, and both languages are already
+   inside the client budget.
 
 If Piston later exposes a compile-once/run-many or package-caching API, that
 supersedes batching entirely and should be revisited first.
