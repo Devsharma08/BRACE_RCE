@@ -44,6 +44,16 @@ type Ref = Partial<Record<Lang, string>>;
 type ProblemSpec = {
   name: string;
   oid: string;
+  /**
+   * The problem's real stored cases, copied from the database.
+   *
+   * The runner prefers the live DB copy when it exists, so drift between this
+   * file and the database is itself a failure. The embedded copy exists because
+   * none of these three problems are in the seedable problem bank, so a fresh CI
+   * database has no rows for them — without this the matrix could only run
+   * against a locally seeded database and could not gate a pull request.
+   */
+  cases: [string, string][];
   /** Correct reference per language. Absent = skipped, with a stated reason. */
   refs: Ref;
   /** Languages deliberately excluded, each a place a defect could hide. */
@@ -53,6 +63,21 @@ type ProblemSpec = {
 const SPECS: ProblemSpec[] = [
   {
     name: 'Two Sum',
+    cases: [
+        ['[2,7,11,15]\n9', '[0,1]'],
+        ['[3,2,4]\n6', '[1,2]'],
+        ['[3,3]\n6', '[0,1]'],
+        ['[]\n0', '[]'],
+        ['[5]\n5', '[]'],
+        ['[10,-8,5,-12,16,6]\n11', '[2,5]'],
+        ['[-13,17,7]\n-6', '[0,2]'],
+        ['[-13,-1,7,-18,7,14,20,11]\n-6', '[0,2]'],
+        ['[-4,7,12,3,-9,6]\n2', '[0,5]'],
+        ['[-10,-11]\n-21', '[0,1]'],
+        ['[-8,5,-6,9,-14,20,-4]\n-14', '[0,2]'],
+        ['[8,-2,-11,-16,16,7,16,15,17,2]\n-14', '[3,9]'],
+        ['[-17,4,-16,-13,-12,11,17,2,-14,10]\n-2', '[3,5]'],
+    ],
     oid: '67a013521d80b36dba6b2d0b1f9bf2b824c79028',
     // int[] + int -> int[]. The array is the first stdin line, the target the
     // second, so this also guards the C synthetic-size off-by-one.
@@ -71,6 +96,21 @@ const SPECS: ProblemSpec[] = [
   },
   {
     name: 'Best Time to Buy and Sell Stock',
+    cases: [
+        ['[7,1,5,3,6,4]', '5'],
+        ['[7,6,4,3,1]', '0'],
+        ['[]', '0'],
+        ['[1]', '0'],
+        ['[1,2]', '1'],
+        ['[5,33,9,4,33,9]', '29'],
+        ['[13,35,29,3,22,4,29,2,13,35,27,31]', '33'],
+        ['[16,30,12,9,35,16]', '26'],
+        ['[32]', '0'],
+        ['[13,23,7,32]', '25'],
+        ['[27,13]', '0'],
+        ['[7,26,37,1,30,24,34]', '33'],
+        ['[40,5,29,14,34,28,14,3,16]', '29'],
+    ],
     oid: 'abd9bcf674fde34a7cd15f1c2178e37f573fabe3',
     // int[] -> int. Single return scalar, so it exercises a different printer
     // from Two Sum's array return.
@@ -89,6 +129,21 @@ const SPECS: ProblemSpec[] = [
   },
   {
     name: 'Maximum Depth of Binary Tree',
+    cases: [
+        ['[3,9,20,null,null,15,7]', '3'],
+        ['[1,null,2]', '2'],
+        ['[]', '0'],
+        ['[1]', '1'],
+        ['[1,2,3,4,5,null,null,6]', '4'],
+        ['[4,2,5,3,1,6]', '3'],
+        ['[4,3,2,5,6,1]', '3'],
+        ['[8,12,5,3,2,11,6,7,10,4,9,1]', '4'],
+        ['[7,8,10,2,3,12,6,4,11,9,5,1]', '4'],
+        ['[8,4,9,5,7,3,1,2,6,11,12,10]', '4'],
+        ['[4,11,5,9,3,2,1,8,7,10,6,12]', '4'],
+        ['[6,5,7,3,8,4,2,10,9,1]', '4'],
+        ['[11,5,3,6,2,1,10,7,8,4,9]', '4'],
+    ],
     oid: 'c2f93388b31584a8711a0c2fdac3a8525b33c550',
     // TreeNode -> int. Stored input is level-order with nulls, which is the
     // encoding the wrappers must reconstruct before the depth can be computed.
@@ -149,19 +204,45 @@ async function main() {
   let pass = 0, skip = 0, casesChecked = 0;
 
   for (const spec of SPECS) {
-    const row = await prisma.problem.findFirst({
-      where: { OR: [{ github_oid: spec.oid }, { id: spec.oid }] },
-      select: { name: true, test_cases: true },
-    });
-    if (!row) {
-      failures.push(`${spec.name}: problem not found (oid ${spec.oid})`);
-      console.log(`${spec.name.padEnd(32)} MISSING PROBLEM`);
-      continue;
-    }
-    const cases = ((row.test_cases ?? []) as any[]).map((c) => ({
-      input: String(c.input ?? '').replace(/\n$/, ''),
-      expected: String(c.expectedOutput ?? '').trim(),
+    // Prefer the live database copy; fall back to the embedded one so this runs
+    // on a CI database that has never been seeded. Either way, flag it when the
+    // two disagree — that means a stored case drifted from this file.
+    let source = 'embedded';
+    let cases: Case[] = spec.cases.map(([input, expected]) => ({
+      input,
+      expected: expected.trim(),
     }));
+
+    let row: { name: string; test_cases: unknown } | null = null;
+    try {
+      row = await prisma.problem.findFirst({
+        where: { OR: [{ github_oid: spec.oid }, { id: spec.oid }] },
+        select: { name: true, test_cases: true },
+      });
+    } catch {
+      // No database reachable. The embedded cases still make this a valid gate.
+      row = null;
+    }
+
+    if (row) {
+      const dbCases = ((row.test_cases ?? []) as any[]).map((c) => ({
+        input: String(c.input ?? '').replace(/\n$/, ''),
+        expected: String(c.expectedOutput ?? '').trim(),
+      }));
+      if (dbCases.length) {
+        source = 'db';
+        const drift =
+          dbCases.length !== cases.length ||
+          dbCases.some((d, i) => d.input !== cases[i]!.input || d.expected !== cases[i]!.expected);
+        if (drift) {
+          failures.push(
+            `${spec.name}: stored cases have drifted from the copy embedded in verify_matrix.ts ` +
+              `(${dbCases.length} in DB vs ${cases.length} embedded) — re-copy them`,
+          );
+        }
+        cases = dbCases;
+      }
+    }
 
     const marks: string[] = [];
     for (const lang of langs) {
@@ -210,7 +291,7 @@ async function main() {
       pass++;
       marks.push(`${batched ? 'PASS*' : 'PASS '} ${lang}`);
     }
-    console.log(`${spec.name.padEnd(32)} ${marks.join('  ')}`);
+    console.log(`${spec.name.padEnd(32)} ${marks.join('  ')}   [cases: ${source}]`);
   }
 
   console.log(`\npassed: ${pass}, failed: ${failures.length}, skipped: ${skip}, cases checked: ${casesChecked}`);
