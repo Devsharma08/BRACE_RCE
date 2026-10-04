@@ -279,9 +279,33 @@ parsing only ever referenced `lines`.
 
 **It cannot produce a wrong verdict.** `runBatched` returns null on anything it
 cannot account for — a line-count mismatch, a non-zero exit, a compile failure,
-or an `__ERR__` line — and the caller re-runs the proven per-case path. A
-batching defect costs time, never correctness. Per-case CPU is reported as the
-amortised share, since the batch shares one process.
+or an `__ERR__` line — and the caller re-runs the proven per-case path. Per-case
+CPU is reported as the amortised share, since the batch shares one process.
+
+Two further guards exist because batching changes *semantics*, not just cost:
+
+- **Shared mutable state.** All cases share one process, so a `static` field
+  persists across cases where the per-case path started fresh. A correct Java
+  submission with a static counter fails batched and passes per-case. Submissions
+  containing `static` are therefore not batched. Measured: with the guard that
+  submission PASSES 13/13; with the guard removed it reports **FAILED 1/13**.
+- **Multi-line expected output.** The contract is one output line per case. All
+  2,500 stored cases are single-line (checked), but that is a property of the
+  current data rather than a guarantee, so it is refused explicitly.
+
+Known gap: a C++ file-scope variable written without `static` is not detected,
+because catching it needs real parsing. The Java path is exact.
+
+**Final live measurement**, Two Sum, 13 cases, one run each:
+
+| Language | before | now | status |
+|---|---|---|---|
+| javascript | 3.4 s | **2.3 s** | PASSED 13/13 |
+| cpp | 22.0 s | **3.4 s** | PASSED 13/13 |
+| java | 51.1 s | **3.9 s** | PASSED 13/13 |
+
+`falsePass=0` on all three: no case was reported as passed while its output
+disagreed with the expected output.
 
 **What it changed that mattered:**
 - Exceptions still propagate on the legacy single-case path. An early draft
