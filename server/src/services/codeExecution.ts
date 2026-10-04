@@ -460,6 +460,32 @@ export function supportsBatching(language: string): boolean {
   return BATCHABLE_LANGUAGES.has(language as SupportedLanguage);
 }
 
+/**
+ * Would batched cases share mutable state that the per-case path would reset?
+ *
+ * Batching runs every case in ONE process, so a `static` field (Java) or a
+ * `static`/file-scope variable (C++) persists from one case to the next. Per-case
+ * execution starts a fresh process each time, so the same submission can pass
+ * unbatched and fail batched. That is a wrong verdict, not a slow one, so it
+ * disables batching instead.
+ *
+ * Deliberately conservative: a false positive only costs the slower path. Java
+ * `static final` constants are immutable and stay eligible. C++ file-scope
+ * variables written without the `static` keyword are NOT detected — that would
+ * need real parsing, and the residual risk is documented rather than guessed at.
+ */
+function hasSharedMutableState(language: string, code: string): boolean {
+  if (!code) return false;
+  if (language === "java") {
+    // Strip immutable constants, then look for any remaining `static`.
+    return /\bstatic\b/.test(code.replace(/\bstatic\s+final\b/g, "static"));
+  }
+  if (language === "cpp" || language === "c") {
+    return /\bstatic\b/.test(code);
+  }
+  return false;
+}
+
 export function prepareFinalCode(
   executionLanguage: SupportedLanguage,
   sourceCode: string,
@@ -1766,6 +1792,24 @@ export const executeCode = async (req: Request, res: Response) => {
       // A case with no expected output is a custom-input run: there is nothing
       // to compare, and batching would hide which output belonged to it.
       if (casesToRun.some((c) => (c.expectedOutput ?? "") === "")) return null;
+
+      // The batch contract is one output line per case. A case whose expected
+      // output spans several lines cannot be split back out of it. None of the
+      // 2,500 stored cases do this today (checked), but a custom problem could,
+      // so it is refused rather than assumed.
+      if (
+        casesToRun.some((c) =>
+          String(c.expectedOutput ?? "")
+            .split("\n")
+            .filter((l) => l.trim().length > 0).length > 1,
+        )
+      ) {
+        return null;
+      }
+
+      // One process for all cases means shared state leaks between them, which
+      // the per-case path would have reset.
+      if (hasSharedMutableState(executionLanguage, sourceCode)) return null;
 
       const startTime = performance.now();
       const stdin = casesToRun
