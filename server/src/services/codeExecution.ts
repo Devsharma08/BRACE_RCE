@@ -439,6 +439,27 @@ import { buildOperationWrapper, detectOperationSignature } from './operationWrap
 
 import { buildSpecialWrapper, detectSpecialKind } from './specialWrapper.js';
 
+/**
+ * Marker a batched driver prints instead of output when a single case throws.
+ * Recognised by `runBatched` so it can hand the submission to the per-case path
+ * and get a proper per-case error message.
+ */
+const BATCH_ERR_MARK = "__ERR__";
+
+/**
+ * Languages whose generated driver understands the `__CASE__<lineCount>`
+ * framing. Anything not listed here keeps the per-case path, which is proven.
+ *
+ * Only Java is enabled so far. Its driver was restructured for this; the C, C++
+ * and JavaScript drivers still read a single case, and pointing the batch
+ * builder at them would frame stdin their wrappers cannot parse.
+ */
+const BATCHABLE_LANGUAGES: ReadonlySet<string> = new Set<SupportedLanguage>(["java"]);
+
+export function supportsBatching(language: string): boolean {
+  return BATCHABLE_LANGUAGES.has(language as SupportedLanguage);
+}
+
 export function prepareFinalCode(
   executionLanguage: SupportedLanguage,
   sourceCode: string,
@@ -939,15 +960,91 @@ import java.util.stream.*;
 // are therefore emitted AFTER Main, which Java permits since forward references
 // between top-level classes are legal.
 public class Main {
+  // Batched execution.
+  //
+  // JVM startup costs ~2.4s of CPU before any user code runs, and Piston charges
+  // it once per invocation. Paying it 13 times for a 13-case submission cost
+  // ~51s end to end; paying it once costs ~4s. So the backend may pack several
+  // cases into one invocation, each preceded by a "__CASE__<lineCount>" header
+  // so the split never has to guess where a case ends.
+  //
+  // Stdin WITHOUT a header is treated as one legacy case and printed exactly as
+  // before, so the existing harnesses and any stored-format caller keep working.
+  private static final String CASE_HDR = "__CASE__";
+  private static final String ERR_MARK = "__ERR__";
+
   public static void main(String[] args) throws Exception {
+    List<String> raw = new ArrayList<>();
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-    List<String> lines = new ArrayList<>();
     String line;
-    while ((line = br.readLine()) != null) {
-      line = line.trim();
-      if (!line.isEmpty()) lines.add(line);
+    while ((line = br.readLine()) != null) raw.add(line);
+
+    int i = 0;
+    while (i < raw.size() && raw.get(i).trim().isEmpty()) i++;
+    if (i >= raw.size() || !raw.get(i).trim().startsWith(CASE_HDR)) {
+      // Legacy single case: run exactly as before, with NO capture and NO catch.
+      // Letting the exception propagate is what gives the backend a non-zero
+      // exit and a stderr message to show the user. Swallowing it here would
+      // turn "your code threw" into "wrong answer", which is what happened in the
+      // first draft of this method.
+      runCaseBody(normalise(raw).toArray(new String[0]));
+      return;
     }
-    String[] inputLines = lines.toArray(new String[0]);
+
+    StringBuilder sb = new StringBuilder();
+    while (i < raw.size()) {
+      String header = raw.get(i++).trim();
+      if (header.isEmpty()) continue;
+      if (!header.startsWith(CASE_HDR)) break;
+      int count;
+      try { count = Integer.parseInt(header.substring(CASE_HDR.length()).trim()); }
+      catch (NumberFormatException e) { sb.append(ERR_MARK).append("malformed case header").append('\\n'); continue; }
+      List<String> chunk = new ArrayList<>();
+      for (int k = 0; k < count && i < raw.size(); k++) chunk.add(raw.get(i++));
+      sb.append(runCase(normalise(chunk))).append('\\n');
+    }
+    System.out.print(sb);
+  }
+
+  private static List<String> normalise(List<String> in) {
+    List<String> out = new ArrayList<>();
+    for (String s : in) { String t = s.trim(); if (!t.isEmpty()) out.add(t); }
+    return out;
+  }
+
+  /**
+   * Runs one case of a BATCH and returns what it printed, instead of printing.
+   *
+   * The existing design-pattern helpers (runDesignCase / runDesignActionCase)
+   * write to System.out themselves, so the stream is captured for the duration
+   * of the call rather than refactoring those two methods. This code is
+   * single-threaded and runs inside a sandbox, so the swap is contained.
+   *
+   * A case that throws must not take the batch down with it, so the throw is
+   * converted to a single __ERR__ line and the remaining cases still run. The
+   * backend treats that marker as "this batch is not fully trustworthy" and
+   * re-runs the submission per case, which yields the real per-case error.
+   */
+  private static String runCase(List<String> inputLines) {
+    String[] lines = inputLines.toArray(new String[0]);
+    PrintStream realOut = System.out;
+    ByteArrayOutputStream captured = new ByteArrayOutputStream();
+    try {
+      System.setOut(new PrintStream(captured, true, "UTF-8"));
+      runCaseBody(lines);
+    } catch (Throwable t) {
+      String msg = String.valueOf(t.getMessage());
+      if (msg == null || msg.isEmpty()) msg = t.getClass().getSimpleName();
+      return ERR_MARK + msg.replace('\\n', ' ').replace('\\r', ' ');
+    } finally {
+      System.setOut(realOut);
+    }
+    String text = captured.toString();
+    while (text.endsWith("\\n") || text.endsWith("\\r")) text = text.substring(0, text.length() - 1);
+    return text;
+  }
+
+  private static void runCaseBody(String[] inputLines) throws Exception {
     if (isDesignCase(Solution.class, inputLines)) { runDesignCase(Solution.class, inputLines); return; }
     if (isDesignActionCase(Solution.class, inputLines)) { runDesignActionCase(Solution.class, inputLines); return; }
     Method[] candidates = Arrays.stream(Solution.class.getDeclaredMethods())
@@ -1613,6 +1710,124 @@ export const executeCode = async (req: Request, res: Response) => {
       compileMemoryKb: number;
     };
 
+    /**
+     * Runs every case in ONE sandbox invocation instead of one per case.
+     *
+     * The fixed per-invocation cost is ~95% of a C++ request (331ms for
+     * `int main(){}` versus 2540ms for the generated wrapper) and most of a Java
+     * one (~2.4s of CPU before any user code). Paying it N times is what made a
+     * 13-case Java submission take ~51s.
+     *
+     * The generated Java driver understands a `__CASE__<lineCount>` framing, so
+     * the split needs no guessing. Only languages whose driver actually
+     * implements it are eligible — see `supportsBatching`. Anything irregular
+     * (line-count mismatch, non-zero exit, a compile failure, or a `__ERR__`
+     * line) returns null and the caller re-runs the proven per-case path, so a
+     * batching bug can cost time but cannot produce a wrong verdict.
+     */
+    const runBatched = async (): Promise<CaseOutcome[] | null> => {
+      if (!supportsBatching(executionLanguage)) return null;
+      if (casesToRun.length < 2) return null;
+
+      // A case with no expected output is a custom-input run: there is nothing
+      // to compare, and batching would hide which output belonged to it.
+      if (casesToRun.some((c) => (c.expectedOutput ?? "") === "")) return null;
+
+      const startTime = performance.now();
+      const stdin = casesToRun
+        .map((c) => {
+          const body = String(c.input ?? "");
+          const lineCount = body.length === 0 ? 0 : body.replace(/\n$/, "").split("\n").length;
+          return `__CASE__${lineCount}\n${body}`;
+        })
+        .join("\n");
+
+      const payload = {
+        "language": pistonLanguageMap[executionLanguage] || executionLanguage,
+        "version": "*",
+        "files": [{ "name": getFileName(executionLanguage), "content": finalCode }],
+        "stdin": stdin,
+        "compile_timeout": budget.compileTimeoutMs,
+        "run_timeout": budget.runTimeoutMs,
+        "run_cpu_time": budget.runCpuTimeMs,
+        "compile_memory_limit": budget.compileMemoryLimitBytes,
+        "run_memory_limit": budget.runMemoryLimitBytes,
+      };
+      payloadBytes += Buffer.byteLength(JSON.stringify(payload), "utf8");
+
+      let data: any;
+      try {
+        data = await fireOnPiston(executionLanguage, payload as Record<string, unknown>);
+      } catch {
+        return null;
+      }
+      if (!data?.run) return null;
+      // A compile error or a killed process invalidates the whole batch: the
+      // per-case path reproduces the exact per-case message a user needs.
+      if (data.compile && data.compile.code !== 0) return null;
+      if (data.run.code !== 0 || data.run.signal) return null;
+
+      const lines = String(data.run.stdout ?? "")
+        .split("\n")
+        .map((l) => l.trim());
+      // Trailing newline yields one empty tail entry; anything else is a real
+      // mismatch and must not be guessed at.
+      while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+      if (lines.length !== casesToRun.length) return null;
+      // A case that threw is reported per line, and its siblings' results are
+      // still valid, but the per-case path gives a better message. Defer.
+      if (lines.some((l) => l.startsWith(BATCH_ERR_MARK))) return null;
+
+      const totalMs = Math.round(performance.now() - startTime);
+      const cpuMs = Number(data.run.cpu_time) || 0;
+      const wallMs = Number(data.run.wall_time) || 0;
+      const memoryKb = Math.round(Number(data.run.memory) / 1024) || 0;
+      // The whole batch shares one process, so per-case cost is the amortised
+      // share. Reporting the full batch cost on every case would inflate the
+      // totals by the number of cases.
+      const perCaseMs = Math.max(1, Math.round(totalMs / casesToRun.length));
+
+      return casesToRun.map((c, i) => {
+        const expected = String(c.expectedOutput ?? "").trim();
+        const output = lines[i] ?? "";
+        return {
+          index: i,
+          passed: output === expected,
+          compileFailed: false,
+          runtimeMs: perCaseMs,
+          memoryKb,
+          cpuMs: cpuMs ? Math.round(cpuMs / casesToRun.length) : 0,
+          wallMs: wallMs ? Math.round(wallMs / casesToRun.length) : 0,
+          compileMs: 0,
+          compileMemoryKb: 0,
+          detail: {
+            testCaseIndex: i,
+            output,
+            expectedOutput: expected,
+            passed: output === expected,
+            runtimeError: null,
+            metrics: {
+              durationMs: perCaseMs,
+              memoryKb,
+              cpuMs: cpuMs ? Math.round(cpuMs / casesToRun.length) : 0,
+              wallMs: wallMs ? Math.round(wallMs / casesToRun.length) : 0,
+              compileMs: 0,
+              compileMemoryKb: 0,
+              roundTripMs: totalMs,
+              exitCode: data.run.code ?? null,
+              signal: data.run.signal ?? null,
+              sandboxStatus: data.run.status ?? null,
+              sandboxMessage: null,
+              outputTruncated: false,
+              stdout: output,
+              stderr: "",
+              compileOutput: "",
+            },
+          },
+        };
+      });
+    };
+
     const runOneCase = async (
       currentCase: TestCaseRecord,
       index: number,
@@ -1885,7 +2100,19 @@ export const executeCode = async (req: Request, res: Response) => {
     };
 
     const CONCURRENCY = CASE_CONCURRENCY[executionLanguage] ?? 4;
-    const outcomes = await mapWithConcurrency(casesToRun, CONCURRENCY, runOneCase);
+
+    // One invocation for every case when the language's driver can read the
+    // batched framing; otherwise the proven per-case path. `runBatched` returns
+    // null on anything it cannot account for, so a batch that would misreport is
+    // simply re-run the old way.
+    let outcomes = await runBatched();
+    if (outcomes) {
+      console.log(
+        `[execute] ${executionLanguage}: ${casesToRun.length} cases in ONE sandbox invocation`,
+      );
+    } else {
+      outcomes = await mapWithConcurrency(casesToRun, CONCURRENCY, runOneCase);
+    }
 
     // Re-apply the original short-circuit now that every case has run.
     //
