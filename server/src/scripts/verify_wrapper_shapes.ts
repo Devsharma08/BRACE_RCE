@@ -24,7 +24,7 @@
  *   --verbose          print every case, not just failures
  */
 import 'dotenv/config';
-import { prepareFinalCode } from '../services/codeExecution.js';
+import { prepareFinalCode, supportsBatching } from '../services/codeExecution.js';
 
 const PISTON = process.env.PISTON_URL ?? 'http://localhost:2000';
 
@@ -198,6 +198,119 @@ const SHAPES: Shape[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Batched execution.
+//
+// `executeCode` packs every test case into ONE sandbox invocation using a
+// `__CASE__<lineCount>` header, which is how Java went 51s -> 4s and C++ 22s ->
+// 6.8s on a 13-case submission. This section is the guard for that framing.
+//
+// It deliberately lives beside the single-case matrix rather than inside it,
+// because the two exercise different branches of the generated driver: stdin
+// WITHOUT a header is the legacy single-case path, stdin WITH headers is the
+// batched loop. Testing only the single-case matrix would leave the batched
+// loop completely uncovered, which is how the escaping bug that broke all ten
+// Java shapes went unnoticed until a live submission.
+//
+// Only the languages whose driver implements the framing are listed here;
+// `supportsBatching` is the single source of truth for that.
+// ─────────────────────────────────────────────────────────────────────────────
+const BATCH_CASES: { stdin: string; expected: string }[] = [
+  { stdin: '[2,7,11,15]\n9', expected: '[0,1]' },
+  { stdin: '[3,2,4]\n6', expected: '[1,2]' },
+  { stdin: '[3,3]\n6', expected: '[0,1]' },
+];
+
+const BATCH_REF: Partial<Record<Lang, string>> = {
+  java:
+    'class Solution { public int[] solve(int[] nums,int target){ java.util.Map<Integer,Integer> seen=new java.util.HashMap<>(); for(int i=0;i<nums.length;i++){int n=target-nums[i]; if(seen.containsKey(n)) return new int[]{seen.get(n),i}; seen.put(nums[i],i);} return new int[0]; } }',
+  cpp:
+    'class Solution { public: std::vector<int> solve(std::vector<int>& nums,int target){ std::unordered_map<int,int> seen; for(int i=0;i<(int)nums.size();i++){int n=target-nums[i]; if(seen.count(n)) return {seen[n],i}; seen[nums[i]]=i;} return {}; } };',
+};
+
+/** Builds the batched stdin exactly as `runBatched` does in codeExecution.ts. */
+function frameBatch(cases: { stdin: string }[]): string {
+  return cases
+    .map((c) => {
+      const body = c.stdin;
+      const lineCount = body.length === 0 ? 0 : body.replace(/\n$/, '').split('\n').length;
+      return `__CASE__${lineCount}\n${body}`;
+    })
+    .join('\n');
+}
+
+async function verifyBatched(langs: Lang[], failures: string[]) {
+  const batchable = langs.filter((l) => supportsBatching(l));
+  if (batchable.length === 0) return { pass: 0, fail: 0 };
+
+  console.log(
+    `\nbatched framing: ${BATCH_CASES.length} cases in one invocation ` +
+      `(${batchable.join(', ')})\n`,
+  );
+
+  let pass = 0;
+  let fail = 0;
+  const stdin = frameBatch(BATCH_CASES);
+
+  for (const lang of batchable) {
+    const ref = BATCH_REF[lang];
+    if (!ref) {
+      console.log(`  ${lang.padEnd(11)} SKIP (no batch reference)`);
+      continue;
+    }
+    let j: any;
+    try {
+      j = await runOnPiston(
+        lang,
+        prepareFinalCode(lang as any, ref, { code: ref, wrapperCode: null } as any),
+        stdin,
+      );
+    } catch (e) {
+      console.log(`  ${lang.padEnd(11)} ERR`);
+      failures.push(`batch / ${lang}: transport error ${String(e).slice(0, 80)}`);
+      fail++;
+      continue;
+    }
+
+    if (j?.compile && j.compile.code !== 0) {
+      console.log(`  ${lang.padEnd(11)} CERR`);
+      failures.push(
+        `batch / ${lang}: COMPILE ${String(j.compile.stderr || j.compile.output || '').trim().split('\n').slice(0, 3).join(' | ').slice(0, 300)}`,
+      );
+      fail++;
+      continue;
+    }
+
+    const lines = String(j?.run?.stdout ?? '')
+      .trim()
+      .split('\n')
+      .map((s) => s.trim());
+
+    if (lines.length !== BATCH_CASES.length) {
+      console.log(`  ${lang.padEnd(11)} FAIL  got ${lines.length} lines, want ${BATCH_CASES.length}`);
+      failures.push(
+        `batch / ${lang}: expected ${BATCH_CASES.length} output lines, got ${lines.length} (stdout=${JSON.stringify(String(j?.run?.stdout ?? '').slice(0, 120))})`,
+      );
+      fail++;
+      continue;
+    }
+
+    const bad = lines
+      .map((got, i) => ({ got, want: BATCH_CASES[i]!.expected, i }))
+      .filter((c) => c.got !== c.want);
+    if (bad.length) {
+      console.log(`  ${lang.padEnd(11)} FAIL  ${bad.map((b) => `case${b.i}=${b.got} want ${b.want}`).join('; ')}`);
+      failures.push(`batch / ${lang}: ${bad.map((b) => `case${b.i} got ${b.got} want ${b.want}`).join('; ')}`);
+      fail++;
+      continue;
+    }
+
+    console.log(`  ${lang.padEnd(11)} PASS  ${BATCH_CASES.length}/${BATCH_CASES.length} lines, exit ${j?.run?.code}`);
+    pass++;
+  }
+  return { pass, fail };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 async function runOnPiston(lang: Lang, code: string, stdin: string) {
   const payload = {
     language: LANG[lang],
@@ -299,6 +412,14 @@ async function main() {
   }
 
   console.log(`\npassed: ${pass}, failed: ${failures.length}, skipped: ${skipped}`);
+
+  // Batched framing is a separate code path from the matrix above, so it gets
+  // its own verdict and its own pass/fail count.
+  const batch = await verifyBatched(langs, failures);
+  if (batch.pass + batch.fail > 0) {
+    console.log(`\nbatched passed: ${batch.pass}, failed: ${batch.fail}`);
+  }
+
   if (failures.length) {
     console.log('\nFAILURES');
     for (const f of failures) console.log(`  - ${f}`);
