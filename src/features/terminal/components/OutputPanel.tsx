@@ -63,7 +63,17 @@ const OutputPanel = ({
   const worstDuration = durations.length > 0 ? Math.max(...durations) : 0;
 
   const totalCases = output?.totalCases ?? 0;
-  const allPassed = output?.status === "PASSED" || (output?.passedCases === totalCases && totalCases > 0);
+  // How many cases the problem actually has. `output.totalCases` counts what THIS
+  // run graded, which is 1 for a single-case run — reporting "1/1 PASSED" for
+  // that reads as a solved problem, so the full count is taken from the case
+  // list instead and a partial run is labelled as one.
+  const knownCases = testCases.length;
+  const isPartialRun = Boolean(output) && totalCases > 0 && knownCases > totalCases;
+  const allPassed =
+    output?.status === "PASSED" ||
+    (output?.passedCases === totalCases && totalCases > 0);
+  // A partial run is never "accepted", however well that one case did.
+  const accepted = allPassed && !isPartialRun;
 
   type OutputStatus = "LOADING" | "TIMEOUT" | "RUNTIME_ERROR" | "ACCEPTED" | "WRONG_ANSWER" | "COMPLETED" | "CUSTOM_ERROR" | "CUSTOM_OK" | "IDLE";
 
@@ -81,10 +91,10 @@ const OutputPanel = ({
             ? "TIMEOUT"
             : "RUNTIME_ERROR"
           : output.status === "COMPLETED"
-            ? "COMPLETED"
-            : allPassed
-              ? "ACCEPTED"
-              : "WRONG_ANSWER"
+              ? "COMPLETED"
+              : accepted
+                ? "ACCEPTED"
+                : "WRONG_ANSWER"
       : "IDLE";
 
   const showError = outputStatus === "RUNTIME_ERROR" || outputStatus === "TIMEOUT";
@@ -170,8 +180,12 @@ const OutputPanel = ({
                 <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-faint">
                   <span>{renderedCases.length} CASE{renderedCases.length !== 1 ? "S" : ""} RENDERED</span>
                   {output && (
-                    <span>
-                      {output.passedCases ?? 0}/{output.totalCases ?? renderedCases.length} PASSED
+                    <span className={isPartialRun ? "text-accent-warning" : undefined}>
+                      {/* A single-case run graded 1 of 15; saying "1/1" would read
+                          as a solved problem, so the partial run is labelled. */}
+                      {isPartialRun
+                        ? `CASE ${(output.details?.[0]?.testCaseIndex ?? 0) + 1} ONLY · ${output.passedCases ?? 0}/${output.totalCases ?? 1} PASSED`
+                        : `${output.passedCases ?? 0}/${output.totalCases ?? renderedCases.length} PASSED`}
                     </span>
                   )}
                 </div>

@@ -147,6 +147,52 @@ describe('OutputPanel — Test Cases tab', () => {
     expect(screen.queryByText('[ HIDDEN ]')).not.toBeInTheDocument();
   });
 
+  test('a single-case run is labelled as partial, never as a solved problem', async () => {
+    // "Run test #3 only" grades 1 of 15. Reporting "1/1 PASSED" would read as
+    // accepted, so the header names the case and the verdict stays partial.
+    const output: ExecutionResult = {
+      status: 'PASSED',
+      totalCases: 1,
+      passedCases: 1,
+      details: [makeDetail(2, true)],
+    };
+
+    renderTestsTab({
+      testCases: Array.from({ length: 15 }, (_, i) => ({
+        ...makeCase(`in-${i}`, `out-${i}`),
+        isPublic: i < 3,
+      })),
+      output,
+    });
+
+    expect(screen.getByText('15 CASES RENDERED')).toBeInTheDocument();
+    expect(screen.getByText('CASE 3 ONLY · 1/1 PASSED')).toBeInTheDocument();
+    // It must NOT claim the whole set passed.
+    expect(screen.queryByText('15/15 PASSED')).not.toBeInTheDocument();
+    // The verdict still lands on card 3, not card 1.
+    expect(screen.getByText('CASE #3')).toBeInTheDocument();
+  });
+
+  test('a full run still reports the whole set', async () => {
+    const output: ExecutionResult = {
+      status: 'PASSED',
+      totalCases: 15,
+      passedCases: 15,
+      details: Array.from({ length: 15 }, (_, i) => makeDetail(i)),
+    };
+
+    renderTestsTab({
+      testCases: Array.from({ length: 15 }, (_, i) => ({
+        ...makeCase(`in-${i}`, `out-${i}`),
+        isPublic: i < 3,
+      })),
+      output,
+    });
+
+    expect(screen.getByText('15/15 PASSED')).toBeInTheDocument();
+    expect(screen.queryByText(/CASE \d+ ONLY/)).not.toBeInTheDocument();
+  });
+
   test('the case list owns its own scrollbar instead of clipping', () => {
     const { container } = renderTestsTab({
       testCases: Array.from({ length: 12 }, (_, i) => makeCase(`in-${i}`, `out-${i}`)),

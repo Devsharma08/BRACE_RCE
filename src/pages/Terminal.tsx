@@ -329,12 +329,18 @@ const Terminal = () => {
 
       try {
         const timeTaken = mode === "SUBMIT" ? timerRef.current?.getCurrentTime() : undefined;
+        // A plain RUN grades the FIRST stored case. Sending testCaseIndex: 0
+        // explicitly keeps that stable and makes the returned detail carry the
+        // index the panel matches on. SUBMIT always sends no index, so it
+        // grades the whole set.
+        const runOneCaseOnly = mode === "RUN" && !isCustomExecution;
         const data = await executeCode({
           code: nextCode,
           language: nextLanguage,
           oid,
           mode,
           customInput: customInputValue,
+          testCaseIndex: runOneCaseOnly ? 0 : undefined,
         });
         setOutput(data);
         setStatus("SUCCESS");

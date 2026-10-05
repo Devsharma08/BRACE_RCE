@@ -488,20 +488,28 @@ export const batch4: LegacyEntry[] = [
       return [a, b];
     },
     solve: (args) => {
+      // LeetCode 567: s2 contains a permutation of s1. So s1 is the NEEDLE
+      // (the shorter pattern) and s2 is the haystack.
+      //
+      // This had the two the wrong way round: it compared s1's frequencies
+      // against s2's and returned `s2.length > s1.length` as the guard, which
+      // made "ab" vs "eidbaooo" answer false (the true answer is true) and
+      // "abc" vs "a" answer true. Both stored cases were graded against that
+      // inverted answer, so the problem was unsolvable.
       const s1 = args[0];
       const s2 = args[1];
-      if (s2.length > s1.length) return false;
-      // Sliding window holding the character frequencies of s2.
+      if (s1.length > s2.length) return false;
+      // Sliding window holding the character frequencies of s1.
       const need = new Map();
-      for (const c of s2) need.set(c, (need.get(c) ?? 0) + 1);
+      for (const c of s1) need.set(c, (need.get(c) ?? 0) + 1);
       const have = new Map();
       let matched = 0;
-      for (let i = 0; i < s1.length; i++) {
-        const c = s1[i];
+      for (let i = 0; i < s2.length; i++) {
+        const c = s2[i];
         have.set(c, (have.get(c) ?? 0) + 1);
         if (have.get(c) === need.get(c)) matched++;
-        if (i >= s2.length) {
-          const drop = s1[i - s2.length];
+        if (i >= s1.length) {
+          const drop = s2[i - s1.length];
           have.set(drop, have.get(drop)! - 1);
           if (have.get(drop) === need.get(drop) - 1) matched--;
         }

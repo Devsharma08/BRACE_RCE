@@ -94,19 +94,37 @@ export const batch10: LegacyEntry[] = [
       return [strs];
     },
     solve: (args) => {
-      // Round-trip encode then decode: the platform compares the result with
-      // the input, so the reference returns the decoded array.
+      // The platform invokes `encode` alone — the submitted snippet defines
+      // both encode and decode, but only encode is called — so the graded
+      // value IS the encoded string.
+      //
+      // This used to return the DECODED array, which made the stored expected
+      // outputs a list of strings while a real solution prints the encoded
+      // string. Nothing could ever match: no correct submission could pass.
+      // The decoder below is kept so encode and decode are provably inverses;
+      // the round-trip assertion is what guards the encoding against itself.
       const strs = args[0];
-      const encoded = strs.map((s) => s + ':' + s.length).join('');
-      const out = [];
-      let i = 0;
-      while (i < encoded.length) {
-        const colon = encoded.indexOf(':', i);
-        const len = Number(encoded.slice(colon + 1));
-        out.push(encoded.slice(i, colon));
-        i = colon + 1 + String(len).length;
+      const encoded = strs.map((s) => `${s.length}#${s}`).join('');
+      const decode = (s) => {
+        const out = [];
+        let i = 0;
+        while (i < s.length) {
+          const hash = s.indexOf('#', i);
+          if (hash === -1) break;
+          const len = Number(s.slice(i, hash));
+          const start = hash + 1;
+          out.push(s.slice(start, start + len));
+          i = start + len;
+        }
+        return out;
+      };
+      // Throws if this encoding is not self-inverse, which would corrupt every
+      // stored case below.
+      const roundTrip = decode(encoded);
+      if (roundTrip.length !== strs.length || roundTrip.some((v, k) => v !== strs[k])) {
+        throw new Error(`encode/decode round-trip failed for ${JSON.stringify(strs)}`);
       }
-      return out;
+      return encoded;
     },
   },
   {
