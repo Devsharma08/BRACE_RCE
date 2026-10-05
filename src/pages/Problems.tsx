@@ -15,6 +15,8 @@ import {
   Code2,
   Filter,
   Flame,
+  LayoutGrid,
+  List,
   Search,
   Target,
   Trophy,
@@ -22,6 +24,7 @@ import {
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
+import BentoGrid from "../features/problems/components/BentoGrid";
 
 /**
  * EVERY data structure on this page lives in ONE side panel — the mock's
@@ -56,6 +59,54 @@ const difficultyStyles: Record<string, string> = {
   HARD: "border-accent-danger/30 bg-accent-danger/[0.06] text-accent-danger",
 };
 
+/**
+ * Shared pager for both views.
+ *
+ * Card view needs it outside the table's panel (the cards are their own
+ * surfaces), so it was extracted rather than duplicated — two copies of paging
+ * arithmetic is exactly how "Showing 1–15" and "Showing 16–30" drift apart.
+ */
+const ProblemsPagination: React.FC<{
+  currentPage: number;
+  totalPages: number;
+  filteredCount: number;
+  itemsPerPage: number;
+  onPage: (page: number) => void;
+}> = ({ currentPage, totalPages, filteredCount, itemsPerPage, onPage }) => {
+  if (filteredCount === 0) return null;
+  const first = (currentPage - 1) * itemsPerPage + 1;
+  const last = Math.min(currentPage * itemsPerPage, filteredCount);
+  return (
+    <nav
+      aria-label="Problem index pagination"
+      className="mt-4 flex flex-col gap-3 rounded-panel border border-subtle-line bg-raised px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between"
+    >
+      <span>
+        Showing {first}–{last} of {filteredCount}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:pointer-events-none disabled:opacity-30"
+        >
+          <ChevronLeft size={13} className="inline" /> PREV
+        </button>
+        <span className="border border-accent-primary/30 px-3 py-2 text-accent-primary">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          onClick={() => onPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:pointer-events-none disabled:opacity-30"
+        >
+          NEXT <ChevronRight size={13} className="inline" />
+        </button>
+      </div>
+    </nav>
+  );
+};
+
 export const Problems: React.FC = () => {
   const { data: analytics } = useAnalytics(false);
   const { bySlug: dsProgress } = useDsTopicProgress();
@@ -68,6 +119,9 @@ export const Problems: React.FC = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
+  // Cards are the default: the catalog is browsed, not scanned. The table stays
+  // available because it is denser and easier to compare numbers across rows.
+  const [view, setView] = useState<"cards" | "table">("cards");
 
   const handleSearchChange = (val: string) => {
     startTransition(() => {
@@ -351,6 +405,28 @@ export const Problems: React.FC = () => {
                 </button>
               ))}
             </div>
+
+            {/* View switch — cards vs table */}
+            <div className="flex items-center gap-1 border border-subtle-line p-1">
+              {([
+                { id: "cards" as const, label: "Cards", Icon: LayoutGrid },
+                { id: "table" as const, label: "Table", Icon: List },
+              ]).map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setView(id)}
+                  aria-pressed={view === id}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest transition ${
+                    view === id
+                      ? "bg-accent-primary/[0.10] text-accent-primary"
+                      : "text-subtle hover:text-fg"
+                  }`}
+                >
+                  <Icon size={12} />
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -375,8 +451,65 @@ export const Problems: React.FC = () => {
             </button>
           </div>
         )}
-        {/* ── PROBLEM INDEX ────────────────────────────────────────────── */}
-        {!isProblemsError && (
+        {/* ── CARD VIEW (default) ────────────────────────────────────────
+              The bento grid sits OUTSIDE the bordered table panel below, so
+              the cards own their own rounded surfaces instead of being stacked
+              inside a second frame. */}
+        {!isProblemsError && view === "cards" && (
+          <section aria-label="Problem cards" className="mt-3">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Problem index</p>
+                <p className="mt-1 text-xs text-subtle">
+                  {loading
+                    ? "Syncing the catalog…"
+                    : `${filteredProblems.length} challenge${filteredProblems.length === 1 ? "" : "s"} ready to solve.`}
+                </p>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[132px] animate-pulse rounded-panel border border-subtle-line bg-raised"
+                  />
+                ))}
+              </div>
+            ) : filteredProblems.length === 0 ? (
+              <div className="rounded-panel border border-subtle-line bg-raised px-6 py-14 text-center">
+                <p className="text-xs uppercase tracking-widest text-subtle">
+                  No challenges match those filters
+                </p>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedDifficulty("ALL");
+                  }}
+                  className="mt-4 border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <BentoGrid problems={currentProblems} topicByProblemId={topicByProblemId} />
+            )}
+
+            {!loading && filteredProblems.length > 0 && (
+              <ProblemsPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                filteredCount={filteredProblems.length}
+                itemsPerPage={itemsPerPage}
+                onPage={setCurrentPage}
+              />
+            )}
+          </section>
+        )}
+
+        {/* ── TABLE VIEW ─────────────────────────────────────────────── */}
+        {!isProblemsError && view === "table" && (
           <section
             aria-label="Problem index"
             className="mt-3 overflow-hidden rounded-2xl border border-subtle-line bg-raised shadow-panel"
@@ -458,33 +591,16 @@ export const Problems: React.FC = () => {
                 })}
               </div>
             )}
-            {/* PAGINATION — hidden on zero results; text renders uppercase via
-                the footer's tracking classes. */}
+            {/* PAGINATION — the shared pager, rendered inside the table's bottom border. */}
             {!loading && filteredProblems.length > 0 && (
-              <footer className="flex flex-col gap-3 border-t border-subtle-line bg-white/[0.02] px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between">
-                <span>
-                  Showing {filteredProblems.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}–
-                  {Math.min(currentPage * itemsPerPage, filteredProblems.length)} of {filteredProblems.length}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    <ChevronLeft size={13} className="inline" /> PREV
-                  </button>
-                  <span className="border border-accent-primary/30 px-3 py-2 text-accent-primary">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:opacity-30 disabled:pointer-events-none"
-                  >
-                    NEXT <ChevronRight size={13} className="inline" />
-                  </button>
-                </div>
+              <footer className="border-t border-subtle-line bg-white/[0.02]">
+                <ProblemsPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  filteredCount={filteredProblems.length}
+                  itemsPerPage={itemsPerPage}
+                  onPage={setCurrentPage}
+                />
               </footer>
             )}
           </section>

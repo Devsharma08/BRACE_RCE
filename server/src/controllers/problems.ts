@@ -17,6 +17,26 @@ const systemKey = (userId: string, page: number, limit: number) => `${PROBLEMS_C
 const customKey = (userId: string, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${userId}:custom:${page}:${limit}`;
 const detailKey = (userId: string, id: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:detail:${id}`;
 
+/**
+ * Ship every stored test case to the client, redacting the hidden ones.
+ *
+ * The client renders one card per case and needs to know how many exist so the
+ * list matches the "10/10"-style verdict. A hidden case therefore keeps its
+ * slot, its index and its `is_public: false` flag, but its `input` and
+ * `expectedOutput` are replaced with empty strings — otherwise every answer
+ * ships in the page source and the hidden cases stop being hidden.
+ *
+ * Both the list and detail endpoints call this so the two cannot drift; the
+ * runner (codeExecution.ts) still reads the real values straight from the DB.
+ */
+function redactTestCases<
+    T extends { id: string; input: string; expectedOutput: string; is_public: boolean },
+>(cases: T[]): T[] {
+    return (cases ?? []).map((tc) =>
+        tc.is_public ? tc : { ...tc, input: "", expectedOutput: "" },
+    );
+}
+
 /** Drop every cached problem payload for one user (call after a progress write). */
 export async function invalidateUserProblemsCache(userId: string): Promise<void> {
     await deleteCachedByPrefix(`${PROBLEMS_CACHE_PREFIX}${userId}:`);
@@ -73,7 +93,12 @@ class Problems {
                             select: { language: true, code: true }
                         },
                         test_cases: {
-                            where: { is_public: true },
+                            // Every stored case is shipped so the UI can render
+                            // the full 15-case list. Non-public cases keep their
+                            // input and expected output withheld below — the
+                            // client learns how many cases exist and how each
+                            // one scored, never what to feed in.
+                            orderBy: { id: "asc" },
                             select: { id: true, input: true, expectedOutput: true, is_public: true }
                         },
                         userProgress: {
@@ -98,6 +123,7 @@ class Problems {
                 const { userProgress, ...rest } = p as any;
                 return {
                     ...withDisplayProblemName(rest),
+                    test_cases: redactTestCases((rest as any).test_cases ?? []),
                     isSolved: progress?.isSolved ?? false,
                     solvedAt: progress?.solvedAt ?? null,
                     attempts: progress?.attempts ?? 0,
@@ -147,7 +173,7 @@ class Problems {
                 include: {
                     code_snippets: true,
                     test_cases: {
-                        where: { is_public: true },
+                        orderBy: { id: "asc" },
                         select: { id: true, input: true, expectedOutput: true, is_public: true }
                     },
                     userProgress: {
@@ -173,6 +199,7 @@ class Problems {
 
             const payload = {
                 ...withDisplayProblemName(rest),
+                test_cases: redactTestCases((rest as any).test_cases ?? []),
                 isSolved: progress?.isSolved ?? false,
                 solvedAt: progress?.solvedAt ?? null,
                 attempts: progress?.attempts ?? 0,

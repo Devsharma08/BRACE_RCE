@@ -6,6 +6,8 @@ export type RawTestCase = {
   input?: string;
   expectedOutput?: string;
   problemId?: string;
+  /** False when the server withheld this case's input/expected output. */
+  is_public?: boolean;
 };
 
 export type FileContentResponse = {
@@ -26,6 +28,12 @@ export type ProblemTestCase = {
   problemDefinition?: string;
   problemDifficultyLevel?: string;
   hints?: unknown;
+  /**
+   * False for a case whose input/expected were withheld by the server. The card
+   * still renders so the list shows all 15, but it must not offer "run this
+   * one" — there is no input on the client to run.
+   */
+  isPublic?: boolean;
 };
 
 export type ExecutionDetail = {
@@ -56,6 +64,12 @@ export type ExecuteCodeRequest = {
   oid: string;
   mode: ExecutionMode;
   customInput?: string;
+  /**
+   * Run exactly this stored case (0-based) with its real expected output, so a
+   * single-case run returns a genuine pass/fail. Ignored in SUBMIT mode, which
+   * always grades the full set.
+   */
+  testCaseIndex?: number;
   fileName?: string;
   timeTaken?: string;
   roomId?: string;

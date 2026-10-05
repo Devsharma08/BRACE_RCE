@@ -92,10 +92,10 @@ const OutputPanel = ({
 
   const [activeDiagTab, setActiveDiagTab] = useState<"LOGS" | "TESTS">("LOGS");
 
-  // The runtime executes the FULL case set (public + hidden) and returns one
-  // detail row per case, while the API only ever ships the public cases to the
-  // client. Mapping over `testCases` alone rendered 2 cards for a "10/10" run,
-  // so render the union of both sources keyed by testCaseIndex.
+  // The server grades the FULL case set (public + withheld) and returns one
+  // detail row per case; the API ships every case too, but with the withheld
+  // ones blanked. Both are indexed the same way, so render exactly as many
+  // cards as the runner graded, filling any gap from the detail row.
   const renderedCases = useMemo(() => {
     const details = isCustomInputRun ? [] : output?.details ?? [];
     const byIndex = new Map(details.map((detail) => [detail.testCaseIndex, detail]));
@@ -103,16 +103,28 @@ const OutputPanel = ({
       (max, detail) => Math.max(max, detail.testCaseIndex),
       -1,
     );
-    const count = Math.max(testCases.length, lastDetailIndex + 1);
+    // `totalCases` is the authoritative count of what was graded.
+    const gradedCount = output?.totalCases ?? 0;
+    const count = Math.max(testCases.length, lastDetailIndex + 1, gradedCount);
 
     return Array.from({ length: count }, (_, index) => ({
       item:
         testCases[index] ??
-        { input: "", expectedOutput: byIndex.get(index)?.expectedOutput ?? "" },
+        // No local row for this index: synthesise one so the card still renders.
+        // isPublic is false because the server withheld its input.
+        {
+          input: "",
+          expectedOutput: byIndex.get(index)?.expectedOutput ?? "",
+          isPublic: false,
+        },
       match: byIndex.get(index),
-      isHidden: testCases[index] === undefined,
+      // Withheld cases have no input on the client. `isPublic` is OPTIONAL on
+      // the type, so an absent value must NOT be read as withheld — defaulting
+      // to false would mark ordinary public cases as hidden and suppress their
+      // run button.
+      isHidden: testCases[index]?.isPublic === false,
     }));
-  }, [isCustomInputRun, output?.details, testCases]);
+  }, [isCustomInputRun, output?.details, output?.totalCases, testCases]);
 
   return (
     <div className="flex h-full min-h-0 flex-col border-t border-subtle-line bg-terminal-bg">

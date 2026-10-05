@@ -32,18 +32,20 @@ export const detectLanguageFromFileName = (fileName?: string): SupportedLanguage
 };
 
 export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCase[] => {
-  return (data.test_cases ?? [])
-    // Keep every case the API returns. Dropping rows with an empty input used
-    // to silently remove legitimate no-input cases from the Test Cases tab.
-    .filter((testCase) => (testCase.input ?? "") !== "" || (testCase.expectedOutput ?? "") !== "")
-    .map((testCase) => ({
-      input: testCase.input ?? "",
-      expectedOutput: testCase.expectedOutput ?? "",
-      problemId: data.id,
-      problemDefinition: data.problem_definition,
-      problemDifficultyLevel: data.difficulty_level,
-      hints: data.problem_hints,
-    }));
+  // Keep EVERY case the API returns, including the ones whose input and
+  // expected output the server withheld. Those still occupy a slot in the list
+  // and still receive a verdict, so the panel shows all 15 like the runner
+  // graded all 15. Filtering on a non-empty input used to drop exactly those,
+  // which is why a 15-case problem rendered as 3.
+  return (data.test_cases ?? []).map((testCase) => ({
+    input: testCase.input ?? "",
+    expectedOutput: testCase.expectedOutput ?? "",
+    isPublic: testCase.is_public ?? true,
+    problemId: data.id,
+    problemDefinition: data.problem_definition,
+    problemDifficultyLevel: data.difficulty_level,
+    hints: data.problem_hints,
+  }));
 };
 
 export const formatExecutionOutput = (result: ExecutionResult, mode: ExecutionMode) => {

@@ -340,6 +340,16 @@ type ExecuteBody = {
   oid?: unknown;
   mode?: unknown;
   customInput?: unknown;
+  /**
+   * Run exactly this stored case (0-based) in RUN mode, keeping its real
+   * expected output so the verdict is a genuine pass/fail rather than a bare
+   * "here is your output" comparison.
+   *
+   * The previous behaviour sent the case's input as `customInput`, which the
+   * server replaces with `{ expectedOutput: "" }`. That made it impossible to
+   * tell a correct solution from a wrong one on a single-case run.
+   */
+  testCaseIndex?: unknown;
   performanceId?: unknown;
   roomId?:unknown
 };
@@ -348,6 +358,12 @@ type TestCaseRecord = {
   input: string;
   expectedOutput: string;
   problemId?: string;
+  /**
+   * True index of this case within the problem's stored set. Present only on a
+   * single-case run, where the array itself holds one element and the array
+   * position would otherwise be 0 regardless of which case was chosen.
+   */
+  __index?: number;
 };
 
 type CodeSnippetRecord = {
@@ -1690,12 +1706,17 @@ static void printListNode(struct ListNode* head) {
 
 
 export const executeCode = async (req: Request, res: Response) => {
-  const { code, language, oid, mode, customInput, timeTaken } = req.body as ExecuteBody & { timeTaken?: string };
+  const { code, language, oid, mode, customInput, testCaseIndex, timeTaken } = req.body as ExecuteBody & { timeTaken?: string };
   const sourceCode = typeof code === "string" ? code : "";
   const githubOid = typeof oid === "string" ? oid : "";
   const executionMode = getExecutionMode(mode);
   const executionLanguage = getLanguage(language);
   const userCustomInput = typeof customInput === "string" ? customInput : "";
+  // -1 means "not a single-case run". Only a non-negative integer selects a case.
+  const singleCaseIndex =
+    typeof testCaseIndex === "number" && Number.isInteger(testCaseIndex) && testCaseIndex >= 0
+      ? testCaseIndex
+      : -1;
 
   try {
     let casesToRun: TestCaseRecord[] = [];
@@ -1711,13 +1732,27 @@ export const executeCode = async (req: Request, res: Response) => {
             { id: githubOid }
           ]
         },
-        select: { test_cases: true, code_snippets: true }
+        select: { test_cases: true, code_snippets: true },
+        // MUST match the `orderBy` in problems.ts (getSystemProblems and
+        // getProblemById). The client renders card N from index N and matches
+        // each ExecutionDetail by testCaseIndex, so a different order here
+        // would paint every verdict onto the wrong card. TestCase has no
+        // ordinal column, so the id is what both sides pin to.
+        orderBy: { id: "asc" },
       });
 
       const testCases = (fileData?.test_cases ?? []) as TestCaseRecord[];
 
       if (executionMode === "SUBMIT") {
+        // SUBMIT always grades the FULL stored set. It must never be narrowed
+        // to one case, or a solution could be marked solved on a single pass.
         casesToRun = testCases;
+      } else if (singleCaseIndex >= 0 && singleCaseIndex < testCases.length) {
+        // Single-case run: keep this case's real expected output so the caller
+        // gets a true verdict, and report its true index so the UI can light up
+        // the matching card instead of guessing from array position.
+        const chosen = testCases[singleCaseIndex];
+        casesToRun = [{ ...chosen, __index: singleCaseIndex }];
       } else {
         casesToRun = testCases.slice(0, 1);
       }
@@ -1879,6 +1914,9 @@ export const executeCode = async (req: Request, res: Response) => {
           compileMs: 0,
           compileMemoryKb: 0,
           detail: {
+            // Batching only runs with >= 2 cases (see the guard above), so the
+            // array position IS the stored index here. `trueIndex` is not in
+            // scope in this function and would not be correct anyway.
             testCaseIndex: i,
             output,
             expectedOutput: expected,
@@ -1910,6 +1948,10 @@ export const executeCode = async (req: Request, res: Response) => {
       currentCase: TestCaseRecord,
       index: number,
     ): Promise<CaseOutcome> => {
+      // A single-case run holds one element in `casesToRun`, so its array
+      // position is always 0 no matter which stored case was chosen. Prefer the
+      // recorded __index so the verdict lands on the card the user clicked.
+      const trueIndex = currentCase.__index ?? index;
       const testCaseInput = currentCase.input || "";
       const startTime = performance.now();
       // One clamped retry per case is enough; two would just hammer Piston.
@@ -1968,7 +2010,7 @@ export const executeCode = async (req: Request, res: Response) => {
           compileMs: 0,
           compileMemoryKb: 0,
           detail: {
-            testCaseIndex: index,
+            testCaseIndex: trueIndex,
             output: "",
             expectedOutput: currentCase.expectedOutput,
             passed: false,
@@ -2072,7 +2114,7 @@ export const executeCode = async (req: Request, res: Response) => {
           compileMs: caseCompileMs,
           compileMemoryKb: caseCompileMemoryKb,
           detail: {
-            testCaseIndex: index,
+            testCaseIndex: trueIndex,
             output: "",
             expectedOutput: currentCase.expectedOutput,
             passed: false,
@@ -2132,7 +2174,7 @@ export const executeCode = async (req: Request, res: Response) => {
         compileMs: caseCompileMs,
         compileMemoryKb: caseCompileMemoryKb,
         detail: {
-          testCaseIndex: index,
+          testCaseIndex: trueIndex,
           output: runOutput,
           expectedOutput: currentCase.expectedOutput,
           passed,
@@ -2372,6 +2414,13 @@ export const executeCode = async (req: Request, res: Response) => {
             }
           });
           invalidateUserAnalyticsCache(userId);
+          // The practice path never went through invalidateUserProblemsCache,
+          // so the 10-minute problems cache kept serving the PRE-submit payload:
+          // the DB row said solved, yet the list still reported isSolved=false and
+          // attempts=0 for up to 10 minutes. Every other progress write path
+          // (submissionEvaluator, profile) already does this.
+          const { invalidateUserProblemsCache } = await import("../controllers/problems.js");
+          invalidateUserProblemsCache(userId);
         }
       } catch (e) {
         console.error("Failed to upsert UserProblemProgress:", e);

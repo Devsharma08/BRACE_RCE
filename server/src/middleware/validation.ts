@@ -210,6 +210,9 @@ export const executeCodeSchema = z.object({
   oid: z.string().optional(),
   mode: z.enum(["RUN", "SUBMIT"]).default("RUN"),
   customInput: z.string().optional(),
+  // 0-based index of one stored case to run on its own. Only meaningful with
+  // mode RUN; SUBMIT always grades every case regardless of what is sent here.
+  testCaseIndex: z.number().int().min(0).optional(),
   performanceId: z.string().optional(),
   roomId: z.string().optional(),
 });

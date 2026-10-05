@@ -1,7 +1,17 @@
 import { createContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
 
-export type TestCase = { input: string; expectedOutput: string; problemId?: string };
+export type TestCase = {
+  input: string;
+  expectedOutput: string;
+  problemId?: string;
+  /**
+   * False when the server withheld this case's input/expected output. The card
+   * still renders so the list shows all 15, but there is no input on the client
+   * to run for that case.
+   */
+  isPublic?: boolean;
+};
 
 // Terminal-specific types
 export type FileEntry = {

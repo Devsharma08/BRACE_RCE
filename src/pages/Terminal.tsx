@@ -111,6 +111,9 @@ const Terminal = () => {
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [submissionTrigger, setSubmissionTrigger] = useState(0);
   const [javaClassName, setJavaClassName] = useState<string>("Solution");
+  // Index of the single case currently being run, so exactly one card shows its
+  // spinner. Null when no single-case run is in flight.
+  const [runningTestCaseIndex, setRunningTestCaseIndex] = useState<number | null>(null);
 
   const timerRef = useRef<ProblemTimerRef>(null);
 
@@ -392,13 +395,21 @@ const Terminal = () => {
   const handleRunSingleTestCase = useCallback(
     async (testCaseIndex: number) => {
       if (!testCases || !testCases[testCaseIndex]) return;
-      const inputString = testCases[testCaseIndex].input || "";
+      const target = testCases[testCaseIndex];
 
+      // A withheld case has no input on the client, so there is nothing to
+      // re-send. The server still owns it and grades it during SUBMIT.
+      if (target.isPublic === false) return;
+
+      setRunningTestCaseIndex(testCaseIndex);
       setResponseLoading(true);
       setIsExecuting(true);
       setExecutingMode("RUN");
       setStatus("LOADING");
-      setIsCustomInputRun(true); // Mark as custom/single-test run — panel will hide pass/fail counts
+      // A single stored case is a REAL graded run, not a custom input: the
+      // server keeps this case's expected output, so `passed` is meaningful.
+      setIsCustomInputRun(false);
+      setIsOutputActive(true);
 
       try {
         const data = await executeCode({
@@ -406,20 +417,32 @@ const Terminal = () => {
           language,
           oid: activeFile,
           mode: "RUN",
-          customInput: inputString,
+          testCaseIndex,
         });
 
-        // The backend returns details[0] for a single-test run.
-        // Normalise that detail so testCaseIndex matches the card the user clicked.
+        // The server already stamps the detail with the true stored index, so
+        // the verdict lands on the card that was clicked. Normalise defensively
+        // in case a proxy or an older server drops the field.
         const rawDetail = data.details?.[0];
         const normalizedData = rawDetail
-          ? { ...data, details: [{ ...rawDetail, testCaseIndex }] }
+          ? {
+              ...data,
+              details: [
+                {
+                  ...rawDetail,
+                  testCaseIndex:
+                    typeof rawDetail.testCaseIndex === "number"
+                      ? rawDetail.testCaseIndex
+                      : testCaseIndex,
+                },
+              ],
+            }
           : data;
 
         setOutput(normalizedData);
         setStatus("SUCCESS");
 
-        // Build outputText: show error OR output — never both
+        // Show error OR output — never both
         if (rawDetail?.runtimeError) {
           setOutputText(rawDetail.runtimeError);
         } else {
@@ -431,10 +454,10 @@ const Terminal = () => {
         setOutput(null);
         setStatus("ERROR");
       } finally {
+        setRunningTestCaseIndex(null);
         setIsExecuting(false);
         setExecutingMode(null);
         setResponseLoading(false);
-        // Keep isCustomInputRun=true so the panel knows it was a single-test run
       }
     },
     [testCases, code, language, activeFile, setOutput, setStatus]
@@ -656,6 +679,7 @@ const Terminal = () => {
                         setOutputHeight={setOutputHeight}
                         outputText={outputText}
                         testCases={testCases}
+                        runningTestCaseIndex={runningTestCaseIndex}
                         customInput={customInput}
                         customInputActive={customInputActive}
                         isCustomInputRun={isCustomInputRun}

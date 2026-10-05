@@ -40,6 +40,11 @@ export const TestCaseCard = ({
               [ HIDDEN ]
             </span>
           )}
+          {!isHidden && (
+            <span className="text-[9px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
+              [ SAMPLE ]
+            </span>
+          )}
           {hasResult && (
             <span className={`text-[9px] font-bold px-2 py-0.5 ${
               passed
@@ -50,6 +55,8 @@ export const TestCaseCard = ({
             </span>
           )}
         </div>
+        {/* A withheld case has no input on the client, so there is nothing to
+            re-send and no point offering "run this one" — SUBMIT grades it. */}
         {onRunSingleTestCase && !isExecutingAny && !isHidden && (
           <button
             onClick={() => onRunSingleTestCase(index)}
@@ -84,13 +91,13 @@ export const TestCaseCard = ({
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {isHidden ? "// hidden case — input not exposed to the client" : item.input || "-"}
+            {isHidden ? "// withheld — graded on submit" : item.input || "-"}
           </div>
         </div>
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {item.expectedOutput || "-"}
+            {isHidden ? "// withheld — graded on submit" : item.expectedOutput || "-"}
           </div>
         </div>
       </div>

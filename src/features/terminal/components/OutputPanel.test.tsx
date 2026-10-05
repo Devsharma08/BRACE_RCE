@@ -73,17 +73,59 @@ describe('OutputPanel — Test Cases tab', () => {
     };
 
     renderTestsTab({
-      testCases: [makeCase('1 2', '3'), makeCase('3 4', '7')],
+      testCases: [
+        { ...makeCase('1 2', '3'), isPublic: true },
+        { ...makeCase('3 4', '7'), isPublic: true },
+        { ...makeCase('', ''), isPublic: false },
+      ],
       output,
       onRunSingleTestCase: vi.fn(),
     });
 
     expect(screen.getAllByText('[ HIDDEN ]')).toHaveLength(1);
-    expect(
-      screen.getByText('// hidden case — input not exposed to the client'),
-    ).toBeInTheDocument();
-    // A case with no local input cannot be replayed on its own.
+    // Both the input and the expected box show the withheld notice.
+    expect(screen.getAllByText('// withheld — graded on submit')).toHaveLength(2);
+    // A withheld case has no client-side input, so only the 2 public ones can
+    // be replayed on their own.
     expect(screen.getAllByText(/RUN TEST #\d+ ONLY/)).toHaveLength(2);
+  });
+
+  test('renders all 15 stored cases even when only 3 are public', () => {
+    // The API ships every case so the list can show all 15, but withholds the
+    // input/expected output of the 12 non-public ones.
+    const testCases: ProblemTestCase[] = Array.from({ length: 15 }, (_, i) =>
+      i < 3
+        ? { ...makeCase(`in-${i}`, `out-${i}`), isPublic: true }
+        : { input: '', expectedOutput: '', isPublic: false },
+    );
+
+    renderTestsTab({ testCases, onRunSingleTestCase: vi.fn() });
+
+    expect(screen.getByText('15 CASES RENDERED')).toBeInTheDocument();
+    expect(screen.getAllByText('[ HIDDEN ]')).toHaveLength(12);
+    expect(screen.getAllByText('[ SAMPLE ]')).toHaveLength(3);
+    // Withheld cases cannot be run individually.
+    expect(screen.getAllByText(/RUN TEST #\d+ ONLY/)).toHaveLength(3);
+  });
+
+  test('marks the whole set solved only when every graded case passed', () => {
+    const allPassed: ExecutionResult = {
+      status: 'PASSED',
+      totalCases: 15,
+      passedCases: 15,
+      details: Array.from({ length: 15 }, (_, i) => makeDetail(i)),
+    };
+
+    renderTestsTab({
+      testCases: Array.from({ length: 15 }, (_, i) => ({
+        ...makeCase(`in-${i}`, `out-${i}`),
+        isPublic: i < 3,
+      })),
+      output: allPassed,
+    });
+
+    expect(screen.getByText('15 CASES RENDERED')).toBeInTheDocument();
+    expect(screen.getByText('15/15 PASSED')).toBeInTheDocument();
   });
 
   test('custom input runs do not fabricate hidden rows from the custom detail', () => {
