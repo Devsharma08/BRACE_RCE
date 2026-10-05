@@ -32,6 +32,23 @@ export async function fetchAllProblems<T = any>(
  * cached with `staleTime: Infinity`. The progress fields DO change, which is
  * why every write to progress must call `invalidateProblemQueries`.
  */
+
+/**
+ * Bump when the SHAPE of a problem payload changes, not just when its content
+ * does.
+ *
+ * This matters because the problem queries use `staleTime: Infinity`: a tab that
+ * mounted before a shape change keeps the old payload for its whole session and
+ * never re-fetches, so users see blanks (or missing fields) with no way to
+ * recover short of a hard reload. Including this version in every problems
+ * query key makes each such change produce a different cache entry, so a new
+ * payload is fetched instead of replaying a stale one.
+ *
+ * v2: test cases are shipped in full, including the ones that used to arrive
+ * with an empty input/expectedOutput.
+ */
+export const PROBLEM_PAYLOAD_VERSION = 2;
+
 export const PROBLEM_QUERY_ROOTS = [
   "system-problems",
   "all-available-problems",

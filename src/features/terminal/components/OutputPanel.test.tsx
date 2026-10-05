@@ -184,6 +184,47 @@ describe('OutputPanel — Test Cases tab', () => {
     expect(screen.queryByText(/CASE \d+ ONLY/)).not.toBeInTheDocument();
   });
 
+  test('shows the run expected output when the cached copy is missing', async () => {
+    // The reported bug: the Expected box rendered empty / "null" while the
+    // Actual box was populated. The cached copy had arrived with a null
+    // expectedOutput, while the run's own detail always carries the real one.
+    const output: ExecutionResult = {
+      status: 'PASSED',
+      totalCases: 2,
+      passedCases: 2,
+      details: [
+        { ...makeDetail(0), expectedOutput: '[0,1]' },
+        { ...makeDetail(1), expectedOutput: '[1,2]' },
+      ],
+    };
+
+    renderTestsTab({
+      testCases: [
+        // Cached copies are unusable — exactly what a stale payload looked like.
+        { input: 'in-0', expectedOutput: '' as unknown as string, isPublic: true },
+        { input: 'in-1', expectedOutput: '' as unknown as string, isPublic: true },
+      ],
+      output,
+    });
+
+    expect(screen.getByText('[0,1]')).toBeInTheDocument();
+    expect(screen.getByText('[1,2]')).toBeInTheDocument();
+    // Never the literal JSON null.
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
+  });
+
+  test('never renders the literal string null for a null expected output', async () => {
+    renderTestsTab({
+      testCases: [
+        // A genuine JSON null from a legacy payload.
+        { input: 'in-0', expectedOutput: null as unknown as string, isPublic: true },
+      ],
+    });
+
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
+    expect(screen.getByText('in-0')).toBeInTheDocument();
+  });
+
   test('the case list owns its own scrollbar instead of clipping', () => {
     const { container } = renderTestsTab({
       testCases: Array.from({ length: 12 }, (_, i) => makeCase(`in-${i}`, `out-${i}`)),

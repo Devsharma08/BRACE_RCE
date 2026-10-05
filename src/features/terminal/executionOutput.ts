@@ -38,6 +38,9 @@ export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCas
   // which removed legitimate no-input cases (and would have removed exactly the
   // ones the server had withheld).
   return (data.test_cases ?? []).map((testCase) => ({
+    // `expectedOutput` may arrive as null from an older cached payload, so it is
+    // normalised to a string here. Leaving it null made the card render the
+    // literal "null" through JSON.stringify downstream.
     input: testCase.input ?? "",
     expectedOutput: testCase.expectedOutput ?? "",
     isPublic: testCase.is_public ?? true,

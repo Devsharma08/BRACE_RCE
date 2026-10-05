@@ -6,6 +6,23 @@ function createKey(...parts: (string | object | null | undefined)[]): readonly (
   return parts.filter((v): v is string | object => v != null);
 }
 
+/**
+ * Payload shape version for every problems query key.
+ *
+ * Problems queries are fetched with `staleTime: Infinity`, so a tab that mounted
+ * before a payload shape change keeps the OLD payload for its whole session and
+ * never re-fetches. Embedding this version in the key means a shape change
+ * yields a new cache entry, so the fresh payload is fetched instead of replaying
+ * a stale one.
+ *
+ * Kept in sync with PROBLEM_PAYLOAD_VERSION in utils/problemCache.ts — that one
+ * documents the reason, this one owns the key.
+ *
+ * v2: test cases now ship with their real input and expected output instead of
+ * arriving blanked.
+ */
+const PROBLEMS_PAYLOAD_V = 2;
+
 export const queryKeys = {
   // Auth
   auth: {
@@ -13,12 +30,14 @@ export const queryKeys = {
   },
 
   // Problems - structured with optional filters
+  // The `v${PROBLEMS_PAYLOAD_V}` segment sits under the "problems" prefix, so
+  // invalidateQueries({ queryKey: ['problems'] }) still matches every variant.
   problems: {
     system: (filters?: { userId?: string; includeProgress?: boolean }) =>
-      createKey('problems', 'system', filters),
-    detail: (id: string) => ['problems', 'detail', id] as const,
+      createKey('problems', `v${PROBLEMS_PAYLOAD_V}`, 'system', filters),
+    detail: (id: string) => ['problems', `v${PROBLEMS_PAYLOAD_V}`, 'detail', id] as const,
     search: (params: { query?: string; difficulty?: string; tags?: string[] }) =>
-      ['problems', 'search', params] as const,
+      ['problems', `v${PROBLEMS_PAYLOAD_V}`, 'search', params] as const,
   },
 
   // Battle

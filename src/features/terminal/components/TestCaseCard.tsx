@@ -24,6 +24,12 @@ export const TestCaseCard = ({
   const passed = match?.passed;
   const hasResult = match !== undefined;
 
+  // The run's own expected output wins; fall back to the cached copy, and treat
+  // a JSON null / undefined as absent rather than rendering the string "null".
+  const fromRun = typeof match?.expectedOutput === "string" ? match.expectedOutput : undefined;
+  const fromCase = typeof item.expectedOutput === "string" ? item.expectedOutput : undefined;
+  const expectedText = fromRun ?? fromCase ?? "-";
+
   const statusColor = !hasResult
     ? "border-subtle-line bg-surface/60"
     : passed
@@ -84,6 +90,11 @@ export const TestCaseCard = ({
         </div>
       )}
 
+      {/* Prefer the expected output the RUN returned for this case.
+          `match.expectedOutput` is always populated for a graded case, whereas
+          the locally cached copy can be missing or stale — that is what made the
+          Expected box read as a dash (or the literal "null") next to a perfectly
+          good Actual box. The local copy is only the fallback. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
@@ -94,7 +105,7 @@ export const TestCaseCard = ({
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {item.expectedOutput || "-"}
+            {expectedText}
           </div>
         </div>
       </div>

@@ -2,59 +2,64 @@ import { Link } from "react-router-dom";
 import { Code2 } from "lucide-react";
 
 /**
- * About — deliberately short.
+ * About — the platform's actual feature set, in text.
  *
- * Every number below is measured, not aspirational:
- *   - 194 problems / 2,500 cases comes from a Prisma count of the live DB.
- *   - 893 and 50 are the passing counts of verify_execution.ts and
- *     verify_wrapper_shapes.ts, which run against a real Piston sandbox.
- *   - The timings are end-to-end through /api/execute on a 13-case submission.
- * The previous revision of this page carried invented figures (a hardcoded
- * "DB pre-flight 98.4%") and a lot of copy; both are gone.
+ * Text-only by design: no diagrams, no stat tiles, no decorative panels. Just
+ * what the app does, grouped so it can be read in a couple of minutes.
+ *
+ * Every number is measured, not aspirational. `problems` and `cases` come from a
+ * Prisma count of the live database; `verified` is the passing count of
+ * verify_execution.ts, which runs each reference through a real sandbox. An
+ * earlier revision carried invented figures and a long stack list that said more
+ * about the tooling than the product, and was replaced rather than patched.
  */
 
 const REPO = "https://github.com/Devsharma08/BRACE_RCE";
 
-const FACTS = [
-  { label: "Problems", value: "194", note: "2,500 stored cases, 11–13 each" },
-  { label: "Languages", value: "5", note: "JavaScript, Python, C, C++, Java" },
-  { label: "Bank verified", value: "893", note: "cases run through a real sandbox" },
-  { label: "Wrapper shapes", value: "50", note: "10 shapes × 5 languages" },
-];
+const problems = 209;
+const cases = 3117;
+const verified = 1272;
 
-const EXECUTION = [
+const GROUPS: { title: string; items: string[] }[] = [
   {
-    step: "Wrap",
-    body: "A starter snippet becomes a compilable program. The driver is generated per language, and C++ and Java parse the signature at runtime.",
+    title: "Code execution",
+    items: [
+      "Runs JavaScript, Python, Java, C++ and C. You write a function; a generated driver parses the arguments, calls it, and serialises the result.",
+      "Handles the argument shapes these problems actually use: linked lists, binary trees, random-pointer lists, 2D matrices, strings and primitives.",
+      "Copies in-place problems too. A function that returns nothing is graded by diffing the array it mutated.",
+      "Compiles once and runs every case in that one invocation, so a 15-case submission pays the compile cost once instead of fifteen times.",
+      "Falls back to one invocation per case for anything the batch cannot split cleanly, and reports real time and memory per case.",
+    ],
   },
   {
-    step: "Batch",
-    body: "All test cases go into one sandbox invocation behind a __CASE__ header, so the compile or VM startup is paid once instead of per case.",
+    title: "Problems and grading",
+    items: [
+      `${problems} problems and ${cases.toLocaleString()} stored test cases, graded against real expected outputs in a live sandbox.`,
+      "Run a single case to see why it failed, or submit to grade the whole set at once. Passing every case marks the problem solved.",
+      "Every case appears in the output panel with its input, its expected output, your actual output, and the time and memory it took.",
+      "Custom problem studio: define a signature, and test cases plus starter snippets for all five languages are generated from it.",
+      "Coverage is grouped by data structure, so you can see which structures you have worked through and which you have not.",
+    ],
   },
   {
-    step: "Judge",
-    body: "Each case's output line is compared with the stored answer. Anything the batch cannot account for falls back to one invocation per case.",
+    title: "Battles",
+    items: [
+      "Ranked 1v1 matchmaking over WebSockets: enter the queue, get matched, confirm, and the editor locks until the countdown ends.",
+      "Live opponent status and submission broadcasts for the duration of the match.",
+      "Ratings use an ELO system with a speed bonus and an attempt penalty, mapped onto division tiers.",
+      "Spectate a match in progress, then replay it submission by submission from the timeline.",
+      "Focus-loss telemetry and structural plagiarism checks run against submissions.",
+    ],
   },
-];
-
-const TIMINGS = [
-  { language: "JavaScript", before: 3.4, after: 2.3 },
-  { language: "C++", before: 22.0, after: 6.8 },
-  { language: "Java", before: 51.1, after: 3.9 },
-];
-
-const STACK = [
-  { name: "React 19", where: "client" },
-  { name: "Vite", where: "client" },
-  { name: "Tailwind CSS 4", where: "client" },
-  { name: "TanStack Query", where: "client" },
-  { name: "Monaco Editor", where: "client" },
-  { name: "Socket.IO", where: "both" },
-  { name: "Express", where: "server" },
-  { name: "Prisma", where: "server" },
-  { name: "PostgreSQL", where: "server" },
-  { name: "Piston", where: "server" },
-  { name: "OpenTelemetry", where: "server" },
+  {
+    title: "Workspace",
+    items: [
+      "Monaco editor with syntax highlighting, auto-format, and a custom dark theme.",
+      "Run and Submit from the toolbar, or from the keyboard.",
+      "Persistent scratchpad notes that follow you between problems and battles.",
+      "Streaks, solved counts and per-structure progress, tracked from your own submissions.",
+    ],
+  },
 ];
 
 const row =
@@ -66,7 +71,6 @@ export default function About() {
   return (
     <div className="w-full bg-base text-fg">
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
-        {/* ── Header — left aligned ─────────────────────────── */}
         <header className="border-b border-line pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             About
@@ -75,13 +79,14 @@ export default function About() {
             id="about-title"
             className="mt-4 font-mono text-3xl font-bold tracking-[-0.04em] text-fg sm:text-4xl"
           >
-            A DSA practice platform with real multi-language execution.
+            Competitive coding with real execution and real 1v1 battles.
           </h1>
-          <p className="mt-5 max-w-2xl text-sm leading-6 text-subtle">
-            Write a solution in one of five languages, submit it, and it runs
-            against every stored test case in a real sandbox. Nothing is mocked:
-            the numbers on this page are counted from the database or measured
-            through the API.
+          <p className={`mt-5 ${body}`}>
+            BRACE RCE runs your code against every stored test case in a sandbox,
+            grades it, and tracks what you solved. It also puts you in a ranked
+            duel against another person, where the same engine judges both of
+            you. Nothing here is mocked: the figures below are counted from the
+            database or measured through the API.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
@@ -101,87 +106,60 @@ export default function About() {
           </div>
         </header>
 
-        {/* ── Facts ──────────────────────────────────────────── */}
         <section aria-label="Measured facts" className="py-10">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-faint">
             Current state
           </h2>
           <dl className="mt-5">
-            {FACTS.map((f) => (
-              <div key={f.label} className={row}>
-                <dt className={label}>{f.label}</dt>
-                <dd className="flex items-baseline gap-3 text-right">
-                  <span className="font-mono text-sm font-bold text-fg">{f.value}</span>
-                  <span className="text-xs text-faint">{f.note}</span>
-                </dd>
-              </div>
-            ))}
+            <div className={row}>
+              <dt className={label}>Problems</dt>
+              <dd className="flex items-baseline gap-3 text-right">
+                <span className="font-mono text-sm font-bold text-fg">{problems}</span>
+                <span className="text-xs text-faint">
+                  {cases.toLocaleString()} stored cases
+                </span>
+              </dd>
+            </div>
+            <div className={row}>
+              <dt className={label}>Languages</dt>
+              <dd className="flex items-baseline gap-3 text-right">
+                <span className="font-mono text-sm font-bold text-fg">5</span>
+                <span className="text-xs text-faint">
+                  JavaScript, Python, Java, C++, C
+                </span>
+              </dd>
+            </div>
+            <div className={row}>
+              <dt className={label}>Verified in sandbox</dt>
+              <dd className="flex items-baseline gap-3 text-right">
+                <span className="font-mono text-sm font-bold text-accent-success">
+                  {verified.toLocaleString()}
+                </span>
+                <span className="text-xs text-faint">cases run live, 0 failing</span>
+              </dd>
+            </div>
           </dl>
         </section>
 
-        {/* ── How execution works ────────────────────────────── */}
-        <section aria-label="How execution works" className="border-t border-line py-10">
+        <section aria-label="What the platform does" className="border-t border-line py-10">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-faint">
-            How a submission is judged
+            What it does
           </h2>
-          <ol className="mt-5 space-y-5">
-            {EXECUTION.map((s, i) => (
-              <li key={s.step} className="flex gap-4">
-                <span className="mt-0.5 font-mono text-xs text-accent-primary">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div>
-                  <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-fg">
-                    {s.step}
-                  </h3>
-                  <p className={`mt-1 ${body}`}>{s.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* ── Measured timings ───────────────────────────────── */}
-        <section aria-label="Measured execution timings" className="border-t border-line py-10">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-faint">
-            13-case submission, end to end
-          </h2>
-          <p className={`mt-2 ${body}`}>
-            Batching test cases into one sandbox invocation removed the repeated
-            compile and VM startup. Measured through the live API on Two Sum.
-          </p>
-          <dl className="mt-5">
-            {TIMINGS.map((t) => (
-              <div key={t.language} className={row}>
-                <dt className={label}>{t.language}</dt>
-                <dd className="font-mono text-xs text-subtle">
-                  <span className="text-faint line-through">{t.before}s</span>
-                  <span className="px-2 text-faint">→</span>
-                  <span className="font-bold text-accent-success">{t.after}s</span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {/* ── Stack ──────────────────────────────────────────── */}
-        <section aria-label="Built in the open" className="border-t border-line py-10">
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.22em] text-faint">
-            Built with
-          </h2>
-          <ul className="mt-5 flex flex-wrap gap-2">
-            {STACK.map((s) => (
-              <li
-                key={s.name}
-                className="inline-flex items-center gap-2 rounded-btn border border-line px-3 py-1.5 font-mono text-[11px] text-subtle"
-              >
-                {s.name}
-                <span className="text-[9px] uppercase tracking-widest text-faint">
-                  {s.where}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {GROUPS.map((group) => (
+            <div key={group.title} className="mt-8 first:mt-5">
+              <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-fg">
+                {group.title}
+              </h3>
+              <ul className="mt-3 space-y-2.5">
+                {group.items.map((item) => (
+                  <li key={item} className={`flex gap-3 ${body}`}>
+                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent-primary/60" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
 
         <footer className="border-t border-line pt-8">
