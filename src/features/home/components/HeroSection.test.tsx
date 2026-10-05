@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, test } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BracePixelHero } from "./HeroSection";
 
@@ -53,7 +54,7 @@ describe("Home hero", () => {
     expect(container.querySelector("main")).toBeNull();
     expect(container.querySelector("nav")).toBeNull();
     // The hero is the first <section> on the page, tagged for in-page anchors.
-    expect(container.querySelector('section#top')).not.toBeNull();
+    expect(container.querySelector("section#top")).not.toBeNull();
   });
 
   test("does not force a viewport height onto a page section", () => {
@@ -62,39 +63,64 @@ describe("Home hero", () => {
     expect(section?.className).not.toMatch(/min-h-screen/);
   });
 
-  test("renders the heartbeat behind the headline, not as a separate panel", () => {
+  test("draws one continuous trace behind the headline, with no border around it", () => {
     const { container } = renderHero();
-    // The standalone waveform card is gone.
+    // The standalone waveform panel is gone.
     expect(container.querySelector("#signal-gradient")).toBeNull();
     expect(screen.queryByText("rce monitor")).not.toBeInTheDocument();
 
-    // The trace now lives inside the headline wrapper, behind the words.
     const h1 = screen.getByRole("heading", { level: 1 });
     const wrapper = h1.parentElement!;
-    const svg = wrapper.querySelector("svg");
-    expect(svg).not.toBeNull();
-    // On an SVG element `className` is an SVGAnimatedString, so read the
-    // attribute instead of the property or the assertions silently no-op.
-    const svgClass = svg!.getAttribute("class") ?? "";
-    expect(svgClass).toContain("signal-pulse");
-    // Behind the text: the svg is absolutely positioned at z-0, the heading at
-    // z-10. Reversed, the trace paints over the glyphs.
+    const svg = wrapper.querySelector("svg")!;
+    const svgClass = svg.getAttribute("class") ?? "";
+
+    // Behind the type: svg absolute at z-0, heading relative at z-10. Reversed,
+    // the line paints over the glyphs.
     expect(svgClass).toContain("absolute");
     expect(svgClass).toContain("z-0");
     expect(h1.className).toContain("relative");
     expect(h1.className).toContain("z-10");
+
+    // Sized to the text band, not overflowing it.
+    expect(svgClass).toContain("inset-x-2");
+    expect(svgClass).not.toMatch(/h-\[\d+%\]/);
+
+    // One unbroken path, not a row of repeated marks.
+    expect(svg.querySelectorAll("path[stroke^='url']")).toHaveLength(1);
+    expect(svg.querySelectorAll("use")).toHaveLength(0);
+
+    // No bordered card wrapping the type.
+    expect(wrapper.querySelector("div[aria-hidden='true']")).toBeNull();
   });
 
-  test("the headline words no longer animate colour; the trace does", () => {
-    const { container } = renderHero();
+  test("colour travels across the type as a plain CSS gradient animation", () => {
+    renderHero();
+    const css = readFileSync("src/index.css", "utf8");
     const h1 = screen.getByRole("heading", { level: 1 });
-    // Words carry only the drift + hover treatment, never the colour cycle.
-    expect(container.querySelectorAll(".signal-word")).toHaveLength(0);
+
+    // One background-clip:text gradient whose position animates — the simple
+    // text colour animation, driven entirely by CSS rather than SVG.
+    expect(h1.className).toContain("signal-sweep");
+    expect(css).toContain(".signal-sweep");
+    expect(css).toContain("background-clip: text");
+    expect(css).toContain("@keyframes signalSweep");
+    expect(css).toContain("animation: signalSweep");
+
+    // No SVG <animate> driving colour any more.
+    expect(document.querySelector("animateTransform")).toBeNull();
+
+    // Words carry no individual colour class — the heading does the work.
     for (const word of h1.querySelectorAll("span")) {
-      expect(word.className).not.toContain("signal-pulse");
+      expect(word.className).not.toContain("signal-sweep");
+      expect(word.className).not.toContain("text-accent-");
     }
-    // The colour cycle class is on the trace.
-    expect(container.querySelectorAll(".signal-pulse")).toHaveLength(1);
+  });
+
+  test("the headline is larger than it was", () => {
+    renderHero();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    // clamp(2.6rem, 10.5vw, 9.5rem) — up from the previous 2.2/7vw/6.8.
+    expect(h1.className).toContain("text-[clamp(2.6rem,10.5vw,9.5rem)]");
   });
 
   test("hides the decorative trace from assistive tech", () => {

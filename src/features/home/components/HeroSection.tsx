@@ -26,11 +26,7 @@ import { Link } from 'react-router-dom'
  * Colours come from the app's accent tokens (cyan / lime / violet), so the hero
  * tracks the theme instead of hard-coding hex values.
  */
-const words = [
-  { text: 'Compile', tone: 'cyan' },
-  { text: 'Compete', tone: 'lime' },
-  { text: 'Conquer', tone: 'violet' },
-] as const
+const words = ['Compile', 'Compete', 'Conquer'] as const
 
 export const BracePixelHero: FC = () => {
   return (
@@ -58,7 +54,7 @@ export const BracePixelHero: FC = () => {
           a `vh`-based hero overflows the visible area and its CTAs end up
           off-screen. The section is NOT `overflow-hidden` for layout purposes
           (only the backdrop layers are), so nothing below it can be clipped. */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-58px)] max-w-6xl flex-col items-center justify-center px-5 py-10 text-center sm:py-14 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-58px)] max-w-6xl flex-col items-center justify-center px-5 py-8 text-center sm:py-10 lg:px-8">
         {/* Eyebrow */}
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
@@ -71,48 +67,60 @@ export const BracePixelHero: FC = () => {
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
         </div>
 
-        {/* Headline + heartbeat.
+        {/* Headline + trace.
 
-            The heartbeat trace is centred BEHIND the three words and carries the
-            colour cycle that used to animate the text itself. The words are now
-            static, so the type stays legible and the trace reads as the signal
-            passing through it.
+            The trace is a single continuous line drawn BEHIND the words with no
+            border or card around it — just the type over a soft signal. The
+            colour motion lives entirely on the text as a plain CSS gradient
+            sweep (`.signal-sweep`), so each glyph shifts hue as it travels
+            left to right.
 
-            Structure matters here: the wrapper is `relative` and stacks the svg
-            (absolute, z-0) under the h1 (relative, z-10). Without the z-index the
-            svg paints over the glyphs and the headline becomes unreadable. */}
-        <div className="relative mx-auto mt-8 w-full max-w-4xl sm:mt-10">
+            Stacking: wrapper `relative`, svg absolute at z-0, heading relative
+            at z-10. Reversed, the line paints over the glyphs. */}
+        <div className="relative mx-auto mt-6 w-full max-w-5xl sm:mt-7">
           {/* The drift keyframe animates `transform`, which would REPLACE the
-            -translate-x/y that centres this element — so centring is done with
-            `inset` + `margin:auto` instead, leaving `transform` free for the
-            animation. Two transforms on one element cannot coexist in CSS. */}
+              translate used to centre this element. Centring uses inset +
+              margin:auto instead, leaving transform free for the animation. */}
           <svg
             aria-hidden="true"
-            viewBox="0 0 720 120"
+            viewBox="0 0 1000 160"
             preserveAspectRatio="none"
-            className="signal-pulse signal-drift pointer-events-none absolute inset-y-0 left-0 right-0 z-0 mx-auto h-[135%] w-[112%] opacity-70"
+            className="signal-drift pointer-events-none absolute inset-x-2 top-[18%] bottom-[18%] z-0 m-auto h-auto w-[calc(100%-1rem)] opacity-70"
             fill="none"
           >
-            {/* One beat of the trace, reused across the width. Defining it once
-                keeps the path readable; a single long path with six repeated
-                humps is unreadable and unmaintainable. */}
+            {/* Static gradient: the line's hue no longer animates. All the
+                colour travel is on the text itself. */}
             <defs>
-              <path
-                id="heartbeat-beat"
-                d="M0 60h44l14-26 16 52 12-38 14 12h58l14-8 12 14 16-30 16 44 14-32 16 12h58l16-12 12 26 12-32 16 18 12-12h60"
-              />
+              <linearGradient id="trace-travel" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="var(--accent-primary)" stopOpacity="0" />
+                <stop offset=".25" stopColor="var(--accent-primary)" />
+                <stop offset=".5" stopColor="var(--accent-success)" />
+                <stop offset=".75" stopColor="var(--accent-violet)" />
+                <stop offset="1" stopColor="var(--accent-violet)" stopOpacity="0" />
+              </linearGradient>
             </defs>
-            <g stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round">
-              {[0, 144, 288, 432, 576].map((x) => (
-                <use key={x} href="#heartbeat-beat" x={x} />
-              ))}
-            </g>
-            {/* Baseline ticks keep the trace legible where it crosses a glyph. */}
-            <path d="M0 60h720" stroke="currentColor" strokeOpacity=".10" strokeDasharray="3 9" />
+            {/* One unbroken line across the full width: flat lead-in, a single
+                pulse, flat lead-out. A dashed or repeating trace read as a row
+                of separate marks rather than one continuous signal. */}
+            <path
+              d="M0 80h250c40 0 60-10 90-10s60 60 100 60 70-100 120-100 80 50 130 50h310"
+              stroke="url(#trace-travel)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d="M0 80h250c40 0 60-10 90-10s60 60 100 60 70-100 120-100 80 50 130 50h310"
+              stroke="currentColor"
+              strokeOpacity=".07"
+              strokeWidth="7"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
           </svg>
 
-          <h1 className="relative z-10 font-mono text-[clamp(2.2rem,7vw,6.8rem)] font-bold leading-[.95] tracking-[-.07em]">
-            {words.map(({ text }) => (
+          <h1 className="signal-sweep relative z-10 font-mono text-[clamp(2.6rem,10.5vw,9.5rem)] font-bold leading-[.92] tracking-[-.06em]">
+            {words.map((text) => (
               <span
                 key={text}
                 className="inline-block px-1 transition duration-500 hover:-translate-y-2 hover:scale-[1.03] sm:px-2"
@@ -125,14 +133,14 @@ export const BracePixelHero: FC = () => {
         </div>
 
         {/* Description */}
-        <p className="mx-auto mt-9 max-w-xl text-[15px] leading-7 text-subtle sm:mt-10 sm:text-lg sm:leading-8">
+        <p className="mx-auto mt-7 max-w-xl text-[15px] leading-7 text-subtle sm:mt-8 sm:text-lg sm:leading-8">
           A focused coding workspace for learning data structures, solving indexed
           problems, and validating your reasoning against real test cases.
         </p>
 
         {/* CTAs — Link, not <a>: these are in-app routes and a full page load
             would drop the SPA state and replay the boot animation. */}
-        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             to="/problems"
             className="group inline-flex items-center justify-center gap-3 bg-accent-primary px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-[.18em] text-ink transition hover:bg-fg"

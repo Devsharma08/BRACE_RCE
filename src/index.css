@@ -854,35 +854,37 @@ body.dragging-active * {
    animation would never run. The colours use the same tokens as the rest of the
    app so the hero tracks the theme rather than hard-coding hex values.
    ═══════════════════════════════════════════════════════════════════════════ */
-@keyframes signalColor {
-  0%, 100% { color: var(--accent-primary); }
-  33%      { color: var(--accent-success); }
-  66%      { color: var(--accent-violet); }
+/* A soft highlight that sweeps left -> right across the headline. Applied as a
+   background-clip:text fill on the glyphs so the colour travels *through* the
+   type rather than swapping all three words at once. */
+@keyframes signalSweep {
+  0%   { background-position: -140% 0; }
+  100% { background-position: 240% 0; }
 }
 
-/* The heartbeat trace sits behind the headline and carries the colour cycle.
-   It animates `color` only, and the SVG strokes use `currentColor`, so the whole
-   trace shifts hue without a per-stop gradient having to be re-authored. */
-.signal-pulse {
-  animation: signalColor 6s ease-in-out infinite;
-}
-
-/* Gentle vertical drift, phase-offset from the colour cycle so the trace never
-   looks frozen while the hue is turning over. */
-@keyframes heartbeatDrift {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
-}
-.signal-drift {
-  animation: heartbeatDrift 4.5s ease-in-out infinite;
+.signal-sweep {
+  background-image: linear-gradient(
+    90deg,
+    var(--accent-primary) 0%,
+    var(--accent-success) 28%,
+    var(--accent-violet) 52%,
+    var(--accent-success) 76%,
+    var(--accent-primary) 100%
+  );
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: signalSweep 7s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .signal-pulse,
+  .signal-sweep {
+    animation: none !important;
+    background-position: 50% 0;
+  }
   .signal-drift {
     animation: none !important;
   }
-  /* Frozen mid-cycle would leave the trace on a random hue; pin it to the brand
-     cyan so it still reads as the primary signal. */
-  .signal-pulse { color: var(--accent-primary); }
 }
