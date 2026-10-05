@@ -27,7 +27,16 @@ import { useMediaQuery } from '../../../hooks/useMediaQuery'
  * Colours come from the app's accent tokens (cyan / lime / violet), so the hero
  * tracks the theme instead of hard-coding hex values.
  */
-const words = ['Compile', 'Compete', 'Conquer'] as const
+/**
+ * One gradient per word (`.signal-word--*` in index.css): a diagonal for
+ * Compile, a vertical for Compete, a radial for Conquer — three completely
+ * different styles, none of them animated.
+ */
+const words = [
+  { text: 'Compile', tone: 'signal-word--compile' },
+  { text: 'Compete', tone: 'signal-word--compete' },
+  { text: 'Conquer', tone: 'signal-word--conquer' },
+] as const
 
 export const BracePixelHero: FC = () => {
   // Only the background SVG animates. Its colour travel is an SVG
@@ -45,9 +54,19 @@ export const BracePixelHero: FC = () => {
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
       <div className="pointer-events-none absolute left-1/2 top-0 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-accent-primary/[0.05] blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 top-[28%] h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent" />
-      <div className="pointer-events-none absolute right-[8%] top-[22%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
-        signal / structure / runtime
-      </div>
+        {/* Three separate side markers, one per hero concept, split across the
+            gutters: signal top-right, structure centred left, runtime
+            bottom-right. Large screens only — below lg the content fills the
+            width and there is no gutter to sit in. */}
+        <div className="pointer-events-none absolute right-5 top-[24%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
+          signal
+        </div>
+        <div className="pointer-events-none absolute left-5 top-1/2 hidden -translate-y-1/2 font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
+          structure
+        </div>
+        <div className="pointer-events-none absolute right-5 bottom-[24%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
+          runtime
+        </div>
 
       {/* Fills the space below the 58px sticky header and centres its content, so the
           whole hero sits in one screen without the page scrolling.
@@ -78,9 +97,10 @@ export const BracePixelHero: FC = () => {
 
             The trace is a single continuous line drawn BEHIND the words with no
             border or card around it. Division of labour: the words are STATIC
-            (a fixed gradient via `.signal-sweep`, never animated, so they stay
-            on screen), and only this background svg moves — its gradient slides
-            left to right so the colour travels along the line.
+            (each with its own fixed gradient via `.signal-word`, never
+            animated, so they stay on screen), and only this background svg
+            moves — its gradient slides left to right so the colour travels
+            along the line.
 
             Stacking: wrapper `relative`, svg absolute at z-0, heading relative
             at z-10. Reversed, the line paints over the glyphs. */}
@@ -141,11 +161,11 @@ export const BracePixelHero: FC = () => {
             />
           </svg>
 
-          <h1 className="signal-sweep relative z-10 font-mono text-[clamp(1.9rem,6.2vw,5.4rem)] font-bold leading-[.92] tracking-[-.06em]">
-            {words.map((text) => (
+          <h1 className="relative z-10 font-mono text-[clamp(1.9rem,6.2vw,5.4rem)] font-bold leading-[.92] tracking-[-.06em]">
+            {words.map(({ text, tone }) => (
               <span
                 key={text}
-                className="inline-block px-1 transition duration-500 hover:-translate-y-2 hover:scale-[1.03] sm:px-2"
+                className={`signal-word ${tone} inline-block px-1 sm:px-2`}
               >
                 {text}
                 <span className="text-fg/30">.</span>{' '}

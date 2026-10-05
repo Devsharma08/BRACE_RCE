@@ -847,8 +847,9 @@ body.dragging-active * {
    ═══════════════════════════════════════════════════════════════════════════
    Split of responsibility, which is the whole point of this design:
 
-   • The TEXT is static. It carries a fixed gradient via background-clip:text
-     and never animates, so the words stay on screen and legible.
+   • The TEXT is static. Each word carries its own fixed gradient via
+     background-clip:text (diagonal / vertical / radial) and never animates,
+     so the words stay on screen and legible.
    • The BACKGROUND SVG animates. Only the trace moves (`.signal-drift`).
 
    Defined here rather than in a <style jsx> block: that is Next.js styled-jsx
@@ -856,28 +857,51 @@ body.dragging-active * {
    animation would never run. The colours use the same tokens as the rest of the
    app so the hero tracks the theme rather than hard-coding hex values.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* Static gradient fill for the headline.
+/* Static gradient fill for the headline — ONE gradient per word, so Compile,
+   Compete and Conquer each read as their own mark instead of a single sweep
+   running across the whole line.
 
    The type does NOT animate. `background-clip: text` with `color: transparent`
    only works if the gradient actually covers every glyph — an oversized,
    no-repeat band whose position animates off the box leaves transparent text
    with nothing behind it, and the words vanish. So: `background-size: 100%`
-   and no animation, guaranteeing the gradient always spans the full line box.
+   and no animation, guaranteeing the gradient always spans each word's box.
 
    All motion lives on the background trace instead (see `.signal-drift`). */
-.signal-sweep {
-  background-image: linear-gradient(
-    90deg,
-    var(--accent-primary) 0%,
-    var(--accent-success) 34%,
-    var(--accent-violet) 68%,
-    var(--accent-primary) 100%
-  );
+.signal-word {
   background-size: 100% 100%;
   background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Compile — diagonal, brand cyan into violet. */
+.signal-word--compile {
+  background-image: linear-gradient(
+    115deg,
+    var(--accent-primary) 0%,
+    var(--accent-violet) 100%
+  );
+}
+
+/* Compete — vertical, lime rising into amber (heat of the arena). */
+.signal-word--compete {
+  background-image: linear-gradient(
+    180deg,
+    var(--accent-success) 0%,
+    var(--accent-warning) 100%
+  );
+}
+
+/* Conquer — radial bloom, pink through violet into cyan. */
+.signal-word--conquer {
+  background-image: radial-gradient(
+    130% 170% at 25% 15%,
+    var(--accent-pink) 0%,
+    var(--accent-violet) 55%,
+    var(--accent-primary) 100%
+  );
 }
 
 /* The trace's colour travel is an SVG <animateTransform>, which CSS cannot

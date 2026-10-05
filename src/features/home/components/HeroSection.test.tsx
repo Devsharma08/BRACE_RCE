@@ -93,30 +93,88 @@ describe("Home hero", () => {
     expect(wrapper.querySelector("div[aria-hidden='true']")).toBeNull();
   });
 
-  test("the headline text is static with a gradient, and never animates", () => {
+  test("the headline text is static, with a unique gradient per word", () => {
     renderHero();
     const css = readFileSync("src/index.css", "utf8");
     const h1 = screen.getByRole("heading", { level: 1 });
 
-    // Gradient-filled type: background-clip:text is present and applied.
-    expect(h1.className).toContain("signal-sweep");
-    expect(css).toContain(".signal-sweep");
+    // Shared plumbing on every word: background-clip:text is present and applied.
+    expect(css).toContain(".signal-word {");
     expect(css).toContain("background-clip: text");
 
-    // The text must NOT animate. An animated, oversized, no-repeat gradient
+    // Each word carries its own tone class, and all three are distinct.
+    const wordSpans = Array.from(h1.querySelectorAll("span.signal-word"));
+    expect(wordSpans).toHaveLength(3);
+    const tones = wordSpans.map((span) =>
+      ["signal-word--compile", "signal-word--compete", "signal-word--conquer"].find(
+        (tone) => span.className.includes(tone),
+      ),
+    );
+    expect(new Set(tones).size).toBe(3);
+    expect(tones.filter(Boolean)).toHaveLength(3);
+
+    // Three different gradient STYLES, not one shared linear sweep.
+    const rules = tones.map((tone) => {
+      const start = css.indexOf(`.${tone} {`);
+      expect(start).toBeGreaterThan(-1);
+      const rule = css.slice(start, css.indexOf("}", start));
+      expect(rule).toContain("background-image");
+      return rule;
+    });
+    expect(rules[0]).toContain("linear-gradient");
+    expect(rules[1]).toContain("linear-gradient");
+    expect(rules[2]).toContain("radial-gradient");
+    expect(new Set(rules).size).toBe(3);
+
+    // The words must NOT animate. An animated, oversized, no-repeat gradient
     // slides off the glyphs and leaves transparent text with nothing behind
     // it — the words vanish mid-cycle. background-size must cover the box and
-    // there must be no animation on the class.
+    // there must be no animation on the base class.
     expect(css).toContain("background-size: 100% 100%");
     expect(css).not.toContain("@keyframes signalSweep");
-    const sweepRule = css.slice(css.indexOf(".signal-sweep"));
-    expect(sweepRule.slice(0, sweepRule.indexOf("}"))).not.toContain("animation");
+    const baseRule = css.slice(css.indexOf(".signal-word {"));
+    expect(baseRule.slice(0, baseRule.indexOf("}"))).not.toContain("animation");
     expect(h1.className).not.toContain("animate");
 
-    // Gradient spans the full headline, so every word is coloured.
+    // Gradient spans every word, so each one is coloured.
     for (const word of ["Compile", "Compete", "Conquer"]) {
       expect(h1).toHaveTextContent(word);
     }
+  });
+
+  test("has no hover animation on the headline words", () => {
+    renderHero();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    for (const span of h1.querySelectorAll("span.signal-word")) {
+      expect(span.className).not.toMatch(/hover:|transition|duration-/);
+    }
+  });
+
+  test("positions signal, structure and runtime as three separate side markers", () => {
+    renderHero();
+    // Three distinct markers, not one combined string.
+    const markers: Array<[string, RegExp]> = [
+      ["signal", /right-5/],
+      ["structure", /left-5/],
+      ["runtime", /right-5/],
+    ];
+    for (const [label, edge] of markers) {
+      const el = screen.getByText(label, { exact: true });
+      const cls = el.className;
+      expect(cls).toContain("absolute");
+      expect(cls).toMatch(edge);
+      // Large screens only: below lg there is no gutter to sit in.
+      expect(cls).toContain("hidden");
+      expect(cls).toContain("lg:block");
+      // Decorative: must not capture pointer events over the CTAs.
+      expect(cls).toContain("pointer-events-none");
+    }
+    // The old combined string is gone.
+    expect(screen.queryByText(/signal \/ structure \/ runtime/)).toBeNull();
+    // Vertically stacked: signal upper, structure centred, runtime lower.
+    const structure = screen.getByText("structure", { exact: true });
+    expect(structure.className).toContain("top-1/2");
+    expect(structure.className).toContain("-translate-y-1/2");
   });
 
   test("only the background svg carries the colour animation", () => {
@@ -206,7 +264,7 @@ describe("Home hero reduced motion", () => {
     stubMatchMedia(true);
     const { container } = renderHero();
     const h1 = container.querySelector("h1")!;
-    expect(h1.className).toContain("signal-sweep");
+    expect(h1.querySelectorAll("span.signal-word")).toHaveLength(3);
     expect(h1.querySelector("animateTransform")).toBeNull();
   });
 });
