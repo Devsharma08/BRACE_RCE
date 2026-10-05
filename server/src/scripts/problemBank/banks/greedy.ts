@@ -390,4 +390,87 @@ export default bank([
       915,
     ),
   },
+  {
+    k: 'gry-russian-doll-envelopes',
+    n: 'Russian Doll Envelopes',
+    num: 328,
+    d: 'MEDIUM',
+    c: 'Greedy',
+    intro: [
+      'You are given a list of envelopes represented as <code>[width, height]</code> pairs.',
+      'An envelope can go inside another only if it is strictly smaller in both dimensions.',
+      'Return the largest number of envelopes you can nest.',
+    ],
+    notes: [
+      'The strictness matters: equal widths or heights do NOT nest.',
+      'Sorting by width ascending and height descending means an envelope with the same width is never a valid successor.',
+      'Once sorted that way, the answer is the longest strictly increasing subsequence of the heights.',
+    ],
+    approach: [
+      'Sort by width ascending, and for equal widths by height descending.',
+      'Run the standard strictly-increasing LIS routine over the resulting heights.',
+      'The length of that subsequence is the nesting depth.',
+    ],
+    ex: [
+      { input: 'envelopes = [[5,4],[6,4],[6,7],[2,3]]', output: '3', explanation: 'One chain is [2,3] then [5,4] then [6,7].', args: [[[5, 4], [6, 4], [6, 7], [2, 3]]] },
+      { input: 'envelopes = [[1,1],[1,1],[1,1]]', output: '1', explanation: 'Envelopes must be strictly smaller, so identical ones cannot nest.', args: [[[1, 1], [1, 1], [1, 1]]] },
+      { input: 'envelopes = []', output: '0', explanation: 'Nothing to nest.', args: [[]] },
+    ],
+    cx: 'Time O(n log n) after sorting, Space O(n).',
+    con: ['1 <= envelopes.length <= 5000', '1 <= envelopes[i][0], envelopes[i][1] <= 10000'],
+    h: [
+      'Break width ties by DESCENDING height, otherwise equal-width envelopes could be chained.',
+      'Use a strictly increasing LIS: replace the first tail >= h, not the last one <= h.',
+      'Sorting plus LIS keeps the whole algorithm O(n log n).',
+    ],
+    sig: ['int', 'int[][]'],
+    fn: ['maxEnvelopes', 'envelopes'],
+    s: (args) => {
+      const envelopes = args[0];
+      if (envelopes.length === 0) return 0;
+      const sorted = envelopes.map((e) => [e[0], e[1]]);
+      // Equal widths sort by DESCENDING height so a same-width envelope can
+      // never be picked as a strictly-increasing successor.
+      sorted.sort((a, b) => (a[0] - b[0]) || (b[1] - a[1]));
+      // tails[k] is the smallest possible tail of an increasing subsequence
+      // of length k+1.
+      const tails = [];
+      for (let i = 0; i < sorted.length; i++) {
+        const h = sorted[i][1];
+        if (tails.length === 0 || h > tails[tails.length - 1]) {
+          tails.push(h);
+        } else {
+          // Lower bound: first tail >= h, which keeps the subsequence strict.
+          let lo = 0;
+          let hi = tails.length - 1;
+          while (lo < hi) {
+            const mid = lo + Math.floor((hi - lo) / 2);
+            if (tails[mid] < h) lo = mid + 1;
+            else hi = mid;
+          }
+          tails[lo] = h;
+        }
+      }
+      return tails.length;
+    },
+    t: autoTests(
+      [
+        pub([[5, 4], [6, 4], [6, 7], [2, 3]]),
+        pub([[1, 1], [1, 1], [1, 1]]),
+        pub([]),
+        priv([[5, 4]]),
+        priv([[1, 4], [2, 3]]),
+      ],
+      (r) => {
+        // A tiny grid guarantees many equal widths and equal heights, which is
+        // exactly what makes the tie-breaking rule matter.
+        const n = r.int(1, 9);
+        const envelopes = [];
+        for (let i = 0; i < n; i++) envelopes.push([r.int(1, 4), r.int(1, 4)]);
+        return [envelopes];
+      },
+      15,
+      949,
+    ),
+  },
 ]);

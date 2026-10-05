@@ -167,4 +167,86 @@ export default bank([
       202,
     ),
   },
+  {
+    k: 'trie-shortest-unique-prefix',
+    n: 'Shortest Unique Prefix',
+    num: 192,
+    d: 'MEDIUM',
+    c: 'Trie',
+    intro: [
+      'Given an array of distinct words, return the length of the shortest prefix that uniquely identifies each word.',
+      'If no prefix of a word is unique, return <code>-1</code> for that word.',
+    ],
+    notes: [
+      'A prefix is unique exactly when it is a prefix of only one word.',
+      'A trie node storing how many words pass through it gives that count for free.',
+      'The shortest unique prefix is the SHORTEST prefix on the path that is unique, which is why the first count-1 node wins.',
+    ],
+    approach: [
+      'Insert every word into a trie, incrementing a pass count on each node visited.',
+      'For each word walk its own path from the root.',
+      'Return the length of the first node whose pass count is 1, or -1 if none is.',
+    ],
+    ex: [
+      { input: 'words = ["apple","app"]', output: '[4,-1]', explanation: '"appl" prefixes only "apple", so it is unique at length 4. "app" prefixes both words, so neither has a unique prefix.', args: [['apple', 'app']] },
+      { input: 'words = ["dog","dogdog","dodge"]', output: '[-1,4,3]', explanation: '"dog" is a prefix of the other two words, so it never becomes unique. "dogd" prefixes only "dogdog", and "dogg" prefixes only "dodge".', args: [['dog', 'dogdog', 'dodge']] },
+    ],
+    cx: 'Time O(sum of word lengths), Space O(sum of word lengths).',
+    con: ['1 <= words.length <= 1000', '1 <= words[i].length <= 20', 'words[i] consists of lowercase English letters.'],
+    h: [
+      'Store a pass count per node rather than a terminal flag.',
+      'Take the FIRST count-1 node on the path: that is the shortest unique prefix.',
+      'A word that is a proper prefix of another never reaches count 1 and returns -1.',
+    ],
+    sig: ['int[]', 'string[]'],
+    fn: ['shortestUniquePrefixes', 'words'],
+    s: (args) => {
+      const words = args[0];
+      // Every node counts how many inserted words pass through it.
+      const root = { count: 0, kids: new Map() };
+      for (const w of words) {
+        let node = root;
+        for (const ch of w) {
+          if (!node.kids.has(ch)) node.kids.set(ch, { count: 0, kids: new Map() });
+          node = node.kids.get(ch);
+          node.count++;
+        }
+      }
+      const out = [];
+      for (const w of words) {
+        let node = root;
+        let ans = -1;
+        for (let i = 0; i < w.length; i++) {
+          if (!node.kids.has(w[i])) break;
+          node = node.kids.get(w[i]);
+          // First unique prefix on the path wins; do not keep scanning past it.
+          if (node.count === 1) {
+            ans = i + 1;
+            break;
+          }
+        }
+        out.push(ans);
+      }
+      return out;
+    },
+    t: autoTests(
+      [
+        pub(['apple', 'app']),
+        pub(['dog', 'dogdog', 'dodge']),
+        pub(['a']),
+        priv([]),
+        priv(['abc', 'abd']),
+      ],
+      (r) => {
+        // A two-letter alphabet makes shared prefixes common, which is the
+        // interesting case here.
+        const n = r.int(1, 5);
+        const words = [];
+        for (let i = 0; i < n; i++) words.push(r.str(r.int(1, 4), 'ab'));
+        return [words];
+      },
+      15,
+      932,
+    ),
+  },
 ]);

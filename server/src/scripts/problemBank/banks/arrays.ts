@@ -320,4 +320,84 @@ export default bank([
       305,
     ),
   },
+  {
+    k: 'arr-interval-list-intersections',
+    n: 'Interval List Intersections',
+    num: 205,
+    d: 'MEDIUM',
+    c: 'Arrays',
+    intro: [
+      'Given two lists of closed intervals with <code>start[i] &lt; end[i]</code>, return the list of their intersections.',
+      'Both input lists are sorted and disjoint, and intervals within a list never touch. Return the result sorted as well.',
+      'An empty input list returns an empty result.',
+    ],
+    notes: [
+      'Because each list is sorted and disjoint, only one pair of intervals can overlap at a time.',
+      'The overlap of two intervals, when non-empty, is [max(starts), min(ends)].',
+      'Sharing an endpoint is NOT an intersection: [1,5] and [5,9] yield nothing, because 5 < 5 is false.',
+    ],
+    approach: [
+      'Keep one pointer into each list.',
+      'Emit the overlap when the later start is strictly before the earlier end.',
+      'Advance whichever interval ends first, since it cannot overlap anything further ahead in the other list.',
+    ],
+    ex: [
+      { input: 'firstList = [[0,2],[5,10],[13,23],[24,25]], secondList = [[1,5],[8,12],[15,24],[25,26]]', output: '[[1,2],[8,10],[15,23]]', explanation: 'Three genuine overlaps. [0,2] and [5,10] both overlap [1,5], but [5,10] starts after [1,5] ends, so they never meet.', args: [[[0, 2], [5, 10], [13, 23], [24, 25]], [[1, 5], [8, 12], [15, 24], [25, 26]]] },
+      { input: 'firstList = [[1,2],[3,4]], secondList = [[2,3]]', output: '[]', explanation: 'Sharing an endpoint is not an overlap: 2 is not strictly before 2.', args: [[[1, 2], [3, 4]], [[2, 3]]] },
+      { input: 'firstList = [[1,3],[5,9]], secondList = []', output: '[]', explanation: 'The second list is empty.', args: [[[1, 3], [5, 9]], []] },
+      { input: 'firstList = [[1,2]], secondList = [[3,4]]', output: '[]', explanation: 'The intervals are disjoint.', args: [[[1, 2]], [[3, 4]]] },
+    ],
+    cx: 'Time O(n + m), Space O(1) beyond the output.',
+    con: ['0 <= n, m <= 1000', '1 <= start[i] <= end[i] <= 10000', 'Each list is sorted and disjoint.'],
+    h: [
+      'The intersection is non-empty only when max(start) < min(end).',
+      'Advance the pointer of the interval that ends first, never both.',
+      'Both lists must be fully consumed before the answer is complete.',
+    ],
+    sig: ['int[][]', 'int[][]', 'int[][]'],
+    fn: ['intersectIntervals', 'firstList', 'secondList'],
+    s: (args) => {
+      const first = args[0];
+      const second = args[1];
+      const out = [];
+      let i = 0;
+      let j = 0;
+      while (i < first.length && j < second.length) {
+        const lo = Math.max(first[i][0], second[j][0]);
+        const hi = Math.min(first[i][1], second[j][1]);
+        // A zero-length intersection is only a shared endpoint, not an overlap.
+        if (lo < hi) out.push([lo, hi]);
+        if (first[i][1] < second[j][1]) i++;
+        else j++;
+      }
+      return out;
+    },
+    t: autoTests(
+      [
+        pub([[0, 2], [5, 10], [13, 23], [24, 25]], [[1, 5], [8, 12], [15, 24], [25, 26]]),
+        pub([[1, 3], [5, 9]], []),
+        pub([[1, 2]], [[3, 4]]),
+        priv([], [[1, 2]]),
+        priv([[1, 2]], [[1, 2]]),
+      ],
+      (r) => {
+        // Sorted, disjoint intervals on a small shared grid, so overlaps and
+        // exactly-touching endpoints both occur often.
+        const makeList = (count) => {
+          const out = [];
+          let cur = r.int(0, 2);
+          for (let i = 0; i < count; i++) {
+            const len = r.int(0, 3);
+            out.push([cur, cur + len]);
+            // Leave a gap of at least one so intervals never touch.
+            cur += len + 1 + r.int(0, 2);
+          }
+          return out;
+        };
+        return [makeList(r.int(0, 5)), makeList(r.int(0, 5))];
+      },
+      15,
+      947,
+    ),
+  },
 ]);

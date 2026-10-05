@@ -499,4 +499,87 @@ export default bank([
       406,
     ),
   },
+  {
+    k: 'stk-validate-stack-sequences',
+    n: 'Validate Stack Sequences',
+    num: 327,
+    d: 'MEDIUM',
+    c: 'Stack',
+    intro: [
+      'Given a sequence of integers <code>pushed</code> and another of integers <code>popped</code>, return whether it is possible to push the values in <code>pushed</code> order and pop them in <code>popped</code> order.',
+      'Every value in <code>popped</code> must come from the top of the stack at the time of its pop.',
+    ],
+    notes: [
+      'The greedy choice is forced: pop as soon as the top matches the next required value.',
+      'Popping early can never hurt, because the value that was on top is needed anyway.',
+      'At the end the stack must be empty as well as the pop pointer at the end.',
+    ],
+    approach: [
+      'Push values from <code>pushed</code> one at a time.',
+      'After each push, pop while the top equals the next value in <code>popped</code>.',
+      'Return true when every value was popped and the stack is empty.',
+    ],
+    ex: [
+      { input: 'pushed = [1,2,3,4], popped = [4,3,2,1]', output: 'true', explanation: 'Everything pops straight back off.', args: [[1, 2, 3, 4], [4, 3, 2, 1]] },
+      { input: 'pushed = [1,2,3,4], popped = [4,2,3,1]', output: 'false', explanation: 'After 4 and 2 are popped, 3 is buried under nothing usable; popping 3 next would require 2 to be off first, so the order is impossible.', args: [[1, 2, 3, 4], [4, 2, 3, 1]] },
+      { input: 'pushed = [], popped = []', output: 'true', explanation: 'Two empty sequences match.', args: [[], []] },
+    ],
+    cx: 'Time O(n + m), Space O(n).',
+    con: ['1 <= pushed.length <= 1000', 'pushed is a permutation of 0..n-1', 'popped is a permutation of 0..n-1'],
+    h: [
+      'Pop greedily as soon as the top matches the next required pop value.',
+      'Check both that the pop pointer completed and that the stack is empty.',
+      'Values are distinct, so no ambiguity arises about which element to pop.',
+    ],
+    sig: ['bool', 'int[]', 'int[]'],
+    fn: ['validateStackSequences', 'pushed', 'popped'],
+    s: (args) => {
+      const pushed = args[0];
+      const popped = args[1];
+      const stack = [];
+      let j = 0;
+      for (const v of pushed) {
+        stack.push(v);
+        // Pop greedily: the top is needed now, and popping early cannot hurt.
+        while (stack.length && j < popped.length && stack[stack.length - 1] === popped[j]) {
+          stack.pop();
+          j++;
+        }
+      }
+      return j === popped.length && stack.length === 0;
+    },
+    t: autoTests(
+      [
+        pub([1, 2, 3, 4], [4, 3, 2, 1]),
+        pub([1, 2, 3, 4], [4, 2, 3, 1]),
+        pub([], []),
+        priv([1], [1]),
+        priv([1], [0]),
+      ],
+      (r) => {
+        const n = r.int(0, 8);
+        const pushed = r.distinct(n, 0, 100);
+        // Half the time derive popped by simulating a legal pop schedule, so
+        // both feasible and infeasible orders are well represented.
+        if (r.next() < 0.5) {
+          const pool = pushed.slice();
+          const picked = [];
+          while (pool.length) {
+            picked.push(pool.splice(r.int(0, pool.length - 1), 1)[0]);
+          }
+          return [pushed, picked];
+        }
+        const shuffled = pushed.slice();
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = r.int(0, i);
+          const tmp = shuffled[i];
+          shuffled[i] = shuffled[j];
+          shuffled[j] = tmp;
+        }
+        return [pushed, shuffled];
+      },
+      15,
+      948,
+    ),
+  },
 ]);

@@ -242,6 +242,105 @@ const BANK_GRAPH: RawProblem[] = [
       317,
     ),
   },
+  {
+    k: 'grf-01-matrix',
+    n: '01 Matrix',
+    num: 326,
+    d: 'MEDIUM',
+    c: 'Graph',
+    intro: [
+      'Given an <code>m x n</code> binary matrix <code>mat</code>, return the distance to the nearest <code>0</code> for every cell.',
+      'A cell holding <code>0</code> has distance 0. Moving into a neighbouring cell (up, down, left, right) costs 1.',
+      'Return the matrix of distances.',
+    ],
+    notes: [
+      'Seeding a BFS with ALL zero cells at once turns the problem into one multi-source BFS instead of one search per cell.',
+      'Running a separate BFS from each cell would be O((mn)^2); the multi-source version is O(mn).',
+      'Zeros already hold distance 0, so only the unvisited cells are ever pushed.',
+    ],
+    approach: [
+      'Push every zero cell onto the queue with distance 0 and mark the rest as unvisited.',
+      'Pop a cell and relax each of its four neighbours, assigning the current distance plus 1.',
+      'Return the distance matrix.',
+    ],
+    ex: [
+      { input: 'mat = [[0,0,0],[0,1,0],[0,0,0]]', output: '[[0,0,0],[0,1,0],[0,0,0]]', explanation: 'The centre cell is already adjacent to a zero.', args: [[[0, 0, 0], [0, 1, 0], [0, 0, 0]]] },
+      { input: 'mat = [[0,0,0],[0,1,0],[1,1,1]]', output: '[[0,0,0],[0,1,0],[3,2,1]]', explanation: 'The bottom row sits at distances 1, 2 and 3 along the row, so the bottom-left cell is 3 steps from any zero.', args: [[[0, 0, 0], [0, 1, 0], [1, 1, 1]]] },
+      { input: 'mat = [[1]]', output: '[[1]]', explanation: 'A grid of only ones keeps its own value, since there is no zero to reach.', args: [[[1]]] },
+    ],
+    cx: 'Time O(mn), Space O(mn) for the queue and the distance matrix.',
+    con: ['1 <= m, n <= 300', 'mat[i][j] is 0 or 1'],
+    h: [
+      'Seed the queue with every zero before the BFS starts; that is what makes it multi-source.',
+      'Use -1 as the unvisited marker so 0 stays a real distance.',
+      'Each cell is pushed at most once, which is what bounds the total work.',
+    ],
+    sig: ['int[][]', 'int[][]'],
+    fn: ['updateMatrix', 'mat'],
+    s: (args) => {
+      const mat = args[0];
+      const m = mat.length;
+      const n = m ? mat[0].length : 0;
+      const dist = Array.from({ length: m }, () => new Array(n).fill(-1));
+      const queue = [];
+      // Seed with every zero: a single multi-source BFS replaces mn searches.
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          if (mat[i][j] === 0) {
+            dist[i][j] = 0;
+            queue.push(i, j);
+          }
+        }
+      }
+      const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      while (queue.length) {
+        const j = queue.pop();
+        const i = queue.pop();
+        for (const d of dirs) {
+          const ni = i + d[0];
+          const nj = j + d[1];
+          if (ni < 0 || ni >= m || nj < 0 || nj >= n) continue;
+          if (dist[ni][nj] !== -1) continue;
+          dist[ni][nj] = dist[i][j] + 1;
+          queue.push(ni, nj);
+        }
+      }
+      // A grid with no zero keeps its ones; the problem guarantees none exists
+      // in practice, but returning the original value is the safe answer.
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          if (dist[i][j] === -1) dist[i][j] = mat[i][j];
+        }
+      }
+      return dist;
+    },
+    t: autoTests(
+      [
+        pub([[0, 0, 0], [0, 1, 0], [0, 0, 0]]),
+        pub([[0, 0, 0], [0, 1, 0], [1, 1, 1]]),
+        pub([[1]]),
+        priv([[0]]),
+        priv([[1, 1, 1]]),
+      ],
+      (r) => {
+        // A dense grid of ones creates long distances and heavy overlap,
+        // which is exactly what stresses a multi-source BFS.
+        const m = r.int(1, 5);
+        const n = r.int(1, 5);
+        const mat = [];
+        for (let i = 0; i < m; i++) {
+          const row = [];
+          for (let j = 0; j < n; j++) row.push(r.next() < 0.25 ? 0 : 1);
+          mat.push(row);
+        }
+        // Guarantee at least one zero so the distance is always well defined.
+        mat[r.int(0, m - 1)][r.int(0, n - 1)] = 0;
+        return [mat];
+      },
+      15,
+      946,
+    ),
+  },
 ];
 
 // Exported at the END of the file: `const` is not hoisted-initialised, so calling

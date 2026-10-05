@@ -369,4 +369,154 @@ export default bank([
       905,
     ),
   },
+  {
+    k: 'dp-number-of-lis',
+    n: 'Count Maximum Increasing Subsequences',
+    num: 286,
+    d: 'MEDIUM',
+    c: 'Dynamic Programming',
+    intro: [
+      'Given an integer array <code>nums</code>, return the number of distinct longest increasing subsequences of <code>nums</code>.',
+      'Two subsequences are distinct when they differ in at least one index, even if the value sequences are identical.',
+    ],
+    notes: [
+      'The O(n^2) dynamic program tracks two things per index: the LIS length ending there, and how many subsequences achieve it.',
+      'Equal values must NOT extend a subsequence, because the increase has to be strict.',
+      'Every index that can end a global LIS contributes its count to the answer.',
+    ],
+    approach: [
+      'For each index compute <code>len[i]</code>, the longest increasing subsequence ending at i.',
+      'Count <code>cnt[i]</code>: the number of subsequences of that length ending at i.',
+      'Sum the counts over every index whose length equals the global maximum.',
+    ],
+    ex: [
+      { input: 'nums = [1,3,5,4,7]', output: '2', explanation: 'Both [1,3,5,7] and [1,3,4,7] have length 4.', args: [[1, 3, 5, 4, 7]] },
+      { input: 'nums = [2,2,2,2,2]', output: '5', explanation: 'Every single element is an increasing subsequence of length 1, and all five are distinct.', args: [[2, 2, 2, 2, 2]] },
+      { input: 'nums = []', output: '0', explanation: 'An empty array has no subsequences.', args: [[]] },
+    ],
+    cx: 'Time O(n^2), Space O(n).',
+    con: ['0 <= nums.length <= 1000', '-1000 <= nums[i] <= 1000'],
+    h: [
+      'Extend only when nums[j] < nums[i]; a strict increase.',
+      'When len[j] + 1 equals len[i], add cnt[j] to cnt[i] rather than resetting it.',
+      'A single element always has len 1 and count 1.',
+    ],
+    sig: ['int', 'int[]'],
+    fn: ['findLISCount', 'nums'],
+    s: (args) => {
+      const nums = args[0];
+      const n = nums.length;
+      if (n === 0) return 0;
+      const len = new Array(n).fill(1);
+      const cnt = new Array(n).fill(1);
+      let best = 1;
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < i; j++) {
+          // Strict increase only: equal values never extend a subsequence.
+          if (nums[j] < nums[i]) {
+            if (len[j] + 1 > len[i]) {
+              len[i] = len[j] + 1;
+              cnt[i] = cnt[j];
+            } else if (len[j] + 1 === len[i]) {
+              // Another distinct subsequence of the same maximal length.
+              cnt[i] += cnt[j];
+            }
+          }
+        }
+        if (len[i] > best) best = len[i];
+      }
+      let total = 0;
+      for (let i = 0; i < n; i++) if (len[i] === best) total += cnt[i];
+      return total;
+    },
+    t: autoTests(
+      [
+        pub([1, 3, 5, 4, 7]),
+        pub([2, 2, 2, 2, 2]),
+        pub([]),
+        priv([1]),
+        priv([3, 2, 1]),
+      ],
+      (r) => {
+        // A small value range guarantees heavy repetition, which is where the
+        // counting actually matters.
+        return [r.nums(r.int(1, 9), 1, 4)];
+      },
+      15,
+      950,
+    ),
+  },
+  {
+    k: 'dp-house-robber-ii',
+    n: 'House Robber II',
+    num: 287,
+    d: 'MEDIUM',
+    c: 'Dynamic Programming',
+    intro: [
+      'Given a circular array of non-negative integers representing the money in each house, return the most money you can steal without robbing two adjacent houses.',
+      'The first and last houses are neighbours, so they cannot both be robbed.',
+    ],
+    notes: [
+      'The circularity is handled by splitting into two linear cases, not by any special-case state.',
+      'Either the first house is taken (so the last must be skipped) or it is not.',
+      'Each linear case is the ordinary House Robber recurrence.',
+    ],
+    approach: [
+      'Solve the linear problem on <code>nums[0..n-2]</code>, skipping the last house.',
+      'Solve it again on <code>nums[1..n-1]</code>, skipping the first.',
+      'Return the larger of the two results.',
+    ],
+    ex: [
+      { input: 'nums = [2,3,2]', output: '3', explanation: 'In a circle of three, 0-1, 1-2 and 2-0 are all adjacent pairs, so only one house can be robbed. The middle house is worth 3.', args: [[2, 3, 2]] },
+      { input: 'nums = [1,2,3,1]', output: '4', explanation: 'Robbing houses 0 and 2 (values 1 and 3) gives 4; they are not neighbours.', args: [[1, 2, 3, 1]] },
+      { input: 'nums = [1,2,3]', output: '3', explanation: 'All three houses are mutually adjacent, so only the single best one can be taken, worth 3.', args: [[1, 2, 3]] },
+    ],
+    cx: 'Time O(n), Space O(1).',
+    con: ['1 <= nums.length <= 400', '0 <= nums[i] <= 1000'],
+    h: [
+      'Two linear runs cover every valid choice, because the first and last cannot both be robbed.',
+      'A single house is its own answer; handle n == 1 before slicing.',
+      'The linear recurrence keeps only the last two picks, so space is constant.',
+    ],
+    sig: ['int', 'int[]'],
+    fn: ['robRange', 'nums'],
+    s: (args) => {
+      const nums = args[0];
+      const n = nums.length;
+      if (n === 0) return 0;
+      if (n === 1) return nums[0];
+      // Best total for a linear run, using only the previous two decisions.
+      const linear = (lo, hi) => {
+        let prev2 = 0;
+        let prev1 = 0;
+        for (let i = lo; i <= hi; i++) {
+          const take = prev2 + nums[i];
+          const skip = prev1;
+          const best = take > skip ? take : skip;
+          prev2 = prev1;
+          prev1 = best;
+        }
+        return prev1;
+      };
+      // Either take the first house (skip the last) or skip it (take the last).
+      const a = linear(0, n - 2);
+      const b = linear(1, n - 1);
+      return a > b ? a : b;
+    },
+    t: autoTests(
+      [
+        pub([2, 3, 2]),
+        pub([1, 2, 3, 1]),
+        pub([1, 2, 3]),
+        priv([5]),
+        priv([0, 0]),
+      ],
+      (r) => {
+        // Zeros and equal values stress the adjacency rule at the seam.
+        return [r.nums(r.int(1, 10), 0, 9)];
+      },
+      15,
+      951,
+    ),
+  },
 ]);
