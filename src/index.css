@@ -843,47 +843,52 @@ body.dragging-active * {
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════════
-   HOME HERO — "signal word" colour cycle
+   HOME HERO — headline gradient + animated background trace
    ═══════════════════════════════════════════════════════════════════════════
-   The hero headline cycles each word through the three brand accents
-   (primary cyan → success lime → violet) on a 6s loop, offset per word by a
-   negative delay so all three are always mid-cycle at different points.
+   Split of responsibility, which is the whole point of this design:
+
+   • The TEXT is static. It carries a fixed gradient via background-clip:text
+     and never animates, so the words stay on screen and legible.
+   • The BACKGROUND SVG animates. Only the trace moves (`.signal-drift`).
 
    Defined here rather than in a <style jsx> block: that is Next.js styled-jsx
    syntax and this app is Vite, where it would be emitted as inert markup and the
    animation would never run. The colours use the same tokens as the rest of the
    app so the hero tracks the theme rather than hard-coding hex values.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* A soft highlight that sweeps left -> right across the headline. Applied as a
-   background-clip:text fill on the glyphs so the colour travels *through* the
-   type rather than swapping all three words at once. */
-@keyframes signalSweep {
-  0%   { background-position: -140% 0; }
-  100% { background-position: 240% 0; }
-}
+/* Static gradient fill for the headline.
 
+   The type does NOT animate. `background-clip: text` with `color: transparent`
+   only works if the gradient actually covers every glyph — an oversized,
+   no-repeat band whose position animates off the box leaves transparent text
+   with nothing behind it, and the words vanish. So: `background-size: 100%`
+   and no animation, guaranteeing the gradient always spans the full line box.
+
+   All motion lives on the background trace instead (see `.signal-drift`). */
 .signal-sweep {
   background-image: linear-gradient(
     90deg,
     var(--accent-primary) 0%,
-    var(--accent-success) 28%,
-    var(--accent-violet) 52%,
-    var(--accent-success) 76%,
+    var(--accent-success) 34%,
+    var(--accent-violet) 68%,
     var(--accent-primary) 100%
   );
-  background-size: 260% 100%;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: signalSweep 7s linear infinite;
+}
+
+/* The trace's colour travel is an SVG <animateTransform>, which CSS cannot
+   disable. prefers-reduced-motion therefore removes that element from the DOM
+   (see HeroSection) and this class pins the stroke to the brand cyan so a
+   frozen trace still reads as the primary signal rather than a random hue. */
+.signal-trace-static {
+  color: var(--accent-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .signal-sweep {
-    animation: none !important;
-    background-position: 50% 0;
-  }
   .signal-drift {
     animation: none !important;
   }

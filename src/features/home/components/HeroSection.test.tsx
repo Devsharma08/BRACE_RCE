@@ -93,34 +93,58 @@ describe("Home hero", () => {
     expect(wrapper.querySelector("div[aria-hidden='true']")).toBeNull();
   });
 
-  test("colour travels across the type as a plain CSS gradient animation", () => {
+  test("the headline text is static with a gradient, and never animates", () => {
     renderHero();
     const css = readFileSync("src/index.css", "utf8");
     const h1 = screen.getByRole("heading", { level: 1 });
 
-    // One background-clip:text gradient whose position animates — the simple
-    // text colour animation, driven entirely by CSS rather than SVG.
+    // Gradient-filled type: background-clip:text is present and applied.
     expect(h1.className).toContain("signal-sweep");
     expect(css).toContain(".signal-sweep");
     expect(css).toContain("background-clip: text");
-    expect(css).toContain("@keyframes signalSweep");
-    expect(css).toContain("animation: signalSweep");
 
-    // No SVG <animate> driving colour any more.
-    expect(document.querySelector("animateTransform")).toBeNull();
+    // The text must NOT animate. An animated, oversized, no-repeat gradient
+    // slides off the glyphs and leaves transparent text with nothing behind
+    // it — the words vanish mid-cycle. background-size must cover the box and
+    // there must be no animation on the class.
+    expect(css).toContain("background-size: 100% 100%");
+    expect(css).not.toContain("@keyframes signalSweep");
+    const sweepRule = css.slice(css.indexOf(".signal-sweep"));
+    expect(sweepRule.slice(0, sweepRule.indexOf("}"))).not.toContain("animation");
+    expect(h1.className).not.toContain("animate");
 
-    // Words carry no individual colour class — the heading does the work.
-    for (const word of h1.querySelectorAll("span")) {
-      expect(word.className).not.toContain("signal-sweep");
-      expect(word.className).not.toContain("text-accent-");
+    // Gradient spans the full headline, so every word is coloured.
+    for (const word of ["Compile", "Compete", "Conquer"]) {
+      expect(h1).toHaveTextContent(word);
     }
   });
 
-  test("the headline is larger than it was", () => {
+  test("only the background svg carries the colour animation", () => {
+    const { container } = renderHero();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    const svg = h1.parentElement!.querySelector("svg")!;
+
+    // The motion lives on the trace: its gradient slides left -> right, so
+    // colour travels along the line instead of the whole stroke changing at
+    // once. No <animate> anywhere on the text.
+    const animate = svg.querySelector("animateTransform");
+    expect(animate).not.toBeNull();
+    expect(animate!.getAttribute("attributeName")).toBe("gradientTransform");
+    expect(animate!.getAttribute("values")).toContain("-1 0");
+    expect(animate!.getAttribute("values")).toContain("1 0");
+    expect(h1.querySelector("animateTransform")).toBeNull();
+    expect(container.querySelector("animate")).toBeNull();
+
+    // The trace itself drifts, which is the only CSS animation in the hero.
+    expect(svg.getAttribute("class")).toContain("signal-drift");
+  });
+
+  test("the headline font is a moderate size, smaller than the 9.5rem peak", () => {
     renderHero();
     const h1 = screen.getByRole("heading", { level: 1 });
-    // clamp(2.6rem, 10.5vw, 9.5rem) — up from the previous 2.2/7vw/6.8.
-    expect(h1.className).toContain("text-[clamp(2.6rem,10.5vw,9.5rem)]");
+    // clamp(1.9rem, 6.2vw, 5.4rem) — down from clamp(2.6rem,10.5vw,9.5rem).
+    expect(h1.className).toContain("text-[clamp(1.9rem,6.2vw,5.4rem)]");
+    expect(h1.className).not.toContain("9.5rem");
   });
 
   test("hides the decorative trace from assistive tech", () => {
@@ -129,5 +153,60 @@ describe("Home hero", () => {
     expect(svg.getAttribute("aria-hidden")).toBe("true");
     // Decorative: it must not be focusable or intercept clicks on the CTAs.
     expect(svg.getAttribute("class") ?? "").toContain("pointer-events-none");
+  });
+});
+
+describe("Home hero reduced motion", () => {
+  const stubMatchMedia = (value: boolean) => {
+    const listeners = new Set<() => void>();
+    // A minimal MediaQueryList stand-in: only `matches` and the listener API
+    // are used by useMediaQuery. A duplicate key here would silently shadow
+    // the real method.
+    const mql = {
+      matches: value,
+      media: "",
+      onchange: null,
+      addEventListener: (_type: string, cb: () => void) => listeners.add(cb),
+      removeEventListener: (_type: string, cb: () => void) => listeners.delete(cb),
+      dispatchEvent: () => false,
+    } as unknown as MediaQueryList;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: () => mql,
+    });
+  };
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, "matchMedia");
+  });
+
+  test("removes the svg's colour animation from the DOM", () => {
+    // CSS cannot stop an SVG <animateTransform>, so the element has to be
+    // absent — not merely restyled.
+    stubMatchMedia(true);
+    const { container } = renderHero();
+    expect(container.querySelector("animateTransform")).toBeNull();
+    expect(container.querySelector("svg")!.getAttribute("class")).toContain(
+      "signal-trace-static",
+    );
+  });
+
+  test("keeps the animation when motion is allowed", () => {
+    stubMatchMedia(false);
+    const { container } = renderHero();
+    expect(container.querySelector("animateTransform")).not.toBeNull();
+    expect(container.querySelector("svg")!.getAttribute("class")).not.toContain(
+      "signal-trace-static",
+    );
+  });
+
+  test("the headline stays a static gradient either way", () => {
+    // The text has no animation to disable, so it is identical in both modes.
+    stubMatchMedia(true);
+    const { container } = renderHero();
+    const h1 = container.querySelector("h1")!;
+    expect(h1.className).toContain("signal-sweep");
+    expect(h1.querySelector("animateTransform")).toBeNull();
   });
 });

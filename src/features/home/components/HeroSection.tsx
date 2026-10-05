@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useMediaQuery } from '../../../hooks/useMediaQuery'
 
 /**
  * Home hero — the "signal" hero: the three-word headline over a heartbeat trace
@@ -29,6 +30,12 @@ import { Link } from 'react-router-dom'
 const words = ['Compile', 'Compete', 'Conquer'] as const
 
 export const BracePixelHero: FC = () => {
+  // Only the background SVG animates. Its colour travel is an SVG
+  // <animateTransform>, which CSS cannot disable — prefers-reduced-motion has
+  // to remove the element from the DOM, not just restyle it. The headline text
+  // never animates, so it needs no gating.
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+
   return (
     <section
       id="top"
@@ -70,10 +77,10 @@ export const BracePixelHero: FC = () => {
         {/* Headline + trace.
 
             The trace is a single continuous line drawn BEHIND the words with no
-            border or card around it — just the type over a soft signal. The
-            colour motion lives entirely on the text as a plain CSS gradient
-            sweep (`.signal-sweep`), so each glyph shifts hue as it travels
-            left to right.
+            border or card around it. Division of labour: the words are STATIC
+            (a fixed gradient via `.signal-sweep`, never animated, so they stay
+            on screen), and only this background svg moves — its gradient slides
+            left to right so the colour travels along the line.
 
             Stacking: wrapper `relative`, svg absolute at z-0, heading relative
             at z-10. Reversed, the line paints over the glyphs. */}
@@ -85,11 +92,13 @@ export const BracePixelHero: FC = () => {
             aria-hidden="true"
             viewBox="0 0 1000 160"
             preserveAspectRatio="none"
-            className="signal-drift pointer-events-none absolute inset-x-2 top-[18%] bottom-[18%] z-0 m-auto h-auto w-[calc(100%-1rem)] opacity-70"
+            className={`signal-drift pointer-events-none absolute inset-x-2 top-[18%] bottom-[18%] z-0 m-auto h-auto w-[calc(100%-1rem)] opacity-70 ${
+              reducedMotion ? 'signal-trace-static' : ''
+            }`}
             fill="none"
           >
-            {/* Static gradient: the line's hue no longer animates. All the
-                colour travel is on the text itself. */}
+            {/* The gradient itself is fixed; <animateTransform> below slides
+                it, which is what makes the colour appear to travel. */}
             <defs>
               <linearGradient id="trace-travel" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0" stopColor="var(--accent-primary)" stopOpacity="0" />
@@ -97,6 +106,19 @@ export const BracePixelHero: FC = () => {
                 <stop offset=".5" stopColor="var(--accent-success)" />
                 <stop offset=".75" stopColor="var(--accent-violet)" />
                 <stop offset="1" stopColor="var(--accent-violet)" stopOpacity="0" />
+                {/* THE animation: slides the gradient left -> right so colour
+                    travels along the line instead of the whole stroke changing
+                    at once. Omitted under prefers-reduced-motion. */}
+                {!reducedMotion && (
+                  <animateTransform
+                    attributeName="gradientTransform"
+                    type="translate"
+                    values="-1 0; 0 0; 1 0; 0 0"
+                    keyTimes="0; .25; .5; .75"
+                    dur="9s"
+                    repeatCount="indefinite"
+                  />
+                )}
               </linearGradient>
             </defs>
             {/* One unbroken line across the full width: flat lead-in, a single
@@ -119,7 +141,7 @@ export const BracePixelHero: FC = () => {
             />
           </svg>
 
-          <h1 className="signal-sweep relative z-10 font-mono text-[clamp(2.6rem,10.5vw,9.5rem)] font-bold leading-[.92] tracking-[-.06em]">
+          <h1 className="signal-sweep relative z-10 font-mono text-[clamp(1.9rem,6.2vw,5.4rem)] font-bold leading-[.92] tracking-[-.06em]">
             {words.map((text) => (
               <span
                 key={text}
