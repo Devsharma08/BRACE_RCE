@@ -62,10 +62,46 @@ describe("Home hero", () => {
     expect(section?.className).not.toMatch(/min-h-screen/);
   });
 
-  test("hides the decorative waveform from assistive tech", () => {
+  test("renders the heartbeat behind the headline, not as a separate panel", () => {
     const { container } = renderHero();
-    const monitor = container.querySelector('[aria-hidden="true"].relative.mx-auto');
-    expect(monitor).not.toBeNull();
-    expect(within(monitor as HTMLElement).queryByRole("img")).toBeNull();
+    // The standalone waveform card is gone.
+    expect(container.querySelector("#signal-gradient")).toBeNull();
+    expect(screen.queryByText("rce monitor")).not.toBeInTheDocument();
+
+    // The trace now lives inside the headline wrapper, behind the words.
+    const h1 = screen.getByRole("heading", { level: 1 });
+    const wrapper = h1.parentElement!;
+    const svg = wrapper.querySelector("svg");
+    expect(svg).not.toBeNull();
+    // On an SVG element `className` is an SVGAnimatedString, so read the
+    // attribute instead of the property or the assertions silently no-op.
+    const svgClass = svg!.getAttribute("class") ?? "";
+    expect(svgClass).toContain("signal-pulse");
+    // Behind the text: the svg is absolutely positioned at z-0, the heading at
+    // z-10. Reversed, the trace paints over the glyphs.
+    expect(svgClass).toContain("absolute");
+    expect(svgClass).toContain("z-0");
+    expect(h1.className).toContain("relative");
+    expect(h1.className).toContain("z-10");
+  });
+
+  test("the headline words no longer animate colour; the trace does", () => {
+    const { container } = renderHero();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    // Words carry only the drift + hover treatment, never the colour cycle.
+    expect(container.querySelectorAll(".signal-word")).toHaveLength(0);
+    for (const word of h1.querySelectorAll("span")) {
+      expect(word.className).not.toContain("signal-pulse");
+    }
+    // The colour cycle class is on the trace.
+    expect(container.querySelectorAll(".signal-pulse")).toHaveLength(1);
+  });
+
+  test("hides the decorative trace from assistive tech", () => {
+    const { container } = renderHero();
+    const svg = container.querySelector("svg")!;
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    // Decorative: it must not be focusable or intercept clicks on the CTAs.
+    expect(svg.getAttribute("class") ?? "").toContain("pointer-events-none");
   });
 });

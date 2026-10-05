@@ -1,25 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 /**
- * Home hero — the "signal" hero: a headline whose words cycle through the three
- * brand accents, a live-looking waveform, and a four-cell readout strip.
+ * Home hero — the "signal" hero: the three-word headline over a heartbeat trace
+ * that carries the brand colour cycle.
  *
  * IMPORTANT: this is SECTION 1 of the home page, not a standalone page. It
  * deliberately does NOT render a <main> or a <nav>:
  *  - Layout already renders the app header, so a second nav here produced a
  *    duplicate bar.
- *  - The height is auto, not `min-h-screen`, because as a block above
- *    HomeMetricsStrip / WorkspaceTeaser / QuickNavCards / WorkspaceDirectory /
- *    CommunitySupport a forced viewport height clipped everything below it.
+ *  - The height is bounded by the space below the header rather than forced to
+ *    100vh, because as a block above HomeMetricsStrip / WorkspaceTeaser /
+ *    QuickNavCards / WorkspaceDirectory / CommunitySupport a forced viewport
+ *    height clipped everything below it.
  *
- * The `signalColor` keyframes live in index.css rather than a <style jsx> block:
- * styled-jsx is Next.js syntax and this app is Vite, where it is emitted as
- * inert markup and the animation silently never runs.
+ * The heartbeat sits BEHIND the headline and animates; the words themselves are
+ * static. The `signalColor` and `heartbeatDrift` keyframes live in index.css
+ * rather than a <style jsx> block: styled-jsx is Next.js syntax and this app is
+ * Vite, where it is emitted as inert markup and the animation silently never
+ * runs.
  *
  * Colours come from the app's accent tokens (cyan / lime / violet), so the hero
  * tracks the theme instead of hard-coding hex values.
@@ -31,15 +33,6 @@ const words = [
 ] as const
 
 export const BracePixelHero: FC = () => {
-  // One-shot boot: the waveform fades in once per tab session rather than on
-  // every re-render, so returning to the home page does not replay the animation.
-  const [booted, setBooted] = useState(false)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setBooted(true), 850)
-    return () => window.clearTimeout(timer)
-  }, [])
-
   return (
     <section
       id="top"
@@ -78,63 +71,64 @@ export const BracePixelHero: FC = () => {
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
         </div>
 
-        {/* Headline — each word cycles colour on its own offset delay. */}
-        <h1 className="mx-auto mt-8 max-w-4xl font-mono text-[clamp(2.2rem,7vw,6.8rem)] font-bold leading-[.95] tracking-[-.07em] sm:mt-10">
-          {words.map(({ text }) => (
-            <span
-              key={text}
-              className="signal-word inline-block px-1 transition duration-500 hover:-translate-y-2 hover:scale-[1.03] sm:px-2"
-            >
-              {text}
-              <span className="text-fg/30">.</span>{' '}
-            </span>
-          ))}
-        </h1>
+        {/* Headline + heartbeat.
+
+            The heartbeat trace is centred BEHIND the three words and carries the
+            colour cycle that used to animate the text itself. The words are now
+            static, so the type stays legible and the trace reads as the signal
+            passing through it.
+
+            Structure matters here: the wrapper is `relative` and stacks the svg
+            (absolute, z-0) under the h1 (relative, z-10). Without the z-index the
+            svg paints over the glyphs and the headline becomes unreadable. */}
+        <div className="relative mx-auto mt-8 w-full max-w-4xl sm:mt-10">
+          {/* The drift keyframe animates `transform`, which would REPLACE the
+            -translate-x/y that centres this element — so centring is done with
+            `inset` + `margin:auto` instead, leaving `transform` free for the
+            animation. Two transforms on one element cannot coexist in CSS. */}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 720 120"
+            preserveAspectRatio="none"
+            className="signal-pulse signal-drift pointer-events-none absolute inset-y-0 left-0 right-0 z-0 mx-auto h-[135%] w-[112%] opacity-70"
+            fill="none"
+          >
+            {/* One beat of the trace, reused across the width. Defining it once
+                keeps the path readable; a single long path with six repeated
+                humps is unreadable and unmaintainable. */}
+            <defs>
+              <path
+                id="heartbeat-beat"
+                d="M0 60h44l14-26 16 52 12-38 14 12h58l14-8 12 14 16-30 16 44 14-32 16 12h58l16-12 12 26 12-32 16 18 12-12h60"
+              />
+            </defs>
+            <g stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round">
+              {[0, 144, 288, 432, 576].map((x) => (
+                <use key={x} href="#heartbeat-beat" x={x} />
+              ))}
+            </g>
+            {/* Baseline ticks keep the trace legible where it crosses a glyph. */}
+            <path d="M0 60h720" stroke="currentColor" strokeOpacity=".10" strokeDasharray="3 9" />
+          </svg>
+
+          <h1 className="relative z-10 font-mono text-[clamp(2.2rem,7vw,6.8rem)] font-bold leading-[.95] tracking-[-.07em]">
+            {words.map(({ text }) => (
+              <span
+                key={text}
+                className="inline-block px-1 transition duration-500 hover:-translate-y-2 hover:scale-[1.03] sm:px-2"
+              >
+                {text}
+                <span className="text-fg/30">.</span>{' '}
+              </span>
+            ))}
+          </h1>
+        </div>
 
         {/* Description */}
         <p className="mx-auto mt-9 max-w-xl text-[15px] leading-7 text-subtle sm:mt-10 sm:text-lg sm:leading-8">
           A focused coding workspace for learning data structures, solving indexed
           problems, and validating your reasoning against real test cases.
         </p>
-
-        {/* Waveform monitor — decorative, so hidden from assistive tech. */}
-        <div
-          aria-hidden="true"
-          className="relative mx-auto mt-10 h-20 w-full max-w-2xl overflow-hidden rounded-panel border border-white/10 bg-white/[0.025] text-accent-primary"
-        >
-          <svg viewBox="0 0 720 80" className="h-full w-full" fill="none" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="signal-gradient" x1="0" y1="0" x2="1" y2="0">
-                <stop stopColor="var(--accent-primary)" stopOpacity="0" />
-                <stop offset=".2" stopColor="var(--accent-primary)" />
-                <stop offset=".5" stopColor="var(--accent-success)" />
-                <stop offset=".8" stopColor="var(--accent-violet)" />
-                <stop offset="1" stopColor="var(--accent-violet)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path
-              d="M0 40h100l18-22 24 44 18-30 22 8 18-18 18 18h80l22-9 18 17 22-27 20 38 20-29 20 10 22-20 20 18h100l18-15 18 30 18-35 22 20 20-12 20 12h100"
-              stroke="url(#signal-gradient)"
-              strokeWidth="2"
-              vectorEffect="non-scaling-stroke"
-            />
-            <path d="M0 40h720" stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 8" />
-            <circle cx="360" cy="40" r="4" fill="var(--accent-success)">
-              <animate attributeName="r" values="3;7;3" dur="2.4s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="1;.35;1" dur="2.4s" repeatCount="indefinite" />
-            </circle>
-          </svg>
-          <div className="absolute inset-x-4 top-3 flex justify-between font-mono text-[8px] uppercase tracking-[0.2em] text-faint">
-            <span>signal / live</span>
-            <span>rce monitor</span>
-          </div>
-          <div className="absolute inset-x-4 bottom-3 flex justify-between font-mono text-[8px] uppercase tracking-[0.2em] text-faint">
-            <span>00:00:24</span>
-            <span className={booted ? 'text-accent-success/70' : 'text-faint'}>
-              {booted ? 'stable' : 'syncing'}
-            </span>
-          </div>
-        </div>
 
         {/* CTAs — Link, not <a>: these are in-app routes and a full page load
             would drop the SPA state and replay the boot animation. */}

@@ -855,32 +855,34 @@ body.dragging-active * {
    app so the hero tracks the theme rather than hard-coding hex values.
    ═══════════════════════════════════════════════════════════════════════════ */
 @keyframes signalColor {
-  0%, 100% {
-    color: var(--accent-primary);
-    text-shadow: 0 0 0 transparent;
-  }
-  33% {
-    color: var(--accent-success);
-    text-shadow: 0 0 28px color-mix(in srgb, var(--accent-success) 28%, transparent);
-  }
-  66% {
-    color: var(--accent-violet);
-    text-shadow: 0 0 28px color-mix(in srgb, var(--accent-violet) 28%, transparent);
-  }
+  0%, 100% { color: var(--accent-primary); }
+  33%      { color: var(--accent-success); }
+  66%      { color: var(--accent-violet); }
 }
 
-.signal-word {
+/* The heartbeat trace sits behind the headline and carries the colour cycle.
+   It animates `color` only, and the SVG strokes use `currentColor`, so the whole
+   trace shifts hue without a per-stop gradient having to be re-authored. */
+.signal-pulse {
   animation: signalColor 6s ease-in-out infinite;
 }
-/* Negative delays stagger the three words so the phrase reads as one travelling
-   colour rather than three words blinking in unison. */
-.signal-word:nth-child(2) { animation-delay: -2s; }
-.signal-word:nth-child(3) { animation-delay: -4s; }
+
+/* Gentle vertical drift, phase-offset from the colour cycle so the trace never
+   looks frozen while the hue is turning over. */
+@keyframes heartbeatDrift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+.signal-drift {
+  animation: heartbeatDrift 4.5s ease-in-out infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .signal-word {
+  .signal-pulse,
+  .signal-drift {
     animation: none !important;
-    color: var(--accent-primary);
-    text-shadow: none;
   }
+  /* Frozen mid-cycle would leave the trace on a random hue; pin it to the brand
+     cyan so it still reads as the primary signal. */
+  .signal-pulse { color: var(--accent-primary); }
 }
