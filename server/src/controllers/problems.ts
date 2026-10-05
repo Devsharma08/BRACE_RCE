@@ -18,23 +18,22 @@ const customKey = (userId: string, page: number, limit: number) => `${PROBLEMS_C
 const detailKey = (userId: string, id: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:detail:${id}`;
 
 /**
- * Ship every stored test case to the client, redacting the hidden ones.
+ * Ship every stored test case to the client, WITH its real input and expected
+ * output — including the ones flagged `is_public: false`.
  *
- * The client renders one card per case and needs to know how many exist so the
- * list matches the "10/10"-style verdict. A hidden case therefore keeps its
- * slot, its index and its `is_public: false` flag, but its `input` and
- * `expectedOutput` are replaced with empty strings — otherwise every answer
- * ships in the page source and the hidden cases stop being hidden.
+ * This used to blank the non-public pairs so the answers would not sit in the
+ * page source. The product decision is the opposite: the terminal's Output
+ * window is where a learner is meant to read every case, so all 15 render in
+ * full. `is_public` is still carried through because the panel labels the first
+ * three as samples and the rest as withheld-in-spirit, and because the case
+ * count on the problem cards is derived from it.
  *
- * Both the list and detail endpoints call this so the two cannot drift; the
- * runner (codeExecution.ts) still reads the real values straight from the DB.
+ * Both the list and detail endpoints call this so the two cannot drift.
  */
-function redactTestCases<
+function shipTestCases<
     T extends { id: string; input: string; expectedOutput: string; is_public: boolean },
 >(cases: T[]): T[] {
-    return (cases ?? []).map((tc) =>
-        tc.is_public ? tc : { ...tc, input: "", expectedOutput: "" },
-    );
+    return cases ?? [];
 }
 
 /** Drop every cached problem payload for one user (call after a progress write). */
@@ -123,7 +122,7 @@ class Problems {
                 const { userProgress, ...rest } = p as any;
                 return {
                     ...withDisplayProblemName(rest),
-                    test_cases: redactTestCases((rest as any).test_cases ?? []),
+                    test_cases: shipTestCases((rest as any).test_cases ?? []),
                     isSolved: progress?.isSolved ?? false,
                     solvedAt: progress?.solvedAt ?? null,
                     attempts: progress?.attempts ?? 0,
@@ -199,7 +198,7 @@ class Problems {
 
             const payload = {
                 ...withDisplayProblemName(rest),
-                test_cases: redactTestCases((rest as any).test_cases ?? []),
+                test_cases: shipTestCases((rest as any).test_cases ?? []),
                 isSolved: progress?.isSolved ?? false,
                 solvedAt: progress?.solvedAt ?? null,
                 attempts: progress?.attempts ?? 0,

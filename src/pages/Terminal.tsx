@@ -401,12 +401,9 @@ const Terminal = () => {
   const handleRunSingleTestCase = useCallback(
     async (testCaseIndex: number) => {
       if (!testCases || !testCases[testCaseIndex]) return;
-      const target = testCases[testCaseIndex];
 
-      // A withheld case has no input on the client, so there is nothing to
-      // re-send. The server still owns it and grades it during SUBMIT.
-      if (target.isPublic === false) return;
-
+      // The server owns the case by index and ships its real input, so any of
+      // the 15 can be run on its own with a genuine pass/fail verdict.
       setRunningTestCaseIndex(testCaseIndex);
       setResponseLoading(true);
       setIsExecuting(true);

@@ -32,11 +32,11 @@ export const detectLanguageFromFileName = (fileName?: string): SupportedLanguage
 };
 
 export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCase[] => {
-  // Keep EVERY case the API returns, including the ones whose input and
-  // expected output the server withheld. Those still occupy a slot in the list
-  // and still receive a verdict, so the panel shows all 15 like the runner
-  // graded all 15. Filtering on a non-empty input used to drop exactly those,
-  // which is why a 15-case problem rendered as 3.
+  // Keep EVERY case the API returns, with its real input and expected output.
+  // All 15 render in the Output window; nothing is filtered and nothing is
+  // blanked. The filter that used to sit here dropped rows with an empty input,
+  // which removed legitimate no-input cases (and would have removed exactly the
+  // ones the server had withheld).
   return (data.test_cases ?? []).map((testCase) => ({
     input: testCase.input ?? "",
     expectedOutput: testCase.expectedOutput ?? "",

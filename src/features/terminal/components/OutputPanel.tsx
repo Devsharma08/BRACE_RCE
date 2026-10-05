@@ -102,10 +102,10 @@ const OutputPanel = ({
 
   const [activeDiagTab, setActiveDiagTab] = useState<"LOGS" | "TESTS">("LOGS");
 
-  // The server grades the FULL case set (public + withheld) and returns one
-  // detail row per case; the API ships every case too, but with the withheld
-  // ones blanked. Both are indexed the same way, so render exactly as many
-  // cards as the runner graded, filling any gap from the detail row.
+  // The server grades the FULL case set and returns one detail row per case;
+  // the API ships every case too, WITH its real input and expected output. Both
+  // are indexed the same way, so render exactly as many cards as the runner
+  // graded, filling any gap from the detail row.
   const renderedCases = useMemo(() => {
     const details = isCustomInputRun ? [] : output?.details ?? [];
     const byIndex = new Map(details.map((detail) => [detail.testCaseIndex, detail]));
@@ -121,17 +121,11 @@ const OutputPanel = ({
       item:
         testCases[index] ??
         // No local row for this index: synthesise one so the card still renders.
-        // isPublic is false because the server withheld its input.
-        {
-          input: "",
-          expectedOutput: byIndex.get(index)?.expectedOutput ?? "",
-          isPublic: false,
-        },
+        { input: "", expectedOutput: byIndex.get(index)?.expectedOutput ?? "" },
       match: byIndex.get(index),
-      // Withheld cases have no input on the client. `isPublic` is OPTIONAL on
-      // the type, so an absent value must NOT be read as withheld — defaulting
-      // to false would mark ordinary public cases as hidden and suppress their
-      // run button.
+      // isPublic is OPTIONAL on the type, so an absent value must NOT be read
+      // as withheld — defaulting to false would mark ordinary public cases as
+      // hidden and drop their SAMPLE badge.
       isHidden: testCases[index]?.isPublic === false,
     }));
   }, [isCustomInputRun, output?.details, output?.totalCases, testCases]);

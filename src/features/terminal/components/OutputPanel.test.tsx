@@ -64,48 +64,39 @@ describe('OutputPanel — Test Cases tab', () => {
     expect(screen.getByText('4/4 PASSED')).toBeInTheDocument();
   });
 
-  test('labels cases whose input was never sent to the client as hidden', () => {
-    const output: ExecutionResult = {
-      status: 'FAILED',
-      totalCases: 3,
-      passedCases: 2,
-      details: [0, 1, 2].map((i) => makeDetail(i, i < 2)),
-    };
+  test('every case renders its real input and expected output', () => {
+    // Cases are no longer withheld: all 15 ship in full. Only the first three
+    // carry the SAMPLE badge.
+    const testCases: ProblemTestCase[] = Array.from({ length: 15 }, (_, i) => ({
+      input: `in-${i}`,
+      expectedOutput: `out-${i}`,
+      isPublic: i < 3,
+    }));
 
-    renderTestsTab({
-      testCases: [
-        { ...makeCase('1 2', '3'), isPublic: true },
-        { ...makeCase('3 4', '7'), isPublic: true },
-        { ...makeCase('', ''), isPublic: false },
-      ],
-      output,
-      onRunSingleTestCase: vi.fn(),
-    });
-
-    expect(screen.getAllByText('[ HIDDEN ]')).toHaveLength(1);
-    // Both the input and the expected box show the withheld notice.
-    expect(screen.getAllByText('// withheld — graded on submit')).toHaveLength(2);
-    // A withheld case has no client-side input, so only the 2 public ones can
-    // be replayed on their own.
-    expect(screen.getAllByText(/RUN TEST #\d+ ONLY/)).toHaveLength(2);
-  });
-
-  test('renders all 15 stored cases even when only 3 are public', () => {
-    // The API ships every case so the list can show all 15, but withholds the
-    // input/expected output of the 12 non-public ones.
-    const testCases: ProblemTestCase[] = Array.from({ length: 15 }, (_, i) =>
-      i < 3
-        ? { ...makeCase(`in-${i}`, `out-${i}`), isPublic: true }
-        : { input: '', expectedOutput: '', isPublic: false },
-    );
-
-    renderTestsTab({ testCases, onRunSingleTestCase: vi.fn() });
+    const { container } = renderTestsTab({ testCases, onRunSingleTestCase: vi.fn() });
 
     expect(screen.getByText('15 CASES RENDERED')).toBeInTheDocument();
-    expect(screen.getAllByText('[ HIDDEN ]')).toHaveLength(12);
+    // Every card shows its input, not a "withheld" placeholder.
+    expect(screen.queryByText(/withheld/)).not.toBeInTheDocument();
+    for (let i = 0; i < 15; i++) {
+      expect(screen.getByText(`in-${i}`)).toBeInTheDocument();
+      expect(screen.getByText(`out-${i}`)).toBeInTheDocument();
+    }
+    // And every one of them can be run on its own.
+    expect(screen.getAllByText(/RUN TEST #\d+ ONLY/)).toHaveLength(15);
+    expect(container).toBeTruthy();
+  });
+
+  test('only the first three cases are badged as samples', () => {
+    const testCases: ProblemTestCase[] = Array.from({ length: 15 }, (_, i) => ({
+      input: `in-${i}`,
+      expectedOutput: `out-${i}`,
+      isPublic: i < 3,
+    }));
+
+    renderTestsTab({ testCases, onRunSingleTestCase: vi.fn() });
     expect(screen.getAllByText('[ SAMPLE ]')).toHaveLength(3);
-    // Withheld cases cannot be run individually.
-    expect(screen.getAllByText(/RUN TEST #\d+ ONLY/)).toHaveLength(3);
+    expect(screen.queryAllByText('[ HIDDEN ]')).toHaveLength(0);
   });
 
   test('marks the whole set solved only when every graded case passed', () => {

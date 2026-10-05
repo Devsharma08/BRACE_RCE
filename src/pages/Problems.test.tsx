@@ -62,10 +62,16 @@ afterEach(() => {
 });
 
 /**
- * The index has two views and cards is the default, so the table-view tests
- * switch to it explicitly. Without this they would assert against a region
- * that is not mounted, and every table behaviour would silently go untested.
+ * The index has two views and TABLE is the default, so the card-view tests
+ * switch to it explicitly. Without this they would assert against a region that
+ * is not mounted, and every card behaviour would silently go untested.
  */
+const switchToCardView = async () => {
+  const cardToggle = await screen.findByRole("button", { name: /cards/i });
+  fireEvent.click(cardToggle);
+  return screen.findByRole("region", { name: "Problem cards" });
+};
+
 const switchToTableView = async () => {
   const tableToggle = await screen.findByRole("button", { name: /table/i });
   fireEvent.click(tableToggle);
@@ -153,29 +159,45 @@ describe("Problems filtering and pagination", () => {
     expect(within(index).getByText("16 matches")).toBeInTheDocument();
   });
 
-  test("renders bento cards by default and swaps to the table on request", async () => {
+  test("renders the table by default and swaps to the card grid on request", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
 
-    // Cards are the landing view — no table panel is mounted yet.
-    const cards = screen.getByRole("region", { name: "Problem cards" });
-    expect(within(cards).getByText("Challenge 1")).toBeInTheDocument();
-    // A card links straight into the terminal.
-    expect(within(cards).getByRole("link", { name: /Challenge 1, EASY, solved/i })).toHaveAttribute(
-      "href",
-      "/terminal?id=problem-1",
-    );
-    expect(screen.queryByRole("region", { name: "Problem index" })).not.toBeInTheDocument();
+    // The table is the landing view — no card panel is mounted yet.
+    const index = screen.getByRole("region", { name: "Problem index" });
+    expect(within(index).getByText("Challenge 1")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Problem cards" })).not.toBeInTheDocument();
 
     // Switching views swaps the panels.
-    await switchToTableView();
-    expect(screen.queryByRole("region", { name: "Problem cards" })).not.toBeInTheDocument();
+    await switchToCardView();
+    expect(screen.queryByRole("region", { name: "Problem index" })).not.toBeInTheDocument();
+  });
+
+  test("remembers the chosen view across a remount", async () => {
+    renderProblems();
+    await screen.findByText("Challenge 1");
+    await switchToCardView();
+    expect(screen.getByRole("region", { name: "Problem cards" })).toBeInTheDocument();
+
+    // Unmount and mount again: the choice must come back. A ref would NOT
+    // survive this — refs are discarded on unmount.
+    cleanup();
+    client.clear();
+    renderProblems();
+    expect(await screen.findByRole("region", { name: "Problem cards" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Problem index" })).not.toBeInTheDocument();
   });
 
   test("cards show solved state, difficulty and the case count from the problem object", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    const cards = screen.getByRole("region", { name: "Problem cards" });
+    const cards = await switchToCardView();
+
+    // A card links straight into the terminal.
+    expect(within(cards).getByRole("link", { name: /Challenge 1, EASY, solved/i })).toHaveAttribute(
+      "href",
+      "/terminal?id=problem-1",
+    );
 
     // problem-1 is the fixture's only solved entry.
     expect(within(cards).getByText("Solved")).toBeInTheDocument();
@@ -239,7 +261,7 @@ describe("Problems filtering and pagination", () => {
   test("opens a problem in the terminal from a bento card", async () => {
     renderProblems();
     await screen.findByText("Challenge 1");
-    // Cards are the default view, so this is the primary navigation path.
+    await switchToCardView();
     fireEvent.click(screen.getByRole("link", { name: /Challenge 1, EASY, solved/i }));
     expect(await screen.findByText("Terminal destination")).toBeInTheDocument();
   });

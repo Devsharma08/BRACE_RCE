@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useTransition } from "react";
+import React, { useCallback, useState, useMemo, useTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { TableSkeleton } from "../components/ui/Skeleton";
@@ -106,8 +106,40 @@ const ProblemsPagination: React.FC<{
     </nav>
   );
 };
+// The table is the default view; the card grid is one click away.
+//
+// On persisting the choice: a REF is the wrong tool here. Writing to a ref does
+// not trigger a render, so clicking "Grid" would store the value and leave the
+// table on screen until something unrelated re-rendered the page. A ref is also
+// discarded on unmount, so it loses the value on exactly the navigation this is
+// meant to protect.
+//
+// sessionStorage survives re-renders, remounts and reloads, so the choice stays
+// in state (so the UI follows it) and is mirrored there on every change.
+const VIEW_STORAGE_KEY = "brace.problems.view";
+
+type ProblemView = "table" | "cards";
+
+const readStoredView = (): ProblemView => {
+  if (typeof window === "undefined") return "table";
+  try {
+    return window.sessionStorage.getItem(VIEW_STORAGE_KEY) === "cards" ? "cards" : "table";
+  } catch {
+    // Private mode / blocked storage: fall back to the default view.
+    return "table";
+  }
+};
+
+const storeView = (v: ProblemView) => {
+  try {
+    window.sessionStorage.setItem(VIEW_STORAGE_KEY, v);
+  } catch {
+    // Non-fatal — the choice just will not outlive this tab.
+  }
+};
 
 export const Problems: React.FC = () => {
+
   const { data: analytics } = useAnalytics(false);
   const { bySlug: dsProgress } = useDsTopicProgress();
   const { user } = useAuth();
@@ -119,9 +151,16 @@ export const Problems: React.FC = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 15;
-  // Cards are the default: the catalog is browsed, not scanned. The table stays
-  // available because it is denser and easier to compare numbers across rows.
-  const [view, setView] = useState<"cards" | "table">("cards");
+
+  /** Table by default; the card grid is one click away. Held in state so the UI
+   *  follows the toggle, and mirrored into sessionStorage so the choice
+   *  survives a re-render, a remount and a reload. A ref would do neither —
+   *  writing one does not re-render, and it is discarded on unmount. */
+  const [view, setView] = useState<ProblemView>(readStoredView);
+  const handleViewChange = useCallback((next: ProblemView) => {
+    setView(next);
+    storeView(next);
+  }, []);
 
   const handleSearchChange = (val: string) => {
     startTransition(() => {
@@ -414,7 +453,7 @@ export const Problems: React.FC = () => {
               ]).map(({ id, label, Icon }) => (
                 <button
                   key={id}
-                  onClick={() => setView(id)}
+                  onClick={() => handleViewChange(id)}
                   aria-pressed={view === id}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest transition ${
                     view === id

@@ -35,11 +35,8 @@ export const TestCaseCard = ({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono font-bold text-subtle">CASE #{index + 1}</span>
-          {isHidden && (
-            <span className="text-[9px] font-bold px-2 py-0.5 border border-subtle-line bg-surface/60 text-faint">
-              [ HIDDEN ]
-            </span>
-          )}
+          {/* All 15 cases render with their real input and expected output, so the
+              label only marks which three are the documented samples. */}
           {!isHidden && (
             <span className="text-[9px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
               [ SAMPLE ]
@@ -55,9 +52,9 @@ export const TestCaseCard = ({
             </span>
           )}
         </div>
-        {/* A withheld case has no input on the client, so there is nothing to
-            re-send and no point offering "run this one" — SUBMIT grades it. */}
-        {onRunSingleTestCase && !isExecutingAny && !isHidden && (
+        {/* Every case now carries its real input, so any of them can be run on its
+            own — samples and grading cases alike. */}
+        {onRunSingleTestCase && !isExecutingAny && (
           <button
             onClick={() => onRunSingleTestCase(index)}
             className="flex items-center gap-1 border border-accent-primary/40 bg-elevated px-2 py-1 text-[9px] font-mono font-bold tracking-wider text-accent-primary transition-all hover:bg-accent-primary/10"
@@ -91,13 +88,13 @@ export const TestCaseCard = ({
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {isHidden ? "// withheld — graded on submit" : item.input || "-"}
+            {item.input || "-"}
           </div>
         </div>
         <div>
           <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
           <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
-            {isHidden ? "// withheld — graded on submit" : item.expectedOutput || "-"}
+            {item.expectedOutput || "-"}
           </div>
         </div>
       </div>
