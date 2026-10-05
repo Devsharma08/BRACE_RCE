@@ -1,63 +1,47 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FC } from 'react'
-import { ArrowDown, ArrowUpRight, Terminal } from 'lucide-react'
+import { ArrowDown, ArrowUpRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 /**
- * Pixel word art for "BRACE": a 5x7 glyph per letter with a 1-column gap, so 29
- * columns x 7 rows.
+ * Home hero — the "signal" hero: a headline whose words cycle through the three
+ * brand accents, a live-looking waveform, and a four-cell readout strip.
  *
- * The previous bitmap was 38 columns and the strokes merged at render size — at
- * a ~400px cap each cell was about 10px, the letters ran together, and the glow
- * bled across the gaps so it read as "RARE MF" rather than BRACE. Narrowing to 29
- * columns makes every cell roughly a third larger at the same card width, which
- * is what makes the word legible; the glow was pulled back for the same reason.
+ * IMPORTANT: this is SECTION 1 of the home page, not a standalone page. It
+ * deliberately does NOT render a <main> or a <nav>:
+ *  - Layout already renders the app header, so a second nav here produced a
+ *    duplicate bar.
+ *  - The height is auto, not `min-h-screen`, because as a block above
+ *    HomeMetricsStrip / WorkspaceTeaser / QuickNavCards / WorkspaceDirectory /
+ *    CommunitySupport a forced viewport height clipped everything below it.
+ *
+ * The `signalColor` keyframes live in index.css rather than a <style jsx> block:
+ * styled-jsx is Next.js syntax and this app is Vite, where it is emitted as
+ * inert markup and the animation silently never runs.
+ *
+ * Colours come from the app's accent tokens (cyan / lime / violet), so the hero
+ * tracks the theme instead of hard-coding hex values.
  */
-const word = [
-  [1,1,1,1,0,0,1,1,1,1,0,0,0,1,1,1,0,0,0,1,1,1,1,0,1,1,1,1,1],
-  [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
-  [1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
-  [1,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1,1,0,1,0,0,0,0,0,1,1,1,1,0],
-  [1,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
-  [1,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,0,0],
-  [1,1,1,1,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,1,1,1,0,1,1,1,1,1],
-]
+const words = [
+  { text: 'Compile', tone: 'cyan' },
+  { text: 'Compete', tone: 'lime' },
+  { text: 'Conquer', tone: 'violet' },
+] as const
 
-/**
- * Home hero - pixel-art "BRACE RCE" signature card beside the headline.
- *
- * IMPORTANT: this is SECTION 1 of the home page, not a standalone page. The
- * version this replaced arrived as a full-page component and was pasted in
- * verbatim, which broke the page twice over:
- *
- *  - It wrapped itself in <main className="min-h-screen overflow-hidden">. As a
- *    BLOCK sitting above HomeMetricsStrip / QuickNavCards / WorkspaceDirectory /
- *    CommunitySupport, that combination clipped everything below it:
- *    `min-h-screen` forced one viewport of height and `overflow-hidden` cut off
- *    whatever exceeded it. The hero stacks on short viewports, so the lower half
- *    of the hero - and any section below it - simply disappeared.
- *  - It rendered its own <nav>, producing a second header on top of the app
- *    Header that Layout already provides.
- *
- * So this keeps the visual and drops the page-level scaffolding: no <main>, no
- * <nav>, and no forced viewport height. The wrapper's overflow-hidden stays, but
- * only to contain the absolutely-positioned glow/grid backdrops - the element is
- * now auto-height, so nothing inside it can be clipped.
- */
-export const BraceRcePixelArt: FC = () => {
+/** Live counts, kept in sync with the About page's measured figures. */
+const READOUT = [
+  { label: 'signal', value: 'ACTIVE', tone: 'text-accent-primary' },
+  { label: 'indexed', value: '209', tone: 'text-fg' },
+  { label: 'runtime', value: 'sandboxed', tone: 'text-accent-success' },
+  { label: 'mode', value: 'focused', tone: 'text-accent-violet' },
+] as const
+
+export const BracePixelHero: FC = () => {
+  // One-shot boot: the waveform fades in once per tab session rather than on
+  // every re-render, so returning to the home page does not replay the animation.
   const [booted, setBooted] = useState(false)
-
-  const pixels = useMemo(
-    () =>
-      word.flatMap((row, y) =>
-        row.map((lit, x) => ({
-          lit,
-          delay: `${(x * 18 + y * 90 + Math.random() * 220).toFixed(0)}ms`,
-        })),
-      ),
-    [],
-  )
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBooted(true), 850)
@@ -65,123 +49,123 @@ export const BraceRcePixelArt: FC = () => {
   }, [])
 
   return (
-    // Auto-height on purpose - see the note above about min-h-screen clipping.
     <section
       id="top"
-      className="relative w-full overflow-hidden bg-[#05070b] text-white selection:bg-cyan-300 selection:text-slate-950"
+      className="relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink"
     >
-      {/* Ambient glow + grid, contained by the wrapper's overflow-hidden. */}
-      <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-cyan-400/[0.045] blur-3xl" />
+      {/* Ambient glow + grid backdrop, contained by the wrapper's overflow-hidden. */}
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-accent-primary/[0.05] blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-[28%] h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent" />
+      <div className="pointer-events-none absolute right-[8%] top-[22%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
+        signal / structure / runtime
+      </div>
 
-      {/* The card is placed in the SAME grid row as the headline and bottom-aligned
-          within it, so its base lines up with CONQUER. rather than with the base of
-          the whole left column — which also contains the description, the CTAs and
-          the stats strip, and would otherwise drop the card far below the text. */}
-      <div className="relative z-10 mx-auto grid max-w-7xl items-start gap-x-10 gap-y-8 px-5 py-12 sm:py-16 lg:grid-cols-[.9fr_1.1fr] lg:px-8 lg:py-20">
-        {/* Row 1 — eyebrow */}
-        <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-cyan-300 lg:col-start-1 lg:row-start-1">
-          <span className="h-px w-10 bg-cyan-300" />
-          Mission // RCE online
-          <span className="rounded-full border border-lime-300/25 bg-lime-300/[0.06] px-2 py-1 text-[8px] tracking-widest text-lime-300">
-            SYSTEM READY
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-center px-5 py-16 text-center sm:py-24 lg:px-8">
+        {/* Eyebrow */}
+        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
+          <span className="h-px w-8 bg-accent-primary sm:w-12" />
+          <span className="text-faint">/</span>
+          <span className="hidden sm:inline">RCE // field notes</span>
+          <span className="sm:hidden">RCE</span>
+          <span className="rounded-full border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
+            READY
           </span>
+          <span className="h-px w-8 bg-accent-primary sm:w-12" />
         </div>
 
-        {/* Row 2 — headline, with the signature card sharing this row */}
-        <h1 className="group max-w-[9ch] font-mono text-[clamp(2.9rem,10vw,8.5rem)] font-bold leading-[.84] tracking-[-.09em] lg:col-start-1 lg:row-start-2">
-          <span className="animate-brace-cycle inline-block bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent transition duration-500 group-hover:from-cyan-300 group-hover:via-white group-hover:to-lime-300 group-hover:drop-shadow-[0_0_18px_rgba(103,232,249,.35)]">
-            COMPILE.
-            <br />
-            <span className="text-cyan-300">COMPETE.</span>
-            <br />
-            <span className="text-slate-500">CONQUER.</span>
-          </span>
+        {/* Headline — each word cycles colour on its own offset delay. */}
+        <h1 className="mx-auto mt-8 max-w-4xl font-mono text-[clamp(2.2rem,7vw,6.8rem)] font-bold leading-[.95] tracking-[-.07em] sm:mt-10">
+          {words.map(({ text }) => (
+            <span
+              key={text}
+              className="signal-word inline-block px-1 transition duration-500 hover:-translate-y-2 hover:scale-[1.03] sm:px-2"
+            >
+              {text}
+              <span className="text-fg/30">.</span>{' '}
+            </span>
+          ))}
         </h1>
 
-        {/* Row 3 — description, CTAs and stats, under the headline only */}
-        <div className="lg:col-start-1 lg:row-start-3">
-          <p className="max-w-lg text-sm leading-6 text-slate-400 sm:text-base">
-            A high-performance coding battlefield for operatives who write,
-            execute, and validate under pressure.
-          </p>
+        {/* Description */}
+        <p className="mx-auto mt-9 max-w-xl text-[15px] leading-7 text-subtle sm:mt-10 sm:text-lg sm:leading-8">
+          A focused coding workspace for learning data structures, solving indexed
+          problems, and validating your reasoning against real test cases.
+        </p>
 
-          <div className="mt-8 flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-[.18em]">
-            <a
-              href="/problems"
-              className="group flex items-center gap-3 bg-cyan-300 px-5 py-3 font-bold text-slate-950 transition hover:bg-white"
-            >
-              Enter system
-              <ArrowDown size={14} className="transition group-hover:translate-y-1" />
-            </a>
-            <a
-              href="/terminal"
-              className="flex items-center gap-2 border border-white/10 px-5 py-3 text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-300"
-            >
-              Open workspace
-              <ArrowUpRight size={14} />
-            </a>
+        {/* Waveform monitor — decorative, so hidden from assistive tech. */}
+        <div
+          aria-hidden="true"
+          className="relative mx-auto mt-10 h-20 w-full max-w-2xl overflow-hidden rounded-panel border border-white/10 bg-white/[0.025] text-accent-primary"
+        >
+          <svg viewBox="0 0 720 80" className="h-full w-full" fill="none" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="signal-gradient" x1="0" y1="0" x2="1" y2="0">
+                <stop stopColor="var(--accent-primary)" stopOpacity="0" />
+                <stop offset=".2" stopColor="var(--accent-primary)" />
+                <stop offset=".5" stopColor="var(--accent-success)" />
+                <stop offset=".8" stopColor="var(--accent-violet)" />
+                <stop offset="1" stopColor="var(--accent-violet)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M0 40h100l18-22 24 44 18-30 22 8 18-18 18 18h80l22-9 18 17 22-27 20 38 20-29 20 10 22-20 20 18h100l18-15 18 30 18-35 22 20 20-12 20 12h100"
+              stroke="url(#signal-gradient)"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path d="M0 40h720" stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 8" />
+            <circle cx="360" cy="40" r="4" fill="var(--accent-success)">
+              <animate attributeName="r" values="3;7;3" dur="2.4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;.35;1" dur="2.4s" repeatCount="indefinite" />
+            </circle>
+          </svg>
+          <div className="absolute inset-x-4 top-3 flex justify-between font-mono text-[8px] uppercase tracking-[0.2em] text-faint">
+            <span>signal / live</span>
+            <span>rce monitor</span>
           </div>
-
-          <div className="mt-10 grid max-w-lg grid-cols-3 gap-3 border-t border-white/10 pt-4 font-mono text-[9px] uppercase tracking-widest text-slate-600">
-            <span><b className="text-slate-300">01</b> realtime</span>
-            <span><b className="text-slate-300">02</b> polyglot</span>
-            <span><b className="text-slate-300">03</b> sandboxed</span>
+          <div className="absolute inset-x-4 bottom-3 flex justify-between font-mono text-[8px] uppercase tracking-[0.2em] text-faint">
+            <span>00:00:24</span>
+            <span className={booted ? 'text-accent-success/70' : 'text-faint'}>
+              {booted ? 'stable' : 'syncing'}
+            </span>
           </div>
         </div>
 
-        {/* Pixel-art signature card — shares row 2 with the headline and sits at
-            its base, so the card bottom aligns with CONQUER. */}
-        <div className="relative lg:col-start-2 lg:row-start-2 lg:self-end">
-          <div className="absolute -inset-10 bg-cyan-400/10 blur-3xl" />
-          <div className="relative w-full min-w-0">
-            <div className="relative w-full min-w-0 rounded-[28px] border border-cyan-300/20 bg-[#090d14]/90 p-4 shadow-2xl shadow-cyan-950/30 sm:p-5">
-              <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4 font-mono text-[9px] uppercase tracking-widest text-slate-500">
-                <span className="flex items-center gap-2">
-                  <Terminal size={13} className="text-cyan-300" />
-                  brace_signature.bin
-                </span>
-                <span className="text-lime-300">{booted ? 'verified' : 'booting'}</span>
-              </div>
+        {/* CTAs — Link, not <a>: these are in-app routes and a full page load
+            would drop the SPA state and replay the boot animation. */}
+        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link
+            to="/problems"
+            className="group inline-flex items-center justify-center gap-3 bg-accent-primary px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-[.18em] text-ink transition hover:bg-fg"
+          >
+            Enter problems
+            <ArrowDown size={14} className="transition group-hover:translate-y-1" />
+          </Link>
+          <Link
+            to="/terminal"
+            className="inline-flex items-center justify-center gap-2 border border-white/10 px-5 py-3 font-mono text-[10px] uppercase tracking-[.18em] text-subtle transition hover:border-accent-primary/50 hover:text-accent-primary"
+          >
+            Open workspace
+            <ArrowUpRight size={14} />
+          </Link>
+        </div>
 
-              {/* Canvas trimmed so the BRACE word art reads as a compact
-                  signature block rather than a full-bleed panel, with enough
-                  inset that the outermost lit cells never touch the rounded
-                  edge — at p-3 the art ran flush to the border and the first and
-                  last columns were visually cropped. Cells are aspect-square on a
-                  fixed 38-column grid, so the art scales with the available
-                  width and still cannot overflow. */}
-              <div className="flex min-h-[150px] items-center justify-center overflow-hidden rounded-2xl border border-white/5 bg-[#05070b] p-6 sm:min-h-[200px] sm:p-8">
-                <div
-                  className="grid w-full max-w-[400px] gap-[2px] sm:gap-[3px]"
-                  style={{ gridTemplateColumns: `repeat(${word[0]!.length}, minmax(0, 1fr))` }}
-                >
-                  {pixels.map((pixel, index) => (
-                    <span
-                      key={index}
-                      className={`aspect-square rounded-[2px] transition-all duration-500 ${
-                        pixel.lit
-                          ? booted
-                            ? 'bg-cyan-300 shadow-[0_0_4px_rgba(103,232,249,.5)]'
-                            : 'bg-cyan-300/10'
-                          : 'bg-transparent'
-                      }`}
-                      style={{ transitionDelay: pixel.delay }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 font-mono text-[9px] uppercase tracking-widest text-slate-500">
-                <span>signature: BRACE RCE</span>
-                <span className="text-lime-300">● ready to deploy</span>
-              </div>
+        {/* Readout strip */}
+        <div className="mx-auto mt-14 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-panel border border-white/10 bg-white/10 text-left sm:grid-cols-4">
+          {READOUT.map(({ label, value, tone }) => (
+            <div key={label} className="bg-surface px-4 py-4">
+              <p className="font-mono text-[8px] uppercase tracking-widest text-faint">{label}</p>
+              <p className={`mt-2 font-mono text-sm ${tone}`}>{value}</p>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
   )
 }
 
-export default BraceRcePixelArt
+/** Kept for callers that imported the old name. */
+export const BraceRcePixelArt = BracePixelHero
+
+export default BracePixelHero
