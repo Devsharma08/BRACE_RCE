@@ -30,14 +30,6 @@ const words = [
   { text: 'Conquer', tone: 'violet' },
 ] as const
 
-/** Live counts, kept in sync with the About page's measured figures. */
-const READOUT = [
-  { label: 'signal', value: 'ACTIVE', tone: 'text-accent-primary' },
-  { label: 'indexed', value: '209', tone: 'text-fg' },
-  { label: 'runtime', value: 'sandboxed', tone: 'text-accent-success' },
-  { label: 'mode', value: 'focused', tone: 'text-accent-violet' },
-] as const
-
 export const BracePixelHero: FC = () => {
   // One-shot boot: the waveform fades in once per tab session rather than on
   // every re-render, so returning to the home page does not replay the animation.
@@ -61,7 +53,19 @@ export const BracePixelHero: FC = () => {
         signal / structure / runtime
       </div>
 
-      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-center px-5 py-16 text-center sm:py-24 lg:px-8">
+      {/* Fills the space below the 58px sticky header and centres its content, so the
+          whole hero sits in one screen without the page scrolling.
+
+          Uses `min-h-[calc(100svh-58px)]` rather than `min-h-screen`: the app
+          header is a real 58px sticky bar, so 100vh would push the bottom of the
+          hero (the CTAs) under the fold on every load.
+
+          `svh` is the small-viewport height, which is the correct unit here —
+          on mobile browsers `vh` does not account for the collapsing URL bar, so
+          a `vh`-based hero overflows the visible area and its CTAs end up
+          off-screen. The section is NOT `overflow-hidden` for layout purposes
+          (only the backdrop layers are), so nothing below it can be clipped. */}
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-58px)] max-w-6xl flex-col items-center justify-center px-5 py-10 text-center sm:py-14 lg:px-8">
         {/* Eyebrow */}
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
@@ -151,15 +155,6 @@ export const BracePixelHero: FC = () => {
           </Link>
         </div>
 
-        {/* Readout strip */}
-        <div className="mx-auto mt-14 grid w-full max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-panel border border-white/10 bg-white/10 text-left sm:grid-cols-4">
-          {READOUT.map(({ label, value, tone }) => (
-            <div key={label} className="bg-surface px-4 py-4">
-              <p className="font-mono text-[8px] uppercase tracking-widest text-faint">{label}</p>
-              <p className={`mt-2 font-mono text-sm ${tone}`}>{value}</p>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   )

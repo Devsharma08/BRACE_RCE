@@ -68,8 +68,18 @@ export function CommunitySupport() {
   return (
     <section aria-label="Community support and reviews" className="w-full py-16 sm:py-24">
       <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-16 lg:items-start lg:min-h-screen">
-        {/* Sticky signal desk — pins to viewport top while right column scrolls past */}
-        <aside className="bg-base lg:sticky lg:top-0 z-10">
+        {/* Sticky signal desk.
+            `lg:top-4` rather than `top-0`: the app header is sticky at 58px but
+            auto-hides after 3s of downward scroll, so a 58px offset would leave
+            a dead band under the header once it hid, and `top-0` tucked the
+            heading behind the header while it was still visible.
+
+            `self-start` on the grid is required for sticky to engage at all —
+            a grid item defaults to `stretch`, and a stretched item has no
+            remaining scroll room to stick within. `lg:min-h-screen` gives that
+            room so the aside stays pinned while the right column scrolls past,
+            releasing only once the whole grid has been traversed. */}
+        <aside className="bg-base lg:sticky lg:top-4 z-10">
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             <MessageCircle size={14} /> Signal desk
           </div>

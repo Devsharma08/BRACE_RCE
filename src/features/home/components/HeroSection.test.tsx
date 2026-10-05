@@ -29,13 +29,21 @@ describe("Home hero", () => {
     expect(terminal).toHaveAttribute("href", "/terminal");
   });
 
-  test("renders the four-cell readout strip", () => {
+  test("no longer renders the readout strip", () => {
     renderHero();
-    for (const label of ["signal", "indexed", "runtime", "mode"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+    for (const gone of ["ACTIVE", "indexed", "209", "sandboxed", "mode", "focused"]) {
+      expect(screen.queryByText(gone)).not.toBeInTheDocument();
     }
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
-    expect(screen.getByText("sandboxed")).toBeInTheDocument();
+  });
+
+  test("fills the screen below the sticky header so it needs no scrolling", () => {
+    const { container } = renderHero();
+    const inner = container.querySelector("section#top > div.relative.z-10") as HTMLElement;
+    expect(inner).not.toBeNull();
+    // 100svh minus the 58px header, not a bare 100vh, which pushed the CTAs
+    // under the fold on every load.
+    expect(inner.className).toContain("min-h-[calc(100svh-58px)]");
+    expect(inner.className).not.toMatch(/min-h-screen/);
   });
 
   test("is a section, not a page: no main and no second nav", () => {
