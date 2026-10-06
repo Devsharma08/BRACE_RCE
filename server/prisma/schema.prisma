@@ -456,3 +456,36 @@ model UserLearningSummary {
   completedCount Int      @default(0)
   lastUpdated    DateTime @default(now())
 }
+
+// ── POST /execute abuse control (security remediation) ──────────────────────
+// Two standalone tables — intentionally NO foreign keys, so quota/audit rows
+// can never cascade into (or block deletion of) users, events, or problems.
+// Applied via `prisma db push` (this repo has no migrations directory).
+
+// Per-requester daily counter that survives restarts and multi-instance
+// deploys. `keyHash` is sha256("u:<userId>") or sha256("ip:<address>") —
+// raw IPs/user ids are never stored. One row per key per UTC day.
+model ExecutionQuota {
+  keyHash   String
+  date      String // YYYY-MM-DD (UTC)
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@id([keyHash, date])
+}
+
+// Append-only audit trail for execution requests: who (hashed), when, which
+// mode, which Origin the browser claimed, and the HTTP outcome. Written
+// fire-and-forget on response finish and pruned after 7 days (see index.ts).
+model ExecutionLog {
+  id         String   @id @default(uuid())
+  keyHash    String
+  userId     String? // null when keyed by IP (anonymous execution)
+  mode       String   @default("RUN") // RUN | SUBMIT
+  origin     String? // claimant Origin header, truncated
+  status     Int      @default(200) // HTTP status code returned
+  durationMs Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([keyHash, createdAt])
+}

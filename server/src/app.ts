@@ -25,6 +25,7 @@ import { metricsMiddleware, getMetrics, getMetricsContentType } from "./lib/metr
 import { deepHealthCheck, livenessCheck, readinessCheck, startupCheck } from "./lib/health.js";
 import { sentryRequestHandler, sentryErrorHandler } from "./lib/sentry.js";
 import { setupSwagger } from "./lib/swagger.js";
+import { getAllowedOrigins } from "./lib/origins.js";
 
 /**
  * API version prefix - change here to version all routes at once.
@@ -32,27 +33,10 @@ import { setupSwagger } from "./lib/swagger.js";
 export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
 
-/**
- * Read allowed origins from env (ALLOWED_ORIGINS is a comma-separated list).
- * Values are normalised (quotes stripped, trimmed, trailing slashes removed,
- * duplicates removed) because browsers send the `Origin` header bare — e.g.
- * `http://localhost:5173` — so a configured `"http://localhost:5173/"` would
- * otherwise never match and every preflight would fail silently.
- */
-export const getAllowedOrigins = (): string[] => {
-  const envOrigins = process.env.ALLOWED_ORIGINS;
-  const origins = envOrigins
-    ? envOrigins.split(",")
-    : ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"];
-
-  return Array.from(
-    new Set(
-      origins
-        .map((o) => o.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, ""))
-        .filter(Boolean)
-    )
-  );
-};
+// getAllowedOrigins lives in ./lib/origins.js so middleware (executionGuard)
+// can share it without importing this module — that would be an import cycle.
+// Re-exported here so existing importers (index.ts, app.cors.test.ts) keep working.
+export { getAllowedOrigins };
 
 /** CSRF cookie name */
 const CSRF_COOKIE_NAME = "csrf_token";

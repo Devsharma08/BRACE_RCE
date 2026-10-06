@@ -73,5 +73,4 @@ export type ExecuteCodeRequest = {
   fileName?: string;
   timeTaken?: string;
   roomId?: string;
-  performanceId?: string;
 };

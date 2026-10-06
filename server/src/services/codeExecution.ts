@@ -350,7 +350,6 @@ type ExecuteBody = {
    * tell a correct solution from a wrong one on a single-case run.
    */
   testCaseIndex?: unknown;
-  performanceId?: unknown;
   roomId?:unknown
 };
 
@@ -2279,7 +2278,11 @@ export const executeCode = async (req: Request, res: Response) => {
     //  1v1 SUBMISSION VERIFICATION & RESOLUTION
     // ═══════════════════════════════════════════════════════════
 
-    let userPerfId = typeof req.body.performanceId === "string" ? req.body.performanceId.trim() : "";
+    // `performanceId` is deliberately NOT read from the request body any more:
+    // trusting a client-supplied performance id was an IDOR that let any caller
+    // overwrite another user's battle score. The target performance row is now
+    // derived exclusively from the authenticated user (+ roomId) below.
+    let userPerfId = "";
     const requestedRoomId = typeof req.body.roomId === "string" ? req.body.roomId.trim() : "";
     
     let userId = (req as any).userId;
@@ -2298,7 +2301,10 @@ export const executeCode = async (req: Request, res: Response) => {
 
        const targetEvent = await prisma.event.findFirst({
         where: {
-          OR: [{ id: cleanEventId }, { roomCode: requestedRoomId }],
+          // Mirror getLiveRoom's resolution exactly: a `room-<uuid>` address
+          // may point at any event, while a bare roomCode only ever resolves
+          // to a non-template room (templates have no live battle surface).
+          OR: [{ id: cleanEventId }, { roomCode: requestedRoomId, isTemplate: false }],
         },
         select: { id: true },
       });

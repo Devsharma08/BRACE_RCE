@@ -247,7 +247,6 @@ export const Battle = () => {
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [myUserId, setMyUserId] = useState<string>("");
-  const [myPerformanceId, setMyPerformanceId] = useState<string>("");
 
   // --- LIVE INTEL (opponent/player progress tracking) ---
   const [playerProgress, setPlayerProgress] = useState<Record<string, { status: string; progress: number; linesWritten?: number }>>({});
@@ -415,11 +414,6 @@ export const Battle = () => {
 
     // Store all participants for host panel
     setRoomParticipants(roomData.performances || []);
-
-    // find and store current performance ID
-    // Server auto-creates a performance for the host on first visit (non-spectate)
-    const myPerf = roomData.performances?.find((p: any) => (p.user?.id === myId || p.userId === myId));
-    if (myPerf) setMyPerformanceId(myPerf.id);
 
     // Seed live telemetry so a mid-battle joiner/reconnector sees the last
     // known status instead of blank bars until the next battle_update.
@@ -876,7 +870,6 @@ export const Battle = () => {
         oid: activeProblem.github_oid || activeProblem.id,
         mode: "SUBMIT",
         roomId,
-        performanceId:myPerformanceId || ""
       });
 
       setExecutionOutput(res);

@@ -46,6 +46,26 @@ setInterval(async () => {
   }
 }, 24 * 60 * 60 * 1000);
 
+// ── Execute audit retention: ExecutionLog rows after 7 days, stale ──
+// ── ExecutionQuota rows after 30 days, every 24h.                    ──
+const EXEC_LOG_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const EXEC_QUOTA_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+setInterval(async () => {
+  try {
+    const logCutoff = new Date(Date.now() - EXEC_LOG_RETENTION_MS);
+    const quotaCutoff = new Date(Date.now() - EXEC_QUOTA_RETENTION_MS);
+    const [logs, quotas] = await Promise.all([
+      prisma.executionLog.deleteMany({ where: { createdAt: { lt: logCutoff } } }),
+      prisma.executionQuota.deleteMany({ where: { updatedAt: { lt: quotaCutoff } } }),
+    ]);
+    if (logs.count > 0 || quotas.count > 0) {
+      console.log(`[prune] execution audit: ${logs.count} logs, ${quotas.count} quotas`);
+    }
+  } catch (e) {
+    console.error("[prune] execution audit error:", e);
+  }
+}, 24 * 60 * 60 * 1000);
+
 httpServer.listen(port, () => {
   console.log("Server and WebSockets are running on port", port);
 });

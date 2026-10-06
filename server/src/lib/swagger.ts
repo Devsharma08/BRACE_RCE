@@ -152,7 +152,6 @@ Legacy \`/api/...\` routes are maintained for backward compatibility.
             oid: { type: 'string' },
             mode: { type: 'string', enum: ['RUN', 'SUBMIT'], default: 'RUN' },
             customInput: { type: 'string' },
-            performanceId: { type: 'string' },
             roomId: { type: 'string' },
           },
         },

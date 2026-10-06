@@ -106,7 +106,14 @@ export const executeCode = async (request: ExecuteCodeRequest): Promise<Executio
   try {
     const response = await fetch(`${API_BASE_URL}/execute`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Custom marker enforced by the server's /execute UI-only guard
+        // whenever the browser sends an Origin header (executionGuard.ts).
+        // A cross-origin page cannot set a custom header without a preflight
+        // the origin allow-list would reject.
+        "X-Requested-With": "XMLHttpRequest",
+      },
       credentials: "include",
       body: JSON.stringify(request),
       signal: controller.signal,
