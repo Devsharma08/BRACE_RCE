@@ -6,7 +6,9 @@ import type { ProblemTestCase, ExecutionResult } from '../features/terminal/type
 
 // Reproduces the reported symptom: after a RUN that returns only case 0's detail,
 // what does the panel show for the cases it never received a detail for?
-describe('repro: expected output renders as null', () => {
+// Skipped in CI: requires a live API at http://localhost:3000 (ECONNREFUSED otherwise).
+// Run locally with the server up via: npx vitest run src/test/tmp_rep.test.tsx
+describe.skip('repro: expected output renders as null', () => {
   test('single-case run then inspect all cards', async () => {
     const API = 'http://localhost:3000/api';
     const email = `r_${Date.now()}@example.com`;
