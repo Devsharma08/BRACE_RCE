@@ -1291,6 +1291,7 @@ public class Main {
     if(c.getSimpleName().equals("Node"))return formatNode(v);
     if(c.isArray()){int len=Array.getLength(v);List<String>items=new ArrayList<>();for(int i=0;i<len;i++)items.add(format(Array.get(v,i)));return "["+String.join(",",items)+"]";}
     if(v instanceof Collection<?>){List<String>items=new ArrayList<>();for(Object o:(Collection<?>)v)items.add(format(o));return "["+String.join(",",items)+"]";}
+    if(c.getSimpleName().equals("String")){return "\""+v.toString()+"\"";}
     return v.toString();
   }
   private static String formatListNode(Object head){
@@ -1320,7 +1321,7 @@ public class Main {
   private static boolean isNull(String s){return s==null||s.trim().equalsIgnoreCase("null")||s.trim().isEmpty();}
   private static boolean isQuoted(String s){if(s.length()<2)return false;char f=s.charAt(0),l=s.charAt(s.length()-1);return(f=='"'&&l=='"')||(f=='\\''&&l=='\\'');}
   private static String unquote(String s){s=s==null?"":s.trim();return isQuoted(s)?s.substring(1,s.length()-1):s;}
-  private static int parseInt(String s){String c=unquote(s).trim();if(c.equalsIgnoreCase("INF")||c.equalsIgnoreCase("INTEGER.MAX_VALUE"))return Integer.MAX_VALUE;if(c.equalsIgnoreCase("-INF")||c.equalsIgnoreCase("INTEGER.MIN_VALUE"))return Integer.MIN_VALUE;return Integer.parseInt(c);}
+  private static int parseInt(String s){String c=unquote(s).trim();if(c.equalsIgnoreCase("INF")||c.equalsIgnoreCase("INTEGER.MAX_VALUE"))return Integer.MAX_VALUE;if(c.equalsIgnoreCase("-INF")||c.equalsIgnoreCase("INTEGER.MIN_VALUE"))return Integer.MIN_VALUE;return (int)Long.parseLong(c);}
   private static List<String> getArrayItems(String raw){String t=raw==null?"":raw.trim();if(!looksLikeArray(t))throw new IllegalArgumentException("Expected array, got: "+raw);if(t.equals("[]"))return new ArrayList<>();return splitTopLevel(t.substring(1,t.length()-1));}
   private static List<String> splitTopLevel(String raw){List<String>result=new ArrayList<>();int depth=0;boolean inStr=false;char q='\0';StringBuilder sb=new StringBuilder();for(int i=0;i<raw.length();i++){char c=raw.charAt(i);if(inStr){if(c==q)inStr=false;sb.append(c);continue;}if(c=='\\\\'||c=='"'){inStr=true;q=c;sb.append(c);continue;}if(c=='['||c=='{'||c=='(')depth++;else if(c==']'||c=='}'||c==')')depth--;else if(c==','&&depth==0){result.add(sb.toString().trim());sb.setLength(0);continue;}sb.append(c);}if(sb.length()>0)result.add(sb.toString().trim());return result;}
   private static List<String> parseOperationNames(String raw){List<String>items=getArrayItems(raw);List<String>ops=new ArrayList<>();for(String item:items){String t=item.trim();if(!isQuoted(t))return Collections.emptyList();ops.add(unquote(t));}return ops;}
@@ -1389,7 +1390,7 @@ ${wrapperCode}`;
 `;
         case 'double': case 'float': return `    double ${varName} = lines.size()>${idx}?stod(lines[${idx}]):0.0;
 `;
-        default:       return `    int ${varName} = ${safeInt}=="[]"||${safeInt}.empty()?0:stoi(${safeInt});
+        default:       return `    int ${varName} = ${safeInt}=="[]"||${safeInt}.empty()?0:(int)std::stoll(${safeInt});
 `;
       }
     }
@@ -1405,6 +1406,8 @@ ${wrapperCode}`;
         case 'int_array_2d': return `    print2DVec(${varName});
 `;
         case 'bool': return `    cout<<(${varName}?"true":"false")<<endl;
+`;
+        case 'string': return `    cout<<char(34)<<${varName}<<char(34)<<endl;
 `;
         default:     return `    cout<<${varName}<<endl;
 `;
