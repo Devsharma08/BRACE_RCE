@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 // ─── PageHeader ──────────────────────────────────────────────────────────────
 // Shared page/section header: eyebrow rule, display heading, description, actions.
 type PageHeaderProps = {
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   title: ReactNode;
   as?: "h1" | "h2";
   id?: string;

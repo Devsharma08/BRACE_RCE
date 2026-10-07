@@ -25,6 +25,9 @@ import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
 import BentoGrid from "../features/problems/components/BentoGrid";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Panel, PanelBody } from "../components/ui/Panel";
+import { EmptyState } from "../components/ui/EmptyState";
 
 /**
  * EVERY data structure on this page lives in ONE side panel — the mock's
@@ -72,14 +75,19 @@ const ProblemsPagination: React.FC<{
   filteredCount: number;
   itemsPerPage: number;
   onPage: (page: number) => void;
-}> = ({ currentPage, totalPages, filteredCount, itemsPerPage, onPage }) => {
+  /** "standalone" is a card in its own right (card view); "flush" sits inside
+   *  the table panel's footer, where a bordered box would box the box. */
+  variant?: "standalone" | "flush";
+}> = ({ currentPage, totalPages, filteredCount, itemsPerPage, onPage, variant = "standalone" }) => {
   if (filteredCount === 0) return null;
   const first = (currentPage - 1) * itemsPerPage + 1;
   const last = Math.min(currentPage * itemsPerPage, filteredCount);
   return (
     <nav
       aria-label="Problem index pagination"
-      className="mt-4 flex flex-col gap-3 rounded-panel border border-subtle-line bg-raised px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between"
+      className={`flex flex-col gap-3 px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between ${
+        variant === "standalone" ? "mt-4 rounded-card border border-subtle-line bg-raised" : ""
+      }`}
     >
       <span>
         Showing {first}–{last} of {filteredCount}
@@ -251,31 +259,35 @@ export const Problems: React.FC = () => {
   );
 
   return (
-    <main className="bg-void px-4 py-5 font-mono text-fg sm:px-6 lg:px-8">
+    <main className="relative z-10 w-full min-w-0 flex-1 px-4 py-6 pb-20 font-mono text-fg md:px-8 md:py-8 md:pb-8">
       <div className="mx-auto max-w-[1500px]">
         {/* ── HEADER ────────────────────────────────────────────────────── */}
-        <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5 md:flex-row md:items-end">
-          <div>
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
-              <Code2 size={14} />
-              <span>Training command center</span>
-            </div>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+        <PageHeader
+          as="h1"
+          className="border-b border-subtle-line pb-5"
+          eyebrow={
+            <>
+              <Code2 size={14} aria-hidden="true" />
+              Training command center
+            </>
+          }
+          title={
+            <>
               Build your next <span className="text-accent-primary">signal.</span>
-            </h1>
-            <p className="mt-2 max-w-xl text-xs leading-5 text-subtle">
-              Choose a path, study the pattern, then prove it in the execution workspace.
-            </p>
-          </div>
-          <div className="grid w-full grid-cols-2 gap-2 text-[9px] uppercase tracking-widest md:w-auto">
-            <span className="border border-accent-success/25 bg-accent-success/[0.05] px-3 py-2 text-accent-success">
-              Solved <b className="text-fg">{solvedCount}</b>
-            </span>
-            <span className="border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2 text-accent-primary">
-              Indexed <b className="text-fg">{problems.length}</b>
-            </span>
-          </div>
-        </header>
+            </>
+          }
+          description="Choose a path, study the pattern, then prove it in the execution workspace."
+          actions={
+            <div className="grid w-full grid-cols-2 gap-2 text-[9px] uppercase tracking-widest sm:w-auto">
+              <span className="border border-accent-success/25 bg-accent-success/[0.05] px-3 py-2 text-accent-success">
+                Solved <b className="text-fg">{solvedCount}</b>
+              </span>
+              <span className="border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2 text-accent-primary">
+                Indexed <b className="text-fg">{problems.length}</b>
+              </span>
+            </div>
+          }
+        />
 
         {/* ── TRAINING OVERVIEW ───────────────────────────────────────────
             Two columns at lg: the three bento tiles on the left, and ONE
@@ -287,7 +299,7 @@ export const Problems: React.FC = () => {
         >
           <div className="grid min-w-0 gap-4 md:grid-cols-2 md:grid-rows-[3fr_2fr]">
             {/* HERO — full-width anchor tile with the ghost 01 watermark */}
-            <article className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-panel border border-accent-primary/20 bg-accent-primary/[0.045] p-5 transition hover:border-accent-primary/40 md:col-span-2">
+            <article className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-card border border-accent-primary/20 bg-accent-primary/[0.045] p-5 transition hover:border-accent-primary/40 md:col-span-2">
               <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-accent-primary/10 transition duration-500 group-hover:scale-110" />
               <div className="pointer-events-none absolute bottom-5 right-7 font-mono text-[8rem] font-bold leading-none text-fg/[0.03]">
                 01
@@ -315,7 +327,7 @@ export const Problems: React.FC = () => {
               </div>
             </article>
             {/* STUDY ROUTE */}
-            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised p-5 transition hover:border-accent-success/30">
+            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-success/30">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
                   <BookOpen size={14} />
@@ -335,7 +347,7 @@ export const Problems: React.FC = () => {
             </article>
 
             {/* TRAINING SIGNAL */}
-            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised p-5 transition hover:border-accent-warning/30">
+            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-warning/30">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
                   <Flame size={14} />
@@ -362,7 +374,7 @@ export const Problems: React.FC = () => {
           {/* ── DATA STRUCTURE PROGRESS — the single home for all of them ── */}
           <section
             aria-label="Data structure progress"
-            className="flex min-w-0 flex-col overflow-hidden rounded-panel border border-subtle-line bg-raised shadow-panel"
+            className="flex min-w-0 flex-col overflow-hidden rounded-card border border-subtle-line bg-raised shadow-panel"
           >
             <div className="border-b border-subtle-line bg-white/[0.025] px-5 py-4">
               <div className="flex items-center justify-between">
@@ -412,8 +424,8 @@ export const Problems: React.FC = () => {
         </section>
 
         {/* ── PROBLEM FILTERS ─────────────────────────────────────────── */}
-        <section aria-label="Problem filters" className="mt-6 rounded-2xl border border-subtle-line bg-raised p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <Panel ariaLabel="Problem filters" className="mt-6">
+          <PanelBody className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <label className="relative block w-full lg:max-w-sm">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-primary/50" />
               <input
@@ -466,8 +478,8 @@ export const Problems: React.FC = () => {
                 </button>
               ))}
             </div>
-          </div>
-        </section>
+          </PanelBody>
+        </Panel>
 
         {/* QUERY FAILURE — not in the mock, but losing the list silently would
             be worse; same themed retry block this page has always had. */}
@@ -512,25 +524,27 @@ export const Problems: React.FC = () => {
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-[132px] animate-pulse rounded-panel border border-subtle-line bg-raised"
+                    className="h-[132px] animate-pulse rounded-card border border-subtle-line bg-raised"
                   />
                 ))}
               </div>
             ) : filteredProblems.length === 0 ? (
-              <div className="rounded-panel border border-subtle-line bg-raised px-6 py-14 text-center">
-                <p className="text-xs uppercase tracking-widest text-subtle">
-                  No challenges match those filters
-                </p>
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSelectedDifficulty("ALL");
-                  }}
-                  className="mt-4 border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-                >
-                  Clear filters
-                </button>
-              </div>
+              <EmptyState
+                icon={AlertTriangle}
+                title="No challenges match those filters"
+                message="Adjust the search or difficulty filter, or reset both to browse the full index."
+                action={
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setSelectedDifficulty("ALL");
+                    }}
+                    className="border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
+                  >
+                    Clear filters
+                  </button>
+                }
+              />
             ) : (
               <BentoGrid problems={currentProblems} topicByProblemId={topicByProblemId} />
             )}
@@ -551,7 +565,7 @@ export const Problems: React.FC = () => {
         {!isProblemsError && view === "table" && (
           <section
             aria-label="Problem index"
-            className="mt-3 overflow-hidden rounded-2xl border border-subtle-line bg-raised shadow-panel"
+            className="mt-3 overflow-hidden rounded-card border border-subtle-line bg-raised shadow-panel"
           >
             <div className="flex items-center justify-between border-b border-subtle-line bg-white/[0.025] px-5 py-4">
               <div>
@@ -579,6 +593,15 @@ export const Problems: React.FC = () => {
                 <AlertTriangle size={22} className="text-accent-warning" />
                 <p className="text-xs uppercase tracking-widest text-subtle">No matching problems</p>
                 <p className="text-xs text-faint">Adjust the search or difficulty filter.</p>
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedDifficulty("ALL");
+                  }}
+                  className="mt-1 border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
+                >
+                  Clear filters
+                </button>
               </div>
             ) : (
               <div className={`flex flex-col ${isPending ? "opacity-60 transition-opacity" : ""}`}>
@@ -639,6 +662,7 @@ export const Problems: React.FC = () => {
                   filteredCount={filteredProblems.length}
                   itemsPerPage={itemsPerPage}
                   onPage={setCurrentPage}
+                  variant="flush"
                 />
               </footer>
             )}

@@ -2,7 +2,7 @@
  * Bento card grid for the problem index.
  *
  * Replaces the plain row list with the card language the home page already uses
- * (rounded-panel, shadow-panel, accent washes, uppercase mono labels), so the
+ * (rounded-card, shadow-panel, accent washes, uppercase mono labels), so the
  * catalog reads as part of the same system rather than a separate admin table.
  *
  * Every field shown here comes off the problem object the /problems/system
@@ -71,7 +71,7 @@ const BentoCard: React.FC<BentoCardProps> = ({ problem, domain, accent }) => {
     <Link
       to={`/terminal?id=${encodeURIComponent(oid)}`}
       aria-label={`${problem.name}, ${difficulty}, ${solved ? "solved" : "unsolved"}`}
-      className={`group relative flex flex-col overflow-hidden rounded-panel border bg-raised p-4 shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-primary/40 hover:shadow-accent-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
+      className={`group relative flex flex-col overflow-hidden rounded-card border bg-surface p-4 shadow-panel transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-primary/40 hover:shadow-accent-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
         solved ? "border-accent-success/25" : "border-subtle-line"
       }`}
     >
