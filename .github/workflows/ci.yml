@@ -79,9 +79,17 @@ jobs:
           # so the container must run privileged with an exec-capable /tmp —
           # this mirrors engineer-man/piston's own docker-compose.yaml
           # (privileged: true, tmpfs /tmp:exec). Without it the API never
-          # binds and the readiness probe below times out after 60s.
+          # binds and the readiness probe below times out.
+          #
+          # The entrypoint also does `chown -R piston:piston /piston`, and
+          # /piston only exists when the packages volume is mounted (upstream
+          # compose maps ./data/piston/packages:/piston/packages). Without
+          # the mount the entrypoint dies with "chown: cannot access
+          # '/piston'" before the API ever binds.
+          docker volume create piston-ci-packages >/dev/null || true
           docker run -d --name piston-ci -p 2000:2000 --privileged \
             --tmpfs /tmp:exec \
+            -v piston-ci-packages:/piston/packages \
             ghcr.io/engineer-man/piston:latest || true
           for i in $(seq 1 90); do
             if curl -sf http://localhost:2000/api/v2/runtimes >/dev/null; then
