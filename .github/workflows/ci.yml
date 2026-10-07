@@ -75,16 +75,22 @@ jobs:
 
       - name: Start Piston sandbox
         run: |
-          docker run -d --name piston-ci -p 2000:2000 \
+          # Piston sandboxes submissions with Linux namespaces/cgroups via isolate,
+          # so the container must run privileged with an exec-capable /tmp —
+          # this mirrors engineer-man/piston's own docker-compose.yaml
+          # (privileged: true, tmpfs /tmp:exec). Without it the API never
+          # binds and the readiness probe below times out after 60s.
+          docker run -d --name piston-ci -p 2000:2000 --privileged \
+            --tmpfs /tmp:exec \
             ghcr.io/engineer-man/piston:latest || true
-          for i in $(seq 1 60); do
+          for i in $(seq 1 90); do
             if curl -sf http://localhost:2000/api/v2/runtimes >/dev/null; then
               echo "Piston is up after ${i}s"; break
             fi
             sleep 1
           done
           curl -sf http://localhost:2000/api/v2/runtimes >/dev/null \
-            || { echo "::error::Piston failed to start"; exit 1; }
+            || { echo "Piston container logs:"; docker logs piston-ci || true; echo "::error::Piston failed to start"; exit 1; }
 
       - name: Wrapper shapes + batched framing (10 shapes x 5 languages)
         run: |
