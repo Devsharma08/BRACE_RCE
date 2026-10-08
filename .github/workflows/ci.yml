@@ -42,7 +42,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Lint server
-        run: pnpm --prefix server run lint 2>/dev/null || echo "No lint script or pre-existing errors in server"
+        run: pnpm --prefix server run lint 2>/dev/null || echo "Server lint has pre-existing errors, continuing..."
 
       - name: Typecheck server
         run: pnpm --prefix server run typecheck 2>/dev/null || npx --prefix server tsc --noEmit
@@ -93,8 +93,6 @@ jobs:
           --health-retries=5
       piston:
         image: ghcr.io/engineer-man/piston:latest
-        ports:
-          - 2000:2000
         env:
           PISTON_RUNTIMES: "javascript,python,java,cpp,c"
         options: >-
@@ -172,8 +170,6 @@ jobs:
           --health-retries=5
       piston:
         image: ghcr.io/engineer-man/piston:latest
-        ports:
-          - 2000:2000
         env:
           PISTON_RUNTIMES: "javascript,python,java,cpp,c"
         options: >-
