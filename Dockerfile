@@ -10,6 +10,9 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 
+# Copy Prisma schema BEFORE install (needed for postinstall)
+COPY server/prisma ./server/prisma/
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
@@ -30,16 +33,21 @@ ENV NODE_ENV=production
 
 RUN npm install -g pnpm
 
-# Copy built dist and dependencies
+# Copy workspace package manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 
+# Copy Prisma schema BEFORE install (needed for postinstall)
+COPY server/prisma ./server/prisma/
+
+# Install production dependencies
 RUN pnpm install --prod --frozen-lockfile
 
+# Copy built artifacts
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/server/prisma ./server/prisma
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "cd server && npx prisma db push && node dist/index.js"]
+CMD ["sh", "-c", "cd server && npx prisma migrate deploy && node dist/index.js"]
