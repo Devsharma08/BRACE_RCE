@@ -126,12 +126,12 @@ jobs:
           done
 
       - name: Generate Prisma Client
-        run: pnpm --prefix server run prisma:generate
+        run: npx --prefix server prisma generate
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
       - name: Run database migrations
-        run: pnpm --prefix server run prisma:migrate:deploy 2>/dev/null || pnpm --prefix server run prisma:db:push
+        run: npx --prefix server prisma migrate deploy 2>/dev/null || npx --prefix server prisma db push
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
@@ -203,12 +203,12 @@ jobs:
           done
 
       - name: Generate Prisma Client
-        run: pnpm --prefix server run prisma:generate
+        run: npx --prefix server prisma generate
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
       - name: Run database migrations
-        run: pnpm --prefix server run prisma:migrate:deploy 2>/dev/null || pnpm --prefix server run prisma:db:push
+        run: npx --prefix server prisma migrate deploy 2>/dev/null || npx --prefix server prisma db push
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
