@@ -92,10 +92,7 @@ jobs:
           --health-timeout=5s
           --health-retries=5
       piston:
-        image: ghcr.io/engineer-man/piston:latest
-        env:
-          PISTON_RUNTIMES: "javascript,python,java,cpp,c"
-        command: ["--runtimes", "javascript,python,java,cpp,c"]
+        image: brace-rce/piston:latest
         options: >-
           --health-cmd="curl -f http://localhost:2000/api/v2/runtimes || exit 1"
           --health-interval=10s
@@ -170,10 +167,7 @@ jobs:
           --health-timeout=5s
           --health-retries=5
       piston:
-        image: ghcr.io/engineer-man/piston:latest
-        env:
-          PISTON_RUNTIMES: "javascript,python,java,cpp,c"
-        command: ["--runtimes", "javascript,python,java,cpp,c"]
+        image: brace-rce/piston:latest
         options: >-
           --health-cmd="curl -f http://localhost:2000/api/v2/runtimes || exit 1"
           --health-interval=10s
