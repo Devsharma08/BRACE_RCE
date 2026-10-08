@@ -93,8 +93,7 @@ jobs:
           --health-retries=5
       piston:
         image: ghcr.io/engineer-man/piston:latest
-        env:
-          PISTON_RUNTIMES: "javascript,python,java,cpp,c"
+        command: ["--runtimes", "javascript,python,java,cpp,c"]
         ports:
           - 2000:2000
         options: >-
@@ -173,8 +172,7 @@ jobs:
           --health-retries=5
       piston:
         image: ghcr.io/engineer-man/piston:latest
-        env:
-          PISTON_RUNTIMES: "javascript,python,java,cpp,c"
+        command: ["--runtimes", "javascript,python,java,cpp,c"]
         ports:
           - 2000:2000
         options: >-
