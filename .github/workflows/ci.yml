@@ -91,13 +91,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-      piston:
-        image: brace-rce/piston:latest
-        options: >-
-          --health-cmd="curl -f http://localhost:2000/api/v2/runtimes || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -116,8 +109,13 @@ jobs:
       - name: Install server dependencies
         run: pnpm --prefix server install --frozen-lockfile
 
-      - name: Wait for Piston runtimes
+      - name: Start Piston
         run: |
+          docker run -d --name piston \
+            --network host \
+            ghcr.io/engineer-man/piston:latest \
+            --runtimes javascript,python,java,cpp,c
+          echo "Waiting for Piston to start..."
           for i in {1..30}; do
             if curl -s http://localhost:2000/api/v2/runtimes | jq -e '.[] | select(.language=="java" or .language=="cpp" or .language=="c" or .language=="python" or .language=="javascript")' > /dev/null; then
               echo "All runtimes available"
@@ -148,6 +146,10 @@ jobs:
       - name: Build server
         run: pnpm --prefix server run build
 
+      - name: Stop Piston
+        if: always()
+        run: docker stop piston && docker rm piston
+
   verify-matrix:
     name: Verify Execution Matrix
     runs-on: ubuntu-latest
@@ -163,13 +165,6 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd="pg_isready -U brace_user -d brace_rce"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-      piston:
-        image: brace-rce/piston:latest
-        options: >-
-          --health-cmd="curl -f http://localhost:2000/api/v2/runtimes || exit 1"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -191,8 +186,13 @@ jobs:
       - name: Install server dependencies
         run: pnpm --prefix server install --frozen-lockfile
 
-      - name: Wait for Piston runtimes
+      - name: Start Piston
         run: |
+          docker run -d --name piston \
+            --network host \
+            ghcr.io/engineer-man/piston:latest \
+            --runtimes javascript,python,java,cpp,c
+          echo "Waiting for Piston to start..."
           for i in {1..30}; do
             if curl -s http://localhost:2000/api/v2/runtimes | jq -e '.[] | select(.language=="java" or .language=="cpp" or .language=="c" or .language=="python" or .language=="javascript")' > /dev/null; then
               echo "All runtimes available"
@@ -219,6 +219,10 @@ jobs:
           PISTON_URL: http://localhost:2000
           NODE_MODE: development
           JWT_SECRET: test_secret
+
+      - name: Stop Piston
+        if: always()
+        run: docker stop piston && docker rm piston
 
   docker-build:
     name: Docker Build
