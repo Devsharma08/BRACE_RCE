@@ -126,12 +126,12 @@ jobs:
           done
 
       - name: Generate Prisma Client
-        run: npx --prefix server prisma generate
+        run: cd server && npx prisma generate
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
       - name: Run database migrations
-        run: npx --prefix server prisma migrate deploy 2>/dev/null || npx --prefix server prisma db push
+        run: cd server && (npx prisma migrate deploy 2>/dev/null || npx prisma db push)
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
@@ -203,12 +203,12 @@ jobs:
           done
 
       - name: Generate Prisma Client
-        run: npx --prefix server prisma generate
+        run: cd server && npx prisma generate
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
       - name: Run database migrations
-        run: npx --prefix server prisma migrate deploy 2>/dev/null || npx --prefix server prisma db push
+        run: cd server && (npx prisma migrate deploy 2>/dev/null || npx prisma db push)
         env:
           DATABASE_URL: postgresql://brace_user:brace_password@localhost:5432/brace_rce?schema=public
 
@@ -239,7 +239,7 @@ jobs:
           docker run -d --name test-container -p 5000:5000 \
             -e NODE_ENV=production \
             -e DATABASE_URL=postgresql://user:pass@host:5432/db \
-            -e JWT_SECRET=test \
+            -e JWT_SECRET: test \
             -e PISTON_URL=http://host:2000 \
             brace-rce:test || true
           sleep 10
