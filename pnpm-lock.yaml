@@ -229,6 +229,9 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.11.0(jiti@2.7.0)(supports-color@8.1.1))
       '@types/bcrypt':
         specifier: ^6.0.0
         version: 6.0.0
@@ -277,6 +280,12 @@ importers:
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
+      eslint:
+        specifier: ^10.11.0
+        version: 10.11.0(jiti@2.7.0)(supports-color@8.1.1)
+      globals:
+        specifier: ^17.12.0
+        version: 17.12.0
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@25.9.8)(supports-color@8.1.1)
@@ -295,6 +304,9 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.23.15
+      typescript-eslint:
+        specifier: ^8.70.1
+        version: 8.70.1(eslint@10.11.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
 
 packages:
 
