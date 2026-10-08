@@ -37,16 +37,19 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 
-# Copy Prisma schema BEFORE install (needed for postinstall)
+# Copy Prisma schema (for runtime if needed)
 COPY server/prisma ./server/prisma/
 
-# Install production dependencies
-RUN pnpm install --prod --frozen-lockfile
+# Install production dependencies WITHOUT postinstall scripts
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
-# Copy built artifacts
+# Copy built artifacts including generated Prisma client
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/server/prisma ./server/prisma
+COPY --from=builder /app/server/node_modules/.pnpm/@prisma ./server/node_modules/.pnpm/@prisma
+COPY --from=builder /app/server/node_modules/.pnpm/@prisma+client* ./server/node_modules/.pnpm/@prisma+client*
+COPY --from=builder /app/server/src/generated/prisma ./server/src/generated/prisma
 
 EXPOSE 5000
 
