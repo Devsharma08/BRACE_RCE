@@ -39,6 +39,24 @@ const FILE_NAME: Record<string, string> = {
 type Lang = keyof typeof LANG;
 const LANGS = Object.keys(LANG) as Lang[];
 
+/** Query Piston for available runtimes and return the subset of LANGS that are installed. */
+async function getAvailableLanguages(): Promise<Lang[]> {
+  try {
+    const res = await fetch(`${PISTON}/api/v2/runtimes`);
+    if (!res.ok) return LANGS; // Fallback: assume all available if query fails
+    const data = await res.json() as Array<{ language?: string; aliases?: string[] }>;
+    const available = new Set<string>();
+    for (const rt of data) {
+      if (rt.language) available.add(rt.language);
+      // Also check aliases like 'c++' -> 'cpp'
+      if (rt.aliases) for (const a of rt.aliases) available.add(a);
+    }
+    return LANGS.filter((l) => available.has(LANG[l]));
+  } catch {
+    return LANGS; // Fallback: assume all available on network error
+  }
+}
+
 type Ref = Partial<Record<Lang, string>>;
 
 type ProblemSpec = {
@@ -1042,7 +1060,14 @@ async function main() {
     .replace('--langs=', '').split(',').filter(Boolean) as Lang[];
   const onlyNums = (process.argv.find((a) => a.startsWith('--only=')) || '')
     .replace('--only=', '').split(',').filter(Boolean).map((s) => parseInt(s, 10));
-  const langs = LANGS.filter((l) => onlyLangs.length === 0 || onlyLangs.includes(l));
+
+  // Query Piston for available runtimes
+  const availableLangs = await getAvailableLanguages();
+  const missing = LANGS.filter(l => !availableLangs.includes(l));
+  if (missing.length) {
+    console.log(`Note: Piston missing runtimes for: ${missing.join(', ')} — skipping those languages`);
+  }
+  const langs = availableLangs.filter((l) => onlyLangs.length === 0 || onlyLangs.includes(l));
   const specs = onlyNums.length
     ? SPECS.filter((s) => onlyNums.includes(s.number ?? 0))
     : SPECS;

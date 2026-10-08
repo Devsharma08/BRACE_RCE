@@ -37,12 +37,13 @@ services:
 
   # Piston Code Execution Engine
   piston:
-    image: ghcr.io/engineer-man/piston
+    image: ghcr.io/engineer-man/piston:latest
     restart: always
     ports:
       - "2000:2000"
     tmpfs:
       - /tmp
+    command: ["--runtimes", "javascript,python,java,cpp,c"]
 
 volumes:
   postgres_data:
