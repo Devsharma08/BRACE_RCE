@@ -14,6 +14,8 @@ import {
   deleteQuestion,
   getSettings,
   updateSetting,
+  listActiveBattles,
+  getBattleForSpectate,
 } from "../controllers/admin.js";
 
 const router: ExpressRouter = Router();
@@ -44,5 +46,9 @@ router.delete("/questions/:questionId", deleteQuestion);
 // ── Settings ──
 router.get("/settings", getSettings);
 router.patch("/settings/:key", updateSetting);
+
+// ── Active Battles (Admin Spectate) ──
+router.get("/battles", listActiveBattles);
+router.get("/battles/:roomId/spectate", getBattleForSpectate);
 
 export { router as adminRouter };

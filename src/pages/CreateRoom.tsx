@@ -5,6 +5,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Code2,
   Gauge,
   LayoutTemplate,
@@ -23,9 +24,25 @@ import {
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../config/api";
 import { invalidateProblemQueries, fetchAllProblems } from "../utils/problemCache";
 import { toast } from "sonner";
+import { api, fetchCsrfToken } from "../config/api";
+
+/**
+ * Extract user-friendly error message from API error response
+ */
+const getErrorMessage = (err: unknown): string => {
+  const data = (err as any)?.response?.data;
+  if (!data) return (err as Error)?.message || "Unknown error";
+  
+  // Handle validation errors with field details
+  if (data.errors && Array.isArray(data.errors)) {
+    return data.errors.map((e: any) => `${e.field}: ${e.message}`).join("; ");
+  }
+  
+  return data.message || data.error || "Request failed";
+};
+
 import {
   TestCaseGeneratorPanel,
   type CreatorSignature,
@@ -116,6 +133,9 @@ const CreateRoom = () => {
   const [maxUsers, setMaxUsers] = useState<number>(2);
   const [isPublic, setIsPublic] = useState(true);
   const [timeLimitOption, setTimeLimitOption] = useState("AUTO");
+  // Scheduled opening / auto-close (datetime-local values, browser-local)
+  const [opensAt, setOpensAt] = useState("");
+  const [closesAt, setClosesAt] = useState("");
 
   // --- QUEUE STATE ---
   const [selectedProblemIds, setSelectedProblemIds] = useState<string[]>([]);
@@ -224,6 +244,8 @@ const CreateRoom = () => {
     isPublic,
     effectiveMinutes,
     selectedProblemIds,
+    opensAt,
+    closesAt,
   ]);
   const staged = stagedSignature !== null && stagedSignature === configSignature;
 
@@ -262,6 +284,7 @@ const CreateRoom = () => {
     }
     setSaveTemplateLoading(true);
     try {
+      await fetchCsrfToken();
       await api.post("/rooms/create", {
         name: name.trim() ? `${name.trim()} template` : `Custom template ${templates.length + 1}`,
         description,
@@ -276,7 +299,7 @@ const CreateRoom = () => {
       toast.success("Template saved — reuse it from Battle templates.");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save template.");
+      toast.error(getErrorMessage(err));
     } finally {
       setSaveTemplateLoading(false);
     }
@@ -287,27 +310,42 @@ const CreateRoom = () => {
     if (selectedProblemIds.length === 0) return toast.error("You must select at least one problem!");
     if (!name.trim()) return toast.error("Give your operation a title first.");
 
+    // Client-side password validation
+    if (protectedRoom && password && password.trim().length > 0 && password.trim().length < 4) {
+      return toast.error("Password must be at least 4 characters");
+    }
+
+    // Schedule validation: the room must open before it closes
+    if (opensAt && closesAt && new Date(opensAt).getTime() >= new Date(closesAt).getTime()) {
+      return toast.error("Scheduled open time must be before the close time.");
+    }
+
     if (!staged) {
       setStagedSignature(configSignature);
       return;
     }
+
+    // Ensure CSRF token is available before mutating request
+    await fetchCsrfToken();
 
     setLoading(true);
     try {
       const res = await api.post("/rooms/create", {
         name,
         description,
-        password: password || null,
+        password: protectedRoom && password.trim() ? password.trim() : undefined,
         maxUsers,
         isPublic,
         isTemplate: false,
         problemIds: selectedProblemIds,
         totalTimeLimitMs: effectiveMinutes * 60 * 1000,
+        ...(opensAt ? { opensAt: new Date(opensAt).toISOString() } : {}),
+        ...(closesAt ? { closesAt: new Date(closesAt).toISOString() } : {}),
       });
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to initialize room.");
+      toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -319,6 +357,7 @@ const CreateRoom = () => {
     }
     setCustomLoading(true);
     try {
+      await fetchCsrfToken();
       const res = await api.post("/problems/create", {
         name: customName,
         problem_definition: customDefinition,
@@ -348,7 +387,7 @@ const CreateRoom = () => {
       toast.success("Custom problem created and queued.");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to create custom problem.");
+      toast.error(getErrorMessage(err));
     } finally {
       setCustomLoading(false);
     }
@@ -411,6 +450,15 @@ const CreateRoom = () => {
                 {protectedRoom ? "pass protected" : "open access"}. Deploy to publish this
                 configuration and invite participants.
               </p>
+              {(opensAt || closesAt) && (
+                <p className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-accent-primary">
+                  <Clock size={12} aria-hidden />
+                  {opensAt
+                    ? `opens ${new Date(opensAt).toLocaleString()}`
+                    : "opens on deploy"}
+                  {closesAt ? ` · closes ${new Date(closesAt).toLocaleString()}` : ""}
+                </p>
+              )}
               <div className="mt-7 flex flex-col gap-3 border-t border-accent-success/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-faint">
                   staged / awaiting deploy
@@ -440,10 +488,7 @@ const CreateRoom = () => {
               </div>
             </section>
           ) : (
-            <form
-              onSubmit={handleCreateRoom}
-              className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden"
-            >
+            <div className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden">
               {/* ── LEFT: CONFIGURATION COLUMN (internally scrollable) ─── */}
               <div className="themed-scroll min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
                 {/* IDENTITY & MISSION */}
@@ -513,6 +558,7 @@ const CreateRoom = () => {
                           setPassword("");
                         } else {
                           setIsPublic(false);
+                          setPassword("");
                         }
                       }}
                       aria-pressed={protectedRoom}
@@ -542,6 +588,37 @@ const CreateRoom = () => {
                         className="mt-2 h-11 w-full border border-subtle-line bg-void px-4 text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
                       />
                     </label>
+                  )}
+
+                  {/* SCHEDULE — optional opening / auto-close window */}
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                      Opens at (optional)
+                      <input
+                        type="datetime-local"
+                        value={opensAt}
+                        onChange={(e) => setOpensAt(e.target.value)}
+                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50 [color-scheme:dark]"
+                      />
+                    </label>
+                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                      Closes at (optional)
+                      <input
+                        type="datetime-local"
+                        value={closesAt}
+                        onChange={(e) => setClosesAt(e.target.value)}
+                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50 [color-scheme:dark]"
+                      />
+                    </label>
+                  </div>
+                  {(opensAt || closesAt) && (
+                    <p className="mt-2 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
+                      <Clock size={11} aria-hidden />
+                      {opensAt
+                        ? `opens ${new Date(opensAt).toLocaleString()}`
+                        : "opens on deploy"}
+                      {closesAt ? ` · closes ${new Date(closesAt).toLocaleString()}` : ""}
+                    </p>
                   )}
 
                   <div className="mt-5 border-t border-subtle-line pt-4">
@@ -1051,7 +1128,8 @@ const CreateRoom = () => {
                 </div>
 
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleCreateRoom}
                   disabled={selectedProblemIds.length === 0}
                   className="mt-6 flex w-full items-center justify-center gap-2 bg-accent-primary py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -1061,7 +1139,7 @@ const CreateRoom = () => {
                   Nothing is published until you deploy
                 </p>
               </aside>
-            </form>
+            </div>
           )}
         </div>
       </main>

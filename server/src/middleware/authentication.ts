@@ -7,11 +7,13 @@ const SECRET_KEY = JWT_SECRET;
 // Extend Express Request
 export interface AuthRequest extends Request {
     userId?: string;
+    userRole?: string;
 }
 
 // Define the expected JWT payload structure
 export interface CustomJwtPayload extends jwt.JwtPayload {
     userId: string;
+    role?: string;
 }
 
 export const authentication = (req: Request, res: Response, next: NextFunction) => {
@@ -25,6 +27,7 @@ export const authentication = (req: Request, res: Response, next: NextFunction) 
 
     if (result.ok) {
         (req as AuthRequest).userId = result.payload.userId as string;
+        (req as AuthRequest).userRole = result.payload.role as string | undefined;
         return next();
     }
 

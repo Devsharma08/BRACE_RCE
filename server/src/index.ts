@@ -4,6 +4,7 @@ import { assertRuntimeEnv } from "./config/runtime.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { initSocketServer } from "./socket/index.js";
+import { startRoomScheduler } from "./jobs/roomScheduler.js";
 import { prisma } from "./lib/prisma.js";
 import { initTracing } from "./lib/tracing.js";
 import { initSentry, flushSentry } from "./lib/sentry.js";
@@ -31,6 +32,9 @@ const io = new Server(httpServer, {
 
 // Inject custom socket logic
 initSocketServer(io);
+
+// Room scheduling worker (scheduled opens / T-5min warnings / auto-close)
+startRoomScheduler(io);
 
 // ── Queue retention: prune notifications older than 3 days, every 24h ──
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;

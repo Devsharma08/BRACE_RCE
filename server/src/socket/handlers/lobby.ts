@@ -199,7 +199,14 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                 data: { status: 'IN_PROGRESS', startedAt, finishedAt }
             });
 
-            io.to(roomCode).emit('battle_starting', { countdownSeconds: 3 });
+            // Emit countdown events: 3, 2, 1
+            for (let i = 3; i >= 1; i--) {
+                io.to(roomCode).emit('battle_starting', { countdownSeconds: i });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+
+            // After countdown, emit battle_started to unlock editor
+            io.to(roomCode).emit('battle_started', { startedAt });
 
             io.to(roomCode).emit('battle_state', {
                 startedAt,

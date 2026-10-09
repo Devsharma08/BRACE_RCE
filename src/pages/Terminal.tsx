@@ -21,6 +21,22 @@ import type { ProblemTimerRef } from "../features/terminal/components/ProblemTim
 import { NotesPanel } from "../components/ui/NotesPanel";
 import { invalidateProblemQueries } from "../utils/problemCache";
 import { useIsMobile } from "../hooks/useMediaQuery";
+import { toast } from "sonner";
+
+/**
+ * Extract user-friendly error message from API error response
+ */
+const getErrorMessage = (err: unknown): string => {
+  const data = (err as any)?.response?.data;
+  if (!data) return (err as Error)?.message || "Unknown error";
+  
+  // Handle validation errors with field details
+  if (data.errors && Array.isArray(data.errors)) {
+    return data.errors.map((e: any) => `${e.field}: ${e.message}`).join("; ");
+  }
+  
+  return data.message || data.error || "Request failed";
+};
 
 // ─────────────────────────────────────────────────────────────
 // Language / Snippet Helpers
@@ -367,10 +383,11 @@ const Terminal = () => {
           );
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Execution failed";
+        const message = getErrorMessage(error);
         setOutputText(`ERROR: ${message}`);
         setOutput(null);
         setStatus("ERROR");
+        toast.error(message);
       } finally {
         setIsExecuting(false);
         setExecutingMode(null);
@@ -452,10 +469,11 @@ const Terminal = () => {
           setOutputText(rawDetail?.output?.trim() || "// No output produced.");
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Execution failed";
+        const message = getErrorMessage(error);
         setOutputText(`ERROR: ${message}`);
         setOutput(null);
         setStatus("ERROR");
+        toast.error(message);
       } finally {
         setRunningTestCaseIndex(null);
         setIsExecuting(false);

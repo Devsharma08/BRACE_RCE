@@ -15,7 +15,7 @@ import type { SupportedLanguage, ExecutionResult } from "../features/terminal/ty
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
-import { Bot, Clock, LayoutTemplate, Loader2, Lock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
@@ -273,27 +273,45 @@ export const Battle = () => {
   const [commencing, setCommencing] = useState(false);
   const [focusFlash, setFocusFlash] = useState(false);
   const [focusLossCount, setFocusLossCount] = useState(0);
+  const [focusPenaltyPercent, setFocusPenaltyPercent] = useState(0);
+
+  // --- SCHEDULED CLOSE WARNING (minimizable banner) ---
+  const [closingWarning, setClosingWarning] = useState<{ closesAt: string } | null>(null);
+  const [closingWarningDismissed, setClosingWarningDismissed] = useState(false);
+  const [closingSeconds, setClosingSeconds] = useState<number | null>(null);
 
   // --- CHAT STATE ---
   const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
   const [newBattleMessage, setNewBattleMessage] = useState("");
-  const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY">(
+  const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY" | "MODERATOR">(
     "PROBLEM",
   );
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const battleActiveRef = useRef(false);
-  battleActiveRef.current = battleState.status === "IN_PROGRESS" && !isSpectateMode;
+  battleActiveRef.current = battleState.status === "IN_PROGRESS" && !isSpectateMode && !isHost;
 
   const handleFocusLoss = useCallback(() => {
     if (!battleActiveRef.current) return;
-    setFocusLossCount((count) => count + 1);
+    setFocusLossCount((count) => {
+      const newCount = count + 1;
+      // Exponential penalty: 5%, 10%, 20%, 40%, 80%
+      const penalty = newCount >= 5 ? 80 : Math.round(5 * Math.pow(2, newCount - 1));
+      setFocusPenaltyPercent(penalty);
+      return newCount;
+    });
     setFocusFlash(true);
     window.setTimeout(() => setFocusFlash(false), 650);
+    toast.warning(`⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${Math.round(5 * Math.pow(2, focusLossCount))}%`, { id: "focus-loss" });
+  }, [focusLossCount]);
+
+  const handleFocusRestore = useCallback(() => {
+    if (!battleActiveRef.current) return;
+    toast.success("✓ FOCUS RESTORED", { id: "focus-restore" });
   }, []);
 
   // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
-  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading, handleFocusLoss);
+  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading, handleFocusLoss, handleFocusRestore);
 
   // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
   const queryClient = useQueryClient();
@@ -490,6 +508,10 @@ export const Battle = () => {
       playBattleSound("tick");
     });
 
+    socket.on("battle_started", () => {
+      setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS", editorLocked: false }));
+    });
+
     socket.on("battle_state", (data) => {
       setBattleState(data);
     });
@@ -571,6 +593,27 @@ export const Battle = () => {
       invalidateProblemQueries(queryClient);
     });
 
+    // --- ROOM SCHEDULING EVENTS ---
+    socket.on("room_opening", () => {
+      setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS" }));
+      toast.info("Room opened — the operation is live.");
+    });
+
+    socket.on("room_closing", (data: { closesAt?: string }) => {
+      if (data?.closesAt) {
+        setClosingWarning({ closesAt: data.closesAt });
+        setClosingWarningDismissed(false);
+      }
+    });
+
+    socket.on("room_closed", () => {
+      setClosingWarning(null);
+      setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
+      setIsBattleMenuOpen(true);
+      invalidateProblemQueries(queryClient);
+      toast.info("Room closed by schedule.");
+    });
+
     return () => {
       mounted = false;
       socket.off("connect", onConnect);
@@ -584,6 +627,9 @@ export const Battle = () => {
       socket.off("group_terminated");
       socket.off("match_completed");
       socket.off("battle_finished");
+      socket.off("room_opening");
+      socket.off("room_closing");
+      socket.off("room_closed");
       if (joinedRoomRef.current === roomId) {
         socket.emit("leave_room", roomId);
       }
@@ -613,6 +659,24 @@ export const Battle = () => {
     const timer = window.setTimeout(() => setCommencing(false), 900);
     return () => window.clearTimeout(timer);
   }, [commencing]);
+
+  // Live countdown for the scheduled-close warning banner
+  useEffect(() => {
+    if (!closingWarning) {
+      setClosingSeconds(null);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor((new Date(closingWarning.closesAt).getTime() - Date.now()) / 1000),
+      );
+      setClosingSeconds(remaining);
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [closingWarning]);
 
   // Update editor when active problem changes
   useEffect(() => {
@@ -988,6 +1052,37 @@ export const Battle = () => {
         </div>
       )}
 
+      {/* SCHEDULED CLOSE WARNING — minimizable banner */}
+      {closingWarning && !closingWarningDismissed && (
+        <div className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-accent-warning/50 bg-accent-warning/10 px-4 py-2.5 shadow-[0_0_20px_rgba(255,184,0,0.25)] backdrop-blur">
+          <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" aria-hidden />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-warning">
+            Room closing
+            {closingSeconds !== null &&
+              ` in ${Math.floor(closingSeconds / 60)}:${String(closingSeconds % 60).padStart(2, "0")}`}
+          </span>
+          <button
+            onClick={() => setClosingWarningDismissed(true)}
+            title="Minimize closing warning"
+            className="text-faint transition hover:text-fg"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Minimized pill — click to restore the warning */}
+      {closingWarning && closingWarningDismissed && (
+        <button
+          onClick={() => setClosingWarningDismissed(false)}
+          title="Show closing warning"
+          className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-warning backdrop-blur transition hover:bg-accent-warning/20"
+        >
+          <AlarmClock className="h-3 w-3" />
+          closing soon
+        </button>
+      )}
+
       {/* FOCUS LOSS WARNING */}
       {focusTelemetry.snapshot().filter(e => e.type === "blur" || e.type === "tab_hidden").length > 0 && (
         <div className="fixed left-1/2 top-16 z-[90] -translate-x-1/2 border border-accent-danger/40 bg-accent-danger/10 px-4 py-2 font-mono text-xs uppercase tracking-widest text-accent-danger ds-glitch">
@@ -1187,6 +1282,14 @@ export const Battle = () => {
               >
                 <Activity className="w-4 h-4 mx-auto mb-1" /> OPPONENT
               </button>
+              {isHost && battleState.status === "IN_PROGRESS" && (
+                <button
+                  onClick={() => setActivePanelTab("MODERATOR")}
+                  className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "MODERATOR" ? "bg-accent-warning/20 border-b-2 border-accent-warning text-accent-warning" : "text-faint hover:bg-line-low"}`}
+                >
+                  <ShieldAlert className="w-4 h-4 mx-auto mb-1" /> MODERATOR
+                </button>
+              )}
             </div>
 
             {/* TAB CONTENT — themed scrollbar + contained text */}
@@ -1248,6 +1351,79 @@ export const Battle = () => {
                     <p className="text-[9px] font-mono text-accent-warning uppercase tracking-widest">Telemetry Notice</p>
                     <p className="mt-1 text-[10px] text-subtle">Focus-loss details are reported after the match.</p>
                   </div>
+                </div>
+              ) : activePanelTab === "MODERATOR" ? (
+                <div className="flex flex-col gap-4">
+                  <div className="border border-line bg-base/40 p-4">
+                    <p className="mb-3 text-[10px] font-mono font-bold text-accent-warning uppercase tracking-widest">
+                      Operatives ({roomParticipants.length})
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {roomParticipants.length === 0 ? (
+                        <p className="text-xs text-faint">Waiting for operatives…</p>
+                      ) : (
+                        roomParticipants.map((p: any) => {
+                          const participantId = p.user?.id || p.userId;
+                          const uname = p.user?.username || "Unknown";
+                          const intel = playerProgress[participantId];
+                          const isMe = participantId === myUserId;
+                          return (
+                            <div
+                              key={participantId}
+                              className="flex items-center gap-3 rounded-lg border border-line-low bg-base/40 p-2.5"
+                            >
+                              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-subtle-line bg-surface-hover font-mono text-[10px] font-bold text-fg">
+                                {uname[0]?.toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="truncate font-mono text-xs text-fg">
+                                    {uname}{isMe ? " (you)" : ""}
+                                  </span>
+                                  {intel && (
+                                    <span className="shrink-0 font-mono text-[9px] font-bold text-accent-primary">
+                                      {intel.progress}%
+                                    </span>
+                                  )}
+                                </div>
+                                {intel && (
+                                  <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-hover">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
+                                      }`}
+                                      style={{ width: `${intel.progress}%` }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              {!isMe && (
+                                <button
+                                  onClick={() => handleKickUser(participantId)}
+                                  title={`Kick ${uname}`}
+                                  className="shrink-0 border border-accent-danger/30 bg-accent-danger/15 p-1 text-accent-danger rounded transition-all hover:bg-accent-danger/20"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                  {room?.closesAt && (
+                    <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-faint">
+                      <Clock className="h-3.5 w-3.5" />
+                      Scheduled close: {new Date(room.closesAt).toLocaleString()}
+                    </p>
+                  )}
+                  <button
+                    onClick={handleHostEndMatch}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-accent-danger/50 bg-accent-danger/15 py-2 font-mono text-xs font-bold uppercase tracking-widest text-accent-danger transition-all hover:bg-accent-danger/20"
+                  >
+                    <StopCircle className="h-3.5 w-3.5" /> TERMINATE MATCH
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-col h-full">
@@ -1531,6 +1707,11 @@ export const Battle = () => {
                 const subs = p.submissions ?? [];
                 const passedCount = subs.filter((s: any) => (s.status || "").toUpperCase() === "PASSED").length;
                 const bestRuntime = subs.reduce((m: number | null, s: any) => s.runtimeMs != null ? Math.min(m ?? s.runtimeMs, s.runtimeMs) : m, null as number | null);
+                const isMe = p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current;
+                const originalScore = p.score ?? 0;
+                const adjustedScore = isMe && focusLossCount > 0
+                  ? Math.floor(originalScore * (1 - focusPenaltyPercent / 100))
+                  : originalScore;
                 return (
                   <div key={p.userId || p.user?.id || p.id} className="flex items-center gap-2 p-2 border border-line bg-base/50 min-w-0">
                     <span className="text-xs font-bold text-fg truncate flex-1 min-w-0">{p.user?.username || "Player"}</span>
@@ -1540,10 +1721,30 @@ export const Battle = () => {
                     <span className="text-[9px] text-subtle font-mono shrink-0">
                       {passedCount}/{subs.length}{bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
                     </span>
+                    <span className={`text-[9px] font-mono shrink-0 ${isMe ? "text-accent-primary" : "text-subtle"}`}>
+                      {isMe && focusLossCount > 0
+                        ? `${originalScore} → ${adjustedScore} (-${focusPenaltyPercent}%)`
+                        : originalScore}
+                    </span>
                   </div>
                 );
               })}
             </div>
+            {/* Focus Penalty Display */}
+            {focusLossCount > 0 && (
+              <div className="mb-4 p-3 rounded border border-accent-warning/30 bg-accent-warning/10 text-left">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-xs text-accent-warning">FOCUS PENALTY APPLIED</span>
+                  <span className="font-mono text-lg font-bold text-accent-danger">-{focusPenaltyPercent}%</span>
+                </div>
+                <div className="text-[9px] text-subtle font-mono">
+                  {focusLossCount} focus loss{focusLossCount > 1 ? "es" : ""} × {focusPenaltyPercent}% penalty on final score
+                </div>
+                <div className="text-[8px] text-faint mt-1">
+                  Penalties: 1st -5% · 2nd -10% · 3rd -20% · 4th -40% · 5th+ -80% (doubling)
+                </div>
+              </div>
+            )}
             <div className="flex-1 flex justify-between gap-4 w-full">
               <button
                 onClick={() => navigate("/")}

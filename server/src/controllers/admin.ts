@@ -238,6 +238,106 @@ export const updateSetting = async (req: Request, res: Response) => {
     create: { key, value },
   });
 
-  return res.json({ setting });
+return res.json({ setting });
+  };
+
+// ─────────────────────────────────────────────────────────
+// ACTIVE BATTLES (for admin spectate)
+// ─────────────────────────────────────────────────────────
+
+export const listActiveBattles = async (req: Request, res: Response) => {
+  const { ok } = await isAdminReq(req);
+  if (!ok) return res.status(403).json({ status: 'error', message: 'Admin access required' });
+
+  const battles = await prisma.event.findMany({
+    where: {
+      status: { in: ['WAITING', 'IN_PROGRESS'] },
+      isTemplate: false,
+    },
+    include: {
+      host: { select: { username: true, avatarUrl: true, id: true } },
+      problems: { select: { id: true, name: true, difficulty_level: true } },
+      performances: { 
+        select: { userId: true, status: true },
+        include: { user: { select: { username: true, avatarUrl: true } } }
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return res.json({ battles });
+};
+
+export const getBattleForSpectate = async (req: Request, res: Response) => {
+  const { ok } = await isAdminReq(req);
+  if (!ok) return res.status(403).json({ status: 'error', message: 'Admin access required' });
+
+  const roomId = req.params.roomId as string;
+  let event;
+
+  if (roomId.startsWith("room-")) {
+    const eventId = roomId.replace("room-", "");
+    event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        host: { select: { username: true, avatarUrl: true, id: true } },
+        problems: {
+          include: { test_cases: true, code_snippets: true }
+        },
+        commonProblem: {
+          include: { test_cases: true, code_snippets: true }
+        },
+        performances: {
+          include: {
+            user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+            submissions: {
+              select: {
+                id: true, problemId: true, status: true,
+                passedCase: true, totalCases: true,
+                runtimeMs: true, memoryKb: true,
+                language: true, attemptNumber: true,
+                isBestSubmission: true, createdAt: true
+              },
+              orderBy: { attemptNumber: "asc" }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    event = await prisma.event.findFirst({
+      where: { roomCode: roomId, isTemplate: false },
+      include: {
+        host: { select: { username: true, avatarUrl: true, id: true } },
+        problems: {
+          include: { test_cases: true, code_snippets: true }
+        },
+        commonProblem: {
+          include: { test_cases: true, code_snippets: true }
+        },
+        performances: {
+          include: {
+            user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+            submissions: {
+              select: {
+                id: true, problemId: true, status: true,
+                passedCase: true, totalCases: true,
+                runtimeMs: true, memoryKb: true,
+                language: true, attemptNumber: true,
+                isBestSubmission: true, createdAt: true
+              },
+              orderBy: { attemptNumber: "asc" }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  if (!event) {
+    return res.status(404).json({ message: "Battle not found or has ended." });
+  }
+
+  return res.json({ battle: event, isSpectate: true });
 };
 

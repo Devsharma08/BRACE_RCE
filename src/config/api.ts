@@ -17,25 +17,39 @@ let csrfToken: string | null = null;
 
 /**
  * Fetch CSRF token from server on app initialization
+ * Retries up to 3 times with exponential backoff
  */
 export async function fetchCsrfToken(): Promise<string> {
     if (csrfToken) return csrfToken;
-    try {
-        // Try v1 endpoint first, fallback to legacy
-        const urls = [`${backendURL.replace(/\/api$/, '')}/api/v1/csrf-token`, `${backendURL}/csrf-token`];
-        for (const url of urls) {
-            try {
-                const res = await axios.get(url, { withCredentials: true });
-                csrfToken = res.data?.csrfToken;
-                if (csrfToken) break;
-            } catch {
-                // Try next URL
+    
+    const maxRetries = 3;
+    const baseDelay = 500; // ms
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // Try v1 endpoint first, fallback to legacy
+            const urls = [`${backendURL.replace(/\/api$/, '')}/api/v1/csrf-token`, `${backendURL}/csrf-token`];
+            for (const url of urls) {
+                try {
+                    const res = await axios.get(url, { withCredentials: true });
+                    csrfToken = res.data?.csrfToken;
+                    if (csrfToken) return csrfToken;
+                } catch {
+                    // Try next URL
+                }
             }
+            if (csrfToken) break;
+        } catch {
+            // Continue to retry
         }
-        return csrfToken || '';
-    } catch {
-        return '';
+        
+        // Exponential backoff before retry
+        if (attempt < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+        }
     }
+    
+    return csrfToken || '';
 }
 
 /**

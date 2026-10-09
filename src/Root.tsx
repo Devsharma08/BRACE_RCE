@@ -11,6 +11,7 @@ const AdminQuestions = lazy(()=>import('./pages/admin/AdminQuestions.tsx'));
 const AdminReports = lazy(()=>import('./pages/admin/AdminReports.tsx'));  
 const AdminSettings = lazy(()=>import('./pages/admin/AdminSettings.tsx'));  
 const AdminFeedback = lazy(()=>import('./pages/admin/AdminFeedback.tsx'));
+const AdminSpectateView = lazy(()=>import('./pages/admin/AdminSpectateView.tsx'));
 
 // -------------  normal routes  ------------------
 const About = lazy(() => import("./pages/About.tsx"));
@@ -133,6 +134,7 @@ export const Root = () => {
                             <Route path="reports" element={<AdminReports />} />
                             <Route path="settings" element={<AdminSettings />} />
                             <Route path="feedback" element={<AdminFeedback />} />
+                            <Route path="battles/:roomId/spectate" element={<AdminSpectateView />} />
                           </Route>
                         </Route>
                         {/* Console pages — all share <ConsoleShell />, which owns

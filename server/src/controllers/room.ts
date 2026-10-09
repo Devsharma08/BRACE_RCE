@@ -2,6 +2,8 @@ import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { withDisplayProblemName } from "../utils/problemName.js";
+import { emitToUser } from "../socket/ioRegistry.js";
+import { finishEventWithVerdicts } from "../services/battleFinish.js";
 
 class Rooms {
     // GET PUBLIC LOBBY ROOMS
@@ -80,7 +82,7 @@ class Rooms {
             const userId = req.userId as string;
             const {
                 name, description, isPublic, password, maxUsers, totalTimeLimitMs,
-                isTemplate, problemIds
+                isTemplate, problemIds, opensAt, closesAt
             } = req.body;
 
             // Generate a random 6-character room code
@@ -100,12 +102,24 @@ class Rooms {
                     type: "PUBLIC",
                     status: "WAITING",
                     version: 1,
+                    opensAt: opensAt ? new Date(opensAt) : null,
+                    closesAt: closesAt ? new Date(closesAt) : null,
                     // Connect selected problems to this room
                     problems: {
                         connect: problemIds.map((id: string) => ({ id }))
                     }
                 }
             });
+
+            // Scheduled rooms: tell the host the room is queued to open.
+            if (opensAt) {
+                void emitToUser(userId, "room_scheduled", {
+                    roomId: newRoom.id,
+                    roomCode: newRoom.roomCode,
+                    opensAt: newRoom.opensAt,
+                    closesAt: newRoom.closesAt,
+                });
+            }
 
             return res.json({
                 status: "success",
@@ -293,6 +307,8 @@ class Rooms {
         try {
             const roomId = req.params.roomId as string;
             const userId = req.userId as string;
+            const userRole = (req as AuthRequest).userRole || "";
+            const isAdmin = userRole.toUpperCase() === "ADMIN";
             const isSpectate = req.query.spectate === "true";
             let event;
 
@@ -359,12 +375,24 @@ class Rooms {
                 return res.status(404).json({ message: "Room not found or has ended." });
             }
 
-            // If a player/host enters and is competing (not pure spectate), ensure performance record exists
-            if (userId && !isSpectate) {
+            // Admin can spectate any room; for non-admins, only allow spectate if room is public or they're a participant
+            if (isSpectate && !isAdmin) {
+                const isParticipant = event.performances?.some((p: any) => p.userId === userId);
+                const isHost = event.hostId === userId;
+                if (!event.isPublic && !isParticipant && !isHost) {
+                    return res.status(403).json({ message: "Not authorized to spectate this room" });
+                }
+            }
+
+            // If a non-host player enters and is competing (not pure spectate),
+            // ensure a performance record exists. The host never competes —
+            // they moderate — so no record is created for them and they do
+            // not count toward maxUsers.
+            if (userId && !isSpectate && event.hostId !== userId) {
                 const existingPerf = event.performances?.find((p: any) => p.userId === userId || p.user?.id === userId);
                 if (!existingPerf && (event.status === "WAITING" || event.status === "IN_PROGRESS")) {
                     const currentCount = event.performances?.length || 0;
-                    if (currentCount < event.maxUsers || event.hostId === userId) {
+                    if (currentCount < event.maxUsers) {
                         try {
                             const newPerf = await prisma.userPersonalPerformance.create({
                                 data: {
@@ -430,7 +458,9 @@ class Rooms {
             // (Optional groupMember model, if present in the schema, is also honored.)
             const userId = req.userId as string;
             const caller = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
-            const isAdmin = (caller?.role || "").toUpperCase() === "ADMIN";
+            const role = (caller?.role || "").toUpperCase();
+            const isAdmin = role === "ADMIN";
+            const isModerator = role === "MODERATOR";
             const prismaAny = prisma as any;
             let isGroupAdmin = false;
             if (prismaAny.groupMember) {
@@ -441,47 +471,16 @@ class Rooms {
                     isGroupAdmin = !!gm;
                 } catch { isGroupAdmin = false; }
             }
-            if (event.hostId !== userId && !isAdmin && !isGroupAdmin) {
-                return res.status(403).json({ status: "error", message: "Only the host or an admin can close this battle" });
+            if (event.hostId !== userId && !isAdmin && !isModerator && !isGroupAdmin) {
+                return res.status(403).json({ status: "error", message: "Only the host, a moderator, or an admin can close this battle" });
             }
 
-            const performances = (event as any).performances ?? [];
-            for (const perf of performances) {
-                const passed = (perf.submissions ?? []).some((s: any) => s.status === "PASSED");
-                const verdict = passed ? "COMPLETED" : "TIMEOUT";
-                await prisma.userPersonalPerformance.update({
-                    where: { id: perf.id },
-                    data: {
-                        status: verdict,
-                        timeTakenMs: perf.timeTakenMs ?? event.totalTimeLimitMs ?? undefined,
-                        finishedAt: (perf as any).finishedAt ?? undefined
-                    } as any
-                }).catch(() => prisma.userPersonalPerformance.update({
-                    where: { id: perf.id },
-                    data: { status: verdict }
-                }));
+            // Shared finish logic — identical verdicts for manual and
+            // scheduled closes (see services/battleFinish.ts).
+            const finished = await finishEventWithVerdicts(roomId as string);
+            if (!finished) {
+                return res.status(404).json({ status: "error", message: "Event not found" });
             }
-
-            const finished = await prisma.event.update({
-                where: { id: event.id },
-                data: { status: "FINISHED", finishedAt: new Date() },
-                include: {
-                    performances: {
-                        include: {
-                            user: { select: { id: true, username: true, avatarUrl: true } },
-                            submissions: {
-                                select: {
-                                    id: true, problemId: true, status: true,
-                                    passedCase: true, totalCases: true,
-                                    runtimeMs: true, memoryKb: true,
-                                    language: true, attemptNumber: true,
-                                    isBestSubmission: true, createdAt: true
-                                }
-                            }
-                        }
-                    }
-                }
-            });
 
             return res.json({ status: "success", message: "Battle marked FINISHED with completion verdicts", room: finished });
         } catch (error) {

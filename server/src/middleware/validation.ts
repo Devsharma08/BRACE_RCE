@@ -217,18 +217,32 @@ export const executeCodeSchema = z.object({
 });
 
 // Room schemas
-export const createRoomSchema = z.object({
-  name: z.string().min(1, "Room name is required").max(100).optional(),
-  type: z.enum(["FRIENDS", "BOT", "PUBLIC", "ONE_VS_ONE", "CUSTOM", "TOURNAMENT"]).default("CUSTOM"),
-  isPublic: z.boolean().optional().default(true),
-  description: z.string().max(500).optional(),
-  commonProblemId: uuidSchema.optional(),
-  roomCode: z.string().min(4).max(20).optional(),
-  password: z.string().min(4).max(50).optional(),
-  maxUsers: z.number().int().min(2).max(10).default(2),
-  totalTimeLimitMs: z.number().int().positive().optional(),
-  problemIds: z.array(uuidSchema).optional(),
-});
+export const createRoomSchema = z
+  .object({
+    name: z.string().min(1, "Room name is required").max(100).optional(),
+    type: z.enum(["FRIENDS", "BOT", "PUBLIC", "ONE_VS_ONE", "CUSTOM", "TOURNAMENT"]).default("CUSTOM"),
+    isPublic: z.boolean().optional().default(true),
+    description: z.string().max(500).optional(),
+    commonProblemId: uuidSchema.optional(),
+    roomCode: z.string().min(4).max(20).optional(),
+    password: z.string().min(4).max(50).optional(),
+    maxUsers: z.number().int().min(2).max(10).default(2),
+    totalTimeLimitMs: z.number().int().positive().optional(),
+    problemIds: z.array(uuidSchema).optional(),
+    // Scheduled opening / auto-close (ISO 8601). When both are
+    // supplied the room must open before it closes.
+    opensAt: z.string().datetime().optional(),
+    closesAt: z.string().datetime().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.opensAt && data.closesAt) {
+        return new Date(data.opensAt).getTime() < new Date(data.closesAt).getTime();
+      }
+      return true;
+    },
+    { message: "opensAt must be before closesAt", path: ["closesAt"] },
+  );
 
 export const lockRoomSchema = z.object({
   roomId: z.string().min(1, "Room ID is required"),
@@ -244,7 +258,7 @@ export const toggleVisibilitySchema = z.object({
 });
 
 export const expireBattleSchema = z.object({
-  eventId: uuidSchema,
+  roomId: z.string().min(1, "Room ID is required"),
 });
 
 export const deleteEventSchema = z.object({

@@ -171,6 +171,12 @@ model Event {
   maxUsers Int @default(2)
   totalTimeLimitMs Int? 
 
+  // Scheduled opening / auto-close (room scheduling).
+  // `closesAt` is the authoritative end time when set; otherwise
+  // the battle ends at startedAt + totalTimeLimitMs.
+  opensAt   DateTime?
+  closesAt  DateTime?
+
   // playlist relation (connects to problem)
   problems Problem[] @relation("EventProblems")
   

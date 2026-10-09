@@ -12,6 +12,7 @@ import {
   AlignLeft,
   Lightbulb,
   Lock,
+  ChevronLeft,
   Tag,
 } from "lucide-react";
 
@@ -218,6 +219,36 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
 // ─────────────────────────────────────────
 // Problems Browser Tab
 // ─────────────────────────────────────────
+const PAGER_PAGE_SIZE = 10;
+
+const Pager = ({ page, total, setPage }: { page: number; total: number; setPage: (page: number) => void }) => (
+  <div className="mt-3 flex items-center justify-between border-t border-subtle-line pt-3 font-mono text-[9px] uppercase tracking-widest text-faint">
+    <span>
+      Page {page} / {total}
+    </span>
+    <span className="flex gap-1">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => setPage(page - 1)}
+        aria-label="Previous page"
+        className="grid h-7 w-7 place-items-center border border-subtle-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30"
+      >
+        <ChevronLeft size={13} aria-hidden />
+      </button>
+      <button
+        type="button"
+        disabled={page >= total}
+        onClick={() => setPage(page + 1)}
+        aria-label="Next page"
+        className="grid h-7 w-7 place-items-center border border-subtle-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30"
+      >
+        <ChevronRight size={13} aria-hidden />
+      </button>
+    </span>
+  </div>
+);
+
 const ProblemsListTab = ({
   problems,
   activeProblem,
@@ -233,6 +264,7 @@ const ProblemsListTab = ({
 }) => {
   const [search, setSearch] = useState("");
   const [diffFilter, setDiffFilter] = useState<"ALL" | "EASY" | "MEDIUM" | "HARD">("ALL");
+  const [problemPage, setProblemPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -247,6 +279,10 @@ const ProblemsListTab = ({
       return matchesQ && matchesDiff;
     });
   }, [problems, search, diffFilter]);
+
+  const problemPageCount = Math.max(1, Math.ceil(filtered.length / PAGER_PAGE_SIZE));
+  const safeProblemPage = Math.min(problemPage, problemPageCount);
+  const visibleProblems = filtered.slice((safeProblemPage - 1) * PAGER_PAGE_SIZE, safeProblemPage * PAGER_PAGE_SIZE);
 
   const solved = problems.filter((p) => p.isSolved).length;
 
@@ -276,7 +312,10 @@ const ProblemsListTab = ({
             type="text"
             placeholder="Search problems..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+            setSearch(e.target.value);
+            setProblemPage(1);
+          }}
             className="w-full bg-surface-hover border border-subtle-line text-[11px] text-fg pl-8 pr-3 py-1.5 rounded focus:outline-none focus:border-accent-primary/50 transition-colors font-mono"
           />
         </div>
@@ -288,7 +327,10 @@ const ProblemsListTab = ({
         {(["ALL", "EASY", "MEDIUM", "HARD"] as const).map((d) => (
           <button
             key={d}
-            onClick={() => setDiffFilter(d)}
+            onClick={() => {
+            setDiffFilter(d);
+            setProblemPage(1);
+          }}
             className={`px-2 py-0.5 text-[9px] font-bold rounded border transition-all cursor-pointer ${diffFilter === d
                 ? "bg-accent-primary/15 border-accent-primary/60 text-accent-primary"
                 : "bg-surface-hover border-subtle-line text-faint hover:text-fg hover:border-subtle-line"
@@ -312,7 +354,7 @@ const ProblemsListTab = ({
               : "NO PROBLEMS MATCH YOUR FILTERS"}
           </div>
         ) : (
-          filtered.map((p) => {
+          visibleProblems.map((p) => {
             const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
             const isActive = activeProblem?.id === p.id;
             return (
@@ -361,6 +403,7 @@ const ProblemsListTab = ({
           })
         )}
       </div>
+      <Pager page={safeProblemPage} total={problemPageCount} setPage={setProblemPage} />
     </div>
   );
 };
@@ -434,14 +477,14 @@ const PracticeSidebar = ({
         )}
       </div>
 
-      {/* RESIZE HANDLE — w-3 (was w-2) plus a pseudo hit strip reaching into
-          the workspace, so touch drags are not a precision sport. */}
+      {/* RESIZE HANDLE — w-2 (8px) visible handle with 16px hit area for easier dragging, prevents scroll during drag */}
       <div
         onPointerDown={onResizeStart}
-        className="absolute top-0 right-0 w-3 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none before:absolute before:inset-y-0 before:left-0 before:-right-3 before:content-['']"
+        className="absolute top-0 right-0 w-2 h-full cursor-col-resize hover:bg-accent-primary/50 active:bg-accent-primary z-40 transition-colors group flex items-center justify-center touch-none before:absolute before:inset-y-0 before:left-0 before:-right-4 before:content-['']"
         title="Drag to resize sidebar"
+        style={{ touchAction: 'none' }}
       >
-        <div className="w-0.5 h-12 bg-accent-primary/40 group-hover:bg-accent-primary rounded" />
+        <div className="w-0.5 h-16 bg-accent-primary/40 group-hover:bg-accent-primary rounded mx-auto transition-colors" />
       </div>
     </aside>
   );

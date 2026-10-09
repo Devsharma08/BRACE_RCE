@@ -8,7 +8,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
-import { api } from "../config/api";
+import { api, fetchCsrfToken } from "../config/api";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { getDivision, TIER_COLORS, useLeaderboard, useMyRating } from "../hooks/useLeaderboard";
@@ -78,6 +78,7 @@ export const Dashboard: React.FC = () => {
     pendingOpponent,
   } = useSocket();
   const [acceptTimer, setAcceptTimer] = useState<number>(10);
+  const [matchmakingDifficulty, setMatchmakingDifficulty] = useState<"ANY" | "EASY" | "MEDIUM" | "HARD">("ANY");
 
   // After any finished battle the server emits leaderboard:invalidate — one
   // wave refreshes the whole dashboard (stats, recent battles, problems).
@@ -152,6 +153,13 @@ export const Dashboard: React.FC = () => {
   const stats = dashboardData?.stats || null;
   const recentBattles = dashboardData?.recentBattles || [];
   const recommendedProblems = dashboardData?.recommendedProblems || [];
+
+  // Ensure CSRF token is available for any mutating requests from Dashboard
+  useEffect(() => {
+    fetchCsrfToken().catch(() => {
+      // Silent fail - token will be fetched on first mutating request
+    });
+  }, []);
 
   const timerActiveRef = useRef(false);
 
@@ -497,13 +505,26 @@ export const Dashboard: React.FC = () => {
                   Cancel queue
                 </button>
               ) : (
-                <button
-                  onClick={() => findMatch()}
-                  disabled={matchmakingStatus !== "IDLE"}
-                  className="rounded-lg bg-accent-primary px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-ink transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Start matchmaking
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={matchmakingDifficulty}
+                    onChange={(e) => setMatchmakingDifficulty(e.target.value as "ANY" | "EASY" | "MEDIUM" | "HARD")}
+                    className="h-10 w-32 shrink-0 border border-subtle-line bg-void px-2 text-xs text-fg outline-none focus:border-accent/40 font-mono text-[9px] uppercase tracking-widest"
+                    aria-label="Matchmaking difficulty"
+                  >
+                    <option value="ANY">ANY</option>
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                  </select>
+                  <button
+                    onClick={() => findMatch(matchmakingDifficulty)}
+                    disabled={matchmakingStatus !== "IDLE"}
+                    className="rounded-lg bg-accent-primary px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-ink transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Start matchmaking
+                  </button>
+                </div>
               )}
             </div>
           </div>

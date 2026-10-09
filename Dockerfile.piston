@@ -1,5 +1,0 @@
-# Custom Piston image with runtimes pre-configured
-FROM ghcr.io/engineer-man/piston:latest
-
-# Set default command to load required runtimes
-ENTRYPOINT ["/piston", "--runtimes", "javascript,python,java,cpp,c"]

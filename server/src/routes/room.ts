@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authentication } from "../middleware/authentication.js";
 import { roomController } from "../controllers/room.js";
-import { validate, createRoomSchema, cloneTemplateSchema, lockRoomSchema, toggleVisibilitySchema, expireBattleSchema, deleteEventSchema } from "../middleware/validation.js";
+import { validate, validateParams, createRoomSchema, cloneTemplateSchema, lockRoomSchema, toggleVisibilitySchema, expireBattleSchema, deleteEventSchema } from "../middleware/validation.js";
 
 const roomsRouter: Router = Router();
 
@@ -26,7 +26,7 @@ roomsRouter.put("/lock", validate(lockRoomSchema), roomController.lockRoom);
 roomsRouter.put("/unlock", validate(lockRoomSchema), roomController.unlockRoom);
 
 // Event management (Delete / Toggle Visibility / Expire)
-roomsRouter.delete("/:eventId", validate(deleteEventSchema), roomController.deleteEvent);
+roomsRouter.delete("/:eventId", validateParams(deleteEventSchema), roomController.deleteEvent);
 roomsRouter.put("/visibility", validate(toggleVisibilitySchema), roomController.toggleEventVisibility);
 roomsRouter.post("/expire", validate(expireBattleSchema), roomController.expireBattle);
 
