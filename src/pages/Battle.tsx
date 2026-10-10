@@ -15,7 +15,7 @@ import type { SupportedLanguage, ExecutionResult } from "../features/terminal/ty
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
-import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
@@ -1029,6 +1029,250 @@ export const Battle = () => {
     );
   }
 
+  // ── HOST = MODERATOR (control deck, no editor) ─────────────────────
+  // The creator never receives a performance record server-side (see getLiveRoom:
+  // the host is skipped so they don't compete or count toward maxUsers). Surface
+  // a dedicated control deck instead of the code editor: live telemetry, total
+  // stats, the member roster, host controls (kick / start / end) and chat.
+  if (isHost) {
+    return (
+      <div className="viewport-shell relative flex w-full overflow-hidden bg-base">
+        {/* ── TOP HEADER ── */}
+        <div className="flex items-center justify-between border-b border-subtle-line bg-raised px-6 py-2.5 font-mono text-xs z-30 shrink-0 w-full">
+          <div className="flex items-center gap-3">
+            <span className="text-accent-warning font-bold uppercase tracking-wider flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-accent-warning" />
+              MODERATOR // {room?.name || "OPERATION"}
+            </span>
+            <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5">
+              CODE {room?.roomCode}
+            </span>
+            <span className={`text-[10px] px-2 py-0.5 border font-bold uppercase tracking-widest ${
+              battleState.status === "IN_PROGRESS"
+                ? "border-accent-success/40 bg-accent-success/10 text-accent-success"
+                : battleState.status === "WAITING"
+                ? "border-accent-warning/40 bg-accent-warning/10 text-accent-warning"
+                : "border-subtle-line bg-surface-hover text-subtle"
+            }`}>
+              {battleState.status || "WAITING"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <SoundToggle />
+            <GlobalTimer
+              startedAt={battleState.startedAt || room?.startedAt}
+              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs}
+              onExpire={() => { /* host does not compete; timer is informational */ }}
+              label={room?.closesAt ? "CLOSES IN:" : "TIME LEFT:"}
+              variant="pill"
+            />
+            {battleState.status === "WAITING" && (
+              <button
+                onClick={handleStartOperation}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[11px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all"
+              >
+                <Play className="w-3 h-3" /> START OPERATION
+              </button>
+            )}
+            {battleState.status === "IN_PROGRESS" && (
+              <button
+                onClick={() => {
+                  if (window.confirm("End this battle for everyone? Pending participants will be marked TIMEOUT.")) {
+                    handleHostEndMatch();
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[11px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all"
+              >
+                <StopCircle className="w-3 h-3" /> END MATCH
+              </button>
+            )}
+            <button
+              onClick={() => navigate("/lobby")}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-subtle-line bg-surface-hover/60 text-subtle text-[11px] font-mono font-bold rounded hover:bg-surface-hover transition-all"
+            >
+              LOBBY
+            </button>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex-1 min-h-0 overflow-y-auto themed-scroll">
+          <div className="mx-auto max-w-5xl grid gap-6 p-6 lg:grid-cols-3">
+            {/* ── LEFT: TOTAL STATS + ROSTER (span 2) ── */}
+            <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
+              {/* TOTAL STATS */}
+              <div className="border border-line rounded-xl bg-base/40 p-5">
+                <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-4">
+                  <Activity className="w-4 h-4 inline mr-1" /> TOTAL STATS
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="border border-subtle-line bg-raised/60 p-3">
+                    <div className="text-[9px] text-faint uppercase tracking-widest">Operatives</div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{roomParticipants.length}</div>
+                  </div>
+                  <div className="border border-subtle-line bg-raised/60 p-3">
+                    <div className="text-[9px] text-faint uppercase tracking-widest">Max slots</div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{room?.maxUsers ?? "—"}</div>
+                  </div>
+                  <div className="border border-subtle-line bg-raised/60 p-3">
+                    <div className="text-[9px] text-faint uppercase tracking-widest">Problems</div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{problems.length}</div>
+                  </div>
+                  <div className="border border-subtle-line bg-raised/60 p-3">
+                    <div className="text-[9px] text-faint uppercase tracking-widest">Focus alerts</div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-accent-warning">{focusLossCount}</div>
+                  </div>
+                </div>
+                {room?.closesAt && (
+                  <p className="mt-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-accent-warning">
+                    <Clock className="w-3.5 h-3.5" /> Scheduled close: {new Date(room.closesAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+
+              {/* MEMBER ROSTER + LIVE TELEMETRY */}
+              <div className="border border-line rounded-xl bg-base/40 p-5">
+                <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-4">
+                  <Users className="w-4 h-4 inline mr-1" /> OPERATIVES ({roomParticipants.length})
+                </p>
+                {roomParticipants.length === 0 ? (
+                  <p className="text-faint text-xs font-mono py-8 text-center">
+                    No operatives have joined yet. Waiting for participants...
+                  </p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {roomParticipants.map((p: any) => {
+                      const participantId = p.user?.id || p.userId;
+                      const uname = p.user?.username || "Unknown";
+                      const intel = playerProgress[participantId];
+                      const isMe = participantId === myUserId;
+                      const verdict = participantVerdict(p, battleState.status);
+                      const passed = (p.submissions ?? []).filter(
+                        (s: any) => (s.status || "").toUpperCase() === "PASSED",
+                      ).length;
+                      return (
+                        <div key={participantId} className="bg-raised border border-subtle-line rounded-xl p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <img
+                              src={p.user?.avatarUrl || getInitialsAvatar(uname)}
+                              alt=""
+                              className="w-10 h-10 rounded-full border border-subtle-line"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-mono text-sm font-bold text-fg truncate">{uname}{isMe ? " (you)" : ""}</p>
+                              <p className={`text-[9px] px-1.5 py-0.5 rounded border font-bold w-fit ${verdictStyle(verdict)}`}>
+                                {verdict === "COMPLETED" ? "✓ COMPLETED" : verdict === "TIMEOUT" ? "✗ TIMEOUT" : "● IN PROGRESS"}
+                              </p>
+                            </div>
+                            {!isMe && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Kick ${uname} from the operation?`)) handleKickUser(participantId);
+                                }}
+                                title={`Kick ${uname}`}
+                                className="p-1.5 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                          {/* live telemetry bar */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] text-faint">
+                              <span>{intel?.status || p.status || "STANDBY"}</span>
+                              <span className="font-mono font-bold text-accent-primary">{intel?.progress ?? 0}%</span>
+                            </div>
+                            <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${intel?.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"}`}
+                                style={{ width: `${intel?.progress ?? 0}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[9px] text-faint">
+                              <span>{intel?.linesWritten ?? 0} lines written</span>
+                              <span>{passed} passed</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── RIGHT: CHAT ── */}
+            <div className="border border-line rounded-xl bg-base/40 flex flex-col min-h-[320px] max-h-[60vh] lg:max-h-none">
+              <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest p-4 border-b border-subtle-line">
+                <MessageSquare className="w-4 h-4 inline mr-1" /> COMMS
+              </p>
+              <div className="flex-1 overflow-y-auto themed-scroll p-4 flex flex-col gap-2 min-h-0">
+                {battleMessages.length === 0 ? (
+                  <p className="text-faint text-[10px] font-mono">No transmissions yet.</p>
+                ) : (
+                  battleMessages.map((msg, i) => (
+                    <div
+                      key={msg.id || i}
+                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${
+                        msg.socketId === socket?.id
+                          ? "bg-accent-primary/10 border border-accent-primary/30 text-fg self-end"
+                          : "bg-surface-hover/50 border border-subtle-line text-fg self-start"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <form onSubmit={handleBattleMessage} className="flex gap-2 p-3 border-t border-subtle-line">
+                <input
+                  type="text"
+                  value={newBattleMessage}
+                  onChange={(e) => setNewBattleMessage(e.target.value)}
+                  placeholder="TRANSMIT..."
+                  className="flex-1 bg-base/50 border border-subtle-line p-2 rounded-lg text-fg font-mono text-xs focus:border-accent-primary focus:outline-none min-w-0"
+                />
+                <button type="submit" className="px-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all">
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {/* ── SCHEDULED-CLOSE BANNER (minimizable) ── */}
+        {closingWarning && !closingWarningDismissed && (
+          <div className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-accent-warning/50 bg-accent-warning/10 px-4 py-2.5 shadow-[0_0_20px_rgba(255,184,0,0.25)] backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" aria-hidden />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-warning">
+              Room closing
+              {closingSeconds !== null &&
+                ` in ${Math.floor(closingSeconds / 60)}:${String(closingSeconds % 60).padStart(2, "0")}`}
+            </span>
+            <button
+              onClick={() => setClosingWarningDismissed(true)}
+              title="Minimize closing warning"
+              className="text-faint transition hover:text-fg"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {closingWarning && closingWarningDismissed && (
+          <button
+            onClick={() => setClosingWarningDismissed(false)}
+            title="Show closing warning"
+            className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-warning backdrop-blur transition hover:bg-accent-warning/20"
+          >
+            <AlarmClock className="h-3 w-3" />
+            closing soon
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
       {(countdown > 0 || commencing) && (
@@ -1611,26 +1855,31 @@ export const Battle = () => {
           className="grid min-h-0 flex-1 overflow-hidden"
           style={{ gridTemplateRows: outputGridTemplateRows(outputHeight) }}
         >
-          <MonacoIDE
-            code={code}
-            language={language}
-            oid="battle-file"
-            fileKey="battle"
-            onCodeChange={handleCodeChange}
-            handleRunCode={handleRunCode as any}
-            onFormatMount={(formatAction) => {
-              formatEditorRef.current = formatAction;
-            }}
-            isDisabled={
-              countdown > 0 &&
-              countdown <= 10 &&
-              battleState.status === "IN_PROGRESS"
-            }
-            javaClassName={javaClassName}
-          />
-        </div>
-        {/* terminal output panel */}
-        <OutputPanel
+          {/* Cell 1 — editor track. No inline min-height: it sits in the
+              minmax(200px,1fr) grid row and clips to the track instead of
+              overflowing onto the output panel. */}
+          <div className="h-full min-h-0 overflow-hidden">
+            <MonacoIDE
+              code={code}
+              language={language}
+              oid="battle-file"
+              fileKey="battle"
+              onCodeChange={handleCodeChange}
+              handleRunCode={handleRunCode as any}
+              onFormatMount={(formatAction) => {
+                formatEditorRef.current = formatAction;
+              }}
+              isDisabled={
+                countdown > 0 &&
+                countdown <= 10 &&
+                battleState.status === "IN_PROGRESS"
+              }
+              javaClassName={javaClassName}
+            />
+          </div>
+          {/* Cell 2 — output track. Being the 2nd grid child bounds it by
+              outputHeight, so the panel can never claim the editor's space. */}
+          <OutputPanel
           isExecuting={isSubmitting}
           isOutputActive={isOutputActive}
           isCustomInputRun={isCustomInputRun}
@@ -1646,8 +1895,9 @@ export const Battle = () => {
           setCustomInput={setCustomInput}
           setCustomInputActive={setCustomInputActive}
           setIsOutputActive={setIsOutputActive}
-          onRunSingleTestCase={handleRunSingleTestCase}
-        />
+            onRunSingleTestCase={handleRunSingleTestCase}
+          />
+        </div>
       </div>
 
       {/* REPLAY THEATER + SPECTATOR ENTRY (ROADMAP §4) */}
