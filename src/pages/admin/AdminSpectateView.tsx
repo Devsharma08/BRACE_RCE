@@ -84,7 +84,8 @@ const AdminSpectateView = () => {
 
       // Listen for real-time battle updates
       const handleBattleUpdate = (data: any) => {
-        // Update local performance data
+        // Update local performance data — keyed by userId (performances are
+        // keyed by userId in getMergedPerformances, NOT by performance id).
         setLivePerformances(prev => {
           const next = new Map(prev);
           next.set(data.userId, {
@@ -107,6 +108,13 @@ const AdminSpectateView = () => {
         }
       };
 
+      // A new participant joined the room — refetch so the roster + their
+      // submission surface appears immediately instead of waiting for the
+      // 5s poll.
+      const handleParticipantsUpdated = (data: any) => {
+        if (data?.performances) refetch();
+      };
+
       const handleBattleFinished = (data: any) => {
         if (muted) {
           addEvent({
@@ -122,10 +130,15 @@ const AdminSpectateView = () => {
 
       socket.on("battle_update", handleBattleUpdate);
       socket.on("battle_finished", handleBattleFinished);
+      socket.on("participants_updated", handleParticipantsUpdated);
+      // Room force-closed (host ended / admin terminated / deleted / schedule).
+      socket.on("room_force_closed", handleParticipantsUpdated);
 
       return () => {
         socket.off("battle_update", handleBattleUpdate);
         socket.off("battle_finished", handleBattleFinished);
+        socket.off("participants_updated", handleParticipantsUpdated);
+        socket.off("room_force_closed", handleParticipantsUpdated);
         if (roomId) {
           socket.emit("leave_room", roomId);
         }
@@ -182,7 +195,8 @@ const AdminSpectateView = () => {
   const getMergedPerformances = () => {
     if (!battle) return [];
     return battle.performances.map(perf => {
-      const live = livePerformances.get(perf.id);
+      // Live telemetry is keyed by userId (see handleBattleUpdate).
+      const live = livePerformances.get(perf.userId);
       return {
         ...perf,
         progress: live?.progress ?? 0,

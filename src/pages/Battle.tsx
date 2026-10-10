@@ -614,6 +614,22 @@ export const Battle = () => {
       toast.info("Room closed by schedule.");
     });
 
+    // Unified force-close: host ended, admin terminated, room deleted, or the
+    // scheduler expired it. The server always sends a human-readable `reason`
+    // so the participant knows WHY the room closed before being routed out.
+    socket.on("room_force_closed", (data: { roomId?: string; reason?: string }) => {
+      const sameRoom =
+        String(data?.roomId ?? "").replace("room-", "") ===
+        String(roomId).replace("room-", "");
+      if (!sameRoom) return;
+      setClosingWarning(null);
+      setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
+      setIsBattleMenuOpen(true);
+      invalidateProblemQueries(queryClient);
+      toast.error(data?.reason || "This room has been closed.");
+      setTimeout(() => navigate("/lobby"), 2500);
+    });
+
     return () => {
       mounted = false;
       socket.off("connect", onConnect);
@@ -630,6 +646,7 @@ export const Battle = () => {
       socket.off("room_opening");
       socket.off("room_closing");
       socket.off("room_closed");
+      socket.off("room_force_closed");
       if (joinedRoomRef.current === roomId) {
         socket.emit("leave_room", roomId);
       }
@@ -1036,7 +1053,7 @@ export const Battle = () => {
   // stats, the member roster, host controls (kick / start / end) and chat.
   if (isHost) {
     return (
-      <div className="viewport-shell relative flex w-full overflow-hidden bg-base">
+      <div className="viewport-shell relative flex h-full w-full flex-col overflow-hidden bg-base">
         {/* ── TOP HEADER ── */}
         <div className="flex items-center justify-between border-b border-subtle-line bg-raised px-6 py-2.5 font-mono text-xs z-30 shrink-0 w-full">
           <div className="flex items-center gap-3">

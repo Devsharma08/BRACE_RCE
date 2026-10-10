@@ -88,12 +88,17 @@ const Lobby = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
     };
 
+    // Server emits `rooms:invalidate` on create / delete / expire / lock /
+    // visibility-change / terminate. The legacy per-event names are kept as
+    // fallbacks in case any older emitter still fires them.
+    socket.on("rooms:invalidate", handleLobbyUpdate);
     socket.on("lobbies:invalidate", handleLobbyUpdate);
     socket.on("room:created", handleLobbyUpdate);
     socket.on("room:deleted", handleLobbyUpdate);
     socket.on("room:updated", handleLobbyUpdate);
 
     return () => {
+      socket.off("rooms:invalidate", handleLobbyUpdate);
       socket.off("lobbies:invalidate", handleLobbyUpdate);
       socket.off("room:created", handleLobbyUpdate);
       socket.off("room:deleted", handleLobbyUpdate);
