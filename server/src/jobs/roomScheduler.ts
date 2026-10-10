@@ -2,6 +2,7 @@ import type { Server } from "socket.io";
 import { prisma } from "../lib/prisma.js";
 import { finishEventWithVerdicts } from "../services/battleFinish.js";
 import { notifyEventReport } from "../services/notificationService.js";
+import { emitRoomsInvalidate } from "../socket/ioRegistry.js";
 
 const TICK_MS = 30_000;
 const WARNING_WINDOW_MS = 5 * 60 * 1000;
@@ -99,6 +100,13 @@ export function startRoomScheduler(io: Server): void {
             roomCode: event.roomCode,
             reason: "SCHEDULE",
           });
+          // Unified force-close with a human-readable reason, then refresh lobbies.
+          emitToRoom(io, event, "room_force_closed", {
+            roomId: event.id,
+            roomCode: event.roomCode,
+            reason: "This room reached its scheduled close time.",
+          });
+          emitRoomsInvalidate();
           if (finished) {
             await notifyEventReport(event.id).catch((e) =>
               console.error("[scheduler] event report error:", e),

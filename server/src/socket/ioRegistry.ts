@@ -60,3 +60,32 @@ export async function emitNotification(
 ): Promise<void> {
   await emitToUser(userId, "notification:new", notification);
 }
+
+/**
+ * Tell every connected client the public room list changed (create / delete /
+ * expire / lock / visibility-change / terminate). Clients refetch lobby data in
+ * one wave instead of relying on window-focus or a stale timer. No-op before the
+ * socket server boots (unit tests / isolated controllers).
+ */
+export function emitRoomsInvalidate(): void {
+  if (!ioRef) return;
+  ioRef.emit("rooms:invalidate", { at: Date.now() });
+}
+
+/**
+ * Force everyone out of a room with a human-readable reason. Emitted on delete,
+ * host end, admin terminate, and scheduled close so participants see WHY the
+ * room closed and are routed back to the lobby.
+ *
+ * Rooms are addressed by both the roomCode and the `room-<id>` socket room name,
+ * since clients join under whichever the URL carried.
+ */
+export function emitRoomForceClosed(
+  event: { id: string; roomCode: string | null },
+  reason: string,
+): void {
+  if (!ioRef) return;
+  const payload = { roomId: event.id, roomCode: event.roomCode, reason };
+  if (event.roomCode) ioRef.to(event.roomCode).emit("room_force_closed", payload);
+  ioRef.to(`room-${event.id}`).emit("room_force_closed", payload);
+}

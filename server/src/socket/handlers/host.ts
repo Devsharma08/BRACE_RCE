@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
 import { getSocketId } from "../stateRedis.js";
+import { emitRoomForceClosed, emitRoomsInvalidate } from "../ioRegistry.js";
 
 export function registerHostHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
@@ -93,6 +94,9 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 performances: eventWithSubs
             });
             io.to(roomId).emit('participants_updated', { performances: eventWithSubs });
+            // Unified force-close with a human-readable reason + lobby refresh.
+            emitRoomForceClosed(event, "The host ended this battle.");
+            emitRoomsInvalidate();
             console.log(`[HOST] Match ${roomId} force-ended by host ${userId}`);
         } catch (e) {
             console.error('[host_end_match] error:', e);
@@ -127,6 +131,9 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 data: { status: "TIMEOUT" }
             });
             io.to(roomId).emit("group_terminated", { roomId, reason: "ADMIN_TERMINATED" });
+            // Unified force-close with a human-readable reason + lobby refresh.
+            emitRoomForceClosed(event, isAdmin ? "An admin terminated this group." : "The host terminated this group.");
+            emitRoomsInvalidate();
             console.log(`[HOST] Group ${roomId} terminated by ${userId} (admin=${isAdmin})`);
         } catch (e) {
             console.error("[terminate_group] error:", e);

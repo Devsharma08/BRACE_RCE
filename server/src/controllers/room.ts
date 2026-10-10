@@ -2,7 +2,7 @@ import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { withDisplayProblemName } from "../utils/problemName.js";
-import { emitToUser } from "../socket/ioRegistry.js";
+import { emitToUser, emitRoomsInvalidate, emitRoomForceClosed } from "../socket/ioRegistry.js";
 import { finishEventWithVerdicts } from "../services/battleFinish.js";
 
 class Rooms {
@@ -120,6 +120,9 @@ class Rooms {
                     closesAt: newRoom.closesAt,
                 });
             }
+
+            // New public room → refresh every lobby in realtime.
+            emitRoomsInvalidate();
 
             return res.json({
                 status: "success",
@@ -266,7 +269,11 @@ class Rooms {
                 return res.status(403).json({ message: "Unauthorized to delete this event" });
             }
 
+            // Kick everyone out with a reason BEFORE the row disappears, then
+            // refresh lobbies so the room vanishes from listings in realtime.
+            emitRoomForceClosed(event, "This room was deleted by the host.");
             await prisma.event.delete({ where: { id: event.id } });
+            emitRoomsInvalidate();
 
             return res.json({ status: "success", message: "Event deleted successfully" });
         } catch (error) {
@@ -372,7 +379,7 @@ class Rooms {
             }
 
             if (!event) {
-                return res.status(404).json({ message: "Room not found or has ended." });
+                return res.status(404).json({ message: "This room no longer exists — it may have been deleted or has already finished. Return to the lobby to find an active operation." });
             }
 
             // Admin can spectate any room; for non-admins, only allow spectate if room is public or they're a participant
@@ -481,6 +488,10 @@ class Rooms {
             if (!finished) {
                 return res.status(404).json({ status: "error", message: "Event not found" });
             }
+
+            // Tell participants the room closed and refresh lobbies.
+            emitRoomForceClosed(finished, "The battle has ended.");
+            emitRoomsInvalidate();
 
             return res.json({ status: "success", message: "Battle marked FINISHED with completion verdicts", room: finished });
         } catch (error) {
