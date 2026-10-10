@@ -106,3 +106,39 @@ After that, `/battle/...`, notifications, and the dashboard will load normally.
 | Stray `.js` under `src/` | `find src -name '*.js'` | ✅ empty |
 
 **Build output size:** `dist/` ≈ 3.8 MB total. Battle route chunk `page-battle-*.js` ≈ 60.7 kB (gzip ~17.4 kB).
+
+---
+
+# ADDENDUM — Battle / Lobby bug fixes (2026-10-10)
+
+Validated: client `tsc -b` ✅ exit 0 · server `tsc --noEmit` ✅ exit 0 · `vite build` ✅ exit 0 (page-battle 70.4 kB, page-lobby 21.6 kB, page-admin 65.4 kB).
+
+## A. Moderator UI had no proper window/layout — `src/pages/Battle.tsx`
+- **Reason:** The host moderator view's outer container used `flex` (defaults to **row**), so the top header and the scrollable body rendered side-by-side instead of stacked.
+- **Change:** `viewport-shell relative flex w-full …` → `… flex h-full w-full flex-col …` so header (shrink-0) sits above the `flex-1 min-h-0` scroll region. Matches the competitor view's `flex flex-col`.
+
+## B. Lobby required constant manual refresh — server emitted no realtime events
+- **Reason:** `Lobby.tsx` listened for `lobbies:invalidate` / `room:created` / `room:deleted` / `room:updated`, but grep confirmed **the server never emitted any of them** — the lobby silently depended on `refetchOnWindowFocus` + a 30s `staleTime`.
+- **Change:**
+  - New server helpers in `server/src/socket/ioRegistry.ts`: `emitRoomsInvalidate()` (global broadcast) and `emitRoomForceClosed(event, reason)` (per-room, both `roomCode` and `room-<id>` socket rooms).
+  - Wired into `room.ts` (`createRoom`, `deleteEvent`, `expireBattle`), `socket/handlers/host.ts` (`host_end_match`, `terminate_group`), and `jobs/roomScheduler.ts` (scheduled close).
+  - `Lobby.tsx` now subscribes to `rooms:invalidate` (legacy names kept as fallbacks). The lobby updates live on create/delete/expire/lock/visibility/terminate — no manual refresh.
+
+## C. Admin spectate didn't show newly-joined users — `src/pages/admin/AdminSpectateView.tsx`
+- **Reason:** Live telemetry was stored keyed by `data.userId` but read back by `perf.id` in `getMergedPerformances` → live progress never matched; new joiners only appeared via the 5s poll.
+- **Change:** Key live telemetry by `userId` consistently; added `participants_updated` + `room_force_closed` socket listeners that `refetch()` so the roster and submissions surface the instant someone joins.
+
+## D. Room finish/delete gave no auto-kick reason — unified `room_force_closed`
+- **Reason:** `deleteEvent` emitted nothing (participants sat on a dead room); `host_end_match`/`terminate_group` emitted `match_completed`/`group_terminated` with no user-facing reason.
+- **Change:** A single `room_force_closed { roomId, roomCode, reason }` event is now emitted on delete, host end, admin terminate, and scheduled close, each with a human-readable reason ("This room was deleted by the host.", "The host ended this battle.", "An admin terminated this group.", "This room reached its scheduled close time."). `Battle.tsx` handles it: toasts the reason and routes the participant to `/lobby`. Also improved the dead-room 404 message.
+
+## E. "Requires admin permission" when joining a non-password room — investigated
+- **Finding:** The normal join path (`/battle/:roomId`, guarded only by `ProtectedRoute`) never touches an admin-guarded surface — confirmed by grep (no nav/lobby/battle code routes to `/admin`). The only admin-permission surfaces are the `/admin/*` console (`AdminRoute` "Clearance denied") and the `/api/admin/*` 403 "Admin access required" (reproduced live: a `role: null` user gets 403 on `/api/admin/battles/:code/spectate`). So the message the user saw originates from the **admin spectate console**, not the join flow — which is the same area as bug C (now fixed). The dead-room 404 copy was also clarified (see D).
+- **Note:** If a specific join still surfaces an admin message, capture the exact URL/screen — the join flow itself is clean.
+
+## Verification for A–E
+| Check | Result |
+|---|---|
+| Client `npx tsc -b` | ✅ exit 0 |
+| Server `tsc --noEmit` | ✅ exit 0 |
+| `npx vite build` | ✅ exit 0 (battle/lobby/admin chunks rebuilt) |
