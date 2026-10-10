@@ -24,9 +24,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const queryClient = useQueryClient();
-    const { rawSocketRef } = useSocket();
+    
+    let rawSocketRef: React.MutableRefObject<any> = { current: null };
+    try {
+      const socketContext = useSocket();
+      rawSocketRef = socketContext.rawSocketRef;
+    } catch {
+      rawSocketRef = { current: null };
+    }
 
-    // track previous userId to detect changes
     const prevUserIdRef = useRef<string | null>(null);
 
     // Fetch CSRF token on app initialization

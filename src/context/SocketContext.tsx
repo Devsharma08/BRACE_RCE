@@ -5,6 +5,23 @@ import { useQueryClient } from "@tanstack/react-query";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
+// Module-level singleton to ensure the context is the SAME instance across all
+// imports — including duplicate module copies emitted alongside sources (the
+// stray *.js files; see docs/CONTEXT_WINDOW_RECENT_CHANGES.md §4). A plain
+// module-level `let` would not dedupe across those copies, so the context is
+// stashed on globalThis and reused.
+function getSocketContext(): React.Context<SocketContextType | undefined> {
+  const bag = globalThis as typeof globalThis & {
+    __brace_rce_socket_context__?: React.Context<SocketContextType | undefined>;
+  };
+  if (!bag.__brace_rce_socket_context__) {
+    bag.__brace_rce_socket_context__ = createContext<SocketContextType | undefined>(undefined);
+  }
+  return bag.__brace_rce_socket_context__;
+}
+
+const SocketContext = getSocketContext();
+
 export interface IncomingChallenge {
   challengerId: string;
   challengerUsername?: string;
@@ -66,8 +83,6 @@ export interface CustomLobbyState {
   maxUsers: number;
   difficulty: string;
 }
-
-const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 const RESYNC_GAP_MS = 5000;
 

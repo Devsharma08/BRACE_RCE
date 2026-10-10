@@ -41,3 +41,7 @@ piston
 
 # agent tooling / scratch dirs
 .kilo/
+
+# Scratch / debug artifacts (contain auth cookies — never commit)
+cookies*.txt
+headers.txt
