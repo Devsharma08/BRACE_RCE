@@ -42,15 +42,43 @@ export function registerMessagingHandlers(ctx: HandlerCtx): void {
         }
     });
 
-    socket.on("send_battle_message", (data: {
+    socket.on("send_battle_message", async (data: {
         roomId: string,
         content: string
     }) => {
         const { roomId, content } = data;
+        if (!content || !content.trim()) return;
+        const trimmed = content.trim().slice(0, 2000);
+
+        // Enrich with sender identity + role so clients can render name/role
+        // badges in the chat bubble AND in the toast for the same message.
+        const sender = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { username: true, role: true },
+        }).catch(() => null);
+
+        // Resolve whether the sender is THIS room's host (they moderate it).
+        let isHost = false;
+        try {
+            const event = roomId.startsWith("room-")
+                ? await prisma.event.findUnique({ where: { id: roomId.replace("room-", "") }, select: { hostId: true } })
+                : await prisma.event.findFirst({ where: { roomCode: roomId }, select: { hostId: true } });
+            isHost = !!event && event.hostId === userId;
+        } catch {
+            isHost = false;
+        }
+
+        const role = (sender?.role || "USER").toUpperCase();
+        const badge = isHost ? "MODERATOR" : (role === "ADMIN" || role === "MODERATOR" ? role : "USER");
+
         const message = {
             id: Date.now().toString(),
             socketId: socket.id,
-            content,
+            senderId: userId,
+            username: sender?.username || "Operative",
+            role: badge,
+            isHost,
+            content: trimmed,
             createdAt: new Date().toISOString()
         };
 

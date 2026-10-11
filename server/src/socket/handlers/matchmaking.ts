@@ -146,6 +146,25 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                             oppSocket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user1 });
                         }
 
+                        // Acceptance timeout — if neither player accepts within 15s,
+                        // cancel the event and notify both players so they can re-queue.
+                        setTimeout(async () => {
+                            const checkEvent = await prisma.event.findUnique({
+                                where: { id: event.id },
+                                select: { status: true },
+                            });
+                            if (checkEvent?.status === "WAITING") {
+                                await prisma.event.update({
+                                    where: { id: event.id },
+                                    data: { status: "CANCELLED" },
+                                });
+                                socket.emit("match_timeout");
+                                if (oppSocket) {
+                                    oppSocket.emit("match_timeout");
+                                }
+                            }
+                        }, 15000);
+
                     }
                 } catch (e) {
                     console.error("Matchmaking interval error:", e);

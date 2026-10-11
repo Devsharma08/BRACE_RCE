@@ -34,6 +34,8 @@ const EXPECTED_SOCKET_EVENTS = [
     "broadcast_player_code",
     "terminate_group",
     "request_presence",
+    "host_block_user",
+    "host_unblock_user",
 ];
 
 describe("Socket routing (refactor lock)", () => {

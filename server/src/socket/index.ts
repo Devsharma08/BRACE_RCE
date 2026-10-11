@@ -21,6 +21,7 @@ import { registerBattleHandlers } from "./handlers/battle.js";
 import { registerSpectatorHandlers } from "./handlers/spectator.js";
 import { registerHostHandlers } from "./handlers/host.js";
 import { registerPresenceHandlers } from "./handlers/presence.js";
+import { registerReportHandlers } from "./handlers/report.js";
 import { createSocketRateLimiter } from "./rateLimiter.js";
 import { registerIO } from "./ioRegistry.js";
 
@@ -104,6 +105,7 @@ export const initSocketServer = (io: Server) => {
         registerSpectatorHandlers(ctx);
         registerHostHandlers(ctx);
         registerPresenceHandlers(ctx);
+        registerReportHandlers(ctx);
 
         // Tell this user's friends (and only them) that they came online.
         // Fire-and-forget: handler registration above must never wait on the DB,

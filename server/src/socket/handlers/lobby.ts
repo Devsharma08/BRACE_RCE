@@ -186,7 +186,14 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
 
     socket.on('start_event', async (roomCode: string) => {
         try {
-            const event = await prisma.event.findFirst({ where: { roomCode } });
+            const rawId = (roomCode || "").replace("room-", "");
+            const event = await prisma.event.findFirst({
+                where: { OR: [{ roomCode }, { id: rawId }] },
+                include: {
+                    problems: { include: { test_cases: true, code_snippets: true } },
+                    commonProblem: { include: { test_cases: true, code_snippets: true } }
+                }
+            });
             if (!event || event.hostId !== userId) return;
 
             const startedAt = new Date();
@@ -199,20 +206,29 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                 data: { status: 'IN_PROGRESS', startedAt, finishedAt }
             });
 
+            const targetRooms = [event.roomCode, `room-${event.id}`, event.id].filter(Boolean) as string[];
+
             // Emit countdown events: 3, 2, 1
             for (let i = 3; i >= 1; i--) {
-                io.to(roomCode).emit('battle_starting', { countdownSeconds: i });
+                for (const tr of targetRooms) {
+                    io.to(tr).emit('battle_starting', { countdownSeconds: i });
+                }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
-            // After countdown, emit battle_started to unlock editor
-            io.to(roomCode).emit('battle_started', { startedAt });
-
-            io.to(roomCode).emit('battle_state', {
-                startedAt,
-                status: 'IN_PROGRESS',
-                finishedAt
-            });
+            // After countdown, emit battle_started to unlock editor with unmasked problem details
+            for (const tr of targetRooms) {
+                io.to(tr).emit('battle_started', {
+                    startedAt,
+                    problems: event.problems,
+                    commonProblem: event.commonProblem
+                });
+                io.to(tr).emit('battle_state', {
+                    startedAt,
+                    status: 'IN_PROGRESS',
+                    finishedAt
+                });
+            }
         } catch (error) {
             console.log('Error starting event:', error);
         }

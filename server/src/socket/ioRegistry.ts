@@ -89,3 +89,14 @@ export function emitRoomForceClosed(
   if (event.roomCode) ioRef.to(event.roomCode).emit("room_force_closed", payload);
   ioRef.to(`room-${event.id}`).emit("room_force_closed", payload);
 }
+
+// ── Participant moderation emits ──────────────────────────────────────────
+
+/** Notify a kicked user they are also blocked from the event. */
+export async function emitUserBlocked(
+  userId: string,
+  roomId: string,
+  reason: string,
+): Promise<void> {
+  await emitToUser(userId, "user_blocked", { roomId, reason });
+}
