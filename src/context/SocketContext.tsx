@@ -336,7 +336,15 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
-      toast.error("Match timed out.");
+      toast.error("Match declined.");
+      setWaitingTime(0);
+    });
+
+    bind("match_timeout", () => {
+      setMatchmakingStatus("IDLE");
+      setPendingMatchId(null);
+      setIsClicked(false);
+      toast.error("Match timed out — no response received.");
       setWaitingTime(0);
     });
 
@@ -468,8 +476,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     if (socketRef.current && pendingMatchId) {
       setIsClicked(true);
       socketRef.current.emit("decline_match", pendingMatchId);
-      setMatchmakingStatus("IDLE");
-      setPendingMatchId(null);
     }
   };
 

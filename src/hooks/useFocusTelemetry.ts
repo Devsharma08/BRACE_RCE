@@ -1,12 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 /**
  * Focus-loss telemetry hook (ROADMAP §3).
  * Records blur / tab-hidden / focus events with timestamps while `active`.
+ * Also records `context_switch` events (panel-tab changes, notes/playlist
+ * clicks) via `recordContextSwitch()` — these count toward the anti-cheat away
+ * total but are not "away until restored" moments, so they don't drive the
+ * away/restore callbacks.
  * Returns a ref holding the event list + helpers to snapshot/clear.
  */
 export interface FocusTelemetryEvent {
-  type: "blur" | "tab_hidden" | "focus";
+  type: "blur" | "tab_hidden" | "focus" | "context_switch";
   atMs: number;
 }
 
@@ -18,6 +22,8 @@ export function useFocusTelemetry(active: boolean, onLoss?: () => void, onRestor
   onLossRef.current = onLoss;
   onRestoreRef.current = onRestore;
   const wasHiddenRef = useRef(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   useEffect(() => {
     if (!active) return;
@@ -57,10 +63,21 @@ export function useFocusTelemetry(active: boolean, onLoss?: () => void, onRestor
     };
   }, [active]);
 
+  /**
+   * Record an in-app context switch (panel-tab / notes / playlist). Counts
+   * toward the telemetry event total but is NOT an away/restore moment, so it
+   * never trips the away banner. No-op while telemetry is inactive.
+   */
+  const recordContextSwitch = useCallback(() => {
+    if (!activeRef.current) return;
+    eventsRef.current.push({ type: "context_switch", atMs: Date.now() });
+  }, []);
+
   return {
     eventsRef,
     startMs: () => startRef.current,
     snapshot: () => [...eventsRef.current],
+    recordContextSwitch,
     clear: () => {
       eventsRef.current = [];
       startRef.current = Date.now();
