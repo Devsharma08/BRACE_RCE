@@ -15,18 +15,19 @@ import type { SupportedLanguage, ExecutionResult } from "../features/terminal/ty
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
-import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye } from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye, AlignLeft } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
 import { participantVerdict, verdictStyle } from "../utils/participantVerdict";
-import { SpectatorReplayPanel } from "../components/features/SpectatorReplayPanel";
 import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
 import { invalidateProblemQueries } from "../utils/problemCache";
-import { stripDuplicateExamples } from "../features/terminal/components/PracticeSidebar";
 import DOMPurify from "dompurify";
+import { useEventAnalytics } from "../hooks/useEventAnalytics";
+import { EventAnalytics } from "../components/features/EventAnalytics";
+import { BattleStagingRoom } from "../components/features/BattleStagingRoom";
 
 
 interface BattleMessage {
@@ -36,11 +37,6 @@ interface BattleMessage {
   createdAt: string;
 }
 
-/**
- * Shared with Terminal sidebar — re-exported so both arenas strip the same
- * embedded "<strong class=example>Example N:</strong> … <pre>…</pre>" blocks.
- */
-export { stripDuplicateExamples };
 
 const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   const [unlockedCount, setUnlockedCount] = useState<number>(0);
@@ -56,7 +52,7 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
   }, [hints]);
 
   return (
-    <div className="rounded-lg border border-accent-warning/20 bg-accent-warning/5 p-4 font-mono text-xs mt-6">
+    <div className="rounded border border-accent-warning/20 bg-accent-warning/5 p-3 font-mono text-xs mt-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] uppercase tracking-widest text-accent-warning font-bold flex items-center gap-1">
           ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
@@ -65,9 +61,9 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
           <button
             type="button"
             onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
-            className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/10 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/20 transition-all cursor-pointer"
+            className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/5 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/10 transition-all cursor-pointer"
           >
-            [ REVEAL HINT #{unlockedCount + 1} ]
+            {unlockedCount === 0 ? "[ REVEAL HINT ]" : `[ HINT #${unlockedCount + 1} ]`}
           </button>
         )}
       </div>
@@ -77,9 +73,9 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
           Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
         </div>
       ) : (
-        <div className="space-y-2 mt-2">
+        <div className="space-y-1.5 mt-2">
           {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
-            <div key={`hint-${idx}`} className="border-l-2 border-accent-warning bg-base/40 p-2.5 text-[10px] text-accent-warning/90 leading-relaxed">
+            <div key={`hint-${idx}`} className="border-l-2 border-accent-warning bg-surface-hover p-2 text-[10px] text-accent-warning/90 leading-relaxed">
               <span className="font-bold text-accent-warning block mb-0.5">// HINT #{idx + 1}</span>
               {hintText}
             </div>
@@ -235,6 +231,10 @@ export const Battle = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSpectateMode = new URLSearchParams(location.search).get("spectate") === "true";
+  // Password for protected rooms — comes from router state (PasswordModal) or sessionStorage (page reload)
+  const routerState = location.state as { password?: string } | null;
+  const sessionPassword = roomId ? sessionStorage.getItem(`room_password_${roomId}`) : null;
+  const roomPassword = routerState?.password || sessionPassword || undefined;
   const { socket } = useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
@@ -247,8 +247,19 @@ export const Battle = () => {
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [myUserId, setMyUserId] = useState<string>("");
+  const [blockedParticipants, setBlockedParticipants] = useState<any[]>([]);
 
-  // --- LIVE INTEL (opponent/player progress tracking) ---
+  const fetchBlockedParticipants = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      const eventId = roomId.replace("room-", "");
+      const res = await api.get(`/rooms/${eventId}/blocks`);
+      setBlockedParticipants(res.data.blocks || []);
+    } catch (e) {
+      console.error("Failed to fetch blocked participants:", e);
+    }
+  }, [roomId]);
+
   const [playerProgress, setPlayerProgress] = useState<Record<string, { status: string; progress: number; linesWritten?: number }>>({});
   const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
@@ -396,18 +407,26 @@ export const Battle = () => {
   const { data: fetchedRoom, error: roomError } = useQuery({
     queryKey: ["battle-room", roomId, isSpectateMode],
     enabled: Boolean(roomId),
-    staleTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: true,
     retry: false,
     queryFn: async () => {
       // Pass spectate flag so server won't auto-create a performance for spectators
       const spectateParam = isSpectateMode ? "?spectate=true" : "";
+      const passwordParam = roomPassword ? `&password=${encodeURIComponent(roomPassword)}` : "";
       const [roomRes, profileRes] = await Promise.all([
-        api.get(`/rooms/live/${roomId}${spectateParam}`),
+        api.get(`/rooms/live/${roomId}${spectateParam}${passwordParam}`),
         api.get("/profile"),
       ]);
       return { room: roomRes.data.room, myId: profileRes.data.data.id as string };
     },
   });
+
+  // Event analytics — loaded when event is FINISHED or when host opens the analytics view
+  const eventId = roomId ? roomId.replace("room-", "") : undefined;
+  const { data: eventAnalytics } = useEventAnalytics(eventId, battleState.status === "FINISHED" || isHost);
+
+  const [showAnalyticsView, setShowAnalyticsView] = useState(false);
 
   // A failed room load navigates back to the lobby (query-level error handling).
   useEffect(() => {
@@ -428,7 +447,23 @@ export const Battle = () => {
     setRoom(roomData);
     setMyUserId(myId);
     myUserIdRef.current = myId;
-    setIsHost(myId === roomData.hostId);
+    const isUserHost = myId === roomData.hostId;
+    setIsHost(isUserHost);
+
+    // Sync battleState status with database status
+    if (roomData.status) {
+      setBattleState((prev: any) => ({
+        ...prev,
+        status: roomData.status,
+        startedAt: roomData.startedAt,
+        finishedAt: roomData.finishedAt,
+        totalDurationMs: roomData.totalTimeLimitMs,
+      }));
+    }
+
+    if (isUserHost) {
+      void fetchBlockedParticipants();
+    }
 
     // Store all participants for host panel
     setRoomParticipants(roomData.performances || []);
@@ -508,8 +543,35 @@ export const Battle = () => {
       playBattleSound("tick");
     });
 
-    socket.on("battle_started", () => {
+    socket.on("battle_started", (data?: { startedAt?: any; problems?: any[]; commonProblem?: any }) => {
       setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS", editorLocked: false }));
+      if (data?.problems && data.problems.length > 0) {
+        setProblems(data.problems);
+        setCurrentIndex(0);
+        // Seed codes for unlocked problems
+        const initialCodes: Record<string, string> = {};
+        data.problems.forEach((p: any) => {
+          if (!p) return;
+          const snippet = getProblemSnippet(p, language);
+          initialCodes[p.id] = snippet;
+        });
+        setCodes(initialCodes);
+        if (data.problems[0]) {
+          setCode(initialCodes[data.problems[0].id] || "");
+        }
+      } else if (data?.commonProblem) {
+        setProblems([data.commonProblem]);
+        setCurrentIndex(0);
+        const snippet = getProblemSnippet(data.commonProblem, language);
+        setCode(snippet);
+        setCodes({ [data.commonProblem.id]: snippet });
+      }
+      toast.success("Operation initiated! Workspaces unlocked.");
+    });
+
+    socket.on("participant_rejected", (data: { reason?: string }) => {
+      toast.error(data?.reason || "Your entry request was declined by the host.");
+      navigate("/lobby");
     });
 
     socket.on("battle_state", (data) => {
@@ -544,8 +606,25 @@ export const Battle = () => {
       navigate("/lobby");
     });
 
-    socket.on("player_kicked", (data: { userId: string }) => {
+    socket.on("player_kicked", (data: { userId: string; blocked?: boolean }) => {
       setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
+      if (data.blocked) {
+        void fetchBlockedParticipants();
+      }
+    });
+
+    socket.on("you_are_blocked", (data: { roomId?: string; reason?: string }) => {
+      toast.error(data?.reason || "You have been blocked from this event.");
+      navigate("/lobby");
+    });
+
+    socket.on("player_blocked", (data: { userId: string; blocked: boolean }) => {
+      setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
+      void fetchBlockedParticipants();
+    });
+
+    socket.on("player_unblocked", () => {
+      void queryClient.invalidateQueries({ queryKey: ["battle-room", roomId, isSpectateMode] });
     });
 
     socket.on("participants_updated", (data: { performances: any[] }) => {
@@ -589,6 +668,7 @@ export const Battle = () => {
           setBattleResult(won ? "WON" : "LOST");
         }
       }
+      void fetchBlockedParticipants();
       setIsBattleMenuOpen(true);
       invalidateProblemQueries(queryClient);
     });
@@ -627,7 +707,7 @@ export const Battle = () => {
       setIsBattleMenuOpen(true);
       invalidateProblemQueries(queryClient);
       toast.error(data?.reason || "This room has been closed.");
-      setTimeout(() => navigate("/lobby"), 2500);
+      setTimeout(() => navigate("/lobby"), 500);
     });
 
     return () => {
@@ -647,11 +727,14 @@ export const Battle = () => {
       socket.off("room_closing");
       socket.off("room_closed");
       socket.off("room_force_closed");
+      socket.off("you_are_blocked");
+      socket.off("player_blocked");
+      socket.off("player_unblocked");
       if (joinedRoomRef.current === roomId) {
-        socket.emit("leave_room", roomId);
-      }
-    };
-  }, [socket, roomId, navigate, queryClient]);
+         socket.emit("leave_room", roomId);
+       }
+     };
+  }, [socket, roomId, navigate, queryClient, isSpectateMode, fetchBlockedParticipants]);
 
   // Handle 3-second Get Ready Countdown before event begins
   useEffect(() => {
@@ -794,6 +877,21 @@ export const Battle = () => {
   const handleHostEndMatch = () => {
     if (!socket || !roomId) return;
     socket.emit("host_end_match", { roomId });
+  };
+
+  const handleRejectParticipant = (targetUserId: string) => {
+    if (!socket || !roomId) return;
+    socket.emit("host_reject_participant", { roomId, targetUserId });
+  };
+
+  const handleBlockParticipant = (targetUserId: string, reason?: string) => {
+    if (!socket || !roomId) return;
+    socket.emit("host_block_user", { roomId, targetUserId, reason });
+  };
+
+  const handleUnblockParticipant = (targetUserId: string) => {
+    if (!socket || !roomId) return;
+    socket.emit("host_unblock_user", { roomId, targetUserId });
   };
 
   const isBattleActive =
@@ -1182,15 +1280,28 @@ export const Battle = () => {
                               </p>
                             </div>
                             {!isMe && (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm(`Kick ${uname} from the operation?`)) handleKickUser(participantId);
-                                }}
-                                title={`Kick ${uname}`}
-                                className="p-1.5 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                {battleState.status === "WAITING" && (
+                                  <button
+                                    onClick={() => handleRejectParticipant(participantId)}
+                                    title={`Reject ${uname} (returns to lobby)`}
+                                    className="px-2 py-1 border border-subtle-line bg-surface-hover/40 text-subtle hover:text-accent-danger hover:border-accent-danger/40 text-[9px] font-mono rounded transition-colors"
+                                  >
+                                    Reject
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Kick & block ${uname} from this event?`)) {
+                                      handleBlockParticipant(participantId, "Moderator kick & block");
+                                    }
+                                  }}
+                                  title={`Kick & block ${uname}`}
+                                  className="p-1.5 border border-accent-danger/40 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             )}
                           </div>
                           {/* live telemetry bar */}
@@ -1216,6 +1327,54 @@ export const Battle = () => {
                   </div>
                 )}
               </div>
+
+              {/* BLOCKED OPERATIVES LIST */}
+              {blockedParticipants.length > 0 && (
+                <div className="border border-accent-danger/40 rounded-xl bg-accent-danger/5 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-mono font-bold text-accent-danger uppercase tracking-widest flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-accent-danger" /> BLOCKED OPERATIVES ({blockedParticipants.length})
+                    </p>
+                    <button
+                      onClick={async () => {
+                        for (const b of blockedParticipants) {
+                          await handleUnblockParticipant(b.blockedUserId);
+                        }
+                        setBlockedParticipants([]);
+                      }}
+                      className="text-[9px] font-mono text-accent-primary hover:underline uppercase font-bold"
+                    >
+                      UNBLOCK ALL
+                    </button>
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {blockedParticipants.map((b: any) => {
+                      const pid = b.blockedUserId;
+                      const uname = b.blockedUser?.username || "Unknown";
+                      return (
+                        <div key={pid} className="flex items-center justify-between p-2.5 rounded-lg border border-accent-danger/30 bg-base/50">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-accent-danger/20 border border-accent-danger/40 flex items-center justify-center text-xs font-mono font-bold text-accent-danger">
+                              {uname[0]?.toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-mono font-bold text-fg truncate">{uname}</p>
+                              <p className="text-[9px] font-mono text-accent-danger truncate">{b.reason || "Blocked by moderator"}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleUnblockParticipant(pid)}
+                            title="Unblock operative"
+                            className="p-1 px-2 border border-accent-success/40 bg-accent-success/15 hover:bg-accent-success/25 text-accent-success text-[10px] font-mono font-bold rounded transition-all"
+                          >
+                            Unblock
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ── RIGHT: CHAT ── */}
@@ -1290,6 +1449,27 @@ export const Battle = () => {
     );
   }
 
+  // ── NON-HOST STAGING ROOM (WAITING STATE) ─────────────────────────
+  // While the room is in WAITING state, participants are kept in the staging
+  // area without access to the Monaco editor or problem specifications.
+  if (battleState.status === "WAITING" && countdown <= 0 && !commencing) {
+    return (
+      <BattleStagingRoom
+        roomName={room.name || "Untitled Operation"}
+        roomCode={room.roomCode || ""}
+        hostName={room.host?.username || "Commander"}
+        isHost={false}
+        maxUsers={room.maxUsers || 2}
+        participants={roomParticipants}
+        myUserId={myUserId}
+        totalTimeLimitMs={room.totalTimeLimitMs}
+        closesAt={room.closesAt}
+        onStart={() => {}}
+        onLeave={() => navigate("/lobby")}
+      />
+    );
+  }
+
   return (
     <div className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
       {(countdown > 0 || commencing) && (
@@ -1344,15 +1524,8 @@ export const Battle = () => {
         </button>
       )}
 
-      {/* FOCUS LOSS WARNING */}
-      {focusTelemetry.snapshot().filter(e => e.type === "blur" || e.type === "tab_hidden").length > 0 && (
-        <div className="fixed left-1/2 top-16 z-[90] -translate-x-1/2 border border-accent-danger/40 bg-accent-danger/10 px-4 py-2 font-mono text-xs uppercase tracking-widest text-accent-danger ds-glitch">
-          [WARNING: TELEMETRY ALERT - FOCUS LOST]
-        </div>
-      )}
-
       {/* ─── HOST COMMAND PANEL (fixed overlay, host only) ─── */}
-      {isHost && battleState.status === "IN_PROGRESS" && (
+      {isHost && (battleState.status === "IN_PROGRESS" || battleState.status === "WAITING") && (
         <div className="fixed bottom-6 right-6 z-[80] flex flex-col items-end gap-2">
           {/* Toggle button */}
           <button
@@ -1371,9 +1544,20 @@ export const Battle = () => {
                 <span className="font-mono text-xs font-bold text-accent-warning tracking-widest flex items-center gap-2">
                   <ShieldAlert className="w-3.5 h-3.5" /> HOST COMMAND CENTER
                 </span>
-                <button onClick={() => setIsHostPanelOpen(false)} className="text-faint hover:text-fg">
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {battleState.status === "FINISHED" && (
+                    <button
+                      onClick={() => setShowAnalyticsView(!showAnalyticsView)}
+                      title="View event analytics"
+                      className={`p-1 rounded transition-all ${showAnalyticsView ? "bg-accent-primary/20 text-accent-primary" : "text-faint hover:text-fg"}`}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button onClick={() => setIsHostPanelOpen(false)} className="text-faint hover:text-fg">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Participant List */}
@@ -1424,21 +1608,80 @@ export const Battle = () => {
                         )}
                       </div>
                       {!isMe && (
-                        <button
-                          onClick={() => handleKickUser(participantId)}
-                          title={`Kick ${uname}`}
-                          className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
+                        <>
+                          <button
+                            onClick={() => handleKickUser(participantId)}
+                            title={`Kick ${uname}`}
+                            className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
+                            <X className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Block ${uname} from this event?`)) handleBlockParticipant(participantId);
+                            }}
+                            title={`Block ${uname}`}
+                            className="p-1 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
+                          >
+                            <ShieldAlert className="w-3 h-3" />
+                          </button>
+                        </>
+                    )}
                     </div>
                   );
                 })
               )}
               </div>
 
-              {/* Danger Zone */}
+              {/* Blocked Users Section */}
+              {blockedParticipants.length > 0 && (
+                <div className="px-3 pb-2 border-t border-subtle-line">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[9px] text-faint font-mono tracking-widest">
+                      BLOCKED ({blockedParticipants.length})
+                    </p>
+                    <button
+                      onClick={async () => {
+                        for (const b of blockedParticipants) {
+                          await handleUnblockParticipant(b.blockedUserId);
+                        }
+                        setBlockedParticipants([]);
+                      }}
+                      title="Unblock all"
+                      className="text-[9px] text-accent-primary hover:underline font-mono"
+                    >
+                      UNBLOCK ALL
+                    </button>
+                  </div>
+                  {blockedParticipants.map((b: any) => {
+                    const pid = b.blockedUserId;
+                    const uname = b.blockedUser?.username || "Unknown";
+                    return (
+                      <div key={pid} className="bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-2 mb-1 flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] font-mono font-bold text-fg">
+                          {uname[0]?.toUpperCase()}
+                        </div>
+                        <span className="text-xs font-mono text-fg flex-1 truncate">{uname}</span>
+                        <button
+                          onClick={() => handleUnblockParticipant(pid)}
+                          title="Unblock"
+                          className="p-1 border border-accent-success/30 bg-accent-success/15 hover:bg-accent-success/20 text-accent-success rounded transition-all"
+                        >
+                          <ShieldCheck className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Analytics view (when event is FINISHED) */}
+              {battleState.status === "FINISHED" && eventAnalytics && (
+                <div className="px-3 pb-2 border-t border-subtle-line">
+                  <EventAnalytics analytics={eventAnalytics} />
+                </div>
+              )}
+
               <div className="px-3 pb-3">
                 <button
                   onClick={handleHostEndMatch}
@@ -1460,16 +1703,16 @@ export const Battle = () => {
         <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             {/* HOST HEADER */}
-            <div className="p-4 border-b border-subtle-line bg-base/40">
+            <div className="px-3 py-3 border-b border-subtle-line bg-base/40">
               {battleState.status === "WAITING" && (
-                <div className="text-center py-2">
-                  <p className="text-accent-warning font-mono text-xs tracking-widest mb-3">
+                <div className="text-center py-1">
+                  <p className="text-accent-warning font-mono text-[10px] tracking-widest mb-2.5">
                     WAITING FOR OPERATIVES
                   </p>
                   {isHost ? (
                     <button
                       onClick={handleStartOperation}
-                      className="w-full bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary text-accent-primary hover:text-ink font-bold tracking-widest py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
+                      className="w-full bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary text-accent-primary hover:text-ink font-bold tracking-widest py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
                     >
                       <Play className="w-4 h-4" /> START OPERATION
                     </button>
@@ -1484,17 +1727,17 @@ export const Battle = () => {
 
             {/* PROBLEM NAV GRID OR OPPONENT PROFILE */}
             {room?.type === "ONE_VS_ONE" && opponent ? (
-              <div className="p-4 border-b border-accent-danger/20 bg-accent-danger/5 flex items-center gap-4">
+              <div className="px-3 py-3 border-b border-accent-danger/20 bg-accent-danger/5 flex items-center gap-3">
                 <img
                   src={opponent.avatarUrl}
                   alt="Opponent"
-                  className="w-12 h-12 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
+                  className="w-10 h-10 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] text-accent-danger tracking-widest font-bold">
                     VS OPPONENT
                   </p>
-                  <p className="font-mono text-fg text-sm font-bold">
+                  <p className="font-mono text-fg text-sm font-bold truncate">
                     {opponent.username}
                   </p>
                   <p className="text-xs text-subtle mt-1">
@@ -1503,16 +1746,16 @@ export const Battle = () => {
                 </div>
               </div>
             ) : (
-              <div className="p-4 border-b border-subtle-line bg-accent-primary/5">
-                <p className="text-xs text-faint tracking-widest mb-3">
+              <div className="px-3 py-3 border-b border-subtle-line bg-accent-primary/5">
+                <p className="text-[10px] text-faint tracking-widest mb-2">
                   MISSION PLAYLIST ({problems.length})
                 </p>
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                   {problems.map((p, idx) => (
                     <button
                       key={p.id}
                       onClick={() => setCurrentIndex(idx)}
-                      className={`shrink-0 w-10 h-10 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
+                      className={`shrink-0 w-9 h-9 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
                       ${currentIndex === idx ? "bg-accent-primary border-accent-primary text-ink shadow-[0_0_10px_rgba(0,212,255,0.5)]" : "bg-base/50 border-subtle-line text-subtle hover:border-accent-primary/50"}
                     `}
                     >
@@ -1524,66 +1767,80 @@ export const Battle = () => {
             )}
 
             {/* TAB HEADERS */}
-            <div className="flex border-b border-subtle-line bg-base/40">
+            <div className="flex border-b border-subtle-line bg-surface-hover shrink-0">
               <button
                 onClick={() => setActivePanelTab("PROBLEM")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "PROBLEM" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "PROBLEM" ? "border-b-accent-primary text-accent-primary bg-accent-primary/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
               >
-                <Code className="w-4 h-4 mx-auto mb-1" /> PROBLEM
+                <Code className="w-3 h-3" /> PROBLEM
               </button>
               <button
                 onClick={() => setActivePanelTab("CHAT")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "CHAT" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "CHAT" ? "border-b-accent-primary text-accent-primary bg-accent-primary/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
               >
-                <MessageSquare className="w-4 h-4 mx-auto mb-1" /> CHAT
+                <MessageSquare className="w-3 h-3" /> CHAT
               </button>
               <button
                 onClick={() => setActivePanelTab("OPPONENT_TELEMETRY")}
-                className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "OPPONENT_TELEMETRY" ? "bg-accent-primary/20 border-b-2 border-accent-primary text-accent-primary" : "text-faint hover:bg-line-low"}`}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "OPPONENT_TELEMETRY" ? "border-b-accent-primary text-accent-primary bg-accent-primary/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
               >
-                <Activity className="w-4 h-4 mx-auto mb-1" /> OPPONENT
+                <Activity className="w-3 h-3" /> OPPONENT
               </button>
               {isHost && battleState.status === "IN_PROGRESS" && (
                 <button
                   onClick={() => setActivePanelTab("MODERATOR")}
-                  className={`flex-1 p-4 font-mono text-xs font-bold tracking-widest transition-all ${activePanelTab === "MODERATOR" ? "bg-accent-warning/20 border-b-2 border-accent-warning text-accent-warning" : "text-faint hover:bg-line-low"}`}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "MODERATOR" ? "border-b-accent-warning text-accent-warning bg-accent-warning/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
                 >
-                  <ShieldAlert className="w-4 h-4 mx-auto mb-1" /> MODERATOR
+                  <ShieldAlert className="w-3 h-3" /> MOD
                 </button>
               )}
             </div>
 
             {/* TAB CONTENT — themed scrollbar + contained text */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 themed-scroll flex flex-col min-w-0">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 themed-scroll flex flex-col min-w-0">
               {activePanelTab === "PROBLEM" ? (
-                <div className="border border-line w-full max-w-full min-w-0 rounded-lg p-5 bg-base/40 shadow-inner h-max overflow-hidden">
-                  <div className="flex items-center justify-between gap-2 border-b border-line-low pb-3 mb-4 min-w-0">
-                    <h3 className="font-mono text-sm text-accent-primary flex items-center gap-2 uppercase tracking-wider min-w-0 truncate">
-                      <Code className="w-4 h-4 shrink-0" />{" "}
-                      <span className="truncate">{activeProblem?.name || "Select Problem"}</span>
-                    </h3>
-                    <span
-                      className={`shrink-0 text-[10px] tracking-widest px-2 py-0.5 rounded font-bold
-                    ${activeProblem?.difficulty_level === "HARD" ? "bg-accent-danger/10 text-accent-danger" : activeProblem?.difficulty_level === "MEDIUM" ? "bg-accent-warning/20 text-accent-warning" : "bg-accent-success/20 text-accent-success"}
-                  `}
-                    >
-                      {activeProblem?.difficulty_level}
-                    </span>
+                <div className="flex flex-col w-full max-w-full min-w-0 gap-4 h-max">
+                  {/* Title & metadata */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="min-w-0 max-w-full break-words text-sm font-bold leading-tight text-fg [overflow-wrap:anywhere]">
+                        {activeProblem?.name || "Select Problem"}
+                      </h2>
+                      {activeProblem?.difficulty_level && (
+                        <span
+                          className={`shrink-0 text-[10px] tracking-widest px-2 py-0.5 rounded border font-bold uppercase
+                        ${activeProblem?.difficulty_level === "HARD" ? "border-accent-danger/30 bg-accent-danger/10 text-accent-danger" : activeProblem?.difficulty_level === "MEDIUM" ? "border-accent-warning/30 bg-accent-warning/10 text-accent-warning" : "border-accent-success/30 bg-accent-success/10 text-accent-success"}
+                      `}
+                        >
+                          {activeProblem?.difficulty_level}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div
-                    className="problem-contain text-sm text-fg leading-relaxed font-sans prose prose-invert max-w-full min-w-0 break-words overflow-hidden [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto"
-                    dangerouslySetInnerHTML={{
-                      __html:
-                        DOMPurify.sanitize(stripDuplicateExamples(activeProblem?.problem_definition) || "No definition."),
-                    }}
-                  />
+
+                  {/* Divider */}
+                  <div className="border-t border-subtle-line" />
+
+                  {/* Problem Definition */}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent-primary font-bold mb-2">
+                      <AlignLeft className="w-3 h-3" /> PROBLEM DESCRIPTION
+                    </div>
+                    <div
+                      className="problem-contain min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          DOMPurify.sanitize(activeProblem?.problem_definition || "No definition."),
+                      }}
+                    />
+                  </div>
 
                   {/* PROGRESSIVE HINTS & BLUEPRINT */}
                   <ProblemHintsAccordion hints={activeProblem?.problem_hints} />
 
                   {/* Examples already ship inside the problem statement — no separate render. */}
                   {activeProblem?.test_cases && activeProblem.test_cases.length > 0 && (
-                    <div className="mt-6 p-3 bg-accent-warning/10 border border-accent-warning/20 rounded text-center min-w-0">
+                    <div className="p-3 bg-accent-warning/10 border border-accent-warning/20 rounded text-center min-w-0">
                       <p className="text-accent-warning/80 font-mono text-xs tracking-widest font-bold break-words">
                         TOTAL TEST CASES TO PASS:{" "}
                         {activeProblem.test_cases.length}
@@ -1754,14 +2011,14 @@ export const Battle = () => {
 
       <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-subtle-line bg-raised font-mono text-xs z-30 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-accent-primary font-bold uppercase tracking-wider flex items-center gap-2">
-              <Code className="w-4 h-4 text-accent-primary" />
-              {activeProblem?.name || "BATTLE ARENA"}
+        <div className="flex items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-3 py-2 font-mono text-xs z-30 shrink-0 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-accent-primary font-bold uppercase tracking-wider flex items-center gap-2 min-w-0">
+              <Code className="w-4 h-4 text-accent-primary shrink-0" />
+              <span className="truncate">{activeProblem?.name || "BATTLE ARENA"}</span>
             </span>
             {problems.length > 1 && (
-              <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5">
+              <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5 shrink-0">
                 PROBLEM {currentIndex + 1} OF {problems.length}
               </span>
             )}
@@ -1779,7 +2036,12 @@ export const Battle = () => {
             {/* Host button shortcut in top bar */}
             {isHost && battleState.status === "IN_PROGRESS" && (
               <button
-                onClick={() => setIsHostPanelOpen((v) => !v)}
+                onClick={() => {
+                  setIsHostPanelOpen((v) => !v);
+                  if (!isHostPanelOpen) {
+                    void fetchBlockedParticipants();
+                  }
+                }}
                 className="flex items-center gap-1.5 px-2 py-1 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[10px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all"
               >
                 <ShieldAlert className="w-3 h-3" /> HOST
@@ -1917,16 +2179,6 @@ export const Battle = () => {
         </div>
       </div>
 
-      {/* REPLAY THEATER + SPECTATOR ENTRY (ROADMAP §4) */}
-      <div className="px-4 pb-4">
-        <SpectatorReplayPanel
-          roomId={String(roomId || "")}
-          performances={roomParticipants}
-          isSpectator={false}
-          onWatch={(userId) => socket?.emit("request_player_code", { roomId, targetUserId: userId })}
-        />
-      </div>
-
       {/* NOTES PANEL — per-problem tabs for multi-problem events, single scratchpad for 1v1 */}
       <NotesPanel
         isOpen={isNotesOpen}
@@ -2007,9 +2259,12 @@ export const Battle = () => {
                 <div className="text-[9px] text-subtle font-mono">
                   {focusLossCount} focus loss{focusLossCount > 1 ? "es" : ""} × {focusPenaltyPercent}% penalty on final score
                 </div>
-                <div className="text-[8px] text-faint mt-1">
-                  Penalties: 1st -5% · 2nd -10% · 3rd -20% · 4th -40% · 5th+ -80% (doubling)
-                </div>
+              </div>
+            )}
+            {/* Event Analytics (compact view for participants) */}
+            {eventAnalytics && (
+              <div className="w-full mb-4 p-3 border border-line bg-base/40 rounded-lg">
+                <EventAnalytics analytics={eventAnalytics} compact />
               </div>
             )}
             <div className="flex-1 flex justify-between gap-4 w-full">

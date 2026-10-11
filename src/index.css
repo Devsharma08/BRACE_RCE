@@ -398,7 +398,7 @@ button {
   80% { transform: translate(2px, -2px); }
 }
 .ds-glitch {
-  animation: dsGlitch 0.3s infinite;
+  animation: dsGlitch 0.3s ease-out 3;
 }
 .text-shadow-accent {
   text-shadow: 0 0 30px color-mix(in srgb, var(--accent-primary) 70%, transparent);
