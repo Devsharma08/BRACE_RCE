@@ -225,10 +225,11 @@ export const createRoomSchema = z
     description: z.string().max(500).optional(),
     commonProblemId: uuidSchema.optional(),
     roomCode: z.string().min(4).max(20).optional(),
-    password: z.string().min(4).max(50).optional(),
+    password: z.string().min(4).max(50).nullable().optional(),
     maxUsers: z.number().int().min(2).max(10).default(2),
     totalTimeLimitMs: z.number().int().positive().optional(),
     problemIds: z.array(uuidSchema).optional(),
+    isTemplate: z.boolean().optional().default(false),
     // Scheduled opening / auto-close (ISO 8601). When both are
     // supplied the room must open before it closes.
     opensAt: z.string().datetime().optional(),
@@ -249,8 +250,13 @@ export const lockRoomSchema = z.object({
 });
 
 export const cloneTemplateSchema = z.object({
-  templateEventId: uuidSchema,
+  templateId: uuidSchema.optional(),
+  templateEventId: uuidSchema.optional(),
   name: z.string().min(1).max(100).optional(),
+  password: z.string().optional(),
+}).refine(data => Boolean(data.templateId || data.templateEventId), {
+  message: "Either templateId or templateEventId is required",
+  path: ["templateId"],
 });
 
 export const toggleVisibilitySchema = z.object({
@@ -263,6 +269,17 @@ export const expireBattleSchema = z.object({
 
 export const deleteEventSchema = z.object({
   eventId: uuidSchema,
+});
+
+export const blockParticipantSchema = z.object({
+  eventId: uuidSchema,
+  targetUserId: uuidSchema,
+  reason: z.string().max(500).optional(),
+});
+
+export const unblockParticipantSchema = z.object({
+  eventId: uuidSchema,
+  targetUserId: uuidSchema,
 });
 
 // Feedback schema
@@ -308,7 +325,7 @@ export const plagiarismCheckSchema = z.object({
 
 export const focusReportSchema = z.object({
   events: z.array(z.object({
-    type: z.enum(["blur", "tab_hidden", "focus"]),
+    type: z.enum(["blur", "tab_hidden", "focus", "context_switch"]),
     atMs: z.number().int().min(0),
   })),
   startMs: z.number().int().min(0),

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authentication } from "../middleware/authentication.js";
 import { roomController } from "../controllers/room.js";
-import { validate, validateParams, createRoomSchema, cloneTemplateSchema, lockRoomSchema, toggleVisibilitySchema, expireBattleSchema, deleteEventSchema } from "../middleware/validation.js";
+import { validate, validateParams, createRoomSchema, cloneTemplateSchema, lockRoomSchema, toggleVisibilitySchema, expireBattleSchema, deleteEventSchema, blockParticipantSchema, unblockParticipantSchema } from "../middleware/validation.js";
 
 const roomsRouter: Router = Router();
 
@@ -30,5 +30,10 @@ roomsRouter.delete("/:eventId", validateParams(deleteEventSchema), roomControlle
 roomsRouter.put("/visibility", validate(toggleVisibilitySchema), roomController.toggleEventVisibility);
 roomsRouter.post("/expire", validate(expireBattleSchema), roomController.expireBattle);
 
+// Block / unblock participants (host only)
+roomsRouter.post("/:eventId/block", validate(blockParticipantSchema), roomController.blockParticipant);
+roomsRouter.post("/:eventId/unblock", validate(unblockParticipantSchema), roomController.unblockParticipant);
+roomsRouter.get("/:eventId/blocks", roomController.getBlockedParticipants);
+roomsRouter.get("/:eventId/analytics", roomController.getEventAnalytics);
 
 export { roomsRouter };

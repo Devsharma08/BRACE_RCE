@@ -24,6 +24,10 @@ model User {
   SentMessage Message[] @relation("SentMessage")
   receivedMessages Message[] @relation("ReceivedMessages")
 
+  // room-scoped participant ↔ moderator report threads
+  SentReports     ReportMessage[] @relation("ReportSender")
+  ReceivedReports ReportMessage[] @relation("ReportRecipient")
+
   hostedEvents Event[] @relation("HostedEvents")
   createdProblems Problem[] @relation("UserProblems")
 
@@ -51,7 +55,11 @@ model User {
 
   // learning paths (roadmap S4)
   learningProgress UserLearningProgress[]
-  learningSummary  UserLearningSummary?
+   learningSummary  UserLearningSummary?
+
+  // event-scoped blocks (moderator action)
+  blockedInEvents EventBlock[] @relation("BlockedUsers")
+  blockedUsers     EventBlock[] @relation("BlockedBy")
 }
 
 model FriendRequest {
@@ -160,10 +168,13 @@ model Event {
   commonProblemId String?
   commonProblem   Problem? @relation(fields: [commonProblemId], references: [id])
   
-  // Participants and their performances
+   // Participants and their performances
   performances UserPersonalPerformance[]
 
   subscribers TemplateSubscription[]
+
+  // Event-scoped blocks (moderator kicks/bans)
+  blockedUsers EventBlock[]
 
   // create room support
   roomCode String? @unique 
@@ -206,6 +217,20 @@ model UserPersonalPerformance {
 
   @@index([userId])
   @@index([eventId])
+}
+
+model EventBlock {
+  id            String   @id @default(uuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  blockedUserId String
+  blockedUser   User     @relation("BlockedUsers", fields: [blockedUserId], references: [id])
+  blockedById   String
+  blockedBy     User     @relation("BlockedBy", fields: [blockedById], references: [id])
+  reason        String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@unique([eventId, blockedUserId])
 }
 
 model CodeSubmission{
@@ -494,4 +519,28 @@ model ExecutionLog {
   createdAt  DateTime @default(now())
 
   @@index([keyHash, createdAt])
+}
+
+// ── ROOM-SCOPED REPORT THREADS (participant ↔ room moderator) ──
+// Private 1:1 line between an event's participant and its moderator (the host
+// or a global admin) for reporting bad questions, doubts, or broken test cases.
+// A thread is uniquely (eventId, participantId); both sides read + write it.
+model ReportMessage {
+  id String @id @default(uuid())
+
+  eventId     String
+  category    String // QUESTION | DOUBT | TESTCASE | OTHER
+  content     String @db.Text
+  status      String @default("OPEN") // OPEN | RESOLVED
+
+  senderId String
+  sender   User @relation("ReportSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  recipientId String
+  recipient   User @relation("ReportRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId, senderId])
+  @@index([eventId, recipientId])
 }

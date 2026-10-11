@@ -12,6 +12,9 @@ import jwt from "jsonwebtoken";
 (prisma.event.update as any) = jest.fn();
 (prisma.event.delete as any) = jest.fn();
 (prisma.templateSubscription.upsert as any) = jest.fn();
+(prisma.eventBlock.findMany as any) = jest.fn();
+(prisma.eventBlock.upsert as any) = jest.fn();
+(prisma.eventBlock.deleteMany as any) = jest.fn();
 
 // Use valid UUIDs
 const TEST_HOST_ID = "550e8400-e29b-41d4-a716-446655440000";
@@ -29,9 +32,10 @@ describe("Room Controller Routes (/api/v1/rooms)", () => {
 
   describe("GET /api/v1/rooms/lobby", () => {
     test("should return waiting public rooms", async () => {
-      (prisma.event.findMany as jest.Mock<any>).mockResolvedValue([
+       (prisma.event.findMany as jest.Mock<any>).mockResolvedValue([
         { id: TEST_ROOM_ID, name: "Speed Coding Arena", isPublic: true, status: "WAITING" },
       ]);
+      (prisma.eventBlock.findMany as jest.Mock<any>).mockResolvedValue([]);
 
       const res = await request(app)
         .get("/api/v1/rooms/lobby")

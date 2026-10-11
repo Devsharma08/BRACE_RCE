@@ -9,6 +9,7 @@ class Rooms {
     // GET PUBLIC LOBBY ROOMS
     async getLobbyRooms(req: AuthRequest, res: Response) {
         try {
+            const userId = req.userId as string;
             const rooms = await prisma.event.findMany({
                 where: {
                     isPublic: true,
@@ -23,10 +24,26 @@ class Rooms {
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            const displayRooms = rooms.map((room) => ({
-                ...room,
-                problems: (room.problems ?? []).map((problem) => withDisplayProblemName(problem)),
-            }));
+
+            // Filter out events the requesting user is blocked from
+            const blockedEventIds = new Set<string>();
+            if (userId) {
+                const blocks = await prisma.eventBlock.findMany({
+                    where: { blockedUserId: userId },
+                    select: { eventId: true },
+                });
+                blocks.forEach((b) => blockedEventIds.add(b.eventId));
+            }
+
+            const displayRooms = rooms
+                .filter((room) => !blockedEventIds.has(room.id))
+                .map((room) => {
+                    const { password, ...publicRoom } = room;
+                    return {
+                        ...publicRoom,
+                        problems: (room.problems ?? []).map((problem) => withDisplayProblemName(problem)),
+                    };
+                });
             return res.json({ status: "success", rooms: displayRooms });
         } catch (error) {
             console.error(error);
@@ -46,7 +63,11 @@ class Rooms {
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            return res.json({ status: "success", events });
+            const safeEvents = events.map((event) => {
+                const { password, ...publicEvent } = event;
+                return publicEvent;
+            });
+            return res.json({ status: "success", events: safeEvents });
         } catch (error) {
             console.error("Fetch my events error:", error);
             return res.status(500).json({ message: "Server error" });
@@ -65,10 +86,13 @@ class Rooms {
                 },
                 orderBy: { createdAt: 'desc' }
             });
-            const displayTemplates = templates.map((template) => ({
-                ...template,
-                problems: (template.problems ?? []).map((problem) => withDisplayProblemName(problem)),
-            }));
+            const displayTemplates = templates.map((template) => {
+                const { password, ...publicTemplate } = template;
+                return {
+                    ...publicTemplate,
+                    problems: (template.problems ?? []).map((problem) => withDisplayProblemName(problem)),
+                };
+            });
             return res.json({ status: "success", templates: displayTemplates });
         } catch (error) {
             console.error(error);
@@ -139,11 +163,11 @@ class Rooms {
     async cloneTemplate(req: AuthRequest, res: Response) {
         try {
             const userId = req.userId as string;
-            const { templateId } = req.body;
+            const targetTemplateId = req.body.templateId || req.body.templateEventId;
 
             // Fetch the template
             const template = await prisma.event.findUnique({
-                where: { id: templateId },
+                where: { id: targetTemplateId },
                 include: { problems: true }
             });
 
@@ -152,7 +176,6 @@ class Rooms {
             }
 
             // Register the Subscription (Locks them into this version)
-            // Using upsert in case they already subscribed before, we just update the version
             await prisma.templateSubscription.upsert({
                 where: {
                     userId_templateEventId: { userId, templateEventId: template.id }
@@ -171,13 +194,15 @@ class Rooms {
             const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
             const clonedRoom = await prisma.event.create({
                 data: {
-                    name: `${template.name} (Clone)`,
+                    name: req.body.name || `${template.name} (Clone)`,
                     description: template.description,
-                    isPublic: false, // Default private for testing
-                    maxUsers: 2,
+                    isPublic: true,
+                    password: req.body.password || null,
+                    maxUsers: template.maxUsers || 2,
+                    totalTimeLimitMs: template.totalTimeLimitMs,
                     hostId: userId,
                     roomCode,
-                    type: "PUBLIC",
+                    type: template.type || "PUBLIC",
                     status: "WAITING",
                     isTemplate: false,
                     version: template.version ?? 1,
@@ -186,6 +211,8 @@ class Rooms {
                     }
                 }
             });
+
+            emitRoomsInvalidate();
 
             return res.json({
                 status: "success",
@@ -391,13 +418,54 @@ class Rooms {
                 }
             }
 
-            // If a non-host player enters and is competing (not pure spectate),
-            // ensure a performance record exists. The host never competes —
-            // they moderate — so no record is created for them and they do
-            // not count toward maxUsers.
-            if (userId && !isSpectate && event.hostId !== userId) {
-                const existingPerf = event.performances?.find((p: any) => p.userId === userId || p.user?.id === userId);
-                if (!existingPerf && (event.status === "WAITING" || event.status === "IN_PROGRESS")) {
+            // Password check: non-host, non-admin users must supply the correct password
+            // for password-protected rooms (unless pure spectating by invitation).
+            if (!isAdmin && event.hostId !== userId) {
+                if (event.password) {
+                    const suppliedPassword = (req.query.password as string) || (req as any).body?.password;
+                    if (!suppliedPassword || suppliedPassword !== event.password) {
+                        return res.status(401).json({ message: "Incorrect or missing password for this room" });
+                    }
+                }
+            }
+
+            // Block list check: if the requesting user is blocked from this event, deny access
+            if (!isAdmin && !isSpectate && userId) {
+                const isBlocked = await prisma.eventBlock.findFirst({
+                    where: { eventId: event.id, blockedUserId: userId },
+                });
+                if (isBlocked) {
+                    return res.status(403).json({ message: "You are blocked from this event" });
+                }
+            }
+
+            // Non-host participant: auto-enroll them if needed
+            if (userId && !isSpectate && !isAdmin && event.hostId !== userId) {
+                const existingPerf = event.performances?.find((p: any) => p.userId === userId || p.user?.id === userId) as any | undefined;
+
+                if (existingPerf) {
+                    // User already has a performance record — check for ban/block status
+                    if (existingPerf.status === "REJECTED") {
+                        return res.status(403).json({ message: "You were previously rejected from this event" });
+                    }
+                    if (existingPerf.status === "FAILED") {
+                        return res.status(403).json({ message: "You are not allowed to join this event" });
+                    }
+                    if (existingPerf.status === "SURRENDER") {
+                        if (event.status === "WAITING") {
+                            // If event is back in or still in WAITING, reset their status to PENDING so they wait properly
+                            await prisma.userPersonalPerformance.update({
+                                where: { id: existingPerf.id },
+                                data: { status: "PENDING" }
+                            });
+                            existingPerf.status = "PENDING";
+                        } else {
+                            return res.status(403).json({ message: "You have already surrendered from this active match" });
+                        }
+                    }
+                    // PASSED, COMPLETED, PENDING, etc. — proceed normally
+                } else if (event.status === "WAITING") {
+                    // No existing record — create a PENDING one (if room isn't full)
                     const currentCount = event.performances?.length || 0;
                     if (currentCount < event.maxUsers) {
                         try {
@@ -405,7 +473,7 @@ class Rooms {
                                 data: {
                                     userId,
                                     eventId: event.id,
-                                    status: "PENDING"
+                                    status: "PENDING",
                                 },
                                 include: {
                                     user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
@@ -423,18 +491,38 @@ class Rooms {
                             });
                             event.performances = [...(event.performances || []), newPerf];
                         } catch (perfErr) {
-                            console.error("Auto performance creation error:", perfErr);
+                            console.error("Performance creation error:", perfErr);
                         }
                     }
                 }
             }
 
-            const displayEvent = event
+            const isHostOrAdmin = Boolean(isAdmin || (event && event.hostId === userId));
+            const shouldMaskProblems = !isHostOrAdmin && event.status === "WAITING";
+
+            const sanitizeProblemForWaiting = (problem: any) => {
+                if (!problem) return problem;
+                if (!shouldMaskProblems) return withDisplayProblemName(problem);
+                // Return metadata only without leaking problem details, test cases, or starter code
+                return {
+                    id: problem.id,
+                    name: `Problem ${problem.difficulty_level || ""}`.trim(),
+                    difficulty_level: problem.difficulty_level,
+                    timeLimitMs: problem.timeLimitMs,
+                    tags: problem.tags,
+                    problem_definition: "<p class='font-mono text-xs text-faint'>Operation briefing encrypted. Problem will unlock when the host initiates the event.</p>",
+                    test_cases: [],
+                    code_snippets: [],
+                };
+            };
+
+            const { password: _pw, ...eventWithoutPassword } = event;
+            const displayEvent = eventWithoutPassword
                 ? {
-                    ...event,
-                    problems: event.problems?.map((problem) => withDisplayProblemName(problem)),
+                    ...eventWithoutPassword,
+                    problems: event.problems?.map(sanitizeProblemForWaiting),
                     commonProblem: event.commonProblem
-                        ? withDisplayProblemName(event.commonProblem)
+                        ? sanitizeProblemForWaiting(event.commonProblem)
                         : event.commonProblem,
                 }
                 : event;
@@ -554,6 +642,202 @@ class Rooms {
 
         } catch (error) {
             console.error("Get battle time error:", error);
+            return res.status(500).json({ status: "error", message: "Internal server error" });
+        }
+    }
+
+    // BLOCK A PARTICIPANT FROM AN EVENT (host only)
+    async blockParticipant(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId, targetUserId, reason } = req.body;
+
+            const event = await prisma.event.findUnique({
+                where: { id: eventId },
+                select: { id: true, hostId: true },
+            });
+            if (!event) return res.status(404).json({ message: "Event not found" });
+            if (event.hostId !== userId) {
+                return res.status(403).json({ message: "Only the host can block participants" });
+            }
+            if (targetUserId === userId) {
+                return res.status(400).json({ message: "You cannot block yourself" });
+            }
+
+            await prisma.eventBlock.upsert({
+                where: { eventId_blockedUserId: { eventId, blockedUserId: targetUserId } },
+                update: { reason: reason || 'Blocked by host', blockedById: userId },
+                create: {
+                    eventId,
+                    blockedUserId: targetUserId,
+                    blockedById: userId,
+                    reason: reason || 'Blocked by host',
+                },
+            });
+
+            await emitToUser(targetUserId, "you_are_blocked", { roomId: event.id, reason });
+            emitRoomsInvalidate();
+            return res.json({ status: "success", message: "Participant blocked" });
+        } catch (error) {
+            console.error("Block participant error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // UNBLOCK A PARTICIPANT FROM AN EVENT (host only)
+    async unblockParticipant(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId, targetUserId } = req.body;
+
+            const event = await prisma.event.findUnique({
+                where: { id: eventId },
+                select: { id: true, hostId: true },
+            });
+            if (!event) return res.status(404).json({ message: "Event not found" });
+            if (event.hostId !== userId) {
+                return res.status(403).json({ message: "Only the host can unblock participants" });
+            }
+
+            await prisma.eventBlock.deleteMany({
+                where: { eventId, blockedUserId: targetUserId }
+            });
+            emitRoomsInvalidate();
+            return res.json({ status: "success", message: "Participant unblocked" });
+        } catch (error) {
+            console.error("Unblock participant error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // GET ALL BLOCKED PARTICIPANTS FOR AN EVENT (host only)
+    async getBlockedParticipants(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId } = req.params;
+
+            const event = await prisma.event.findUnique({
+                where: { id: eventId as string },
+                select: { id: true, hostId: true },
+            });
+            if (!event) return res.status(404).json({ message: "Event not found" });
+            if (event.hostId !== userId) {
+                return res.status(403).json({ message: "Only the host can view blocked participants" });
+            }
+
+            const blocks = await prisma.eventBlock.findMany({
+                where: { eventId: event.id },
+                include: {
+                    blockedUser: { select: { id: true, username: true, avatarUrl: true } },
+                    blockedBy: { select: { id: true, username: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+
+            return res.json({ status: "success", blocks });
+        } catch (error) {
+            console.error("Get blocked error:", error);
+            return res.status(500).json({ message: "Server error" });
+        }
+    }
+
+    // GET EVENT ANALYTICS (host + participants)
+    async getEventAnalytics(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.userId as string;
+            const { eventId } = req.params;
+
+            const event = await prisma.event.findUnique({
+                where: { id: eventId as string },
+                include: {
+                    problems: true,
+                    performances: {
+                        include: {
+                            user: { select: { id: true, username: true, avatarUrl: true } },
+                            submissions: {
+                                select: {
+                                    id: true, problemId: true, status: true,
+                                    passedCase: true, totalCases: true,
+                                    runtimeMs: true, memoryKb: true,
+                                    language: true, attemptNumber: true,
+                                    isBestSubmission: true, createdAt: true,
+                                },
+                                orderBy: { attemptNumber: "asc" }
+                            }
+                        }
+                    }
+                }
+            });
+            if (!event) return res.status(404).json({ message: "Event not found" });
+
+            // Host sees full analytics; non-host participants see their own stats only
+            const isHost = event.hostId === userId;
+            const isAdmin = (req as AuthRequest).userRole === "ADMIN";
+            if (!isHost && !isAdmin) {
+                const isParticipant = event.performances?.some((p: any) => p.userId === userId);
+                if (!isParticipant) {
+                    return res.status(403).json({ message: "Not authorized to view event analytics" });
+                }
+            }
+
+            const performances = event.performances || [];
+            const totalParticipants = performances.length;
+            const passedCount = performances.filter((p: any) => ["PASSED", "COMPLETED", "WON"].includes(p.status)).length;
+            const failedCount = performances.filter((p: any) => ["FAILED", "TIMEOUT", "LOST", "SURRENDER"].includes(p.status)).length;
+            const pendingCount = performances.filter((p: any) =>
+                ["PENDING", "REJECTED"].includes(p.status)
+            ).length;
+
+            const allRuntimes = performances
+                .flatMap((p: any) => p.submissions || [])
+                .filter((s: any) => s.runtimeMs != null)
+                .map((s: any) => s.runtimeMs);
+
+            const runtimeStats = allRuntimes.length > 0
+                ? {
+                    best: Math.min(...allRuntimes),
+                    avg: Math.round(allRuntimes.reduce((a: number, b: number) => a + b, 0) / allRuntimes.length),
+                    worst: Math.max(...allRuntimes),
+                }
+                : { best: 0, avg: 0, worst: 0 };
+
+            const perParticipant = performances.map((p: any) => ({
+                userId: p.userId,
+                username: p.user?.username || "Unknown",
+                avatarUrl: p.user?.avatarUrl,
+                status: p.status,
+                score: p.score,
+                questionsSolved: p.questionsSolved,
+                timeTakenMs: p.timeTakenMs,
+                submissionCount: (p.submissions || []).length,
+                bestRuntimeMs: (p.submissions || []).filter((s: any) => s.status === "PASSED" && s.runtimeMs != null)
+                    .map((s: any) => s.runtimeMs)
+                    .sort((a: number, b: number) => a - b)[0] || null,
+            }));
+
+            return res.json({
+                status: "success",
+                analytics: {
+                    eventId: event.id,
+                    roomCode: event.roomCode,
+                    status: event.status,
+                    startedAt: event.startedAt,
+                    finishedAt: event.finishedAt,
+                    totalTimeLimitMs: event.totalTimeLimitMs,
+                    isHost,
+                    summary: {
+                        totalParticipants,
+                        passedCount,
+                        failedCount,
+                        pendingCount,
+                        passRate: totalParticipants > 0 ? Math.round((passedCount / totalParticipants) * 100) : 0,
+                    },
+                    runtimeStats,
+                    perParticipant,
+                }
+            });
+        } catch (error) {
+            console.error("Event analytics error:", error);
             return res.status(500).json({ status: "error", message: "Internal server error" });
         }
     }
