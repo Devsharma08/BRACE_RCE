@@ -288,7 +288,7 @@ const CreateRoom = () => {
       await api.post("/rooms/create", {
         name: name.trim() ? `${name.trim()} template` : `Custom template ${templates.length + 1}`,
         description,
-        password: null,
+        password: protectedRoom && password.trim() ? password.trim() : null,
         maxUsers,
         isPublic: true,
         isTemplate: true,

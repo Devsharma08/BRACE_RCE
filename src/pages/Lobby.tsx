@@ -172,7 +172,10 @@ const Lobby = () => {
   };
 
   const handlePasswordSubmit = (password: string) => {
-    navigate(`/battle/${pwModal.roomCode}`, { state: { password } });
+    const roomCode = pwModal.roomCode;
+    // Persist password in sessionStorage so Battle can re-fetch if the page reloads
+    sessionStorage.setItem(`room_password_${roomCode}`, password);
+    navigate(`/battle/${roomCode}`, { state: { password } });
     setPwModal({ isOpen: false, roomCode: "", roomName: "" });
   };
 
