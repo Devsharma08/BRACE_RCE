@@ -78,13 +78,14 @@ export function compareCodeStructure(a: string, b: string, threshold = 0.85): Si
 }
 
 export interface FocusEvent {
-  type: "blur" | "tab_hidden" | "focus";
+  type: "blur" | "tab_hidden" | "focus" | "context_switch";
   atMs: number;
 }
 
 export interface FocusEvaluation {
   blurCount: number;
   hiddenCount: number;
+  contextSwitchCount: number;
   totalAwayMs: number;
   flagged: boolean;
   reason: string;
@@ -106,6 +107,7 @@ export function evaluateFocusTelemetry(
 
   let blurCount = 0;
   let hiddenCount = 0;
+  let contextSwitchCount = 0;
   let totalAwayMs = 0;
   let awaySince: number | null = null;
 
@@ -113,6 +115,13 @@ export function evaluateFocusTelemetry(
     if (e.atMs < startMs || e.atMs > endMs) continue;
     if (e.type === "blur") blurCount++;
     if (e.type === "tab_hidden") hiddenCount++;
+    // In-app context switches (panel-tab / notes / playlist) count toward the
+    // event total but are NOT away-until-restore windows, so they never seed
+    // `awaySince` and don't inflate totalAwayMs.
+    if (e.type === "context_switch") {
+      contextSwitchCount++;
+      continue;
+    }
     if (e.type === "blur" || e.type === "tab_hidden") {
       awaySince = awaySince ?? e.atMs;
     } else if (e.type === "focus" && awaySince !== null) {
@@ -122,11 +131,12 @@ export function evaluateFocusTelemetry(
   }
   if (awaySince !== null) totalAwayMs += Math.max(0, endMs - awaySince);
 
-  const eventCount = blurCount + hiddenCount;
+  const eventCount = blurCount + hiddenCount + contextSwitchCount;
   const flagged = eventCount > maxEvents || totalAwayMs > maxAwayMs;
   return {
     blurCount,
     hiddenCount,
+    contextSwitchCount,
     totalAwayMs,
     flagged,
     reason: flagged

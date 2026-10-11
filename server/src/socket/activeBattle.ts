@@ -9,7 +9,7 @@ export const getActiveBattleForUser = async (userId: string): Promise<ActiveBatt
         where: {
             status: "IN_PROGRESS",
             performances: {
-                some: { userId }
+                some: { userId, status: "ACCEPTED" }
             }
         },
         select: {
@@ -32,7 +32,7 @@ export const getActiveBattleForUser = async (userId: string): Promise<ActiveBatt
             where: { id: activeEvent.id },
             data: { status: "FINISHED", finishedAt: now }
         });
-        await prisma.userPersonalPerformance.updateMany({
+         await prisma.userPersonalPerformance.updateMany({
             where: { eventId: activeEvent.id, status: "PENDING" },
             data: { status: "TIMEOUT" }
         });

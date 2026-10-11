@@ -2,16 +2,16 @@ import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
-    const { socket, userId, getActiveBattleForUser } = ctx;
+    const { socket, userId, io, getActiveBattleForUser } = ctx;
 
-    socket.on('join_battle', async (roomId: string) => {
-        socket.join(roomId);
-        console.log(`User ${userId} joined room ${roomId}`)
+    socket.on('join_battle', async (roomId: string, ack?: (response: { success: boolean; error?: string }) => void) => {
+        console.log(`User ${userId} requested to join room ${roomId}`)
         try {
             // Determine if roomId is a UUID (from matchmaking) or a 6-char roomCode
             let event;
+            let eventId: string;
             if (roomId.startsWith('room-')) {
-                const eventId = roomId.replace('room-', '');
+                eventId = roomId.replace('room-', '');
                 event = await prisma.event.findUnique({
                     where: { id: eventId }, include: {
                         problems: { select: { timeLimitMs: true } }
@@ -23,9 +23,55 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
                         problems: { select: { timeLimitMs: true } }
                     }
                 });
+                eventId = event?.id || '';
             }
 
-            if (!event) return;
+            if (!event) {
+                ack?.({ success: false, error: 'Event not found' });
+                return;
+            }
+
+            // Block check: blocked users cannot join
+            const blockCheck = await prisma.eventBlock.findFirst({
+                where: { eventId: event.id, blockedUserId: userId },
+            });
+            if (blockCheck) {
+                ack?.({ success: false, error: 'You are blocked from this event' });
+                return;
+            }
+
+            // Join the socket room
+            socket.join(roomId);
+            if (event.roomCode && event.roomCode !== roomId) {
+                socket.join(event.roomCode);
+            }
+            if (`room-${event.id}` !== roomId) {
+                socket.join(`room-${event.id}`);
+            }
+            ack?.({ success: true });
+
+            // Broadcast current participant roster to everyone in the room
+            const currentPerformances = await prisma.userPersonalPerformance.findMany({
+                where: { eventId: event.id },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+                    submissions: {
+                        select: {
+                            id: true, problemId: true, status: true,
+                            passedCase: true, totalCases: true,
+                            runtimeMs: true, memoryKb: true,
+                            language: true, attemptNumber: true,
+                            isBestSubmission: true, createdAt: true
+                        },
+                        orderBy: { attemptNumber: "asc" }
+                    }
+                }
+            });
+
+            const targetRooms = [event.roomCode, `room-${event.id}`, roomId].filter(Boolean) as string[];
+            for (const tr of targetRooms) {
+                io.to(tr).emit('participants_updated', { performances: currentPerformances });
+            }
 
             if (event && event.startedAt && event.status === 'IN_PROGRESS') {
                 const totalDurationMs = event.totalTimeLimitMs || event.problems?.[0]?.timeLimitMs || 600000;
