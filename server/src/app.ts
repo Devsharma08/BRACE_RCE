@@ -100,6 +100,10 @@ function csrfMiddleware() {
           secure,
           maxAge: 24 * 60 * 60 * 1000, // 24 hours
         });
+        // Mirror onto req.cookies so a downstream csrf-token handler in the
+        // SAME request returns this exact token instead of minting a second
+        // one — keeps the body token and the Set-Cookie consistent.
+        req.cookies[CSRF_COOKIE_NAME] = token;
       }
       return next();
     }

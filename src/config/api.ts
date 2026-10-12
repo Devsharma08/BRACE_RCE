@@ -73,12 +73,39 @@ export function clearCsrfToken(): void {
     csrfToken = null;
 }
 
+/**
+ * Read the CSRF token straight from the `csrf_token` cookie.
+ *
+ * The server sets that cookie with `httpOnly:false` precisely so the SPA can
+ * echo it back in the `x-csrf-token` header (double-submit pattern). We prefer
+ * the LIVE cookie value over the module-cached token returned by
+ * fetchCsrfToken(): on a cold first load several API GETs race, and every one
+ * that arrives without a cookie mints its own token and overwrites the cookie
+ * via Set-Cookie. The browser keeps whichever Set-Cookie lands last, which can
+ * differ from the body token fetchCsrfToken() cached — and that mismatch is
+ * exactly what the server rejects with 403 "Invalid CSRF token" on the first
+ * POST (e.g. starting a 1v1 battle by cloning a template). Reading the cookie
+ * at request time guarantees header === cookie, so the double-submit check
+ * always passes regardless of request ordering.
+ */
+function readCsrfCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 // Add CSRF token to mutating requests
 api.interceptors.request.use((config) => {
     const method = config.method?.toUpperCase();
     const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
-    if (method && mutatingMethods.includes(method) && csrfToken) {
-        (config.headers as any).set('x-csrf-token', csrfToken);
+    if (method && mutatingMethods.includes(method)) {
+        // Prefer the live cookie (source of truth); fall back to the token
+        // fetchCsrfToken() cached so a POST still works if the cookie was
+        // cleared but a token was fetched earlier in the session.
+        const token = readCsrfCookie() || csrfToken;
+        if (token) {
+            (config.headers as any).set('x-csrf-token', token);
+        }
     }
     return config;
 });
