@@ -48,8 +48,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const response = await api.get("/auth/me");
                 return response.data?.user || null;
-            } catch (error) {
-                console.error("Auth check failed:", error);
+            } catch (error: any) {
+                // A 401 here is the expected "not signed in yet" state on a cold
+                // load — it drives the login redirect, so it is not an error and
+                // must not spam the console. Only surface unexpected failures.
+                if (error?.response?.status !== 401) {
+                    console.error("Auth check failed:", error);
+                }
                 return null;
             }
         },
