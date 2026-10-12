@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "../config/api";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -191,43 +192,37 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
   const disconnectedAtRef = useRef(0);
 
-  // We need to get the userId from somewhere - let's use a separate effect
-  // that reads from the auth context or a global store
-  const userIdRef = useRef<string | null>(null);
   const socketCreatedRef = useRef(false);
 
-  // Get backend URL for auth check
-  const getBackendUrl = () => {
-    const rawUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/+$/, "");
-    return rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
-  };
-
-  useEffect(() => {
-    // Try to get userId from the auth query cache
-    // This is a workaround - ideally we'd get it from context
-    const checkUser = async () => {
+  // Reactively derive the authenticated user id from the SHARED ["auth-me"]
+  // React Query cache (owned by AuthContext). SocketProvider is the PARENT of
+  // AuthProvider, so it cannot call useAuth(). The previous implementation did
+  // a one-shot fetch() into a ref ([] deps) that never re-ran after login, and
+  // a ref mutation does not schedule a render — so the socket-creation effect
+  // below never fired until a full page refresh. Subscribing to the cache makes
+  // socket creation react to login/logout immediately. `enabled: false` keeps
+  // AuthContext as the sole network-fetch owner; this observer only mirrors it.
+  const { data: authUser } = useQuery<{ id?: string } | null>({
+    queryKey: ["auth-me"],
+    queryFn: async () => {
       try {
-        const backendUrl = getBackendUrl();
-        const response = await fetch(`${backendUrl}/auth/me`, { credentials: 'include' });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.user?.id) {
-            userIdRef.current = data.user.id;
-          }
-        }
+        const response = await api.get("/auth/me");
+        return response.data?.user ?? null;
       } catch {
-        // Ignore
+        return null;
       }
-    };
-    checkUser();
-  }, []);
+    },
+    enabled: false,
+    staleTime: 1000 * 60 * 15,
+  });
+  const userId: string | null = authUser?.id ?? null;
 
   // Create socket when userId becomes available
   useEffect(() => {
-    if (!userIdRef.current || socketCreatedRef.current) return;
+    if (!userId || socketCreatedRef.current) return;
     
     socketCreatedRef.current = true;
-    const newSocket = getOrCreateSocket(userIdRef.current);
+    const newSocket = getOrCreateSocket(userId);
     if (!socketRef.current) socketRef.current = newSocket;
     const socket = newSocket;
 
@@ -380,7 +375,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       for (const fn of cleanupFns) fn();
       socketCreatedRef.current = false;
     };
-  }, [userIdRef.current, navigate]);
+  }, [userId, navigate]);
 
   const sendDirectMessage = (targetUserId: string, content: string) => {
     socketRef.current?.emit("send_direct_message", { targetUserId, content });
