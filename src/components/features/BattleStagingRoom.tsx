@@ -153,7 +153,7 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
               ) : (
                 participants.map((p) => {
                   const pid = p.user?.id || p.userId;
-                  const uname = p.user?.username || "Unknown Operative";
+                  const uname = p.user?.username || "Unconfirmed Operative";
                   const isMe = pid === myUserId;
                   const isThisHost = pid === myUserId && isHost;
 

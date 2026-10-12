@@ -171,10 +171,10 @@ const OutputPanel = ({
             ) : (
               <>
                 {/* Verdict header — how many cases ran versus how many exist locally */}
-                <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-faint">
+                <div className="flex items-center justify-between text-[9px] font-mono uppercase tracking-widest text-subtle">
                   <span>{renderedCases.length} CASE{renderedCases.length !== 1 ? "S" : ""} RENDERED</span>
                   {output && (
-                    <span className={isPartialRun ? "text-accent-warning" : undefined}>
+                    <span className={isPartialRun ? "text-accent-warning" : "text-fg"}>
                       {/* A single-case run graded 1 of 15; saying "1/1" would read
                           as a solved problem, so the partial run is labelled. */}
                       {isPartialRun
@@ -189,19 +189,19 @@ const OutputPanel = ({
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     <div className="border border-accent-primary/20 bg-accent-primary/5 p-3">
                       <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Avg time</div>
-                      <div className="text-base font-mono font-bold text-accent-primary">{avgDuration.toFixed(0)}ms</div>
+                      <div className=" font-mono font-bold text-accent-primary">{avgDuration.toFixed(0)}ms</div>
                     </div>
                     <div className="border border-accent-violet/20 bg-accent-violet/5 p-3">
                       <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Avg space</div>
-                      <div className="text-base font-mono font-bold text-accent-violet">{(avgMemoryKb / 1024).toFixed(1)}MB</div>
+                      <div className=" font-mono font-bold text-accent-violet">{(avgMemoryKb / 1024).toFixed(1)}MB</div>
                     </div>
                     <div className="border border-accent-success/20 bg-accent-success/5 p-3">
                       <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Fastest</div>
-                      <div className="text-base font-mono font-bold text-accent-success">{bestDuration}ms</div>
+                      <div className=" font-mono font-bold text-accent-success">{bestDuration}ms</div>
                     </div>
                     <div className="border border-accent-warning/20 bg-accent-warning/5 p-3">
                       <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Slowest</div>
-                      <div className="text-base font-mono font-bold text-accent-warning">{worstDuration}ms</div>
+                      <div className=" font-mono font-bold text-accent-warning">{worstDuration}ms</div>
                     </div>
                   </div>
                 )}

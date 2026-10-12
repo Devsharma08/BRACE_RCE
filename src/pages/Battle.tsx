@@ -193,7 +193,7 @@ const SpectateView = ({
                       className="w-9 h-9 rounded-full border border-subtle-line"
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-fg">{p.user?.username || "Unknown"}</p>
+                      <p className="text-sm font-bold text-fg">{p.user?.username || "Operative"}</p>
                       <p className="text-[10px] text-faint tracking-widest">
                         {intel?.status || "STANDBY"}{intel?.linesWritten !== undefined ? ` · ${intel.linesWritten} LINES` : ""}
                       </p>
@@ -1258,7 +1258,7 @@ export const Battle = () => {
                   <div className="grid gap-3 md:grid-cols-2">
                     {roomParticipants.map((p: any) => {
                       const participantId = p.user?.id || p.userId;
-                      const uname = p.user?.username || "Unknown";
+                      const uname = p.user?.username || "Operative";
                       const intel = playerProgress[participantId];
                       const isMe = participantId === myUserId;
                       const verdict = participantVerdict(p, battleState.status);
@@ -1350,7 +1350,7 @@ export const Battle = () => {
                   <div className="grid gap-2 md:grid-cols-2">
                     {blockedParticipants.map((b: any) => {
                       const pid = b.blockedUserId;
-                      const uname = b.blockedUser?.username || "Unknown";
+                    const uname = b.blockedUser?.username || "Blocked Operative";
                       return (
                         <div key={pid} className="flex items-center justify-between p-2.5 rounded-lg border border-accent-danger/30 bg-base/50">
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -1574,7 +1574,7 @@ export const Battle = () => {
                 ) : (
                 roomParticipants.map((p: any) => {
                   const participantId = p.user?.id || p.userId;
-                  const uname = p.user?.username || "Unknown";
+                  const uname = p.user?.username || "Operative";
                   const intel = playerProgress[participantId];
                   const isMe = participantId === myUserId;
                   return (
@@ -1655,7 +1655,7 @@ export const Battle = () => {
                   </div>
                   {blockedParticipants.map((b: any) => {
                     const pid = b.blockedUserId;
-                    const uname = b.blockedUser?.username || "Unknown";
+                    const uname = b.blockedUser?.username || "Operative";
                     return (
                       <div key={pid} className="bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-2 mb-1 flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] font-mono font-bold text-fg">
@@ -1882,7 +1882,7 @@ export const Battle = () => {
                       ) : (
                         roomParticipants.map((p: any) => {
                           const participantId = p.user?.id || p.userId;
-                          const uname = p.user?.username || "Unknown";
+                  const uname = p.user?.username || "Operative";
                           const intel = playerProgress[participantId];
                           const isMe = participantId === myUserId;
                           return (

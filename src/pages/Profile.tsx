@@ -233,9 +233,9 @@ const Profile = () => {
                           />
                           <div>
                             <div className="text-sm text-fg">
-                              {record.event?.commonProblem?.name ||
-                                record.problem?.name ||
-                                "Unknown Problem"}
+                               {record.event?.commonProblem?.name ||
+                                 record.problem?.name ||
+                                 "Untitled Problem"}
                             </div>
                             <div className="mt-1 text-[9px] uppercase tracking-widest text-faint">
                               {new Date(record.createdAt).toLocaleDateString()} / {record.status}

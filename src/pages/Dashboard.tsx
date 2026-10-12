@@ -653,7 +653,7 @@ export const Dashboard: React.FC = () => {
                       perf.status === "PASSED" ||
                       perf.status === "WON" ||
                       perf.status === "COMPLETED";
-                    const problemName = perf.event?.commonProblem?.name || "Unknown";
+                    const problemName = perf.event?.commonProblem?.name || "Untitled Problem";
                     return (
                       <div
                         key={perf.id || i}

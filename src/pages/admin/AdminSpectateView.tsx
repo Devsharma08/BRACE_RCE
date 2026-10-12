@@ -121,7 +121,7 @@ const AdminSpectateView = () => {
             type: "battle_finished",
             roomId: roomId || "",
             roomName: battle?.name || `Battle ${battle?.roomCode || roomId}`,
-            message: `Battle finished - Winner: ${data.winnerId?.slice(0, 8) || "unknown"}`,
+            message: `Battle finished - Winner: ${data.winnerId?.slice(0, 8) || "undetermined"}`,
             data,
           });
         }
