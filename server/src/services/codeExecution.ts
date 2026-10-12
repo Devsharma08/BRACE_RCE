@@ -403,6 +403,122 @@ type ExecutionDetail = {
 
 const normalize = (value: string) => (value || "").replace(/\r\n/g, "\n").trim();
 
+/**
+ * A problem whose correct answer is not a single canonical string (e.g. any
+ * valid topological ordering) grades semantically instead of by exact match.
+ * Given the case `input`, the student's `actual` output and the stored
+ * `expected` string, it decides whether the answer is correct. Exact string
+ * equality is always accepted (one valid answer among possibly many).
+ */
+type SemanticGrader = (input: string, actual: string, expected: string) => boolean;
+
+/**
+ * Validate a Course Schedule II style answer: is `actual` a topological
+ * ordering that respects every prerequisite?
+ *
+ * Input format: line 1 = numCourses, line 2 = prerequisites JSON ([[a,b],...]),
+ * where [a,b] means b must be taken before a. The ordering is accepted when it
+ * covers every course exactly once and b precedes a for all prerequisites, or
+ * (when a cycle makes ordering impossible) when it is the empty ordering [].
+ *
+ * Exact match short-circuits to true so the stored expected string — itself a
+ * valid ordering — never regresses.
+ */
+export const isValidTopologicalOrder = (input: string, actual: string, expected: string): boolean => {
+  if (actual === expected) return true;
+
+  const lines = normalize(input).split("\n");
+  const numCourses = parseInt((lines[0] ?? "").trim(), 10);
+  if (!Number.isInteger(numCourses) || numCourses < 0) return false;
+
+  let prereqs: unknown;
+  try {
+    prereqs = JSON.parse((lines[1] ?? "[]").trim());
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(prereqs)) return false;
+
+  const actualStr = (actual ?? "").trim();
+  if (actualStr === "") return false; // void/empty stdout is never a valid ordering
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(actualStr);
+  } catch {
+    return false;
+  }
+  if (!Array.isArray(parsed)) return false;
+  const order = parsed as number[];
+
+  // Build the graph: [a,b] => b -> a (b before a), tracking indegrees.
+  const adj: number[][] = Array.from({ length: numCourses }, () => []);
+  const indegree = new Array<number>(numCourses).fill(0);
+  for (const raw of prereqs as unknown[]) {
+    if (!Array.isArray(raw) || raw.length < 2) return false;
+    const [a, b] = raw as [unknown, unknown];
+    if (typeof a !== "number" || typeof b !== "number") return false;
+    if (!Number.isInteger(a) || !Number.isInteger(b)) return false;
+    if (a < 0 || a >= numCourses || b < 0 || b >= numCourses) return false;
+    adj[b].push(a);
+    indegree[a] += 1;
+  }
+
+  // Feasibility (acyclicity) via Kahn's; a cycle means [] is the only answer.
+  const work = indegree.slice();
+  const queue: number[] = [];
+  for (let i = 0; i < numCourses; i++) if (work[i] === 0) queue.push(i);
+  let visited = 0;
+  while (queue.length) {
+    const u = queue.shift()!;
+    visited++;
+    for (const v of adj[u]) if (--work[v] === 0) queue.push(v);
+  }
+  if (visited !== numCourses) return order.length === 0; // impossible => expect []
+
+  // Feasible: `order` must be a permutation of all courses...
+  if (order.length !== numCourses) return false;
+  const pos = new Map<number, number>();
+  for (let i = 0; i < order.length; i++) {
+    const c = order[i];
+    if (typeof c !== "number" || !Number.isInteger(c)) return false;
+    if (c < 0 || c >= numCourses) return false;
+    if (pos.has(c)) return false; // duplicate course
+    pos.set(c, i);
+  }
+  if (pos.size !== numCourses) return false; // must cover every course
+
+  // ...that places b strictly before a for every prerequisite [a,b].
+  for (const raw of prereqs as unknown[]) {
+    const [a, b] = raw as [number, number];
+    if (pos.get(b)! >= pos.get(a)!) return false;
+  }
+  return true;
+};
+
+const topologicalOrderGrader: SemanticGrader = (input, actual, expected) =>
+  isValidTopologicalOrder(input, actual, expected);
+
+
+/**
+ * Strip // line comments and /* *\/ block comments so signature detection
+ * cannot match a function declared inside a JSDoc example.
+ *
+ * The LeetCode starter snippets open with a comment like
+ *   `/** ... function ListNode(val, next) { ... } *\/`
+ * The signature regex (`function NAME(...)`) matched `ListNode` there and the
+ * wrapper then called `ListNode(arg0, arg1)` instead of the real solution
+ * (`addTwoNumbers(l1, l2)`), so a correct submission was graded against the
+ * wrong function and always failed. Removing comments first makes the regex
+ * see only real code.
+ *
+ * Line-comment stripping is deliberately conservative: it will not treat `://`
+ * (URLs) as a comment start.
+ */
+const stripComments = (code: string): string =>
+  (code || "")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")        // block comments
+    .replace(/(^|[^:"'`])\/\/.*$/gm, "$1");   // line comments (not ://)
+
 const problemIdPayload = (currentCase: TestCaseRecord) => {
   return currentCase.problemId ? { problemId: currentCase.problemId } : {};
 };
@@ -671,7 +787,7 @@ export function prepareFinalCode(
       return `${sourceCode}\n${buildOperationWrapper(operationSig)}`;
     }
 
-    const userFuncMatch = sourceCode.match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
+    const userFuncMatch = stripComments(sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
     const userFuncName = userFuncMatch ? (userFuncMatch[1] || userFuncMatch[3] || userFuncMatch[5]) : null;
 
     if (wrapperCode && userFuncName && !wrapperCode.includes(userFuncName)) wrapperCode = "";
@@ -767,15 +883,33 @@ function isRandomNode(obj) { return obj && typeof obj === 'object' && ('val' in 
 `;
 
     if (!wrapperCode || wrapperCode.trim() === "// Wrapper" || wrapperCode.includes("module.exports")) {
-      const match = (snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
+      const match = stripComments(snippet?.code || sourceCode).match(/(?:var|let|const|function)\s+(\w+)\s*=\s*function\s*\((.*?)\)|function\s+(\w+)\s*\((.*?)\)|class\s+Solution\s*\{\s*(\w+)\s*\((.*?)\)/);
       if (match) {
         const funcName = match[1] || match[3] || match[5];
         const argsStr = (match[2] || match[4] || match[6] || "").trim();
         const argCount = argsStr ? argsStr.split(',').length : 0;
+        const paramNames = argsStr.split(',').map(s => s.trim().toLowerCase());
         const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random") || sourceCode.includes("_Node");
         const isTreeProblem = !isRandomProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode"));
-        const isListProblem = !isRandomProblem && (sourceCode.includes("ListNode") || sourceCode.includes("partition") || sourceCode.includes("reverseList") || sourceCode.includes("mergeTwoLists") || sourceCode.includes("deleteNode"));
-        const paramNames = argsStr.split(',').map(s => s.trim().toLowerCase());
+        // A linked-list problem is detected from the code OR from a list-like
+        // parameter NAME *combined with actual node access*. LeetCode's
+        // canonical list parameter is `head` (also `l1`/`l2`, and `list`).
+        //
+        // The param-name check is deliberately gated on node access (`.next` /
+        // `.val`): problems like Reorder List (#34) use only `head` and none of
+        // the method-name keywords, so they were previously missed — the JSON
+        // array was passed UNCONVERTED, the in-place mutation did nothing, and
+        // the untouched original was graded (correct solutions always failed).
+        // But some array-based problems reuse the SAME names (`l1`/`l2` in the
+        // bank's "add two numbers" treat them as plain arrays), so the name
+        // alone must not trigger conversion — only when the body walks nodes.
+        const usesNodeAccess = sourceCode.includes(".next") || sourceCode.includes(".val");
+        const isListProblem = !isRandomProblem && (
+          sourceCode.includes("ListNode") || sourceCode.includes("partition") ||
+          sourceCode.includes("reverseList") || sourceCode.includes("mergeTwoLists") ||
+          sourceCode.includes("deleteNode") || sourceCode.includes("reorderList") ||
+          (usesNodeAccess && paramNames.some(pn => pn === 'head' || pn.includes('l1') || pn.includes('l2') || pn === 'list'))
+        );
 
         wrapperCode = `const fs = require('fs');
 ${treeHelpers}
@@ -784,13 +918,32 @@ if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided i
 `;
         for (let i = 0; i < argCount; i++) {
           const pNameStr = JSON.stringify(paramNames[i] || '');
-          wrapperCode += `const rawArg${i} = input[${i}] !== undefined ? JSON.parse(input[${i}]) : undefined;
+          // Tolerant argument parse (CRITICAL FIX): the old code did
+          // `JSON.parse(input[i])` unconditionally. Many stored inputs are RAW
+          // strings (bare words, digits, plain text like `abcabcbb` for "Longest
+          // Substring Without Repeating Characters") that are NOT valid JSON, so
+          // JSON.parse threw a SyntaxError at the TOP of the wrapper — before the
+          // user function ran and outside any try/catch. Node then exited 1 and
+          // the sandbox dumped the raw error, making every string-argument
+          // problem impossible to submit against. The fix parses and, on
+          // failure, falls back to the raw string (exactly what a string
+          // parameter expects). Valid-JSON lines (arrays, numbers, quoted
+          // strings) still parse normally, preserving the fmtIn() contract.
+          wrapperCode += `const rawArg${i} = input[${i}] !== undefined ? (() => { try { return JSON.parse(input[${i}]); } catch (e) { return input[${i}]; } })() : undefined;
 `;
           wrapperCode += `const isArgTree${i} = ${isTreeProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('root') || ${pNameStr}.includes('tree') || ${pNameStr}.includes('node') || ${pNameStr} === 'p' || ${pNameStr} === 'q' || ${pNameStr} === 't1' || ${pNameStr} === 't2');
 `;
           wrapperCode += `const isArgList${i} = ${isListProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('head') || ${pNameStr}.includes('l1') || ${pNameStr}.includes('l2') || ${pNameStr}.includes('list'));
 `;
-          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : isArgTree${i} ? arrayToTree(rawArg${i}) : isArgList${i} ? arrayToListNode(rawArg${i}) : rawArg${i};
+          // "List of lists" params (e.g. Merge k Sorted Lists' `lists`) must become an
+          // ARRAY of ListNodes, not a single ListNode. Without this the generic
+          // isArgList branch ran arrayToListNode() over the 2D array and produced one
+          // bogus node whose `val` was a whole sub-array, so mergeKLists always crashed.
+          // Empty input `[]` maps to [] (an empty list-of-lists), preserving the
+          // `mergeKLists([]) === null` -> serialized `[]` contract.
+          wrapperCode += `const isArgListOfLists${i} = ${isListProblem} && Array.isArray(rawArg${i}) && (${pNameStr} === 'lists' || ${pNameStr}.includes('lists'));
+`;
+          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : isArgTree${i} ? arrayToTree(rawArg${i}) : isArgListOfLists${i} ? rawArg${i}.map(sub => Array.isArray(sub) ? arrayToListNode(sub) : sub) : isArgList${i} ? arrayToListNode(rawArg${i}) : rawArg${i};
 `;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
@@ -806,7 +959,29 @@ try {
   process.exit(1);
 }
 `;
-        wrapperCode += `const outVal = isListNode(res) ? listNodeToArray(res) : isRandomNode(res) ? randomListToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && (${isTreeProblem} || ${isListProblem})) ? [] : (isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : (isListNode(arg0) ? listNodeToArray(arg0) : arg0))));
+        // Empty-input edge case: a void function (e.g. Flatten Binary Tree) given
+        // `[]` yields arg0 === null (arrayToTree([]) === null). The old chain fell
+        // through to `arg0` and printed "null" where the stored expectation is "[]".
+        // Route a nullish arg back through [] for tree/list problems so an empty
+        // structure serializes to [] (treeToArray/listNodeToArray of null is []).
+        //
+        // Node-value edge case: Lowest Common Ancestor of a BST takes a tree plus
+        // SCALAR node values (root, p, q) and returns the answer NODE. Serializing
+        // that node with treeToArray() expands it into its whole subtree (the root's
+        // subtree for a top LCA), but the stored expectation is the node's VALUE
+        // ("6"). When the input root was a tree and a later argument is a scalar
+        // (the LCA signature), emit the node's value instead of the subtree. The
+        // scalar-later-arg guard keeps plain tree→tree transforms (invertTree(root),
+        // which has no later scalar) serializing as trees.
+        const scalarLaterArgs =
+          argCount >= 2
+            ? `[${Array.from({ length: argCount - 1 }, (_, k) => `arg${k + 1}`).join(', ')}].some(a => typeof a === 'number' || typeof a === 'boolean')`
+            : 'false';
+        const lcaValuePrefix =
+          argCount >= 2
+            ? `(isTreeNode(res) && isTreeNode(arg0) && (${scalarLaterArgs})) ? res.val : `
+            : '';
+        wrapperCode += `const outVal = isListNode(res) ? listNodeToArray(res) : isRandomNode(res) ? randomListToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && (${isTreeProblem} || ${isListProblem})) ? [] : ${lcaValuePrefix}(isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : (isListNode(arg0) ? listNodeToArray(arg0) : ((arg0 == null && (${isTreeProblem} || ${isListProblem})) ? [] : arg0)))));
 `;
         // NOTE: the backslash must be doubled. Inside a template literal `/\s/g`
         // would collapse to `/s/g`, stripping every literal "s" from the output
@@ -927,7 +1102,13 @@ import sys, json, math, collections, heapq, itertools, functools, bisect
     pyWrapper += `if len(input_lines) == 0: raise Exception("TEST CASE ERROR: Input is empty.")
 `;
     for (let i = 0; i < argCount; i++) {
-      pyWrapper += `raw_arg${i} = json.loads(input_lines[${i}]) if ${i} < len(input_lines) else None
+      // Tolerant argument parse (mirrors the JS wrapper): stored inputs may be
+      // raw strings that are NOT valid JSON (e.g. `abcabcbb`). json.loads would
+      // raise before the user code runs, crashing the sandbox. Parse and fall
+      // back to the raw string so string parameters work; valid-JSON lines
+      // still parse normally, preserving the fmtIn() contract.
+      pyWrapper += `try: raw_arg${i} = json.loads(input_lines[${i}]) if ${i} < len(input_lines) else None
+except (ValueError, TypeError): raw_arg${i} = input_lines[${i}] if ${i} < len(input_lines) else None
 `;
       const pName = sig?.params[i]?.name.toLowerCase() || '';
       const isArgTree = isTreeProblem && (pName.includes('root') || pName.includes('tree') || pName.includes('node') || pName === 'p' || pName === 'q' || pName === 't1' || pName === 't2');
@@ -1723,6 +1904,12 @@ export const executeCode = async (req: Request, res: Response) => {
   try {
     let casesToRun: TestCaseRecord[] = [];
 
+    // Semantic grader for problems whose correct answer is not a single
+    // canonical string (see `SemanticGrader`). Null means the default exact
+    // string comparison, which is correct for the overwhelming majority of
+    // problems. Set below from the fetched problem identity.
+    let semanticGrader: SemanticGrader | null = null;
+
     // Fetch test cases and wrapper code from DB if it's a real problem
     let finalCode = sourceCode;
     
@@ -1734,7 +1921,7 @@ export const executeCode = async (req: Request, res: Response) => {
             { id: githubOid }
           ]
         },
-        select: { test_cases: true, code_snippets: true },
+        select: { test_cases: true, code_snippets: true, problem_number: true, name: true },
         // MUST match the `orderBy` in problems.ts (getSystemProblems and
         // getProblemById). The client renders card N from index N and matches
         // each ExecutionDetail by testCaseIndex, so a different order here
@@ -1760,6 +1947,15 @@ export const executeCode = async (req: Request, res: Response) => {
       }
       const snippet = fileData?.code_snippets?.find((s: any) => s.language === executionLanguage);
       finalCode = prepareFinalCode(executionLanguage, sourceCode, snippet);
+
+      // Course Schedule II (and any future problem whose answer is "any valid
+      // topological ordering") must grade semantically: exact-string matching
+      // rejects a correct ordering that merely breaks ties differently from the
+      // stored one. Match on problem_number so a slug/name change can't silently
+      // drop the special-casing.
+      if (fileData?.problem_number === 186) {
+        semanticGrader = topologicalOrderGrader;
+      }
     }
 
     // Override if custom input is provided — only meaningful for RUN mode.
@@ -1905,9 +2101,14 @@ export const executeCode = async (req: Request, res: Response) => {
       return casesToRun.map((c, i) => {
         const expected = String(c.expectedOutput ?? "").trim();
         const output = lines[i] ?? "";
+        // Semantic grading (e.g. topological order) when the problem needs it,
+        // otherwise the standard exact comparison.
+        const passed = semanticGrader
+          ? semanticGrader(String(c.input ?? ""), output, expected)
+          : output === expected;
         return {
           index: i,
-          passed: output === expected,
+          passed,
           compileFailed: false,
           runtimeMs: perCaseMs,
           memoryKb,
@@ -1922,7 +2123,7 @@ export const executeCode = async (req: Request, res: Response) => {
             testCaseIndex: i,
             output,
             expectedOutput: expected,
-            passed: output === expected,
+            passed,
             runtimeError: null,
             metrics: {
               durationMs: perCaseMs,
@@ -2137,7 +2338,9 @@ export const executeCode = async (req: Request, res: Response) => {
       // user from submitting custom input in SUBMIT mode to fake a PASS.
       const isCustomInputRun = userCustomInput.length > 0 && expectedOutput === "";
       const passed = expectedOutput !== ""
-        ? actualOutput === expectedOutput
+        ? semanticGrader
+          ? semanticGrader(testCaseInput, actualOutput, expectedOutput)
+          : actualOutput === expectedOutput
         : processExitCode === 0;
 
       // NOTE: `totalPassed` is deliberately NOT incremented here. Totals are
