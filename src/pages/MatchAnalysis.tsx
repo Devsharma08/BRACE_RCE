@@ -146,29 +146,177 @@ const MatchAnalysis = () => {
 
   const performances = match.event?.performances ?? [];
   const myPerf = performances.find((p) => p.userId === match.userId);
-  const oppPerf = performances.find((p) => p.userId !== match.userId);
+  const opponentPerfs = performances.filter((p) => p.userId !== match.userId);
+  const oppPerf = opponentPerfs[0];
   const problem = match.event?.commonProblem;
+  const eventType = match.event?.type ?? "";
+  const isOneVsOne = eventType === "ONE_VS_ONE";
   const isWin = WIN_STATUSES.includes(match.status);
   const mySubs = myPerf?.submissions ?? match.submissions ?? [];
 
-  // Merge BOTH sides' submission events into one chronological timeline —
-  // this is the "who did what, when" narrative of the battle.
-  const timeline: TimelineEntry[] = performances
-    .flatMap((perf) =>
-      (perf.submissions ?? []).map((submission, index): TimelineEntry => ({
-        key: `${perf.id}-${submission?.id ?? index}`,
-        side: perf.userId === match.userId ? "MINE" : "OPPONENT",
-        username: perf.user?.username ?? "Unknown",
-        at: submission?.createdAt ?? null,
-        submission,
-      })),
-    )
-    .sort((a, b) => {
-      const ta = a.at ? new Date(a.at).getTime() : 0;
-      const tb = b.at ? new Date(b.at).getTime() : 0;
-      if (ta !== tb) return ta - tb;
-      return (a.submission.attemptNumber ?? 0) - (b.submission.attemptNumber ?? 0);
-    });
+  const renderOneVsOneView = () => {
+    const timeline: TimelineEntry[] = performances
+      .flatMap((perf) =>
+        (perf.submissions ?? []).map((submission, index): TimelineEntry => ({
+          key: `${perf.id}-${submission?.id ?? index}`,
+          side: perf.userId === match.userId ? "MINE" : "OPPONENT",
+          username: perf.user?.username ?? "Operative",
+          at: submission?.createdAt ?? null,
+          submission,
+        })),
+      )
+      .sort((a, b) => {
+        const ta = a.at ? new Date(a.at).getTime() : 0;
+        const tb = b.at ? new Date(b.at).getTime() : 0;
+        if (ta !== tb) return ta - tb;
+        return (a.submission.attemptNumber ?? 0) - (b.submission.attemptNumber ?? 0);
+      });
+
+    return (
+      <>
+        {/* ── MERGED EVENT TIMELINE ── */}
+        <section className="mt-5 rounded-card border border-subtle-line bg-surface p-5">
+          <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-fg">
+            Battle events // chronological
+          </h2>
+          <p className="mt-1 font-sans text-[11px] text-subtle">
+            Every submission from both sides, merged into a single timeline.
+          </p>
+          {timeline.length === 0 ? (
+            <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-faint">
+              No submission events were recorded for this battle.
+            </p>
+          ) : (
+            <ol className="mt-4 space-y-2">
+              {timeline.map((entry) => {
+                const mine = entry.side === "MINE";
+                const passed = entry.submission.status === "PASSED";
+                return (
+                  <li
+                    key={entry.key}
+                    className={`flex flex-wrap items-center gap-2.5 rounded-btn border-l-2 border border-subtle-line bg-base/50 px-3 py-2 ${
+                      mine ? "border-l-accent-primary" : "border-l-accent-danger"
+                    }`}
+                  >
+                    <span
+                      className={`shrink-0 rounded-btn border px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-widest ${
+                        mine
+                          ? "border-accent-primary/40 bg-accent-primary/10 text-accent-primary"
+                          : "border-accent-danger/40 bg-accent-danger/10 text-accent-danger"
+                      }`}
+                    >
+                      {mine ? "You" : entry.username}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-subtle">
+                      Attempt #{entry.submission.attemptNumber}
+                    </span>
+                    <span
+                      className={`font-mono text-[10px] font-bold uppercase tracking-widest ${
+                        passed ? "text-accent-success" : "text-accent-danger"
+                      }`}
+                    >
+                      {entry.submission.status}
+                    </span>
+                    <span className="font-mono text-[10px] tabular-nums text-faint">
+                      {entry.submission.passedCase}/{entry.submission.totalCases} cases
+                      {entry.submission.runtimeMs != null && ` · ${entry.submission.runtimeMs}ms`}
+                    </span>
+                    <span className="ml-auto shrink-0 font-mono text-[9px] tabular-nums text-faint">
+                      {entry.at ? new Date(entry.at).toLocaleTimeString() : "—"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+
+        {/* ── SIDE-BY-SIDE CODE REVIEW ── */}
+        <section className="mt-5 overflow-hidden rounded-card border border-subtle-line bg-surface">
+          <div className="border-b border-subtle-line px-5 py-4">
+            <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-fg">
+              Code review // side by side
+            </h2>
+            <p className="mt-1 font-sans text-[11px] text-subtle">
+              Compare approaches, runtimes and test-case coverage with{" "}
+              {oppPerf ? oppPerf.user?.username : "your own attempts"}.
+            </p>
+          </div>
+          <div className="flex h-[70vh] min-h-[480px] flex-col">
+            <CodeComparisonContent
+              currentUserId={match.userId || user?.id || ""}
+              performances={performances as unknown as PerformanceData[]}
+            />
+          </div>
+        </section>
+      </>
+    );
+  };
+
+  const renderMultiplayerView = () => {
+    const sorted = [...performances].sort((a, b) => b.score - a.score);
+    return (
+      <section className="mt-5 rounded-card border border-subtle-line bg-surface p-5">
+        <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-fg mb-4">
+          Leaderboard // {match.event?.type ?? "MULTIPLAYER"}
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-mono text-[10px] uppercase tracking-widest">
+            <thead>
+              <tr className="border-b border-subtle-line text-faint">
+                <th className="px-3 py-2">#</th>
+                <th className="px-3 py-2">Operative</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2 text-right">Score</th>
+                <th className="px-3 py-2 text-right">Solved</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((p, idx) => {
+                const isMe = p.userId === match.userId;
+                const passed = ["PASSED", "COMPLETED", "WON"].includes(p.status);
+                const solved = p.submissions?.filter((s) => s.status === "PASSED").length ?? 0;
+                return (
+                  <tr
+                    key={p.userId}
+                    className={`border-b border-line-low last:border-0 ${
+                      isMe ? "bg-accent-primary/10" : ""
+                    }`}
+                  >
+                    <td className="px-3 py-2 text-fg">
+                      {idx === 0 && passed ? "🥇" : idx === 1 && passed ? "🥈" : idx === 2 && passed ? "🥉" : idx + 1}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[8px] font-mono font-bold text-fg">
+                          {p.user?.username?.[0]?.toUpperCase() || "?"}
+                        </span>
+                        {p.user?.username || "Operative"}
+                        {isMe && <span className="text-[8px] text-accent-primary">(YOU)</span>}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`px-1.5 py-0.5 rounded border font-bold ${
+                        passed
+                          ? "border-accent-success/30 text-accent-success"
+                          : p.status === "TIMEOUT"
+                          ? "border-accent-danger/30 text-accent-danger"
+                          : "border-accent-warning/30 text-accent-warning"
+                      }`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{p.score ?? 0}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{solved}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
 
 
   return (
@@ -216,11 +364,15 @@ const MatchAnalysis = () => {
           </div>
 
           <div className="min-w-0 text-right">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-faint">Opponent</p>
-            <p className="mt-0.5 truncate font-mono text-sm font-bold uppercase tracking-wider text-accent-danger">
-              {oppPerf?.user?.username ?? "Solo run"}
+            <p className="font-mono text-[9px] uppercase tracking-widest text-faint">
+              {isOneVsOne ? "Opponent" : "Participants"}
             </p>
-            {oppPerf && (
+            <p className="mt-0.5 truncate font-mono text-sm font-bold uppercase tracking-wider text-accent-danger">
+              {isOneVsOne
+                ? (oppPerf?.user?.username ?? "Solo Run")
+                : `${opponentPerfs.length} combatant${opponentPerfs.length === 1 ? "" : "s"}`}
+            </p>
+            {isOneVsOne && oppPerf && (
               <p className="mt-0.5 font-mono text-[10px] tabular-nums text-faint">
                 {oppPerf.score} pts // {WIN_STATUSES.includes(oppPerf.status) ? "WON" : oppPerf.status}
               </p>
@@ -247,82 +399,8 @@ const MatchAnalysis = () => {
       </section>
 
 
-      {/* ── MERGED EVENT TIMELINE (mine + opponent interleaved) ───────── */}
-      <section className="mt-5 rounded-card border border-subtle-line bg-surface p-5">
-        <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-fg">
-          Battle events // chronological
-        </h2>
-        <p className="mt-1 font-sans text-[11px] text-subtle">
-          Every submission from both sides, merged into a single timeline.
-        </p>
-
-        {timeline.length === 0 ? (
-          <p className="mt-4 font-mono text-[10px] uppercase tracking-widest text-faint">
-            No submission events were recorded for this battle.
-          </p>
-        ) : (
-          <ol className="mt-4 space-y-2">
-            {timeline.map((entry) => {
-              const mine = entry.side === "MINE";
-              const passed = entry.submission.status === "PASSED";
-              return (
-                <li
-                  key={entry.key}
-                  className={`flex flex-wrap items-center gap-2.5 rounded-btn border-l-2 border border-subtle-line bg-base/50 px-3 py-2 ${
-                    mine ? "border-l-accent-primary" : "border-l-accent-danger"
-                  }`}
-                >
-                  <span
-                    className={`shrink-0 rounded-btn border px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-widest ${
-                      mine
-                        ? "border-accent-primary/40 bg-accent-primary/10 text-accent-primary"
-                        : "border-accent-danger/40 bg-accent-danger/10 text-accent-danger"
-                    }`}
-                  >
-                    {mine ? "You" : entry.username}
-                  </span>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-subtle">
-                    Attempt #{entry.submission.attemptNumber}
-                  </span>
-                  <span
-                    className={`font-mono text-[10px] font-bold uppercase tracking-widest ${
-                      passed ? "text-accent-success" : "text-accent-danger"
-                    }`}
-                  >
-                    {entry.submission.status}
-                  </span>
-                  <span className="font-mono text-[10px] tabular-nums text-faint">
-                    {entry.submission.passedCase}/{entry.submission.totalCases} cases
-                    {entry.submission.runtimeMs != null && ` · ${entry.submission.runtimeMs}ms`}
-                  </span>
-                  <span className="ml-auto shrink-0 font-mono text-[9px] tabular-nums text-faint">
-                    {entry.at ? new Date(entry.at).toLocaleTimeString() : "—"}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </section>
-
-      {/* ── SIDE-BY-SIDE CODE REVIEW (shared with the history modal) ───── */}
-      <section className="mt-5 overflow-hidden rounded-card border border-subtle-line bg-surface">
-        <div className="border-b border-subtle-line px-5 py-4">
-          <h2 className="font-mono text-xs font-bold uppercase tracking-[0.2em] text-fg">
-            Code review // side by side
-          </h2>
-          <p className="mt-1 font-sans text-[11px] text-subtle">
-            Compare approaches, runtimes and test-case coverage with{" "}
-            {oppPerf ? oppPerf.user?.username : "your own attempts"}.
-          </p>
-        </div>
-        <div className="flex h-[70vh] min-h-[480px] flex-col">
-          <CodeComparisonContent
-            currentUserId={match.userId || user?.id || ""}
-            performances={performances as unknown as PerformanceData[]}
-          />
-        </div>
-      </section>
+      {/* ── EVENT-TYPE-SPECIFIC ANALYSIS ── */}
+      {isOneVsOne ? renderOneVsOneView() : renderMultiplayerView()}
     </div>
   );
 };

@@ -281,7 +281,7 @@ export const CodeComparisonContent: React.FC<CodeComparisonContentProps> = ({
           "primary",
         )}
         {renderColumn(
-          `Opponent — ${oppPerf?.user?.username || "unknown"}`,
+          `Opponent — ${oppPerf?.user?.username || "Solo Run"}`,
           oppPerf,
           selectedOppSub,
           oppSubmissions,
