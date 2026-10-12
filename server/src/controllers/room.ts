@@ -719,6 +719,11 @@ class Rooms {
             const event = await prisma.event.findUnique({
                 where: { id: eventId as string },
                 select: { id: true, hostId: true },
+            }) ?? await prisma.event.findFirst({
+                // Rooms may be addressed by their public 6-char roomCode instead
+                // of the internal id — fall back so host tooling works for both.
+                where: { roomCode: eventId as string, isTemplate: false },
+                select: { id: true, hostId: true },
             });
             if (!event) return res.status(404).json({ message: "Event not found" });
             if (event.hostId !== userId) {
@@ -747,8 +752,20 @@ class Rooms {
             const userId = req.userId as string;
             const { eventId } = req.params;
 
-            const event = await prisma.event.findUnique({
+            // Rooms may be addressed by their public 6-char roomCode instead of
+            // the internal id. Resolve the id first (supporting both) so the
+            // analytics query below can run against a concrete event.
+            const resolved = await prisma.event.findUnique({
                 where: { id: eventId as string },
+                select: { id: true },
+            }) ?? await prisma.event.findFirst({
+                where: { roomCode: eventId as string, isTemplate: false },
+                select: { id: true },
+            });
+            if (!resolved) return res.status(404).json({ message: "Event not found" });
+
+            const event = await prisma.event.findUnique({
+                where: { id: resolved.id },
                 include: {
                     problems: true,
                     performances: {
