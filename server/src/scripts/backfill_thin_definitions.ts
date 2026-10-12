@@ -31,13 +31,13 @@ Object.assign(DEFS, {
     statement:
       "Given a string containing just the characters <code>(</code> and <code>)</code>, find the length of the <strong>longest valid (well-formed) parentheses</strong> substring.",
     examples: [
-      ['s = "(()"', "4"],
+      ['s = "(()"', "2"],
       ['s = ")()())"', "4"],
       ['s = ""', "0"],
     ],
     constraints: [
-      "0 &lt;= s.length &lt;= 10<sup>4</sup>",
-      "<code>s</code> contains <code>(</code> and <code>)</code> only.",
+      "0 &lt;= s.length &lt;= 3 * 10<sup>4</sup>",
+      "<code>s[i]</code> is <code>(</code> or <code>)</code>.",
     ],
     complexity: "Time O(n), Space O(n) using a stack of indices.",
   },
