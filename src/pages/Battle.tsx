@@ -243,7 +243,7 @@ export const Battle = () => {
   const [loading, setLoading] = useState(true);
   const [battleState, setBattleState] = useState<any>({ status: "WAITING" });
   const [isHost, setIsHost] = useState(false);
-  const [battleResult, setBattleResult] = useState<"WON" | "LOST" | null>(null);
+  const [battleResult, setBattleResult] = useState<"WON" | "LOST" | "CHEATER" | null>(null);
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [myUserId, setMyUserId] = useState<string>("");
@@ -306,14 +306,16 @@ export const Battle = () => {
     if (!battleActiveRef.current) return;
     setFocusLossCount((count) => {
       const newCount = count + 1;
-      // Exponential penalty: 5%, 10%, 20%, 40%, 80%
-      const penalty = newCount >= 5 ? 80 : Math.round(5 * Math.pow(2, newCount - 1));
+      // Exponential penalty: 5%, 10%, 20%, 40%, 80%, then 100% (capped)
+      const rawPenalty = Math.round(5 * Math.pow(2, newCount - 1));
+      const penalty = Math.min(100, rawPenalty);
       setFocusPenaltyPercent(penalty);
       return newCount;
     });
     setFocusFlash(true);
     window.setTimeout(() => setFocusFlash(false), 650);
-    toast.warning(`⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${Math.round(5 * Math.pow(2, focusLossCount))}%`, { id: "focus-loss" });
+    const displayPenalty = Math.min(100, Math.round(5 * Math.pow(2, focusLossCount)));
+    toast.warning(`⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${displayPenalty}%`, { id: "focus-loss" });
   }, [focusLossCount]);
 
   const handleFocusRestore = useCallback(() => {
@@ -647,11 +649,17 @@ export const Battle = () => {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
       }
-      const myPerf = data?.performances?.find(
-        (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
-      );
-      const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
-      setBattleResult(won ? "WON" : "LOST");
+      if (focusPenaltyPercent >= 100 && !isHost) {
+        setBattleResult("CHEATER");
+        // Notify the opponent — they win by default when the other player is flagged for cheating
+        socket.emit("surrender_battle", { roomId, reason: "cheater" });
+      } else {
+        const myPerf = data?.performances?.find(
+          (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+        );
+        const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+        setBattleResult(won ? "WON" : "LOST");
+      }
       setIsBattleMenuOpen(true);
       invalidateProblemQueries(queryClient);
     });
@@ -660,12 +668,16 @@ export const Battle = () => {
       if (data?.performances) {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
-        const myPerf = data.performances.find(
-          (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
-        );
-        if (myPerf) {
-          const won = ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
-          setBattleResult(won ? "WON" : "LOST");
+        if (focusPenaltyPercent >= 100 && !isHost) {
+          setBattleResult("CHEATER");
+        } else {
+          const myPerf = data.performances.find(
+            (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+          );
+          if (myPerf) {
+            const won = ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+            setBattleResult(won ? "WON" : "LOST");
+          }
         }
       }
       void fetchBlockedParticipants();
@@ -840,7 +852,11 @@ export const Battle = () => {
   };
 
   const handleTimerExpire = () => {
-    setBattleResult("LOST");
+    if (focusPenaltyPercent >= 100 && !isHost) {
+      setBattleResult("CHEATER");
+    } else {
+      setBattleResult("LOST");
+    }
     setIsBattleMenuOpen(true);
     playBattleSound("surrender");
     try {
@@ -2194,31 +2210,49 @@ export const Battle = () => {
             ref={battleMenuRef}
             className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll"
           >
-            <div
-              className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-accent-primary to-accent-success" : "from-accent-danger to-accent-warning"}`}
-            />
-            <div className="relative mb-6">
-              <div
-                className={`absolute inset-0 blur-xl ${battleResult === "WON" ? "bg-accent-primary/30" : "bg-accent-danger/30"}`}
-              />
-              {battleResult === "WON" ? (
-                <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
-              ) : (
-                <Skull className="w-16 h-16 text-accent-danger relative z-10" />
-              )}
-            </div>
-            <h2
-              className={`font-mono text-3xl font-bold tracking-widest mb-3 ${battleResult === "WON" ? "text-accent-primary" : "text-accent-danger"}`}
-            >
-              {battleResult === "WON"
-                ? "OPERATION SUCCESSFUL"
-                : "SYSTEM FAILURE"}
-            </h2>
-            <p className="text-subtle text-sm mb-4 font-sans">
-              {battleResult === "WON"
-                ? "You completed the operation."
-                : "Time expired or opponent optimized faster."}
-            </p>
+             <div
+               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${
+                 battleResult === "WON" ? "from-accent-primary to-accent-success"
+                 : battleResult === "CHEATER" ? "from-accent-pink to-accent-danger"
+                 : "from-accent-danger to-accent-warning"
+               }`}
+             />
+             <div className="relative mb-6">
+               <div
+                 className={`absolute inset-0 blur-xl ${
+                   battleResult === "WON" ? "bg-accent-primary/30"
+                   : battleResult === "CHEATER" ? "bg-accent-pink/30"
+                   : "bg-accent-danger/30"
+                 }`}
+               />
+               {battleResult === "WON" ? (
+                 <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
+               ) : battleResult === "CHEATER" ? (
+                 <ShieldAlert className="w-16 h-16 text-accent-pink relative z-10 animate-pulse" />
+               ) : (
+                 <Skull className="w-16 h-16 text-accent-danger relative z-10" />
+               )}
+             </div>
+             <h2
+               className={`font-mono text-3xl font-bold tracking-widest mb-3 ${
+                 battleResult === "WON" ? "text-accent-primary"
+                 : battleResult === "CHEATER" ? "text-accent-pink"
+                 : "text-accent-danger"
+               }`}
+             >
+               {battleResult === "WON"
+                 ? "OPERATION SUCCESSFUL"
+                 : battleResult === "CHEATER"
+                 ? "FLAGGED AS CHEATER"
+                 : "SYSTEM FAILURE"}
+             </h2>
+             <p className="text-subtle text-sm mb-4 font-sans">
+               {battleResult === "WON"
+                 ? "You completed the operation."
+                 : battleResult === "CHEATER"
+                 ? "Excessive focus loss detected. Your opponent has been declared the winner."
+                 : "Time expired or opponent optimized faster."}
+             </p>
             {/* Per-participant completion verdicts + event analytics */}
             <div className="w-full flex flex-col gap-2 mb-6 text-left max-h-56 overflow-y-auto themed-scroll pr-1">
               {roomParticipants?.map((p: any) => {
