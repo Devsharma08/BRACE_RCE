@@ -97,9 +97,6 @@ const OutputPanel = ({
                 : "WRONG_ANSWER"
       : "IDLE";
 
-  const showError = outputStatus === "RUNTIME_ERROR" || outputStatus === "TIMEOUT";
-  const failedCase = output?.details?.find(d => !d.passed);
-
   const [activeDiagTab, setActiveDiagTab] = useState<"LOGS" | "TESTS">("LOGS");
 
   // The server grades the FULL case set and returns one detail row per case;
@@ -107,7 +104,7 @@ const OutputPanel = ({
   // are indexed the same way, so render exactly as many cards as the runner
   // graded, filling any gap from the detail row.
   const renderedCases = useMemo(() => {
-    const details = isCustomInputRun ? [] : output?.details ?? [];
+    const details = output?.details ?? [];
     const byIndex = new Map(details.map((detail) => [detail.testCaseIndex, detail]));
     const lastDetailIndex = details.reduce(
       (max, detail) => Math.max(max, detail.testCaseIndex),
@@ -128,7 +125,7 @@ const OutputPanel = ({
       // hidden and drop their SAMPLE badge.
       isHidden: testCases[index]?.isPublic === false,
     }));
-  }, [isCustomInputRun, output?.details, output?.totalCases, testCases]);
+  }, [output?.details, output?.totalCases, testCases]);
 
   return (
     <div className="flex h-full min-h-0 flex-col border-t border-subtle-line bg-terminal-bg">
