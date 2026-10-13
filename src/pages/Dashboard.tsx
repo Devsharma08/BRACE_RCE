@@ -365,9 +365,10 @@ export const Dashboard: React.FC = () => {
                 Your execution history, current rating, and next challenge — in one operational view.
               </p>
             </div>
-            {/* Rank block — profile photo stacks *above* the division and
-                global-rank readout so the identity anchor leads the metadata. */}
-            <div className="flex flex-col items-start gap-3 border-l border-subtle-line pl-5">
+            {/* Rank block — on mobile the avatar sits on the left and the
+                name/rank readout on the right (justify-between across both
+                ends); on lg the whole block docks as a side panel. */}
+            <div className="flex flex-row items-center justify-between gap-3 border-l border-subtle-line pl-5 lg:flex-col lg:items-start">
               {/* Profile photo — falls back to avatar icon when no image */}
               {user?.avatarUrl ? (
                 <img
