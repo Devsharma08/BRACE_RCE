@@ -2380,8 +2380,8 @@ export const executeCode = async (req: Request, res: Response) => {
         compileMemoryKb: caseCompileMemoryKb,
         detail: {
           testCaseIndex: trueIndex,
-          output: runOutput,
-          expectedOutput: currentCase.expectedOutput,
+          output: actualOutput,
+          expectedOutput: expectedOutput,
           passed,
           ...problemIdPayload(currentCase),
           runtimeError: runtimeErrorText,
