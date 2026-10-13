@@ -55,7 +55,7 @@ const accentStyles: Record<
 
 export function WorkspaceDirectory() {
   return (
-    <section aria-label="Available workspaces" className="w-full py-16 sm:py-24">
+    <section aria-label="Available workspaces" className="mx-3 my-4 rounded-panel border border-subtle-line bg-surface px-3 py-8 sm:mx-4 sm:my-6 sm:px-4 sm:py-16 lg:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
