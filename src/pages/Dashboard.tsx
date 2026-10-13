@@ -356,9 +356,9 @@ export const Dashboard: React.FC = () => {
 
         {/* ── OPERATIVE BANNER ───────────────────────────────────── */}
          <section className="relative isolate overflow-hidden border-y border-subtle-line py-5">
-           <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 lg:gap-0">
+           <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="font-mono text-4xl font-black tracking-[-0.05em] text-fg md:text-6xl">
+              <h1 className="font-mono text-3xl font-black tracking-[-0.05em] text-fg sm:text-4xl md:text-6xl">
                 Good {timeOfDay.toLowerCase()},<br />
                 <span className="text-accent">{username}</span>
               </h1>
@@ -369,7 +369,7 @@ export const Dashboard: React.FC = () => {
             {/* Rank block — on mobile the avatar sits on the left and the
                 name/rank readout on the right (justify-between across both
                 ends); on lg the whole block docks as a side panel. */}
-            <div className="flex flex-row items-center justify-between gap-3 lg:border-l lg:pl-5 lg:flex-col lg:items-start">
+            <div className="mt-2 flex w-full flex-row items-center justify-between gap-3 border-t border-subtle-line pt-5 sm:mt-0 sm:w-auto sm:flex-col sm:items-start sm:justify-start sm:gap-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
               {/* Profile photo — falls back to avatar icon when no image */}
               {user?.avatarUrl ? (
                 <img
@@ -406,7 +406,7 @@ export const Dashboard: React.FC = () => {
         {/* ── KPI GRID ─────────────────────────────────────────────── */}
         {/* Six tiles mirror the console reference row: battles, wins, losses,
             win rate, score and average solve time — all from live queries. */}
-          <section className="grid gap-px border-y border-subtle-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <section className="grid grid-cols-1 gap-px border-y border-subtle-line bg-line min-[420px]:grid-cols-2 lg:grid-cols-3">
 
           {kpiLoading ? (
             <>
@@ -508,11 +508,11 @@ export const Dashboard: React.FC = () => {
                   Cancel queue
                 </button>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-col gap-2 min-[420px]:w-auto min-[420px]:flex-row min-[420px]:items-center">
                   <select
                     value={matchmakingDifficulty}
                     onChange={(e) => setMatchmakingDifficulty(e.target.value as "ANY" | "EASY" | "MEDIUM" | "HARD")}
-                    className="h-10 w-32 shrink-0 border border-subtle-line bg-void px-2 text-xs text-fg outline-none focus:border-accent/40 font-mono text-[9px] uppercase tracking-widest"
+                    className="h-10 w-full border border-subtle-line bg-void px-2 text-xs text-fg outline-none focus:border-accent/40 font-mono text-[9px] uppercase tracking-widest min-[420px]:w-32 min-[420px]:shrink-0"
                     aria-label="Matchmaking difficulty"
                   >
                     <option value="ANY">ANY</option>
@@ -523,7 +523,7 @@ export const Dashboard: React.FC = () => {
                   <button
                     onClick={() => findMatch(matchmakingDifficulty)}
                     disabled={matchmakingStatus !== "IDLE"}
-                    className="rounded-lg bg-accent-primary px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-ink transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="w-full rounded-lg bg-accent-primary px-5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-ink transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 min-[420px]:w-auto"
                   >
                     Start matchmaking
                   </button>
@@ -554,21 +554,24 @@ export const Dashboard: React.FC = () => {
         </section>
 
         {/* ── PROBLEM LIST + BATTLE LIST ─────────────────────────────── */}
-        <div className="grid min-w-0 gap-8 md:grid-cols-[1.1fr_.9fr]">
+        {/* Single column on phones; two columns from md up. Each section
+            carries min-w-0 so long titles truncate instead of forcing the
+            grid (and the page) into horizontal overflow. */}
+        <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-[1.1fr_.9fr] md:gap-8">
           {/* Recommended problems */}
-          <section aria-labelledby="recommended-heading">
-            <div className="mt-3 flex items-center gap-2">
-              <Code2 size={14} className="text-accent-primary/30" />
+          <section aria-labelledby="recommended-heading" className="min-w-0">
+            <div className="mt-3 flex min-w-0 items-center gap-2">
+              <Code2 size={14} className="shrink-0 text-accent-primary/30" />
               <h2
                 id="recommended-heading"
-                className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
+                className="truncate whitespace-nowrap text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
               >
                 Recommended problems
               </h2>
-              <hr className="flex-1 border-subtle-line" />
+              <hr className="min-w-4 flex-1 border-subtle-line" />
               <Link
                 to="/problems"
-                className="text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
+                className="shrink-0 whitespace-nowrap text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
               >
                 Browse corpus
               </Link>
@@ -586,28 +589,38 @@ export const Dashboard: React.FC = () => {
               ) : recommendedProblems.length > 0 ? (
                 recommendedProblems.map((problem: DashboardProblem) => {
                   const diff = (problem.difficulty_level || "MEDIUM").toUpperCase();
+                  const shortDiff = diff.charAt(0);
+                  const tone = diff === "EASY" ? "live" : diff === "MEDIUM" ? "warning" : "danger";
                   return (
                     <Link
                       key={problem.id}
                       to={`/terminal?id=${problem.id || problem.github_oid}`}
-                      className="group flex items-center justify-between gap-3 border-b border-subtle-line px-4 py-2.5 transition hover:bg-surface-hover last:border-b-0"
+                      className="group flex items-center gap-2 border-b border-subtle-line px-3 py-2.5 transition hover:bg-surface-hover last:border-b-0 sm:gap-3 sm:px-4"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="grid h-8 w-8 place-items-center rounded-lg border border-subtle-line text-[10px] text-subtle">
-                          ↗
-                        </span>
-                        <span className="min-w-0 truncate text-sm text-subtle group-hover:text-fg">
-                          {problem.name}
-                        </span>
-                        <StatusPill
-                          tone={diff === "EASY" ? "live" : diff === "MEDIUM" ? "warning" : "danger"}
-                        >
-                          {diff}
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-subtle-line text-[10px] text-subtle">
+                        ↗
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm text-subtle group-hover:text-fg">
+                        {problem.name}
+                      </span>
+                      {/* Compact E/M/H pill on phones — the full EASY/MEDIUM/HARD
+                          pill plus chevron overflows a 320px row, so the word
+                          label only appears from sm up. Visibility sits on the
+                          wrapper: StatusPill's base includes `inline-flex`,
+                          which would fight a `hidden` placed on the pill
+                          itself. Both carry the full label for screen readers. */}
+                      <span className="shrink-0 sm:hidden">
+                        <StatusPill tone={tone}>
+                          <span aria-hidden="true">{shortDiff}</span>
+                          <span className="sr-only">{diff}</span>
                         </StatusPill>
-                      </div>
+                      </span>
+                      <span className="hidden shrink-0 sm:inline">
+                        <StatusPill tone={tone}>{diff}</StatusPill>
+                      </span>
                       <ChevronRight
                         size={14}
-                        className="text-subtle group-hover:text-accent"
+                        className="hidden shrink-0 text-subtle group-hover:text-accent sm:block"
                       />
                     </Link>
                   );
@@ -621,19 +634,19 @@ export const Dashboard: React.FC = () => {
           </section>
 
           {/* Recent battles */}
-          <section aria-labelledby="battles-heading">
-            <div className="mt-3 flex items-center gap-2">
-              <Activity size={14} className="text-accent-primary/30" />
+          <section aria-labelledby="battles-heading" className="min-w-0">
+            <div className="mt-3 flex min-w-0 items-center gap-2">
+              <Activity size={14} className="shrink-0 text-accent-primary/30" />
               <h2
                 id="battles-heading"
-                className="text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
+                className="truncate whitespace-nowrap text-[10px] font-mono font-bold uppercase tracking-[0.18em] text-secondary"
               >
                 Recent battles
               </h2>
-              <hr className="flex-1 border-subtle-line" />
+              <hr className="min-w-4 flex-1 border-subtle-line" />
               <Link
                 to="/profile"
-                className="text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
+                className="shrink-0 whitespace-nowrap text-[9px] uppercase tracking-widest text-subtle transition hover:text-accent"
               >
                 View record
               </Link>
@@ -657,23 +670,38 @@ export const Dashboard: React.FC = () => {
                     return (
                       <div
                         key={perf.id || i}
-                        className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-surface-hover"
+                        className="flex flex-col gap-1.5 px-3 py-2.5 transition hover:bg-surface-hover sm:flex-row sm:items-center sm:gap-3 sm:px-4"
                       >
                         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
                           {problemName}
                         </span>
-                        <StatusPill tone={isWin ? "live" : "danger"} className="shrink-0">
-                          {isWin ? "WIN" : "LOSS"}
-                        </StatusPill>
-                        <span className="w-10 shrink-0 text-right font-mono text-[11px] text-subtle">
-                          {perf.score ?? 0}
-                        </span>
-                        <time
-                          className="w-14 shrink-0 text-right font-mono text-[10px] font-bold text-secondary sm:text-[11px] sm:w-16"
-                          dateTime={perf.createdAt}
-                        >
-                          {formatRelativeTime(perf.createdAt)}
-                        </time>
+                        {/* Phone: compact W/L pill + score + time on a wrap-free
+                            second line; sm+: the original single-line row. */}
+                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                          {/* Same wrapper rule as the E/M/H pills above —
+                              `hidden` must win over the pill's `inline-flex`. */}
+                          <span className="sm:hidden">
+                            <StatusPill tone={isWin ? "live" : "danger"}>
+                              <span aria-hidden="true">{isWin ? "W" : "L"}</span>
+                              <span className="sr-only">{isWin ? "WIN" : "LOSS"}</span>
+                            </StatusPill>
+                          </span>
+                          <span className="hidden sm:inline">
+                            <StatusPill tone={isWin ? "live" : "danger"}>
+                              {isWin ? "WIN" : "LOSS"}
+                            </StatusPill>
+                          </span>
+                          <span className="font-mono text-[11px] text-subtle">
+                            {perf.score ?? 0}
+                          </span>
+                          <span aria-hidden="true" className="font-mono text-[11px] text-faint">·</span>
+                          <time
+                            className="whitespace-nowrap font-mono text-[10px] font-bold text-secondary sm:text-[11px]"
+                            dateTime={perf.createdAt}
+                          >
+                            {formatRelativeTime(perf.createdAt)}
+                          </time>
+                        </div>
                       </div>
                     );
                   })}
