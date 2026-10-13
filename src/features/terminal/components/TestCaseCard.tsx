@@ -1,5 +1,6 @@
 import { Check, X, Loader2, Play } from "lucide-react";
 import type { ExecutionDetail, ProblemTestCase } from "../types";
+import { memo } from "react";
 
 type TestCaseCardProps = {
   item: ProblemTestCase;
@@ -12,15 +13,16 @@ type TestCaseCardProps = {
   onRunSingleTestCase?: (index: number) => void;
 };
 
-export const TestCaseCard = ({
-  item,
-  index,
-  isHidden = false,
-  match,
-  isRunningThis,
-  isExecutingAny,
-  onRunSingleTestCase,
-}: TestCaseCardProps) => {
+export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps) {
+  const {
+    item,
+    index,
+    isHidden = false,
+    match,
+    isRunningThis,
+    isExecutingAny,
+    onRunSingleTestCase,
+  } = props;
   const passed = match?.passed;
   const hasResult = match !== undefined;
 
@@ -122,4 +124,4 @@ export const TestCaseCard = ({
       )}
     </div>
   );
-};
+});
