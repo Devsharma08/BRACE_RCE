@@ -155,14 +155,6 @@ const Header = () => {
             )}
           </div>
 
-          {/* MOBILE ACTIONS — the notification queue was desktop-only, so
-              phone users had no badge and no way to act on friend requests. */}
-          {isAuthenticated && (
-            <div className='flex items-center md:hidden'>
-              <NotificationCenter />
-            </div>
-          )}
-
           {/* MOBILE TOGGLE */}
           <button
             onClick={() => setOpen((o) => !o)}
@@ -176,62 +168,82 @@ const Header = () => {
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN */}
+      {/* MOBILE DROPDOWN — absolute overlay.
 
-<div
-  id='mobile-header-nav'
-  className={`mx-4 overflow-hidden transition-all duration-200 sm:mx-6 md:hidden ${
-    open ? 'max-h-[80vh] overflow-y-auto py-3 opacity-100' : 'max-h-0 py-0 opacity-0'
-  }`}
->
-  <nav
-    aria-label='Mobile navigation'
-    className='rounded-card border border-subtle-line bg-surface p-2'
-  >
+          It used to be an in-flow element with a max-height transition, so
+          opening it grew the sticky header and pushed every sibling below it
+          down the page. Positioning it absolutely (the sticky header is the
+          containing block) makes it float OVER the content underneath instead,
+          which is the expected menu behaviour on phone/tablet.
 
+          The notification queue lives at the top of this panel so all controls
+          sit together in one menu on small screens. `role='menuitem'` is kept
+          on the links below so the header tests (and screen readers) still see
+          a clean link list distinct from the desktop nav. */}
+      <div
+        id='mobile-header-nav'
+        className={`absolute inset-x-0 top-full z-50 md:hidden ${
+          open ? '' : 'pointer-events-none invisible'
+        }`}
+      >
+        {/* Scroll shell — caps the height on short viewports and lets the
+            notification popover escape by only clipping on the Y axis once it
+            actually overflows. */}
+        <div className='max-h-[calc(100svh-58px)] overflow-y-auto overscroll-contain border-b border-line bg-base/95 px-4 pb-5 pt-3 backdrop-blur-xl sm:px-6'>
+          <nav
+            aria-label='Mobile navigation'
+            className='flex flex-col gap-1 rounded-card border border-subtle-line bg-surface p-2'
+          >
+            {/* Notification queue — one menu, every control. */}
+            {isAuthenticated && (
+              <div className='mb-1 border-b border-line/60 pb-2'>
+                <NotificationCenter />
+              </div>
+            )}
 
-          {visibleLinks.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              to={href}
-              onClick={() => setOpen(false)}
-              role='menuitem'
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
-                isActive(href)
-                  ? 'bg-accent-primary/10 text-accent-primary'
-                  : 'text-faint hover:bg-surface-hover hover:text-fg'
-              }`}
-            >
-              {Icon ? <Icon size={15} /> : <span className='h-1.5 w-1.5 rounded-full bg-current' />}
-              {label}
-            </Link>
-          ))}
-          {isAuthenticated ? (
-            <Link
-              to='/profile'
-              onClick={() => setOpen(false)}
-              role='menuitem'
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
-                isActive('/profile')
-                  ? 'bg-accent-primary/10 text-accent-primary'
-                  : 'text-faint hover:bg-surface-hover hover:text-fg'
-              }`}
-            >
-              <User size={15} />
-              Profile
-            </Link>
-          ) : (
-            <Link
-            to='/signin'
-            onClick={() => setOpen(false)}
-            role='menuitem'
-            className='flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-accent-primary transition hover:bg-accent-primary/10'
-            >
-            <Bell size={15} />
-            Log in
-            </Link>
-          )}
-        </nav>
+            {visibleLinks.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                to={href}
+                onClick={() => setOpen(false)}
+                role='menuitem'
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                  isActive(href)
+                    ? 'bg-accent-primary/10 text-accent-primary'
+                    : 'text-faint hover:bg-surface-hover hover:text-fg'
+                }`}
+              >
+                {Icon ? <Icon size={15} /> : <span className='h-1.5 w-1.5 rounded-full bg-current' />}
+                {label}
+              </Link>
+            ))}
+            {isAuthenticated ? (
+              <Link
+                to='/profile'
+                onClick={() => setOpen(false)}
+                role='menuitem'
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                  isActive('/profile')
+                    ? 'bg-accent-primary/10 text-accent-primary'
+                    : 'text-faint hover:bg-surface-hover hover:text-fg'
+                }`}
+              >
+                <User size={15} />
+                Profile
+              </Link>
+            ) : (
+              <Link
+                to='/signin'
+                onClick={() => setOpen(false)}
+                role='menuitem'
+                className='flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-accent-primary transition hover:bg-accent-primary/10'
+              >
+                <Bell size={15} />
+                Log in
+              </Link>
+            )}
+          </nav>
+        </div>
       </div>
     </header>
   )
