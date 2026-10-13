@@ -12,6 +12,7 @@ import { api, fetchCsrfToken } from "../config/api";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
 import { getDivision, TIER_COLORS, useLeaderboard, useMyRating } from "../hooks/useLeaderboard";
+import { isWinnerStatus } from "../utils/participantVerdict";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 import {
   Swords,
@@ -346,16 +347,16 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* MAIN CONTENT AREA — left offset matches the fixed sidebar widths */}
-      <main className="relative z-10 w-full min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
+       {/* MAIN CONTENT AREA — left offset matches the fixed sidebar widths */}
+      <main className="relative z-10 mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
         {/* ── HEADER ─────────────────────────────────────────────── */}
         {/* Page title only. The app brand + route nav now come from Layout's
             sticky Header and DashboardSidebar, so repeating them here would
             render the BRACE lockup twice on the same screen. */}
 
         {/* ── OPERATIVE BANNER ───────────────────────────────────── */}
-        <section className="relative isolate overflow-hidden border-y border-subtle-line py-5 md:py-5">
-          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between ">
+         <section className="relative isolate overflow-hidden border-y border-subtle-line py-5">
+           <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 lg:gap-0">
             <div>
               <h1 className="font-mono text-4xl font-black tracking-[-0.05em] text-fg md:text-6xl">
                 Good {timeOfDay.toLowerCase()},<br />
@@ -368,7 +369,7 @@ export const Dashboard: React.FC = () => {
             {/* Rank block — on mobile the avatar sits on the left and the
                 name/rank readout on the right (justify-between across both
                 ends); on lg the whole block docks as a side panel. */}
-            <div className="flex flex-row items-center justify-between gap-3 border-l border-subtle-line pl-5 lg:flex-col lg:items-start">
+            <div className="flex flex-row items-center justify-between gap-3 lg:border-l lg:pl-5 lg:flex-col lg:items-start">
               {/* Profile photo — falls back to avatar icon when no image */}
               {user?.avatarUrl ? (
                 <img
@@ -405,7 +406,8 @@ export const Dashboard: React.FC = () => {
         {/* ── KPI GRID ─────────────────────────────────────────────── */}
         {/* Six tiles mirror the console reference row: battles, wins, losses,
             win rate, score and average solve time — all from live queries. */}
-        <section className="grid gap-px border-y border-subtle-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          <section className="grid gap-px border-y border-subtle-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+
           {kpiLoading ? (
             <>
               <MetricCardSkeleton />
@@ -467,7 +469,7 @@ export const Dashboard: React.FC = () => {
         </section>
 
         {/* ── ACTION HUB ───────────────────────────────────────────── */}
-        <section className="grid gap-4 lg:grid-cols-[1.35fr_.65fr]">
+        <section className="grid min-w-0 gap-4 md:grid-cols-[1.35fr_.65fr]">
           <div
             className={`relative overflow-hidden rounded-card border p-6 transition ${
               isQueued
@@ -552,7 +554,7 @@ export const Dashboard: React.FC = () => {
         </section>
 
         {/* ── PROBLEM LIST + BATTLE LIST ─────────────────────────────── */}
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="grid min-w-0 gap-8 md:grid-cols-[1.1fr_.9fr]">
           {/* Recommended problems */}
           <section aria-labelledby="recommended-heading">
             <div className="mt-3 flex items-center gap-2">
@@ -641,7 +643,7 @@ export const Dashboard: React.FC = () => {
                 <div aria-hidden="true" className="divide-y divide-subtle-line">
                   {[0, 1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                      <span className="h-3 w-full max-w-[220px] rounded-none bg-surface-hover animate-pulse" />
+                       <span className="h-3 w-full max-w-[180px] sm:max-w-[220px] rounded-none bg-surface-hover animate-pulse" />
                       <span className="ml-auto h-4 w-10 rounded-none bg-surface-hover animate-pulse" />
                       <span className="h-3 w-12 rounded-none bg-surface-hover animate-pulse" />
                     </div>
@@ -650,10 +652,7 @@ export const Dashboard: React.FC = () => {
               ) : recentBattles.length > 0 ? (
                 <div className="divide-y divide-subtle-line">
                   {recentBattles.slice(0, 5).map((perf: DashboardMatch, i: number) => {
-                    const isWin =
-                      perf.status === "PASSED" ||
-                      perf.status === "WON" ||
-                      perf.status === "COMPLETED";
+                    const isWin = isWinnerStatus(perf.status);
                     const problemName = perf.event?.commonProblem?.name || "Untitled Problem";
                     return (
                       <div
@@ -666,11 +665,11 @@ export const Dashboard: React.FC = () => {
                         <StatusPill tone={isWin ? "live" : "danger"} className="shrink-0">
                           {isWin ? "WIN" : "LOSS"}
                         </StatusPill>
-                        <span className="w-12 shrink-0 text-right font-mono text-[11px] text-subtle">
+                        <span className="w-10 shrink-0 text-right font-mono text-[11px] text-subtle">
                           {perf.score ?? 0}
                         </span>
                         <time
-                          className="w-16 shrink-0 text-right font-mono text-[11px] font-bold text-secondary"
+                          className="w-14 shrink-0 text-right font-mono text-[10px] font-bold text-secondary sm:text-[11px] sm:w-16"
                           dateTime={perf.createdAt}
                         >
                           {formatRelativeTime(perf.createdAt)}
@@ -701,7 +700,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* ── PERFORMANCE ANALYTICS ───────────────────────────────────── */}
-        <section className="mt-8 gap-4 border-t border-subtle-line pt-8">
+        <section className="mt-8 min-w-0 border-t border-subtle-line pt-8">
           <div>
             <div className="mb-3 flex items-center gap-2">
               <BarChart2 size={14} className="text-accent-primary/30" />

@@ -55,8 +55,7 @@ interface MatchDetail {
   submissions: Submission[];
 }
 
-/** Same win semantics as the profile stats endpoint. */
-const WIN_STATUSES = ["PASSED", "WON", "COMPLETED"];
+import { isWinnerStatus } from "../utils/participantVerdict";
 
 interface TimelineEntry {
   key: string;
@@ -151,7 +150,7 @@ const MatchAnalysis = () => {
   const problem = match.event?.commonProblem;
   const eventType = match.event?.type ?? "";
   const isOneVsOne = eventType === "ONE_VS_ONE";
-  const isWin = WIN_STATUSES.includes(match.status);
+  const isWin = isWinnerStatus(match.status);
   const mySubs = myPerf?.submissions ?? match.submissions ?? [];
 
   const renderOneVsOneView = () => {
@@ -374,7 +373,7 @@ const MatchAnalysis = () => {
             </p>
             {isOneVsOne && oppPerf && (
               <p className="mt-0.5 font-mono text-[10px] tabular-nums text-faint">
-                {oppPerf.score} pts // {WIN_STATUSES.includes(oppPerf.status) ? "WON" : oppPerf.status}
+                {oppPerf.score} pts // {isWinnerStatus(oppPerf.status) ? "WON" : oppPerf.status}
               </p>
             )}
           </div>

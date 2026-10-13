@@ -46,7 +46,7 @@ export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps)
           {/* All 15 cases render with their real input and expected output, so the
               label only marks which three are the documented samples. */}
           {!isHidden && (
-            <span className="text-[9px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
+            <span className="text-[10px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
               [ SAMPLE ]
             </span>
           )}

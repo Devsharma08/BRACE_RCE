@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { BookOpen, Code, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import { CodeComparisonModal } from "./CodeComparisonModal";
+import { isWinnerStatus, LOSS_STATUSES } from "../../utils/participantVerdict";
 
 interface HistoryLedgerSectionProps {
   history: any[];
@@ -56,8 +57,8 @@ export const HistoryLedgerSection: React.FC<HistoryLedgerSectionProps> = ({ hist
             </thead>
             <tbody>
               {history.slice(0, 5).map((record, idx) => {
-                const isWin = record.status === "WON" || record.status === "PASSED";
-                const isLoss = record.status === "LOST" || record.status === "FAILED" || record.status === "SURRENDER";
+                const isWin = isWinnerStatus(record.status);
+                const isLoss = LOSS_STATUSES.includes((record.status || "").toUpperCase() as any);
                 const name = record.event?.commonProblem?.name || record.problem?.name || "CLASSIFIED MATCH";
                 const diff = record.event?.commonProblem?.difficulty_level || record.problem?.difficulty_level || "MEDIUM";
                 const bestSub = record.submissions?.find((s: any) => s.isBestSubmission) || record.submissions?.[0];

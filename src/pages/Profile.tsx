@@ -17,6 +17,7 @@ import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { ContentSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { AnalyticsPanels } from "../components/features/AnalyticsPanels";
+import { isWinnerStatus } from "../utils/participantVerdict";
 import { AnalyticsErrorBoundary } from "../components/features/AnalyticsErrorBoundary";
 
 interface UserProfile {
@@ -217,7 +218,7 @@ const Profile = () => {
               {history.length > 0 ? (
                 <div className="divide-y divide-line">
                   {history.map(record => {
-                    const isWin = record.status === "WIN";
+                    const isWin = isWinnerStatus(record.status);
                     return (
                       <div
                         key={record.id}

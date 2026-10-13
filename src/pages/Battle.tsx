@@ -244,6 +244,7 @@ export const Battle = () => {
   const [battleState, setBattleState] = useState<any>({ status: "WAITING" });
   const [isHost, setIsHost] = useState(false);
   const [battleResult, setBattleResult] = useState<"WON" | "LOST" | "CHEATER" | null>(null);
+  const [defeatReason, setDefeatReason] = useState<"opponent" | "timeout" | "surrender">("opponent");
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [myUserId, setMyUserId] = useState<string>("");
@@ -593,8 +594,9 @@ export const Battle = () => {
           linesWritten: data.linesWritten
         }
       }));
-      if (data.result === "OPPONENT_WON") {
+       if (data.result === "OPPONENT_WON") {
         setBattleResult("LOST");
+        setDefeatReason("opponent");
         setIsBattleMenuOpen(true);
       }
       if (data.result === "OPPONENT_SURRENDERED") {
@@ -651,14 +653,18 @@ export const Battle = () => {
       }
       if (focusPenaltyPercent >= 100 && !isHost) {
         setBattleResult("CHEATER");
-        // Notify the opponent — they win by default when the other player is flagged for cheating
         socket.emit("surrender_battle", { roomId, reason: "cheater" });
       } else {
         const myPerf = data?.performances?.find(
           (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
         );
         const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
-        setBattleResult(won ? "WON" : "LOST");
+        if (won) {
+          setBattleResult("WON");
+        } else {
+          setBattleResult("LOST");
+          setDefeatReason(data?.winnerId && data?.winnerId !== myUserIdRef.current ? "opponent" : "timeout");
+        }
       }
       setIsBattleMenuOpen(true);
       invalidateProblemQueries(queryClient);
@@ -851,11 +857,12 @@ export const Battle = () => {
     setNewBattleMessage("");
   };
 
-  const handleTimerExpire = () => {
+   const handleTimerExpire = () => {
     if (focusPenaltyPercent >= 100 && !isHost) {
       setBattleResult("CHEATER");
     } else {
       setBattleResult("LOST");
+      setDefeatReason("timeout");
     }
     setIsBattleMenuOpen(true);
     playBattleSound("surrender");
@@ -1027,6 +1034,7 @@ export const Battle = () => {
       localStorage.setItem("brace-focus-events", JSON.stringify(focusTelemetry.snapshot()));
     } catch { /* ignore */ }
     setBattleResult("LOST");
+    setDefeatReason("surrender");
     setIsSurrenderModalOpen(false);
     setIsBattleMenuOpen(true);
     // Clear notes on surrender
@@ -1494,7 +1502,7 @@ export const Battle = () => {
             <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
             OPERATIVE ALERT // BATTLE COMMENCING
           </div>
-          <h2 className="mb-6 font-mono text-3xl font-black uppercase tracking-[0.4em] text-fg">
+          <h2 className="mb-6 font-mono text-2xl font-black uppercase tracking-[0.4em] text-fg">
             {commencing ? "BATTLE COMMENCING" : "GET READY"}
           </h2>
           <div className="relative flex min-h-32 items-center justify-center">
@@ -2234,11 +2242,11 @@ export const Battle = () => {
                )}
              </div>
              <h2
-               className={`font-mono text-3xl font-bold tracking-widest mb-3 ${
-                 battleResult === "WON" ? "text-accent-primary"
-                 : battleResult === "CHEATER" ? "text-accent-pink"
-                 : "text-accent-danger"
-               }`}
+className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
+                  battleResult === "WON" ? "text-accent-primary"
+                  : battleResult === "CHEATER" ? "text-accent-pink"
+                  : "text-accent-danger"
+                }`}
              >
                {battleResult === "WON"
                  ? "OPERATION SUCCESSFUL"
@@ -2251,7 +2259,11 @@ export const Battle = () => {
                  ? "You completed the operation."
                  : battleResult === "CHEATER"
                  ? "Excessive focus loss detected. Your opponent has been declared the winner."
-                 : "Time expired or opponent optimized faster."}
+                 : defeatReason === "opponent"
+                  ? "Your opponent completed the problem first."
+                  : defeatReason === "surrender"
+                  ? "You surrendered the match."
+                  : "Your time has run out."}
              </p>
             {/* Per-participant completion verdicts + event analytics */}
             <div className="w-full flex flex-col gap-2 mb-6 text-left max-h-56 overflow-y-auto themed-scroll pr-1">

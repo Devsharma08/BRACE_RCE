@@ -5,6 +5,12 @@
  */
 export type CompletionVerdict = "COMPLETED" | "TIMEOUT" | "IN_PROGRESS";
 
+export const WIN_STATUSES = ["PASSED", "WON", "COMPLETED"] as const;
+export const LOSS_STATUSES = ["FAILED", "LOST", "SURRENDER", "TIMEOUT"] as const;
+
+export const isWinnerStatus = (status?: string | null): boolean =>
+  WIN_STATUSES.includes((status || "").toUpperCase() as any);
+
 export const participantVerdict = (
   performance: { status?: string | null; submissions?: Array<{ status?: string | null }> | null },
   eventStatus?: string | null,
