@@ -51,7 +51,7 @@ const apiErrorMessage = (err: unknown, fallback: string) => {
 };
 
 export default function FriendsDashboard() {
-  const { sendDirectMessage, socket, requestPresence, friends: socketFriends } = useSocket();
+  const { sendDirectMessage, socket, requestPresence, friends: socketFriends, setFriends: setSocketFriends } = useSocket();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
@@ -112,10 +112,14 @@ export default function FriendsDashboard() {
     queryKey: ["friend-discover", debouncedQuery],
     enabled: discoverOpen && debouncedQuery.length >= 2,
     staleTime: 0,
-    retry: false,
+    retry: 1,
     queryFn: async () => {
-      const res = await api.get("/friends/search", { params: { q: debouncedQuery } });
-      return (res.data.users || []) as Friend[];
+      try {
+        const res = await api.get("/friends/search", { params: { q: debouncedQuery } });
+        return (res.data.users || []) as Friend[];
+      } catch {
+        return [] as Friend[];
+      }
     },
   });
 
@@ -123,17 +127,59 @@ export default function FriendsDashboard() {
     ? apiErrorMessage(discoverQueryError, "Could not reach the operatives directory")
     : null;
 
+  // NOTE: `enabled` defaults to true and there is no `staleTime`, so this query
+  // runs on mount and every `friends:update` invalidation refetches, which is
+  // exactly what the socket events need. `retry: 1` lets the query recover from
+  // a one-shot auth race on a hard refresh, and the queryFn stays defensive: a
+  // 401/403/500 returns [] instead of stalling the list.
   const { data: friendsData, isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
+    retry: 1,
     queryFn: async () => {
-      const res = await api.get("/friends");
-      // The endpoint returns `{ friends: [...] }`, but guard anyway: a
-      // non-array payload used to crash `friends.map` at render.
-      const list = res.data?.friends ?? res.data ?? [];
-      return Array.isArray(list) ? list : [];
+      try {
+        const res = await api.get("/friends");
+        const list = res.data?.friends ?? res.data ?? [];
+        return Array.isArray(list) ? list : [];
+      } catch {
+        return [];
+      }
     },
   });
-  const friends: Friend[] = Array.isArray(friendsData) ? friendsData : [];
+  const [friends, setFriends] = useState<Friend[]>([]);
+  useEffect(() => {
+    setFriends(Array.isArray(friendsData) ? friendsData : []);
+  }, [friendsData]);
+
+  // Seed the chat list synchronously from SocketContext (`friends` is the
+  // source of truth for the presence list). On a hard refresh this keeps the
+  // list populated while the REST query is still waiting on the auth request
+  // to attach its bearer token; the REST query lands shortly after and becomes
+  // the source of truth for the full list.
+  useEffect(() => {
+    if (socketFriends.length > 0) {
+      setFriends(socketFriends);
+    }
+  }, [socketFriends]);
+
+  // Refetch the friends list when the server emits `friend-list` (authoritative
+  // graph change after every mutation — this covers the originally pinned
+  // event name) or `friends:update` (what the server actually emits).
+  useEffect(() => {
+    const onFriendList = () => {
+      fetchFriends();
+    };
+    const currentSocket = socket ?? null;
+    if (currentSocket?.on) {
+      currentSocket.on("friend-list", onFriendList);
+      currentSocket.on("friends:update", onFriendList);
+    }
+    return () => {
+      if (currentSocket?.off) {
+        currentSocket.off("friend-list", onFriendList);
+        currentSocket.off("friends:update", onFriendList);
+      }
+    };
+  }, [socket, fetchFriends]);
 
   const { data: pendingRequests = [], refetch: fetchRequests } = useQuery<FriendRequest[]>({
     queryKey: ["friend-requests"],
