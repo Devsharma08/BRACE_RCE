@@ -1,29 +1,133 @@
 import type { FC } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, Clock3, Code2, Cpu, GitCompareArrows, Loader2, Target, Trophy, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Clock3,
+  Code2,
+  Cpu,
+  Gauge,
+  Loader2,
+  Target,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { api } from "../config/api";
 import { useAuth } from "../context/AuthContext";
+import { isWinnerStatus } from "../utils/participantVerdict";
 
-type AnalysisMode = "1v1" | "multiplayer" | "single"
-type Attempt = { who: string; time: string; attempt: string; status: "PASSED" | "FAILED"; cases: string; runtime: string; mine?: boolean }
+type AnalysisMode = "solo" | "1v1" | "multiplayer";
 
-const attemptsByMode: Record<AnalysisMode, Attempt[]> = {
-  "1v1": [
-    { who: "You", time: "09:42:18", attempt: "01", status: "PASSED", cases: "18 / 18", runtime: "42 ms", mine: true },
-    { who: "rhea", time: "09:41:51", attempt: "03", status: "FAILED", cases: "12 / 18", runtime: "—", mine: false },
-    { who: "You", time: "09:40:06", attempt: "00", status: "FAILED", cases: "07 / 18", runtime: "—", mine: true },
-  ],
-  multiplayer: [
-    { who: "You", time: "09:42:18", attempt: "01", status: "PASSED", cases: "18 / 18", runtime: "42 ms", mine: true },
-    { who: "mika", time: "09:41:51", attempt: "02", status: "PASSED", cases: "18 / 18", runtime: "49 ms" },
-    { who: "rhea", time: "09:40:06", attempt: "03", status: "FAILED", cases: "12 / 18", runtime: "—" },
-  ],
-  single: [
-    { who: "You", time: "09:42:18", attempt: "01", status: "PASSED", cases: "18 / 18", runtime: "42 ms", mine: true },
-    { who: "You", time: "09:40:06", attempt: "00", status: "FAILED", cases: "07 / 18", runtime: "—", mine: true },
-  ],
-}
+/** One stored code submission (real DB shape from CodeSubmission). */
+type Submission = {
+  id: string;
+  language: string;
+  status: string;
+  runtimeMs: number | null;
+  memoryKb: number | null;
+  passedCase: number;
+  totalCases: number;
+  isBestSubmission: boolean;
+  attemptNumber: number;
+  submittedCode: string;
+  createdAt: string;
+};
+
+/** A participant performance row (me + every opponent). */
+type Participant = {
+  id: string;
+  userId: string;
+  status: string;
+  score: number;
+  questionsSolved: number;
+  timeTakenMs: number | null;
+  createdAt: string;
+  user?: { id: string; username: string; avatarUrl: string | null } | null;
+  submissions: Submission[];
+};
+
+// ── formatting helpers ──────────────────────────────────────────────────
+const fmtMs = (ms: number | null | undefined): string => {
+  if (ms == null) return "—";
+  return ms >= 1000 ? `${(ms / 1000).toFixed(ms >= 10000 ? 0 : 1)}s` : `${ms} ms`;
+};
+const fmtMem = (kb: number | null | undefined): string =>
+  kb == null ? "—" : `${(kb / 1024).toFixed(1)} MB`;
+const fmtClock = (iso: string | null | undefined): string =>
+  iso ? new Date(iso).toLocaleTimeString([], { hour12: false }) : "—";
+const fmtDate = (iso: string | null | undefined): string =>
+  iso
+    ? new Date(iso).toLocaleDateString(undefined, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+
+// ── derived metrics from a participant's real submissions ────────────────
+const orderedSubs = (p: Participant): Submission[] =>
+  [...(p.submissions ?? [])].sort((a, b) => a.attemptNumber - b.attemptNumber);
+
+/** Best submission = flagged best, else passing w/ lowest runtime, else last. */
+const bestSubmission = (p: Participant): Submission | null => {
+  const subs = orderedSubs(p);
+  if (subs.length === 0) return null;
+  const flagged = subs.find((s) => s.isBestSubmission);
+  if (flagged) return flagged;
+  const passing = subs
+    .filter((s) => s.status === "PASSED" && s.runtimeMs != null)
+    .sort((a, b) => (a.runtimeMs as number) - (b.runtimeMs as number));
+  if (passing[0]) return passing[0];
+  const anyPassing = subs.find((s) => s.status === "PASSED");
+  return anyPassing ?? subs[subs.length - 1];
+};
+
+const bestRuntimeMs = (p: Participant): number | null => {
+  const runtimes = (p.submissions ?? [])
+    .filter((s) => s.status === "PASSED" && s.runtimeMs != null)
+    .map((s) => s.runtimeMs as number);
+  return runtimes.length ? Math.min(...runtimes) : null;
+};
+
+const bestMemoryKb = (p: Participant): number | null => {
+  const mems = (p.submissions ?? [])
+    .filter((s) => s.status === "PASSED" && s.memoryKb != null)
+    .map((s) => s.memoryKb as number);
+  return mems.length ? Math.min(...mems) : null;
+};
+
+const coverage = (p: Participant): string => {
+  const best = bestSubmission(p);
+  if (!best) return "—";
+  return `${best.passedCase} / ${best.totalCases}`;
+};
+
+const isPassed = (status?: string | null): boolean =>
+  isWinnerStatus(status) || (status ?? "").toUpperCase() === "PASSED";
+
+const statusTone = (status: string): string =>
+  isPassed(status)
+    ? "text-lime-300 border-lime-300/30 bg-lime-300/[0.07]"
+    : (status ?? "").toUpperCase() === "PENDING"
+      ? "text-slate-400 border-white/10 bg-black/40"
+      : "text-rose-300 border-rose-300/30 bg-rose-300/[0.07]";
+
+// Distinct colours for each participant line (me is always cyan).
+const LINE_COLORS = [
+  "#67e8f9",
+  "#c4b5fd",
+  "#fda4af",
+  "#bef264",
+  "#fcd34d",
+  "#7dd3fc",
+  "#f0abfc",
+  "#fdba74",
+];
+
+const truncateCode = (code: string, max = 4000): string =>
+  code.length > max ? `${code.slice(0, max)}\n… truncated` : code;
 
 /**
  * Match analysis — client component (react-router stack).
@@ -82,41 +186,318 @@ const MatchAnalysis: FC = () => {
     )
   }
 
+  // ── derive participants (me first, then opponents) ────────────────────
+  const meId = match.userId as string;
+  const rawParticipants: Participant[] = (match.event?.performances ?? []).map(
+    (p: any) => ({
+      ...p,
+      user: p.user ?? null,
+      submissions: p.submissions ?? [],
+    }),
+  );
+  const participants: Participant[] = [
+    { ...match, submissions: match.submissions ?? [] } as Participant,
+    ...rawParticipants.filter((p) => p.userId !== meId),
+  ];
+
+  const me = participants[0];
+  const opponents = participants.slice(1);
+  const mode: AnalysisMode =
+    participants.length <= 1
+      ? "solo"
+      : participants.length === 2
+        ? "1v1"
+        : "multiplayer";
+
+  const problem = match.event?.commonProblem ?? null;
+  const problemName = problem?.name ?? "Practice session";
+  const difficulty = problem?.difficulty_level ?? null;
+  const difficultyTone =
+    difficulty === "EASY"
+      ? "text-lime-300 bg-lime-300/[0.08]"
+      : difficulty === "HARD"
+        ? "text-rose-300 bg-rose-300/[0.08]"
+        : "text-amber-300 bg-amber-300/[0.08]";
+
+  const iWon = isPassed(me.status);
+  const primaryOpponent = opponents[0] ?? null;
+
+  const verdict =
+    mode === "solo"
+      ? {
+          label: iWon ? "Solved" : "Unsolved",
+          icon: iWon ? Check : Gauge,
+          tone: iWon ? "lime" : "rose",
+        }
+      : iWon
+        ? { label: "Victory", icon: Trophy, tone: "lime" }
+        : { label: "Defeat", icon: AlertTriangle, tone: "rose" };
+  const modeLabel =
+    mode === "solo"
+      ? "solo solve"
+      : mode === "1v1"
+        ? "1v1 match"
+        : `${participants.length}-player room`;
+
+  // ── chart series: one line per participant ─────────────────────────────
+  const series = participants.map((p, i) => {
+    const subs = orderedSubs(p);
+    return {
+      name: p.user?.username ?? (p.userId === meId ? "you" : `player ${i + 1}`),
+      me: p.userId === meId,
+      color:
+        p.userId === meId
+          ? LINE_COLORS[0]
+          : LINE_COLORS[1 + ((i - 1) % (LINE_COLORS.length - 1))],
+      points: subs.map((s) =>
+        s.totalCases > 0 ? (s.passedCase / s.totalCases) * 100 : 0,
+      ),
+    };
+  });
+  const maxPoints = Math.max(1, ...series.map((s) => s.points.length));
+  const hasTelemetry = series.some((s) => s.points.length > 0);
+
+  const rows = participants.map((p) => ({
+    p,
+    name: p.user?.username ?? (p.userId === meId ? "you" : "player"),
+    me: p.userId === meId,
+    runtime: bestRuntimeMs(p),
+    memory: bestMemoryKb(p),
+    cov: coverage(p),
+    attempts: (p.submissions ?? []).length,
+    score: p.score ?? 0,
+    time: p.timeTakenMs,
+  }));
+  const fastest = rows.reduce<number | null>(
+    (min, r) =>
+      r.runtime != null && (min == null || r.runtime < min) ? r.runtime : min,
+    null,
+  );
+
+  const myBest = bestSubmission(me);
+  const oppBest = primaryOpponent ? bestSubmission(primaryOpponent) : null;
+
   return (
     <main className="min-h-screen bg-[#05070b] px-4 py-6 font-mono text-white sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <Link to="/profile" className="mb-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-500 transition hover:text-cyan-300"><ArrowLeft size={14} /> Back to profile</Link>
         <section className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0a0f16] shadow-[0_24px_80px_rgba(0,0,0,.2)]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-white/[0.045] via-transparent to-cyan-300/[0.035] p-5 sm:p-7"><div className="flex flex-wrap items-start justify-between gap-6"><div><div className="flex flex-wrap items-center gap-2"><span className="inline-flex items-center gap-2 rounded-lg border border-lime-300/25 bg-lime-300/[0.05] px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest text-lime-300"><Trophy size={12} /> Victory</span><span className="rounded-full border border-white/10 px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-500">1v1 match</span></div><p className="mt-6 text-[9px] uppercase tracking-[0.24em] text-cyan-300">Post-battle analysis / 001</p><h1 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">Two Sum</h1><div className="mt-3 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-widest"><span className="rounded-md bg-white/[0.06] px-2 py-1 text-slate-400">#001</span><span className="rounded-md bg-amber-300/[0.08] px-2 py-1 text-amber-300">Easy</span><span className="rounded-md bg-cyan-300/[0.08] px-2 py-1 text-cyan-300">Arrays</span><span className="px-1 text-slate-600">14 Oct 2026</span></div></div><div className="text-left sm:text-right"><p className="text-[9px] uppercase tracking-widest text-slate-600">Opponent</p><p className="mt-2 text-lg font-bold text-rose-300">rhea</p><p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">486 pts / defeated</p></div></div><div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4"><Stat icon={Target} label="Score" value="920" tone="text-cyan-300" /><Stat icon={Clock3} label="Time" value="42s" /><Stat icon={Code2} label="Attempts" value="3" /><Stat icon={Check} label="Solved" value="2" tone="text-lime-300" /></div></div>
+          <div className="border-b border-white/10 bg-gradient-to-br from-white/[0.045] via-transparent to-cyan-300/[0.035] p-5 sm:p-7">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest ${
+                      verdict.tone === "lime"
+                        ? "border-lime-300/25 bg-lime-300/[0.05] text-lime-300"
+                        : "border-rose-300/25 bg-rose-300/[0.05] text-rose-300"
+                    }`}
+                  >
+                    <verdict.icon size={12} /> {verdict.label}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-500">
+                    {mode === "multiplayer" ? <Users size={11} /> : null} {modeLabel}
+                  </span>
+                  {match.event?.roomCode ? (
+                    <span className="rounded-full border border-white/10 px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-500">
+                      #{match.event.roomCode}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-6 text-[9px] uppercase tracking-[0.24em] text-cyan-300">
+                  Post-battle analysis
+                </p>
+                <h1 className="mt-2 break-words text-2xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+                  {problemName}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-widest">
+                  {problem?.problem_number != null ? (
+                    <span className="rounded-md bg-white/[0.06] px-2 py-1 text-slate-400">
+                      #{problem.problem_number}
+                    </span>
+                  ) : null}
+                  {difficulty ? (
+                    <span className={`rounded-md px-2 py-1 ${difficultyTone}`}>{difficulty}</span>
+                  ) : null}
+                  {match.createdAt ? (
+                    <span className="px-1 text-slate-600">{fmtDate(match.createdAt)}</span>
+                  ) : null}
+                </div>
+              </div>
+              {mode !== "solo" && primaryOpponent ? (
+                <div className="text-left sm:text-right">
+                  <p className="text-[9px] uppercase tracking-widest text-slate-600">
+                    {mode === "1v1" ? "Opponent" : "Top opponent"}
+                  </p>
+                  <p className="mt-2 text-lg font-bold text-rose-300">
+                    {primaryOpponent.user?.username ?? "player"}
+                  </p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
+                    {primaryOpponent.score ?? 0} pts ·{" "}
+                    <span className={isPassed(primaryOpponent.status) ? "text-lime-300" : "text-rose-300"}>
+                      {isPassed(primaryOpponent.status) ? "solved" : "unsolved"}
+                    </span>
+                  </p>
+                </div>
+              ) : (
+                <div className="text-left sm:text-right">
+                  <p className="text-[9px] uppercase tracking-widest text-slate-600">Your result</p>
+                  <p className={`mt-2 text-lg font-bold ${iWon ? "text-lime-300" : "text-rose-300"}`}>
+                    {me.status ?? "PENDING"}
+                  </p>
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
+                    {me.questionsSolved ?? 0} solved
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat icon={Target} label="Score" value={`${me.score ?? 0}`} tone="text-cyan-300" />
+              <Stat icon={Clock3} label="Time" value={fmtMs(me.timeTakenMs)} />
+              <Stat icon={Code2} label="Attempts" value={`${(me.submissions ?? []).length}`} />
+              <Stat
+                icon={Check}
+                label="Solved"
+                value={`${me.questionsSolved ?? 0}`}
+                tone={iWon ? "text-lime-300" : "text-slate-300"}
+              />
+            </div>
+          </div>
         </section>
         {/* Chart sits beside the head-to-head table on large screens. */}
         <section className="mt-4 grid gap-4 lg:grid-cols-[1.12fr_1.12fr] lg:gap-5">
           <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f16] p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Performance map</p><h2 className="mt-1 text-base font-bold">Player comparison</h2><p className="mt-1 text-[10px] text-slate-500">Normalized score across solve progress.</p></div>
-              <div className="text-[9px] uppercase tracking-widest text-slate-500"><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-300" />mika</span><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-300" />rhea</span></div>
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Performance map</p>
+                <h2 className="mt-1 text-base font-bold">Player comparison</h2>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Test-case pass ratio across each participant's attempts.
+                </p>
+              </div>
+              {series.length > 1 ? (
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] uppercase tracking-widest text-slate-500">
+                  {series.map((s) => (
+                    <span key={s.name} className="flex items-center gap-1.5">
+                      <i className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <PerformanceChart multiplayer />
+            {hasTelemetry ? (
+              <PerformanceChart series={series} maxPoints={maxPoints} />
+            ) : (
+              <div className="mt-5 flex h-40 items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#070a0f] text-[10px] uppercase tracking-widest text-slate-600">
+                No submissions recorded
+              </div>
+            )}
           </div>
           <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f16] p-5 sm:p-6">
-            <div className="flex items-center gap-2 pb-3"><p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Head to head</p><h2 className="mt-1 text-base font-bold">Metric comparison</h2></div>
+            <div className="flex items-center gap-2 pb-3">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Head to head</p>
+                <h2 className="mt-1 text-base font-bold">
+                  {mode === "solo" ? "Your metrics" : "Metric comparison"}
+                </h2>
+              </div>
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left">
-                <thead className="border-b border-white/[0.07] bg-white/[0.02] text-[9px] uppercase tracking-widest text-slate-600"><tr><th className="px-5 py-3 font-normal">Metric</th><th className="px-5 py-3 font-normal text-cyan-300">You</th><th className="px-5 py-3 font-normal">Mika</th><th className="px-5 py-3 font-normal">Signal</th></tr></thead>
-                <tbody className="divide-y divide-white/[0.06] text-xs"><tr><td className="px-5 py-3 text-slate-500">Runtime</td><td className="px-5 py-3 font-bold text-cyan-300">42 ms</td><td className="px-5 py-3 text-slate-300">51 ms</td><td className="px-5 py-3 text-lime-300">18% faster</td></tr><tr><td className="px-5 py-3 text-slate-500">Memory</td><td className="px-5 py-3 font-bold text-cyan-300">48.2 MB</td><td className="px-5 py-3 text-slate-300">62.8 MB</td><td className="px-5 py-3 text-lime-300">efficient</td></tr><tr><td className="px-5 py-3 text-slate-500">Test coverage</td><td className="px-5 py-3 font-bold text-cyan-300">18 / 18</td><td className="px-5 py-3 text-slate-300">12 / 18</td><td className="px-5 py-3 text-lime-300">complete</td></tr><tr><td className="px-5 py-3 text-slate-500">Attempts</td><td className="px-5 py-3 font-bold text-cyan-300">2</td><td className="px-5 py-3 text-slate-300">3</td><td className="px-5 py-3 text-slate-500">lower is better</td></tr></tbody>
+              <table className="w-full min-w-[520px] text-left">
+                <thead className="border-b border-white/[0.07] bg-white/[0.02] text-[9px] uppercase tracking-widest text-slate-600">
+                  <tr>
+                    <th className="px-3 py-3 font-normal">Player</th>
+                    <th className="px-3 py-3 font-normal">Status</th>
+                    <th className="px-3 py-3 font-normal">Runtime</th>
+                    <th className="px-3 py-3 font-normal">Memory</th>
+                    <th className="px-3 py-3 font-normal">Coverage</th>
+                    <th className="px-3 py-3 font-normal">Attempts</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06] text-xs">
+                  {rows.map((r) => (
+                    <tr key={r.p.id} className={r.me ? "bg-cyan-300/[0.03]" : undefined}>
+                      <td className={`px-3 py-3 font-bold ${r.me ? "text-cyan-300" : "text-slate-300"}`}>
+                        {r.name}
+                        {r.me ? (
+                          <span className="ml-1 text-[8px] font-normal text-slate-500">(you)</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span
+                          className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${statusTone(r.p.status)}`}
+                        >
+                          {r.p.status ?? "PENDING"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-300">
+                        {fmtMs(r.runtime)}
+                        {r.runtime != null && r.runtime === fastest ? (
+                          <span className="ml-1 text-[8px] text-lime-300">fastest</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-slate-300">{fmtMem(r.memory)}</td>
+                      <td className="px-3 py-3 text-slate-300">{r.cov}</td>
+                      <td className="px-3 py-3 text-slate-500">{r.attempts}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
           </div>
         </section>
         {/* Code review is the final section on every screen. */}
         <section className="mt-4 overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#0a0f16] p-5 shadow-[0_20px_60px_rgba(34,211,238,.04)] sm:p-6">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl border border-violet-300/25 bg-violet-300/[0.06] text-violet-300"><GitCompareArrows size={18} /></div>
-            <div><p className="text-[9px] uppercase tracking-[0.2em] text-violet-300">Code review</p><h2 className="mt-1 text-base font-bold">Side-by-side compare</h2></div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl border border-violet-300/25 bg-violet-300/[0.06] text-violet-300">
+              <Code2 size={18} />
+            </div>
+            <div>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-violet-300">Code review</p>
+              <h2 className="mt-1 text-base font-bold">
+                {mode === "solo" ? "Your solution" : "Side-by-side compare"}
+              </h2>
+            </div>
           </div>
-          <p className="mt-6 text-sm leading-6 text-slate-400">Compare your accepted approach with rhea&apos;s attempts, inspect runtime trade-offs, and understand where the solution diverged.</p>
-          <div className="mt-6 space-y-3"><MiniMetric icon={Cpu} label="Your runtime" value="42 ms" /><MiniMetric icon={Target} label="Test coverage" value="18 / 18" /><MiniMetric icon={ArrowUpRight} label="Complexity" value="O(n)" /></div>
-          <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-white"><Code2 size={14} /> Open code review</button>
+          {myBest ? (
+            <>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <MiniMetric icon={Cpu} label="Your runtime" value={fmtMs(bestRuntimeMs(me))} />
+                <MiniMetric icon={Gauge} label="Test coverage" value={coverage(me)} />
+                <MiniMetric icon={Code2} label="Language" value={myBest.language ?? "—"} />
+                <MiniMetric icon={Target} label="Memory" value={fmtMem(bestMemoryKb(me))} />
+              </div>
+              <div className={`mt-6 grid gap-4 ${oppBest ? "lg:grid-cols-2" : ""}`}>
+                <CodePane
+                  title="Your accepted attempt"
+                  subtitle={`${myBest.language ?? "code"} · ${fmtClock(myBest.createdAt)}`}
+                  tone="cyan"
+                  code={truncateCode(myBest.submittedCode)}
+                />
+                {oppBest && primaryOpponent ? (
+                  <CodePane
+                    title={`${primaryOpponent.user?.username ?? "Opponent"}'s attempt`}
+                    subtitle={`${oppBest.language ?? "code"} · ${fmtClock(oppBest.createdAt)} · ${
+                      isPassed(oppBest.status) ? "passed" : "not accepted"
+                    }`}
+                    tone={isPassed(oppBest.status) ? "violet" : "rose"}
+                    code={truncateCode(oppBest.submittedCode)}
+                  />
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="mt-6 flex h-32 items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#070a0f] text-[10px] uppercase tracking-widest text-slate-600">
+              No code submitted for this match
+            </div>
+          )}
+          <button
+            onClick={() => navigate("/problems")}
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-white"
+          >
+            <Code2 size={14} /> Practice more problems
+          </button>
         </section>
       </div>
     </main>
@@ -125,6 +506,102 @@ const MatchAnalysis: FC = () => {
 
 function Stat({ icon: Icon, label, value, tone = "text-white" }: { icon: typeof Target; label: string; value: string; tone?: string }) { return <div className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#070a0f]/80 p-3.5 transition-colors hover:border-white/15 hover:bg-white/[0.035]"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-500 transition-colors group-hover:border-cyan-300/25 group-hover:text-cyan-300"><Icon size={14} /></div><div className="min-w-0"><p className="text-[9px] uppercase tracking-widest text-slate-600">{label}</p><p className={`mt-1 text-xl font-bold leading-none ${tone}`}>{value}</p></div></div> }
 function MiniMetric({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) { return <div className="flex items-center justify-between border-b border-white/[0.07] pb-3 text-[10px]"><span className="flex items-center gap-2 text-slate-500"><Icon size={13} /> {label}</span><b className="text-white">{value}</b></div> }
-function PerformanceChart({ multiplayer }: { multiplayer: boolean }) { const players = multiplayer ? [{ name: "You", color: "#67e8f9", points: "0,74 80,68 160,55 240,48 320,28 400,18" }, { name: "mika", color: "#c4b5fd", points: "0,74 80,70 160,62 240,58 320,45 400,38" }, { name: "rhea", color: "#fda4af", points: "0,74 80,72 160,76 240,68 320,70 400,64" }] : [{ name: "You", color: "#67e8f9", points: "0,74 80,66 160,52 240,41 320,28 400,18" }, { name: "baseline", color: "#64748b", points: "0,74 80,70 160,66 240,62 320,58 400,54" }]; return <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07] bg-[#070a0f] p-3"><svg viewBox="0 0 400 90" className="h-40 w-full" role="img" aria-label="Player performance comparison chart"><path d="M0 18H400M0 46H400M0 74H400" stroke="white" strokeOpacity=".07" strokeDasharray="3 5" />{players.map((player) => <polyline key={player.name} points={player.points} fill="none" stroke={player.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />)}<g fill="#64748b" fontSize="7" fontFamily="monospace"><text x="0" y="88">09:40:06</text><text x="170" y="88">09:41:51</text><text x="352" y="88">09:42:18</text></g></svg></div> }
+function CodePane({
+  title,
+  subtitle,
+  tone,
+  code,
+}: {
+  title: string;
+  subtitle: string;
+  tone: "cyan" | "violet" | "rose";
+  code: string;
+}) {
+  const toneRing =
+    tone === "cyan"
+      ? "border-cyan-300/20"
+      : tone === "violet"
+        ? "border-violet-300/20"
+        : "border-rose-300/20";
+  const toneText =
+    tone === "cyan" ? "text-cyan-300" : tone === "violet" ? "text-violet-300" : "text-rose-300";
+  return (
+    <div className={`overflow-hidden rounded-xl border ${toneRing} bg-[#070a0f]`}>
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+        <p className={`text-[10px] font-bold uppercase tracking-widest ${toneText}`}>{title}</p>
+        <p className="text-[9px] text-slate-600">{subtitle}</p>
+      </div>
+      <pre className="max-h-72 overflow-auto p-4 text-[11px] leading-5 text-slate-300">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+/**
+ * Multi-series line chart — one line per participant, so it grows to fit
+ * 1v1, N-player rooms, and solo solves. X = attempt index, Y = pass ratio %.
+ */
+function PerformanceChart({
+  series,
+  maxPoints,
+}: {
+  series: { name: string; me: boolean; color: string; points: number[] }[];
+  maxPoints: number;
+}) {
+  const W = 420;
+  const H = 160;
+  const padX = 14;
+  const padY = 16;
+  const plotW = W - padX * 2;
+  const plotH = H - padY * 2;
+  const x = (i: number) =>
+    padX + (maxPoints <= 1 ? plotW / 2 : (i / (maxPoints - 1)) * plotW);
+  const y = (v: number) => padY + plotH - (v / 100) * plotH;
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07] bg-[#070a0f] p-3">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-40 w-full"
+        role="img"
+        aria-label="Player performance comparison chart"
+        preserveAspectRatio="none"
+      >
+        {[0, 50, 100].map((g) => (
+          <path
+            key={g}
+            d={`M${padX} ${y(g)}H${W - padX}`}
+            stroke="white"
+            strokeOpacity=".07"
+            strokeDasharray="3 5"
+          />
+        ))}
+        {series.map((s) => (
+          <polyline
+            key={s.name}
+            points={s.points.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={s.me ? 3 : 2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={s.me ? 1 : 0.75}
+          />
+        ))}
+        {series.map((s) =>
+          s.points.map((v, i) => (
+            <circle key={`${s.name}-${i}`} cx={x(i)} cy={y(v)} r={s.me ? 3 : 2.2} fill={s.color} />
+          )),
+        )}
+      </svg>
+      <div className="flex justify-between px-1 pt-1 text-[8px] text-slate-600">
+        {Array.from({ length: maxPoints }).map((_, i) => (
+          <span key={i}>A{i + 1}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default MatchAnalysis
