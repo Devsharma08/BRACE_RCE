@@ -35,7 +35,7 @@ const metrics = [
 ];
 
 const HomeMetricsStrip = () => (
-  <section aria-label="Home proof metrics" className="mx-3 my-4 rounded-card border border-subtle-line bg-surface px-3 py-4 sm:mx-4 sm:my-6 sm:px-4 sm:py-5">
+  <section aria-label="Home proof metrics" className="w-full px-4 py-6 sm:px-6 sm:py-8">
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {metrics.map((metric) => (
         <MetricCard

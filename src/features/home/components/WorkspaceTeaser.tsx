@@ -10,7 +10,7 @@ import { ArrowUpRight, Code2, SquareTerminal } from "lucide-react";
  */
 export function WorkspaceTeaser() {
   return (
-    <section aria-label="Workspace" className="mx-3 my-4 rounded-panel border border-subtle-line bg-surface px-3 py-8 sm:mx-4 sm:my-6 sm:px-4 sm:py-16 lg:py-24">
+    <section aria-label="Workspace" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="group relative flex flex-col overflow-hidden rounded-panel border border-line bg-base/60 p-7 transition duration-300 hover:border-line-mid md:flex-row md:items-center md:justify-between md:p-10">
           <div className="absolute right-7 top-7 hidden h-11 w-11 place-items-center rounded-full border border-line bg-surface/60 text-accent-primary transition duration-300 group-hover:scale-105 group-hover:border-line-mid md:grid">

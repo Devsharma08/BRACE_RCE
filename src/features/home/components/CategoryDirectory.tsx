@@ -64,7 +64,7 @@ export function CategoryDirectory({
   progressByHref?: Record<string, ProgressEntry>;
 }) {
   return (
-    <section aria-label="Problem categories" className="mx-3 my-4 rounded-panel border border-subtle-line bg-surface px-3 py-8 sm:mx-4 sm:my-6 sm:px-4 sm:py-12">
+    <section aria-label="Problem categories" className="w-full px-4 py-12 sm:px-6 sm:py-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header */}
         {showHeader && (
