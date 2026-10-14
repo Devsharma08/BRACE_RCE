@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { deriveEventDurationMs } from "../../lib/eventTimeLimit.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
@@ -14,13 +15,15 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
                 eventId = roomId.replace('room-', '');
                 event = await prisma.event.findUnique({
                     where: { id: eventId }, include: {
-                        problems: { select: { timeLimitMs: true } }
+                        problems: { select: { timeLimitMs: true } },
+                        commonProblem: { select: { timeLimitMs: true } }
                     }
                 });
             } else {
                 event = await prisma.event.findFirst({
                     where: { roomCode: roomId }, include: {
-                        problems: { select: { timeLimitMs: true } }
+                        problems: { select: { timeLimitMs: true } },
+                        commonProblem: { select: { timeLimitMs: true } }
                     }
                 });
                 eventId = event?.id || '';
@@ -74,7 +77,10 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
             }
 
             if (event && event.startedAt && event.status === 'IN_PROGRESS') {
-                const totalDurationMs = event.totalTimeLimitMs || event.problems?.[0]?.timeLimitMs || 600000;
+                // Global budget if the host set one; otherwise the sum of the
+                // per-problem local limits; for 1v1 FRIENDS events the local
+                // limit of the single commonProblem.
+                const totalDurationMs = deriveEventDurationMs(event);
                 const elapsedMs = Date.now() - new Date(event.startedAt).getTime();
                 const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
                 const remainingSeconds = Math.floor(remainingMs / 1000);

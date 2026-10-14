@@ -1,6 +1,7 @@
 import type { AuthRequest } from "../middleware/authentication";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
+import { deriveEventDurationMs } from "../lib/eventTimeLimit.js";
 import { withDisplayProblemName } from "../utils/problemName.js";
 import { emitToUser, emitRoomsInvalidate, emitRoomForceClosed } from "../socket/ioRegistry.js";
 import { finishEventWithVerdicts } from "../services/battleFinish.js";
@@ -608,6 +609,11 @@ class Rooms {
                         select: {
                             timeLimitMs: true
                         }
+                    },
+                    commonProblem: {
+                        select: {
+                            timeLimitMs: true
+                        }
                     }
                 }
             });
@@ -624,7 +630,9 @@ class Rooms {
                 });
             }
 
-            const totalDurationMs = event.totalTimeLimitMs || event.problems[0]?.timeLimitMs || 600000;
+            // Global budget > sum of local problem limits > 1v1 commonProblem
+            // local limit > 10-minute default (see lib/eventTimeLimit.ts).
+            const totalDurationMs = deriveEventDurationMs(event);
             const elapsedMs = Date.now() - new Date(event.startedAt).getTime();
             const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
             const remainingSeconds = Math.floor(remainingMs / 1000);

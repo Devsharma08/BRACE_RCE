@@ -1,5 +1,6 @@
 import type { Server } from "socket.io";
 import { prisma } from "../lib/prisma.js";
+import { deriveEventDurationMs } from "../lib/eventTimeLimit.js";
 import { finishEventWithVerdicts } from "../services/battleFinish.js";
 import { notifyEventReport } from "../services/notificationService.js";
 import { emitRoomsInvalidate } from "../socket/ioRegistry.js";
@@ -39,6 +40,12 @@ const emitToRoom = (
  *   3. IN_PROGRESS rooms past `closesAt` → finished with
  *      per-participant verdicts (emits `room_closed` and
  *      delivers EVENT_RESULT notifications).
+ *   4. IN_PROGRESS rooms whose derived TIME LIMIT (global budget, else
+ *      summed / single-problem local limits) has elapsed → finished with
+ *      verdicts. Without this, single-problem rooms and 1v1 FRIENDS
+ *      battles whose clocks ran out stayed IN_PROGRESS forever unless a
+ *      client happened to call /rooms/expire — producing ghost "active"
+ *      battle cards that never moved to history.
  */
 export function startRoomScheduler(io: Server): void {
   setInterval(async () => {
@@ -115,6 +122,45 @@ export function startRoomScheduler(io: Server): void {
           console.log(`[scheduler] room ${event.roomCode || event.id} closed on schedule`);
         } catch (e) {
           console.error("[scheduler] room_closed error:", e);
+        }
+      }
+
+      // 4. Time-limit expiry (no closesAt involved). Events past closesAt are
+      //    already handled above; this catches every IN_PROGRESS event whose
+      //    derived battle clock — global budget or local problem limits — has
+      //    run out: single-problem rooms, multi-problem rooms without a
+      //    global budget, and 1v1 FRIENDS challenges.
+      const timedOut = await prisma.event.findMany({
+        where: {
+          status: "IN_PROGRESS",
+          startedAt: { lte: now },
+          OR: [{ closesAt: null }, { closesAt: { gt: now } }],
+        },
+        include: {
+          problems: { select: { timeLimitMs: true } },
+          commonProblem: { select: { timeLimitMs: true } },
+        },
+      });
+      for (const event of timedOut) {
+        if (!event.startedAt) continue;
+        const endMs = new Date(event.startedAt).getTime() + deriveEventDurationMs(event);
+        if (endMs > now.getTime()) continue;
+        try {
+          const finished = await finishEventWithVerdicts(event.id);
+          emitToRoom(io, event, "room_force_closed", {
+            roomId: event.id,
+            roomCode: event.roomCode,
+            reason: "The battle time limit has been reached.",
+          });
+          emitRoomsInvalidate();
+          if (finished) {
+            await notifyEventReport(event.id).catch((e) =>
+              console.error("[scheduler] event report error:", e),
+            );
+          }
+          console.log(`[scheduler] room ${event.roomCode || event.id} finished on time limit`);
+        } catch (e) {
+          console.error("[scheduler] time-limit finish error:", e);
         }
       }
     } catch (e) {

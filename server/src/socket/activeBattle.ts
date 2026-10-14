@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { deriveEventDurationMs } from "../lib/eventTimeLimit.js";
 import type { ActiveBattleInfo } from "./types.js";
 
 // The "in battle?" lookup so it can be reused
@@ -17,7 +18,8 @@ export const getActiveBattleForUser = async (userId: string): Promise<ActiveBatt
             roomCode: true,
             totalTimeLimitMs: true,
             startedAt: true,
-            commonProblem: { select: { github_oid: true } }
+            commonProblem: { select: { github_oid: true, timeLimitMs: true } },
+            problems: { select: { timeLimitMs: true } }
         }
     });
 
@@ -25,7 +27,9 @@ export const getActiveBattleForUser = async (userId: string): Promise<ActiveBatt
 
     const startedAt = activeEvent.startedAt ? new Date(activeEvent.startedAt) : null;
     const elapsedMs = startedAt ? now.getTime() - startedAt.getTime() : 0;
-    const totalTimeLimitMs = activeEvent.totalTimeLimitMs || 600_000;
+    // Same derivation as battle_state /time-left: global budget, else the sum
+    // of problem limits, else the 1v1 commonProblem's local limit, else 10 min.
+    const totalTimeLimitMs = deriveEventDurationMs(activeEvent);
 
     if (startedAt && elapsedMs >= totalTimeLimitMs) {
         await prisma.event.update({
