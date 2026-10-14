@@ -37,7 +37,7 @@ vi.mock("sonner", () => ({
     toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
-import { useNotifications, useUnreadCount } from "./useNotifications";
+import { useNotifications, useUnreadCount, useDeleteNotification } from "./useNotifications";
 
 const EXISTING_ITEM: NotificationItem = {
     id: "existing-1",
@@ -164,5 +164,28 @@ describe("useNotifications socket handling", () => {
         });
 
         expect(result.current.isSuccess || result.current.isPending).toBe(true);
+    });
+
+    test("delete removes the row instantly without a refetch", async () => {
+        const queryClient = makeClient();
+        const { api } = await import("../config/api");
+        const deleteMock = api.delete as unknown as ReturnType<typeof vi.fn>;
+        deleteMock.mockResolvedValueOnce({ data: { status: "success" } });
+
+        renderHook(() => useNotifications(), { wrapper: wrapperFor(queryClient) });
+        await waitFor(() => expect(listOf(queryClient, "all")).toHaveLength(1));
+
+        const { result } = renderHook(() => useDeleteNotification(), {
+            wrapper: wrapperFor(queryClient),
+        });
+
+        await act(async () => {
+            await result.current.mutateAsync("existing-1");
+        });
+
+        // Gone on the spot — no list refetch was issued.
+        expect(listOf(queryClient, "all")).toHaveLength(0);
+        expect(listNotifications).toHaveBeenCalledTimes(1);
+        expect(deleteMock).toHaveBeenCalledWith("/notifications/existing-1");
     });
 });

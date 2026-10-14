@@ -3,12 +3,13 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const { apiGet, apiPost, apiDelete, markReadMock, markAllMock } = vi.hoisted(() => ({
+const { apiGet, apiPost, apiDelete, markReadMock, markAllMock, deleteMock } = vi.hoisted(() => ({
   apiGet: vi.fn(),
   apiPost: vi.fn(),
   apiDelete: vi.fn(),
   markReadMock: vi.fn(),
   markAllMock: vi.fn(),
+  deleteMock: vi.fn(),
 }));
 
 vi.mock("../../config/api", () => ({
@@ -35,6 +36,9 @@ vi.mock("../../hooks/useNotifications", () => ({
   useUnreadCount: () => ({ data: { unreadCount: 150 } }),
   useMarkRead: () => ({ mutate: markReadMock }),
   useMarkAllRead: () => ({ mutate: markAllMock }),
+  // Task 8 — delete is optimistic in the real hook; the mock exposes the
+  // mutate trigger so the row button is covered too.
+  useDeleteNotification: () => ({ mutate: deleteMock, isPending: false }),
 }));
 
 vi.mock("../../hooks/useSocketInvalidation", () => ({
@@ -115,5 +119,14 @@ describe("NotificationCenter — friend-request actions", () => {
     await waitFor(() =>
       expect(apiPost).toHaveBeenCalledWith("/friends/reject", { requestId: "req-1" }),
     );
+  });
+
+  test("delete button triggers the optimistic delete mutation", async () => {
+    renderPanel();
+    await openQueue();
+
+    fireEvent.click(screen.getByTitle("Delete notification"));
+
+    expect(deleteMock).toHaveBeenCalledWith("notif-1");
   });
 });

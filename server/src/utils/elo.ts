@@ -18,6 +18,7 @@ export function outcomeFromStatus(status: string | null | undefined): MatchOutco
   const s = status.toUpperCase();
   if (s === "WON" || s === "PASSED" || s === "COMPLETED") return "WIN";
   if (s === "LOST" || s === "FAILED" || s === "SURRENDER" || s === "TIMEOUT") return "LOSS";
+  if (s === "DRAW" || s === "TIED" || s === "TIE") return "DRAW";
   return null; // PENDING and friends do not move rating
 }
 
@@ -29,6 +30,86 @@ export function actualScore(outcome: MatchOutcome): number {
   if (outcome === "WIN") return 1;
   if (outcome === "LOSS") return 0;
   return 0.5;
+}
+
+/**
+ * Explicit win / tie / loss points model (Task 3).
+ *
+ * ELO above stays as the secondary derived rating so existing rating
+ * displays keep working. These helpers give battles an explicit,
+ * difficulty-scaled points layer on top:
+ *
+ * - Win  (you PASS, opponent FAILED/absent): +basePoints scaled by difficulty
+ * - Tie  (both PASS or both FAILED):          0 delta, minus focus-penalty
+ * - Loss:                                    -basePoints (floored to 0 at apply)
+ *
+ * Focus-penalty percentage is always applied against the max award for the
+ * difficulty — never against the raw delta — so a penalty hurts a win as
+ * much as it hurts a tie.
+ */
+export const BATTLE_BASE_POINTS = 100;
+
+export function pointsForDifficulty(difficulty?: string | null): number {
+  const d = (difficulty ?? "").toUpperCase();
+  if (d === "EASY") return BATTLE_BASE_POINTS;
+  if (d === "HARD") return BATTLE_BASE_POINTS * 3;
+  // MEDIUM / ANY / unknown all pay the medium award.
+  return BATTLE_BASE_POINTS * 2;
+}
+
+/** Max award for a difficulty — the base the focus penalty is cut from. */
+export function maxAwardForDifficulty(difficulty?: string | null): number {
+  return pointsForDifficulty(difficulty);
+}
+
+/** Focus-penalty deduction: penalty% of the max award (not of the delta). */
+export function focusPenaltyDeduction(maxAward: number, penaltyPercent?: number | null): number {
+  const pct = Math.max(0, Math.min(100, penaltyPercent ?? 0));
+  if (pct === 0 || maxAward <= 0) return 0;
+  return Math.floor((maxAward * pct) / 100);
+}
+
+/**
+ * Resolve a 1v1 outcome from pass flags.
+ * `opponentPassed === null` means the opponent is absent / has no row yet —
+ * a pass then counts as a win, a non-pass as a loss.
+ * Same result on both sides (both PASS or both FAILED) is a tie.
+ */
+export function resolveBattleOutcome(
+  myPassed: boolean,
+  opponentPassed: boolean | null,
+): MatchOutcome {
+  if (opponentPassed === null || opponentPassed === undefined) {
+    return myPassed ? "WIN" : "LOSS";
+  }
+  if (myPassed && !opponentPassed) return "WIN";
+  if (!myPassed && opponentPassed) return "LOSS";
+  return "DRAW";
+}
+
+export interface BattlePointsResult {
+  outcome: MatchOutcome;
+  maxAward: number;
+  delta: number;
+  penaltyDeduction: number;
+  /** Delta with the penalty cut, floored so a score never goes below 0. */
+  finalPoints: number;
+}
+
+/**
+ * Explicit points for one player: win = +max, tie = 0, loss = -max,
+ * then subtract penalty% of max and floor at 0.
+ */
+export function calculateBattlePoints(
+  outcome: MatchOutcome,
+  difficulty?: string | null,
+  focusPenaltyPercent?: number | null,
+): BattlePointsResult {
+  const maxAward = maxAwardForDifficulty(difficulty);
+  const penaltyDeduction = focusPenaltyDeduction(maxAward, focusPenaltyPercent);
+  const delta = outcome === "WIN" ? maxAward : outcome === "LOSS" ? -maxAward : 0;
+  const finalPoints = Math.max(0, delta - penaltyDeduction);
+  return { outcome, maxAward, delta, penaltyDeduction, finalPoints };
 }
 
 /**

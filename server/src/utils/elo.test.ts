@@ -1,11 +1,17 @@
 import { describe, test, expect } from "@jest/globals";
 import {
   BASE_RATING,
+  BATTLE_BASE_POINTS,
+  calculateBattlePoints,
   calculateEloDelta,
   computeRatingFromHistory,
   expectedScore,
+  focusPenaltyDeduction,
   getTierForRating,
+  maxAwardForDifficulty,
   outcomeFromStatus,
+  pointsForDifficulty,
+  resolveBattleOutcome,
 } from "./elo.js";
 
 describe("ELO Rating System (ROADMAP §1)", () => {
@@ -56,5 +62,40 @@ describe("ELO Rating System (ROADMAP §1)", () => {
     expect(getTierForRating(1350)).toBe("Gold");
     expect(getTierForRating(1600)).toBe("Platinum");
     expect(getTierForRating(1900)).toBe("Cyber-Master");
+  });
+});
+
+describe("Battle points model (Task 3)", () => {
+  test("difficulty scales the max award", () => {
+    expect(pointsForDifficulty("EASY")).toBe(BATTLE_BASE_POINTS);
+    expect(pointsForDifficulty("MEDIUM")).toBe(BATTLE_BASE_POINTS * 2);
+    expect(pointsForDifficulty("HARD")).toBe(BATTLE_BASE_POINTS * 3);
+    expect(maxAwardForDifficulty("MEDIUM")).toBe(pointsForDifficulty("MEDIUM"));
+  });
+
+  test("outcome resolves win / tie / loss from pass flags", () => {
+    expect(resolveBattleOutcome(true, false)).toBe("WIN");
+    expect(resolveBattleOutcome(false, true)).toBe("LOSS");
+    expect(resolveBattleOutcome(true, true)).toBe("DRAW");
+    expect(resolveBattleOutcome(false, false)).toBe("DRAW");
+    expect(resolveBattleOutcome(true, null)).toBe("WIN");
+    expect(resolveBattleOutcome(false, null)).toBe("LOSS");
+  });
+
+  test("win pays +max, tie pays 0, loss floors at 0", () => {
+    const max = pointsForDifficulty("MEDIUM");
+    expect(calculateBattlePoints("WIN", "MEDIUM").finalPoints).toBe(max);
+    expect(calculateBattlePoints("DRAW", "MEDIUM").finalPoints).toBe(0);
+    expect(calculateBattlePoints("LOSS", "MEDIUM").finalPoints).toBe(0);
+    expect(calculateBattlePoints("LOSS", "MEDIUM").delta).toBe(-max);
+  });
+
+  test("focus penalty is cut from the max award, never below 0", () => {
+    const max = pointsForDifficulty("HARD");
+    const win = calculateBattlePoints("WIN", "HARD", 10);
+    expect(win.penaltyDeduction).toBe(focusPenaltyDeduction(max, 10));
+    expect(win.finalPoints).toBe(max - win.penaltyDeduction);
+    // A penalised tie still floors at 0 rather than going negative.
+    expect(calculateBattlePoints("DRAW", "HARD", 50).finalPoints).toBe(0);
   });
 });

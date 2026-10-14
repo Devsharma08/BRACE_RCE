@@ -223,3 +223,70 @@ export function useMarkAllRead() {
         },
     });
 }
+
+interface DeleteMutationCtx {
+    snapshotAll?: { notifications: NotificationItem[] };
+    snapshotUnread?: { notifications: NotificationItem[] };
+    snapshotCount?: { unreadCount: number };
+}
+
+/**
+ * Task 8 — per-notification delete with optimistic local removal.
+ * The row disappears instantly on the spot via setQueryData (no refetch);
+ * the DELETE endpoint (`DELETE /notifications/:id`, already mounted in
+ * server/src/routes/notifications.ts) runs in the background, and any
+ * failure falls back to a refetch of the authoritative state.
+ */
+export function useDeleteNotification() {
+    const queryClient = useQueryClient();
+    return useMutation<unknown, Error, string, DeleteMutationCtx>({
+        mutationFn: async (id: string) => api.delete(`/notifications/${id}`),
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ["notifications"] });
+            await queryClient.cancelQueries({ queryKey: ["notifications-unread-count"] });
+
+            const snapshotAll = queryClient.getQueryData<{
+                notifications: NotificationItem[];
+            }>(["notifications", "all"]);
+            const snapshotUnread = queryClient.getQueryData<{
+                notifications: NotificationItem[];
+            }>(["notifications", "unread"]);
+            const snapshotCount = queryClient.getQueryData<{ unreadCount: number }>([
+                "notifications-unread-count",
+            ]);
+
+            const wasUnread =
+                snapshotAll?.notifications.find((n) => n.id === id)?.status === "UNREAD";
+
+            const removeFrom = (
+                old?: { notifications: NotificationItem[] },
+            ): { notifications: NotificationItem[] } | undefined =>
+                old
+                    ? { notifications: old.notifications.filter((n) => n.id !== id) }
+                    : old;
+
+            queryClient.setQueryData(["notifications", "all"], removeFrom);
+            queryClient.setQueryData(["notifications", "unread"], removeFrom);
+            if (wasUnread) {
+                queryClient.setQueryData<{ unreadCount: number }>(
+                    ["notifications-unread-count"],
+                    (old) => ({
+                        unreadCount: Math.max(0, (old?.unreadCount ?? 1) - 1),
+                    }),
+                );
+            }
+
+            return { snapshotAll, snapshotUnread, snapshotCount };
+        },
+        onError: (_err, _id, ctx) => {
+            if (ctx?.snapshotAll) queryClient.setQueryData(["notifications", "all"], ctx.snapshotAll);
+            if (ctx?.snapshotUnread)
+                queryClient.setQueryData(["notifications", "unread"], ctx.snapshotUnread);
+            if (ctx?.snapshotCount)
+                queryClient.setQueryData(["notifications-unread-count"], ctx.snapshotCount);
+            queryClient.invalidateQueries({ queryKey: ["notifications"] });
+            queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+            toast.error("Failed to delete notification");
+        },
+    });
+}

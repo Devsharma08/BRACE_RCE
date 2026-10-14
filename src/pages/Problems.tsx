@@ -604,7 +604,12 @@ export const Problems: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className={`flex flex-col ${isPending ? "opacity-60 transition-opacity" : ""}`}>
+              /* Task 4: horizontal scroll on phones. Rows use an md+ grid
+                 (stacked below that), but long names + domain labels still
+                 overflow ~360px viewports — the wrapper scrolls instead of
+                 stretching the page. min-w keeps columns meaningful. */
+              <div className="overflow-x-auto">
+                <div className={`flex min-w-[640px] flex-col ${isPending ? "opacity-60 transition-opacity" : ""}`}>
                 {currentProblems.map((p, idx) => {
                   const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
                   const problemNumber = p.problem_number || (currentPage - 1) * itemsPerPage + idx + 1;
@@ -616,7 +621,7 @@ export const Problems: React.FC = () => {
                       onClick={() => navigate(`/terminal?id=${p.id || p.github_oid}`)}
                       className="group grid w-full gap-3 border-b border-white/5 px-5 py-4 text-left transition last:border-0 hover:bg-accent-primary/[0.035] md:grid-cols-[70px_1.6fr_120px_1fr_110px] md:items-center md:gap-5"
                     >
-                      <span className="text-[10px] text-faint">#{problemNumber}</span>
+                      <span className="hidden text-[10px] text-faint md:block">#{problemNumber}</span>
 
                       {/* STATUS BOX + TITLE */}
                       <span className="flex min-w-0 items-center gap-3 text-sm font-bold text-fg transition group-hover:text-accent-primary">
@@ -641,8 +646,9 @@ export const Problems: React.FC = () => {
                         {diff}
                       </span>
 
-                      {/* DOMAIN — the structure this problem was indexed under */}
-                      <span className="truncate text-xs text-subtle">{domainLabel}</span>
+                      {/* DOMAIN — the structure this problem was indexed under.
+                          Low-priority: hidden on phones to keep rows compact. */}
+                      <span className="hidden truncate text-xs text-subtle md:block">{domainLabel}</span>
 
                       {/* OPEN affordance: always visible on touch, hover-revealed on md+ */}
                       <span className="text-right text-[9px] uppercase tracking-widest text-accent-primary opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
@@ -651,6 +657,7 @@ export const Problems: React.FC = () => {
                     </button>
                   );
                 })}
+                </div>
               </div>
             )}
             {/* PAGINATION — the shared pager, rendered inside the table's bottom border. */}

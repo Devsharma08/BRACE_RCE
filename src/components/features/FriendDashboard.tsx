@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
@@ -175,6 +175,48 @@ export default function FriendsDashboard() {
   // signed-in user's id instead.
   const isOwnMessage = (msg: Message) =>
     msg.senderId === "ME" || (user?.id != null && msg.senderId === user.id);
+
+  /**
+   * Task 5 — ordered + grouped bubbles with day separators (display-only).
+   * Sort by arrival timestamp, group consecutive same-sender messages into
+   * a stacked bubble run (mine right / theirs left), and break runs with
+   * a day divider. Send/receive logic is untouched.
+   */
+  interface MessageGroup {
+    key: string;
+    mine: boolean;
+    dayLabel: string;
+    messages: Message[];
+  }
+  const dayLabelFor = (iso: string): string => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    const sameDay = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    if (sameDay(d, today)) return "Today";
+    if (sameDay(d, yesterday)) return "Yesterday";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  };
+  const messageGroups = useMemo<MessageGroup[]>(() => {
+    const sorted = [...displayedMessages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+    const groups: MessageGroup[] = [];
+    for (const msg of sorted) {
+      const mine = isOwnMessage(msg);
+      const dayLabel = dayLabelFor(msg.createdAt);
+      const last = groups[groups.length - 1];
+      if (last && last.mine === mine && last.dayLabel === dayLabel) {
+        last.messages.push(msg);
+      } else {
+        groups.push({ key: `${dayLabel}-${mine ? "me" : "them"}-${msg.id}`, mine, dayLabel, messages: [msg] });
+      }
+    }
+    return groups;
+  }, [displayedMessages, user?.id]);
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({
@@ -452,26 +494,36 @@ export default function FriendsDashboard() {
                 </button>
               </div>
 
-              {/* Messages */}
+              {/* Messages — Task 5: sorted by arrival, grouped into same-sender
+                  bubble runs with day separators (display-only). */}
               <div ref={chatScrollRef} className="themed-scroll flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-                {displayedMessages.length === 0 ? (
+                {messageGroups.length === 0 ? (
                   <div className="flex flex-1 items-center justify-center text-xs text-subtle">No messages yet. Say hello!</div>
                 ) : (
-                  displayedMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex min-w-0 ${isOwnMessage(msg) ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`w-fit max-w-[75%] min-w-0 px-4 py-2 text-sm leading-5 [overflow-wrap:anywhere] whitespace-pre-wrap break-words ${
-                          isOwnMessage(msg)
-                            ? "rounded-card border border-accent-primary/20 bg-accent-primary/10 text-fg"
-                            : "rounded-card border border-subtle-line bg-surface text-fg"
-                        }`}
-                      >
-                        {msg.content}
+                  messageGroups.map((group, groupIdx) => (
+                    <Fragment key={group.key}>
+                      {(groupIdx === 0 || messageGroups[groupIdx - 1].dayLabel !== group.dayLabel) && group.dayLabel && (
+                        <div className="flex items-center gap-2 py-1" aria-label={group.dayLabel}>
+                          <span className="h-px flex-1 bg-subtle-line" />
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-faint">{group.dayLabel}</span>
+                          <span className="h-px flex-1 bg-subtle-line" />
+                        </div>
+                      )}
+                      <div className={`flex min-w-0 flex-col gap-1 ${group.mine ? "items-end" : "items-start"}`}>
+                        {group.messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`w-fit max-w-[75%] min-w-0 px-4 py-2 text-sm leading-5 [overflow-wrap:anywhere] whitespace-pre-wrap break-words ${
+                              group.mine
+                                ? "rounded-card border border-accent-primary/20 bg-accent-primary/10 text-fg"
+                                : "rounded-card border border-subtle-line bg-surface text-fg"
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    </Fragment>
                   ))
                 )}
               </div>

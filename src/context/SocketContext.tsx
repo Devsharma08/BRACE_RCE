@@ -158,6 +158,41 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   // Friends presence state
   const [friends, setFriends] = useState<Array<{ id: string; username: string; avatarUrl: string | null; isOnline: boolean }>>([]);
 
+  // Task 6 — seed + reconcile presence.
+  // `friends` starts as [] and nothing ever populated it, so `onlineIds`
+  // was permanently empty and every dot read OFFLINE. Mirror the REST
+  // friends list into `friends` (preserving any live isOnline flags), then
+  // ask the server for a fresh snapshot so the dots reflect real socket
+  // presence rather than a stale default.
+  const { data: presenceFriends } = useQuery<{ friends: Array<{ id: string; username: string; avatarUrl: string | null }> }>({
+    queryKey: ["friends-list"],
+    queryFn: async () => (await api.get("/friends")).data,
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    const list = presenceFriends?.friends;
+    if (!list) return;
+    setFriends((prev) => {
+      const liveById = new Map(prev.map((f) => [f.id, f.isOnline] as const));
+      return list.map((f) => ({
+        id: f.id,
+        username: f.username,
+        avatarUrl: f.avatarUrl ?? null,
+        isOnline: liveById.get(f.id) ?? false,
+      }));
+    });
+    socketRef.current?.emit("request_presence", { userIds: list.map((f) => f.id) });
+  }, [presenceFriends]);
+
+  // Reconcile presence whenever the socket (re)connects — the snapshot
+  // answer only covers ids present in `friends`, so refresh the question
+  // rather than trusting flags from before the drop.
+  useEffect(() => {
+    if (!isConnected) return;
+    const ids = presenceFriends?.friends?.map((f) => f.id);
+    if (ids && ids.length > 0) socketRef.current?.emit("request_presence", { userIds: ids });
+  }, [isConnected, presenceFriends]);
+
   // Local ticker to increment waiting seconds smoothly by 1 every second
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -355,19 +390,28 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socket.emit("join_matchmaking", { difficulty: queueDifficultyRef.current, waitingSeconds: waitingTimeRef.current });
     });
 
-    // Friend presence events
-    bind("user_online_status", (data: { userId: string; isOnline: boolean }) => {
-      setFriends((prev) =>
-        prev.map((f) => (f.id === data.userId ? { ...f, isOnline: data.isOnline } : f))
-      );
+    // Friend presence events — Task 6: wire to the REAL server shapes.
+    // `emitPresenceToFriends` sends `{ userId, status: "ONLINE"|"OFFLINE" }`
+    // (not `{ userId, isOnline }`), and `request_presence` answers with a
+    // BARE ARRAY of `{ userId, status }` (not `{ users: [...] }`). The old
+    // bindings matched neither shape, so the dot could never light up.
+    // Unknown ids are upstreamed so a presence event for a not-yet-loaded
+    // friend still flips the dot once the list arrives (reconciled below).
+    bind("user_online_status", (data: { userId: string; status?: string; isOnline?: boolean }) => {
+      const isOnline = data.isOnline ?? data.status === "ONLINE";
+      setFriends((prev) => {
+        if (!prev.some((f) => f.id === data.userId)) {
+          return [...prev, { id: data.userId, username: data.userId, avatarUrl: null, isOnline }];
+        }
+        return prev.map((f) => (f.id === data.userId ? { ...f, isOnline } : f));
+      });
     });
 
-    bind("presence_snapshot", (data: { users: Array<{ userId: string; isOnline: boolean }> }) => {
+    bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnline?: boolean }> | { users: Array<{ userId: string; status?: string; isOnline?: boolean }> }) => {
+      const list = Array.isArray(data) ? data : data.users ?? [];
+      const statusById = new Map(list.map((u) => [u.userId, u.isOnline ?? u.status === "ONLINE"] as const));
       setFriends((prev) =>
-        prev.map((f) => {
-          const match = data.users.find((u) => u.userId === f.id);
-          return match ? { ...f, isOnline: match.isOnline } : f;
-        })
+        prev.map((f) => (statusById.has(f.id) ? { ...f, isOnline: statusById.get(f.id) as boolean } : f)),
       );
     });
 

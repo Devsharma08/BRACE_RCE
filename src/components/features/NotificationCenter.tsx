@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bell, BellOff, CheckCheck, X, Activity } from "lucide-react";
-import { useNotifications, useUnreadCount, useMarkAllRead } from "../../hooks/useNotifications";
+import { Bell, BellOff, CheckCheck, Trash2, X, Activity } from "lucide-react";
+import { useNotifications, useUnreadCount, useMarkAllRead, useDeleteNotification } from "../../hooks/useNotifications";
 import { api } from "../../config/api";
 import { toast } from "sonner";
 
@@ -57,6 +57,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
   const { data: notificationsData } = useNotifications();
   const { data: unreadData } = useUnreadCount();
   const markAllRead = useMarkAllRead();
+  // Task 8 — optimistic per-row delete: the hook removes the row from the
+  // cache instantly; this component just triggers it.
+  const deleteNotification = useDeleteNotification();
 
   // Uncontrolled by default (Header mounts it bare): closed bell,
   // popover opens on click.
@@ -219,8 +222,20 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
                         >
                           {category.label}
                         </span>
-                        <span className="shrink-0 font-mono text-[9px] text-faint">
-                          {formatTimeAgo(notif.createdAt)}
+                        <span className="flex shrink-0 items-center gap-1">
+                          <span className="font-mono text-[9px] text-faint">
+                            {formatTimeAgo(notif.createdAt)}
+                          </span>
+                          {/* Task 8 — per-row delete: optimistic removal, no refetch. */}
+                          <button
+                            onClick={() => deleteNotification.mutate(notif.id)}
+                            title="Delete notification"
+                            aria-label="Delete notification"
+                            disabled={deleteNotification.isPending}
+                            className="rounded p-1 text-faint transition hover:text-accent-danger disabled:opacity-40"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
                         </span>
                       </div>
                       <p className="mt-1.5 truncate font-mono text-xs font-bold text-fg">
