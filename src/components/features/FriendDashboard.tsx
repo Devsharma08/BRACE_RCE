@@ -62,9 +62,10 @@ export default function FriendsDashboard() {
   const [challengeFriend, setChallengeFriend] = useState<Friend | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   // Derived presence set — no local mirror state, so socket presence can never
-  // go stale between renders.
+  // go stale between renders. Guarded: the socket store may briefly hold a
+  // non-array during reconnect/initialisation.
   const onlineIds = useMemo(
-    () => socketFriends.filter((f) => f.isOnline).map((f) => f.id),
+    () => (Array.isArray(socketFriends) ? socketFriends : []).filter((f) => f.isOnline).map((f) => f.id),
     [socketFriends],
   );
   // ── NEW-FRIEND DISCOVERY ──────────────────────────────────────────────
@@ -122,13 +123,17 @@ export default function FriendsDashboard() {
     ? apiErrorMessage(discoverQueryError, "Could not reach the operatives directory")
     : null;
 
-  const { data: friends = [], isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
+  const { data: friendsData, isLoading: friendsLoading, refetch: fetchFriends } = useQuery<Friend[]>({
     queryKey: ["friends-list"],
     queryFn: async () => {
       const res = await api.get("/friends");
-      return res.data.friends || [];
+      // The endpoint returns `{ friends: [...] }`, but guard anyway: a
+      // non-array payload used to crash `friends.map` at render.
+      const list = res.data?.friends ?? res.data ?? [];
+      return Array.isArray(list) ? list : [];
     },
   });
+  const friends: Friend[] = Array.isArray(friendsData) ? friendsData : [];
 
   const { data: pendingRequests = [], refetch: fetchRequests } = useQuery<FriendRequest[]>({
     queryKey: ["friend-requests"],

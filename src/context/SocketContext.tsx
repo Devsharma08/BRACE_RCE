@@ -171,9 +171,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   });
   useEffect(() => {
     const list = presenceFriends?.friends;
-    if (!list) return;
+    if (!Array.isArray(list)) return;
     setFriends((prev) => {
-      const liveById = new Map(prev.map((f) => [f.id, f.isOnline] as const));
+      const liveById = new Map((Array.isArray(prev) ? prev : []).map((f) => [f.id, f.isOnline] as const));
       return list.map((f) => ({
         id: f.id,
         username: f.username,
@@ -400,18 +400,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     bind("user_online_status", (data: { userId: string; status?: string; isOnline?: boolean }) => {
       const isOnline = data.isOnline ?? data.status === "ONLINE";
       setFriends((prev) => {
-        if (!prev.some((f) => f.id === data.userId)) {
-          return [...prev, { id: data.userId, username: data.userId, avatarUrl: null, isOnline }];
+        const list = Array.isArray(prev) ? prev : [];
+        if (!list.some((f) => f.id === data.userId)) {
+          return [...list, { id: data.userId, username: data.userId, avatarUrl: null, isOnline }];
         }
-        return prev.map((f) => (f.id === data.userId ? { ...f, isOnline } : f));
+        return list.map((f) => (f.id === data.userId ? { ...f, isOnline } : f));
       });
     });
 
     bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnline?: boolean }> | { users: Array<{ userId: string; status?: string; isOnline?: boolean }> }) => {
-      const list = Array.isArray(data) ? data : data.users ?? [];
+      const list = Array.isArray(data) ? data : Array.isArray(data?.users) ? data.users : [];
       const statusById = new Map(list.map((u) => [u.userId, u.isOnline ?? u.status === "ONLINE"] as const));
       setFriends((prev) =>
-        prev.map((f) => (statusById.has(f.id) ? { ...f, isOnline: statusById.get(f.id) as boolean } : f)),
+        (Array.isArray(prev) ? prev : []).map((f) => (statusById.has(f.id) ? { ...f, isOnline: statusById.get(f.id) as boolean } : f)),
       );
     });
 

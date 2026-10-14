@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Check, Clock3, Code2, GitCompareArrows, Target, Trophy, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, Clock3, Code2, Cpu, GitCompareArrows, Loader2, Target, Trophy, X } from "lucide-react";
 import { api } from "../config/api";
 import { useAuth } from "../context/AuthContext";
 
