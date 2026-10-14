@@ -63,7 +63,7 @@ const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
             onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
             className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/5 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/10 transition-all cursor-pointer"
           >
-            {unlockedCount === 0 ? "[ REVEAL HINT ]" : `[ HINT #${unlockedCount + 1} ]`}
+            {unlockedCount === 0 ? "REVEAL HINT" : `HINT #${unlockedCount + 1}`}
           </button>
         )}
       </div>
@@ -323,6 +323,25 @@ export const Battle = () => {
     if (!battleActiveRef.current) return;
     toast.success("✓ FOCUS RESTORED", { id: "focus-restore" });
   }, []);
+
+  // Escalating focus-penalty severity badge for the result modal.
+  // 100% is a hard CHEATER flag; any penalty above 0 is SUSPICIOUS, and the
+  // label/colour climbs with the penalty so repeat offenders read as worse.
+  const penaltySeverity = (() => {
+    if (focusPenaltyPercent >= 100) {
+      return { label: "CHEATER", tone: "border-accent-danger/50 bg-accent-danger/15 text-accent-danger" };
+    }
+    if (focusPenaltyPercent >= 80) {
+      return { label: "SEVERE", tone: "border-accent-danger/40 bg-accent-danger/10 text-accent-danger" };
+    }
+    if (focusPenaltyPercent >= 40) {
+      return { label: "HIGH RISK", tone: "border-accent-warning/50 bg-accent-warning/15 text-accent-warning" };
+    }
+    if (focusPenaltyPercent >= 20) {
+      return { label: "MODERATE", tone: "border-accent-warning/40 bg-accent-warning/10 text-accent-warning" };
+    }
+    return { label: "SUSPICIOUS", tone: "border-accent-warning/30 bg-accent-warning/5 text-accent-warning" };
+  })();
 
   // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
   const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading, handleFocusLoss, handleFocusRestore);
@@ -600,8 +619,10 @@ export const Battle = () => {
         setIsBattleMenuOpen(true);
       }
       if (data.result === "OPPONENT_SURRENDERED") {
-        setBattleResult("WON");
-        setIsBattleMenuOpen(true);
+        // Opponent surrendered — but we are NOT declared winner until WE solve
+        // the problem. Keep coding; battle-action.ts claims the finish and
+        // declares us winner only once our submission passes.
+        toast.info("Opponent surrendered — solve the problem to claim victory.");
       }
     });
 
@@ -2300,7 +2321,14 @@ className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
               <div className="mb-4 p-3 rounded border border-accent-warning/30 bg-accent-warning/10 text-left">
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-mono text-xs text-accent-warning">FOCUS PENALTY APPLIED</span>
-                  <span className="font-mono text-lg font-bold text-accent-danger">-{focusPenaltyPercent}%</span>
+                  <span className="flex items-center gap-2">
+                    {/* Escalating severity: 100% is CHEATER; below that the label
+                        grows harsher as the penalty climbs. */}
+                    <span className={`font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border ${penaltySeverity.tone}`}>
+                      {penaltySeverity.label}
+                    </span>
+                    <span className="font-mono text-lg font-bold text-accent-danger">-{focusPenaltyPercent}%</span>
+                  </span>
                 </div>
                 <div className="text-[9px] text-subtle font-mono">
                   {focusLossCount} focus loss{focusLossCount > 1 ? "es" : ""} × {focusPenaltyPercent}% penalty on final score
@@ -2318,13 +2346,13 @@ className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
                 onClick={() => navigate("/")}
                 className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-accent-primary/50 bg-accent-primary/10 text-fg hover:bg-accent-primary/80"
               >
-                [ RETURN TO MAINFRAME ]
+                RETURN TO MAINFRAME
               </button>
               <button
                 onClick={() => setIsBattleMenuOpen(false)}
                 className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-subtle-line bg-surface-hover/60 text-fg hover:bg-surface-hover"
               >
-                [ CLOSE MENU ]
+                CLOSE MENU
               </button>
             </div>
           </div>
@@ -2351,13 +2379,13 @@ className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
                 onClick={handleConfirmSurrender}
                 className="flex-1 py-3 bg-accent-danger/30 hover:bg-accent-danger/20 border border-accent-danger/40 text-accent-danger font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
               >
-                [ SURRENDER ]
+                SURRENDER
               </button>
               <button
                 onClick={() => setIsSurrenderModalOpen(false)}
                 className="flex-1 py-3 bg-surface-hover/80 hover:bg-surface-hover border border-subtle-line text-fg font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
               >
-                [ CANCEL ]
+                CANCEL
               </button>
             </div>
           </div>
