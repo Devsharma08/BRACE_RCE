@@ -546,8 +546,8 @@ const DifficultyBadge = ({ level }: { level: string }) => {
   return (
     <>
       <span className={`large-badge font-mono text-[8px] px-1.5 py-0.5 border uppercase tracking-wider whitespace-nowrap ${textColors[level] || textColors.E}`}>
-        <span className="badge-text-full whitespace-nowrap">[ {labelMap[level] || level || "EASY"} ]</span>
-        <span className="badge-text-short whitespace-nowrap">[ {shortLabelMap[level] || level[0] || "E"} ]</span>
+        <span className="badge-text-full whitespace-nowrap">{labelMap[level] || level || "EASY"}</span>
+        <span className="badge-text-short whitespace-nowrap">{shortLabelMap[level] || level[0] || "E"}</span>
       </span>
       <span className={`mini-badge ${miniColorMap[level] || miniColorMap.E}`} />
     </>

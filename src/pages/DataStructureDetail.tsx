@@ -547,7 +547,7 @@ const DataStructureDetail = () => {
                   </div>
                   <div className="flex items-center gap-2 select-none shrink-0">
                     <span className={`px-2 py-0.5 border text-[8px] font-bold tracking-wider rounded-none uppercase ${getDifficultyColor(problem.difficulty_level)}`}>
-                      [ {getDifficultyLabel(problem.difficulty_level)} ]
+                      {getDifficultyLabel(problem.difficulty_level)}
                     </span>
                   </div>
                 </div>

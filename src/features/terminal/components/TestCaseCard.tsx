@@ -47,7 +47,7 @@ export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps)
               label only marks which three are the documented samples. */}
           {!isHidden && (
             <span className="text-[10px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
-              [ SAMPLE ]
+              SAMPLE
             </span>
           )}
           {hasResult && (
@@ -56,7 +56,7 @@ export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps)
                 ? "border border-accent-success/30 bg-accent-success/10 text-accent-success shadow-glow-success"
                 : "border border-accent-danger/30 bg-accent-danger/10 text-accent-danger shadow-glow-danger"
             }`}>
-              {passed ? "[ PASSED ]" : "[ FAILED ]"}
+              {passed ? "PASSED" : "FAILED"}
             </span>
           )}
         </div>

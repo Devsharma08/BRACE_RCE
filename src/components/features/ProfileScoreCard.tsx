@@ -114,7 +114,7 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
           to="/profile"
           className="text-xs font-bold text-accent-primary hover:text-accent-primary transition-colors tracking-wider uppercase mt-auto pt-3 flex items-center justify-between border-t border-accent-primary/15 group"
         >
-          <span>[ VIEW FULL OPERATIVE DOSSIER ]</span>
+          <span>VIEW FULL OPERATIVE DOSSIER</span>
           <span className="group-hover:translate-x-1 transition-transform">→</span>
         </Link>
       </div>

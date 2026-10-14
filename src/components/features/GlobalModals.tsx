@@ -56,14 +56,14 @@ export default function GlobalModals() {
                 onClick={declineMatch}
                 className="w-1/2 py-4 bg-accent-danger/10 hover:bg-accent-danger/30 border border-accent-danger/50 text-accent-danger font-mono font-bold tracking-widest rounded-lg transition-all"
               >
-                [ DECLINE ]
+                DECLINE
               </button>
               <button
                 disabled={isClicked}
                 onClick={acceptMatch}
                 className="w-1/2 py-4 bg-accent-primary/10 hover:bg-accent-primary border border-accent-primary/80 hover:border-accent-primary text-accent-primary font-mono font-bold tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(0,212,255,0.4)]"
               >
-                [ ACCEPT ]
+                ACCEPT
               </button>
             </div>
           </div>

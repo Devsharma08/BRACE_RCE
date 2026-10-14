@@ -95,8 +95,8 @@ describe('OutputPanel — Test Cases tab', () => {
     }));
 
     renderTestsTab({ testCases, onRunSingleTestCase: vi.fn() });
-    expect(screen.getAllByText('[ SAMPLE ]')).toHaveLength(3);
-    expect(screen.queryAllByText('[ HIDDEN ]')).toHaveLength(0);
+    expect(screen.getAllByText('SAMPLE')).toHaveLength(3);
+    expect(screen.queryAllByText('HIDDEN')).toHaveLength(0);
   });
 
   test('marks the whole set solved only when every graded case passed', () => {

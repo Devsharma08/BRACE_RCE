@@ -117,7 +117,7 @@ const HintsAccordion = ({ hints }: { hints?: string[] | null }) => {
             onClick={() => setUnlocked((p) => Math.min(parsed.length, p + 1))}
             className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/5 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/10 transition-all cursor-pointer"
           >
-            {unlocked === 0 ? "[ REVEAL HINT ]" : `[ HINT #${unlocked + 1} ]`}
+            {unlocked === 0 ? "REVEAL HINT" : `HINT #${unlocked + 1}`}
           </button>
         )}
       </div>

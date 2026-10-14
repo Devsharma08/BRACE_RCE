@@ -498,7 +498,7 @@ export const Problems: React.FC = () => {
               onClick={() => refetchProblems()}
               className="mt-1 px-5 py-2 text-xs font-mono font-bold tracking-widest border border-accent-danger/50 bg-accent-danger/20 hover:bg-accent-danger/30 text-accent-danger rounded-none transition-all active:scale-95"
             >
-              [ RETRY QUERY ]
+              RETRY QUERY
             </button>
           </div>
         )}

@@ -108,7 +108,7 @@ export function ChallengeModal({ friend, open, onClose }: {
                 <button key={p.id} onClick={() => setProblemId(p.id)}
                   className={`w-full cursor-pointer border-b border-subtle-line px-3 py-2.5 text-left text-xs transition-colors ${problemId === p.id ? "bg-accent-danger/10 text-accent-danger" : "text-subtle hover:bg-surface-hover"}`}>
                   <span className="font-bold">{p.name}</span>
-                  {p.difficulty_level && <span className="ml-2 text-[10px] text-muted">[{p.difficulty_level}]</span>}
+                  {p.difficulty_level && <span className="ml-2 text-[10px] text-muted">{p.difficulty_level}</span>}
                 </button>
               ))}
               {filtered.length === 0 && <p className="px-3 py-6 text-center text-[11px] text-muted">NO PROBLEMS MATCH — TRY ANOTHER SEARCH</p>}
@@ -117,7 +117,7 @@ export function ChallengeModal({ friend, open, onClose }: {
         )}
         <div className="flex gap-2 p-4">
           <button onClick={onClose} className="flex-1 rounded-btn border border-subtle-line py-3 text-xs font-bold tracking-widest text-subtle transition-colors hover:bg-surface-hover hover:text-fg">CANCEL</button>
-          <button onClick={handleSend} className="flex-1 rounded-btn bg-accent-danger py-3 text-xs font-bold tracking-widest text-fg transition-opacity hover:opacity-90">[ SEND CHALLENGE ]</button>
+          <button onClick={handleSend} className="flex-1 rounded-btn bg-accent-danger py-3 text-xs font-bold tracking-widest text-fg transition-opacity hover:opacity-90">SEND CHALLENGE</button>
         </div>
       </div>
     </div>
