@@ -77,6 +77,10 @@ const Lobby = () => {
     // Refetch on window focus to catch missed events
     refetchOnWindowFocus: true,
     staleTime: 30000, // 30s freshness
+    // Safety net: a battle that ends early (timer expiry, surrender, admin
+    // termination) must dissolve its active card without a manual refresh,
+    // even if the socket invalidation was missed while this tab was hidden.
+    refetchInterval: 15000,
   });
 
   // Replace polling with socket-driven invalidation
@@ -193,15 +197,15 @@ const Lobby = () => {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!window.confirm("Are you sure you want to permanently delete this operation?")) return;
+  const handleDeleteEvent = async (eventId: string, noun: "operation" | "template" = "operation") => {
+    if (!window.confirm(`Are you sure you want to permanently delete this ${noun}?`)) return;
     try {
       await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-      toast.success("Operation deleted");
+      toast.success(`${noun[0].toUpperCase()}${noun.slice(1)} deleted`);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete operation");
+      toast.error(`Failed to delete ${noun}`);
     }
   };
 
@@ -278,19 +282,29 @@ const Lobby = () => {
               <Trash2 size={14} aria-hidden />
             </button>
           ) : isTemplate ? (
-            <button
-              onClick={() => handleCloneTemplate(room.id)}
-              disabled={cloningId === room.id}
-              className="mt-4 flex items-center justify-between border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={`Deploy template: ${room.name}`}
-            >
-              {cloningId === room.id ? "Deploying template" : "Deploy template"}
-              <RefreshCw
-                size={14}
-                aria-hidden
-                className={cloningId === room.id ? "animate-spin" : ""}
-              />
-            </button>
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={() => handleCloneTemplate(room.id)}
+                disabled={cloningId === room.id}
+                className="flex flex-1 items-center justify-between border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={`Deploy template: ${room.name}`}
+              >
+                {cloningId === room.id ? "Deploying template" : "Deploy template"}
+                <RefreshCw
+                  size={14}
+                  aria-hidden
+                  className={cloningId === room.id ? "animate-spin" : ""}
+                />
+              </button>
+              <button
+                onClick={() => handleDeleteEvent(room.id, "template")}
+                className="flex items-center justify-between border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
+                aria-label={`Delete template: ${room.name}`}
+              >
+                Delete
+                <Trash2 size={14} aria-hidden />
+              </button>
+            </div>
           ) : (
             <button
               onClick={() => handleJoinRoom(room)}
@@ -502,14 +516,33 @@ const Lobby = () => {
 
           <aside className="rounded-[26px] border border-subtle-line bg-raised p-5 lg:sticky lg:top-5 lg:self-start">
             <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-              <Radar size={14} aria-hidden /> Live radar
+              <Radar size={14} aria-hidden />
+              <span className="sm:hidden">Live stats</span>
+              <span className="hidden sm:inline">Live radar</span>
             </div>
-            <div className="mt-8 grid aspect-square place-items-center rounded-full border border-accent/20 bg-accent/[0.03]">
+            {/* Mobile: numeric readout instead of the decorative radar circle —
+                the circle ate a square chunk of a phone viewport for zero
+                information. */}
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:hidden">
+              <div className="border border-subtle-line px-2 py-3 text-center">
+                <div className="font-mono text-lg font-bold text-accent-success">{rooms.length}</div>
+                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">rooms</div>
+              </div>
+              <div className="border border-subtle-line px-2 py-3 text-center">
+                <div className="font-mono text-lg font-bold text-accent-primary">{templates.length}</div>
+                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">templates</div>
+              </div>
+              <div className="border border-subtle-line px-2 py-3 text-center">
+                <div className="font-mono text-lg font-bold text-accent-primary">{myEvents.length}</div>
+                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">archives</div>
+              </div>
+            </div>
+            <div className="mt-8 hidden aspect-square place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
               <div className="grid h-2/3 w-2/3 place-items-center rounded-full border border-accent/20">
                 <Wifi size={22} aria-hidden className="text-accent-primary" />
               </div>
             </div>
-            <div className="mt-6 space-y-3 border-t border-subtle-line pt-5 text-[9px] uppercase tracking-widest text-subtle">
+            <div className="mt-6 hidden space-y-3 border-t border-subtle-line pt-5 text-[9px] uppercase tracking-widest text-subtle sm:block">
               <p className="flex justify-between">
                 rooms online <span className="text-accent-success">{rooms.length}</span>
               </p>
