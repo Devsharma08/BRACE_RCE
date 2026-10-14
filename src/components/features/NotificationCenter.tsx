@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bell, BellOff, CheckCheck, Trash2, X, Activity } from "lucide-react";
-import { useNotifications, useUnreadCount, useMarkAllRead, useDeleteNotification } from "../../hooks/useNotifications";
+import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead, useDeleteNotification } from "../../hooks/useNotifications";
 import { api } from "../../config/api";
 import { toast } from "sonner";
 
@@ -56,6 +56,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
   const queryClient = useQueryClient();
   const { data: notificationsData } = useNotifications();
   const { data: unreadData } = useUnreadCount();
+  const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   // Task 8 — optimistic per-row delete: the hook removes the row from the
   // cache instantly; this component just triggers it.
@@ -104,16 +105,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
   const notifications = notificationsData?.notifications || [];
   const unreadCount = unreadData?.unreadCount || 0;
 
-  // Acting on a request consumes the queue row: accept/reject the
-  // friend request, then delete the notification so it disappears.
-  const clearRow = async (id: string) => {
-    try {
-      await api.delete(`/notifications/${id}`);
-    } catch (error) {
-      console.error("Failed to clear notification:", error);
-    } finally {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    }
+  // Hook-based delete: the row is removed optimistically and the unread
+  // badge is decremented when the row was UNREAD. The DELETE endpoint runs in
+  // the background; on failure the cache rolls back and refetches the
+  // authoritative state, so the badge never goes stale.
+  const clearRow = (id: string) => {
+    deleteNotification.mutate(id);
   };
 
   const handleAccept = async (notif: any) => {
@@ -138,6 +135,15 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
       toast.error("Failed to reject friend request");
     }
   };
+
+  // "Seen" path: opening the panel marks every unread notification as read,
+  // which is what makes the badge decrement. Works for both controlled and
+  // uncontrolled popovers. When nothing is unread, this is a no-op.
+  useEffect(() => {
+    if (isOpen && unreadCount > 0) {
+      markAllRead.mutate();
+    }
+  }, [isOpen, unreadCount, markAllRead]);
 
   return (
     <div className="relative" ref={rootRef}>
@@ -210,7 +216,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
                   return (
                     <li
                       key={notif.id}
-                      className={`rounded-lg border p-3 ${
+                      onClick={() => {
+                        if (!actionable) {
+                          markRead.mutate(notif.id);
+                        }
+                      }}
+                      className={`rounded-lg border p-3 cursor-pointer ${
                         notif.status === "READ"
                           ? "border-subtle-line bg-base/50"
                           : "border-accent-primary/25 bg-accent-primary/[0.04]"
