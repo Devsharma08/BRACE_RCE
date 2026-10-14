@@ -107,7 +107,7 @@ describe("NotificationCenter — friend-request actions", () => {
       }),
     );
     // Row is no longer actionable → notification deleted too.
-    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/notifications/notif-1"));
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("notif-1"));
   });
 
   test("reject posts the request id", async () => {
