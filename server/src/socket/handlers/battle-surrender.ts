@@ -23,21 +23,16 @@ export function registerBattleSurrenderHandlers(ctx: HandlerCtx): void {
                 data: { status: 'SURRENDER' }
             });
 
-            // If 1v1, mark opponent as PASSED and finish event
+            // If 1v1, notify the opponent but DO NOT award them the win — they
+            // must still solve the problem themselves. The event stays
+            // IN_PROGRESS so the survivor can keep coding; the normal pass flow
+            // (battle-action.ts) claims the finish and declares them winner only
+            // once they submit a passing solution. The surrenderer's own perf is
+            // SURRENDER above, so they won't be pulled back into an active battle.
             if (event.type === 'ONE_VS_ONE') {
-                await prisma.event.update({
-                    where: { id: event.id },
-                    data: { status: 'FINISHED', finishedAt: new Date() }
-                });
-
-                await prisma.userPersonalPerformance.updateMany({
-                    where: { eventId: event.id, userId: { not: userId } },
-                    data: { status: 'PASSED' }
-                });
-
                 for (const tr of targetRooms) {
                     socket.to(tr).emit('battle_update', {
-                        status: 'Opponent Surrendered! \n You Win 🏆',
+                        status: 'Opponent surrendered — solve the problem to claim victory.',
                         progress: 0,
                         result: "OPPONENT_SURRENDERED"
                     });
