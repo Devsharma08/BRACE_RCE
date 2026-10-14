@@ -109,21 +109,24 @@ const isPassed = (status?: string | null): boolean =>
 
 const statusTone = (status: string): string =>
   isPassed(status)
-    ? "text-lime-300 border-lime-300/30 bg-lime-300/[0.07]"
+    ? "text-accent-success border-accent-success/30 bg-accent-success/[0.07]"
     : (status ?? "").toUpperCase() === "PENDING"
-      ? "text-slate-400 border-white/10 bg-black/40"
-      : "text-rose-300 border-rose-300/30 bg-rose-300/[0.07]";
+      ? "text-subtle border-line bg-void"
+      : "text-accent-danger border-accent-danger/30 bg-accent-danger/[0.07]";
 
-// Distinct colours for each participant line (me is always cyan).
+// Participant line colours, drawn straight from the app accent palette
+// (index.css @theme) so the chart inherits the console theme instead of
+// carrying its own hardcoded hues. "me" is always the primary cyan;
+// opponents cycle through the remaining accents, wrapping for big rooms.
 const LINE_COLORS = [
-  "#67e8f9",
-  "#c4b5fd",
-  "#fda4af",
-  "#bef264",
-  "#fcd34d",
-  "#7dd3fc",
-  "#f0abfc",
-  "#fdba74",
+  "var(--accent-primary)",
+  "var(--accent-violet)",
+  "var(--accent-danger)",
+  "var(--accent-success)",
+  "var(--accent-warning)",
+  "var(--accent-pink)",
+  "var(--accent-primary)",
+  "var(--accent-violet)",
 ];
 
 const truncateCode = (code: string, max = 4000): string =>
@@ -214,10 +217,10 @@ const MatchAnalysis: FC = () => {
   const difficulty = problem?.difficulty_level ?? null;
   const difficultyTone =
     difficulty === "EASY"
-      ? "text-lime-300 bg-lime-300/[0.08]"
+      ? "text-accent-success bg-accent-success/[0.08]"
       : difficulty === "HARD"
-        ? "text-rose-300 bg-rose-300/[0.08]"
-        : "text-amber-300 bg-amber-300/[0.08]";
+        ? "text-accent-danger bg-accent-danger/[0.08]"
+        : "text-accent-warning bg-accent-warning/[0.08]";
 
   const iWon = isPassed(me.status);
   const primaryOpponent = opponents[0] ?? null;
@@ -278,105 +281,105 @@ const MatchAnalysis: FC = () => {
   const oppBest = primaryOpponent ? bestSubmission(primaryOpponent) : null;
 
   return (
-    <main className="min-h-screen bg-[#05070b] px-4 py-6 font-mono text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-void px-4 py-6 font-mono text-fg sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <Link to="/profile" className="mb-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-slate-500 transition hover:text-cyan-300"><ArrowLeft size={14} /> Back to profile</Link>
-        <section className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0a0f16] shadow-[0_24px_80px_rgba(0,0,0,.2)]">
-          <div className="border-b border-white/10 bg-gradient-to-br from-white/[0.045] via-transparent to-cyan-300/[0.035] p-5 sm:p-7">
+        <Link to="/profile" className="mb-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-faint transition hover:text-accent-primary"><ArrowLeft size={14} /> Back to profile</Link>
+        <section className="overflow-hidden rounded-panel border border-line-mid bg-surface shadow-panel">
+          <div className="border-b border-line bg-gradient-to-br from-surface-hover via-transparent to-accent-primary/[0.035] p-5 sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest ${
+                    className={`inline-flex items-center gap-2 rounded-btn border px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest ${
                       verdict.tone === "lime"
-                        ? "border-lime-300/25 bg-lime-300/[0.05] text-lime-300"
-                        : "border-rose-300/25 bg-rose-300/[0.05] text-rose-300"
+                        ? "border-accent-success/25 bg-accent-success/[0.05] text-accent-success"
+                        : "border-accent-danger/25 bg-accent-danger/[0.05] text-accent-danger"
                     }`}
                   >
                     <verdict.icon size={12} /> {verdict.label}
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-500">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[9px] uppercase tracking-widest text-faint">
                     {mode === "multiplayer" ? <Users size={11} /> : null} {modeLabel}
                   </span>
                   {match.event?.roomCode ? (
-                    <span className="rounded-full border border-white/10 px-3 py-1.5 text-[9px] uppercase tracking-widest text-slate-500">
+                    <span className="rounded-full border border-line px-3 py-1.5 text-[9px] uppercase tracking-widest text-faint">
                       #{match.event.roomCode}
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-6 text-[9px] uppercase tracking-[0.24em] text-cyan-300">
+                <p className="mt-6 text-[9px] uppercase tracking-[0.24em] text-accent-primary">
                   Post-battle analysis
                 </p>
-                <h1 className="mt-2 break-words text-2xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+                <h1 className="mt-2 break-words text-2xl font-semibold tracking-[-0.035em] text-fg sm:text-4xl">
                   {problemName}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-widest">
                   {problem?.problem_number != null ? (
-                    <span className="rounded-md bg-white/[0.06] px-2 py-1 text-slate-400">
+                    <span className="rounded-btn bg-surface-hover px-2 py-1 text-subtle">
                       #{problem.problem_number}
                     </span>
                   ) : null}
                   {difficulty ? (
-                    <span className={`rounded-md px-2 py-1 ${difficultyTone}`}>{difficulty}</span>
+                    <span className={`rounded-btn px-2 py-1 ${difficultyTone}`}>{difficulty}</span>
                   ) : null}
                   {match.createdAt ? (
-                    <span className="px-1 text-slate-600">{fmtDate(match.createdAt)}</span>
+                    <span className="px-1 text-faint">{fmtDate(match.createdAt)}</span>
                   ) : null}
                 </div>
               </div>
               {mode !== "solo" && primaryOpponent ? (
                 <div className="text-left sm:text-right">
-                  <p className="text-[9px] uppercase tracking-widest text-slate-600">
+                  <p className="text-[9px] uppercase tracking-widest text-faint">
                     {mode === "1v1" ? "Opponent" : "Top opponent"}
                   </p>
-                  <p className="mt-2 text-lg font-bold text-rose-300">
+                  <p className="mt-2 text-lg font-bold text-accent-danger">
                     {primaryOpponent.user?.username ?? "player"}
                   </p>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-faint">
                     {primaryOpponent.score ?? 0} pts ·{" "}
-                    <span className={isPassed(primaryOpponent.status) ? "text-lime-300" : "text-rose-300"}>
+                    <span className={isPassed(primaryOpponent.status) ? "text-accent-success" : "text-accent-danger"}>
                       {isPassed(primaryOpponent.status) ? "solved" : "unsolved"}
                     </span>
                   </p>
                 </div>
               ) : (
                 <div className="text-left sm:text-right">
-                  <p className="text-[9px] uppercase tracking-widest text-slate-600">Your result</p>
-                  <p className={`mt-2 text-lg font-bold ${iWon ? "text-lime-300" : "text-rose-300"}`}>
+                  <p className="text-[9px] uppercase tracking-widest text-faint">Your result</p>
+                  <p className={`mt-2 text-lg font-bold ${iWon ? "text-accent-success" : "text-accent-danger"}`}>
                     {me.status ?? "PENDING"}
                   </p>
-                  <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-500">
+                  <p className="mt-1 text-[10px] uppercase tracking-widest text-faint">
                     {me.questionsSolved ?? 0} solved
                   </p>
                 </div>
               )}
             </div>
             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={Target} label="Score" value={`${me.score ?? 0}`} tone="text-cyan-300" />
+              <Stat icon={Target} label="Score" value={`${me.score ?? 0}`} tone="text-accent-primary" />
               <Stat icon={Clock3} label="Time" value={fmtMs(me.timeTakenMs)} />
               <Stat icon={Code2} label="Attempts" value={`${(me.submissions ?? []).length}`} />
               <Stat
                 icon={Check}
                 label="Solved"
                 value={`${me.questionsSolved ?? 0}`}
-                tone={iWon ? "text-lime-300" : "text-slate-300"}
+                tone={iWon ? "text-accent-success" : "text-fg"}
               />
             </div>
           </div>
         </section>
         {/* Chart sits beside the head-to-head table on large screens. */}
         <section className="mt-4 grid gap-4 lg:grid-cols-[1.12fr_1.12fr] lg:gap-5">
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f16] p-5 sm:p-6">
+          <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Performance map</p>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Performance map</p>
                 <h2 className="mt-1 text-base font-bold">Player comparison</h2>
-                <p className="mt-1 text-[10px] text-slate-500">
+                <p className="mt-1 text-[10px] text-faint">
                   Test-case pass ratio across each participant's attempts.
                 </p>
               </div>
               {series.length > 1 ? (
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] uppercase tracking-widest text-slate-500">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] uppercase tracking-widest text-faint">
                   {series.map((s) => (
                     <span key={s.name} className="flex items-center gap-1.5">
                       <i className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
@@ -389,15 +392,15 @@ const MatchAnalysis: FC = () => {
             {hasTelemetry ? (
               <PerformanceChart series={series} maxPoints={maxPoints} />
             ) : (
-              <div className="mt-5 flex h-40 items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#070a0f] text-[10px] uppercase tracking-widest text-slate-600">
+              <div className="mt-5 flex h-40 items-center justify-center rounded-card border border-dashed border-line bg-void text-[10px] uppercase tracking-widest text-faint">
                 No submissions recorded
               </div>
             )}
           </div>
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f16] p-5 sm:p-6">
+          <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
             <div className="flex items-center gap-2 pb-3">
               <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-cyan-300">Head to head</p>
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Head to head</p>
                 <h2 className="mt-1 text-base font-bold">
                   {mode === "solo" ? "Your metrics" : "Metric comparison"}
                 </h2>
@@ -405,7 +408,7 @@ const MatchAnalysis: FC = () => {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-left">
-                <thead className="border-b border-white/[0.07] bg-white/[0.02] text-[9px] uppercase tracking-widest text-slate-600">
+                <thead className="border-b border-line bg-surface-hover text-[9px] uppercase tracking-widest text-faint">
                   <tr>
                     <th className="px-3 py-3 font-normal">Player</th>
                     <th className="px-3 py-3 font-normal">Status</th>
@@ -415,13 +418,13 @@ const MatchAnalysis: FC = () => {
                     <th className="px-3 py-3 font-normal">Attempts</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.06] text-xs">
+                <tbody className="divide-y divide-surface-hover text-xs">
                   {rows.map((r) => (
-                    <tr key={r.p.id} className={r.me ? "bg-cyan-300/[0.03]" : undefined}>
-                      <td className={`px-3 py-3 font-bold ${r.me ? "text-cyan-300" : "text-slate-300"}`}>
+                    <tr key={r.p.id} className={r.me ? "bg-accent-primary/[0.03]" : undefined}>
+                      <td className={`px-3 py-3 font-bold ${r.me ? "text-accent-primary" : "text-fg"}`}>
                         {r.name}
                         {r.me ? (
-                          <span className="ml-1 text-[8px] font-normal text-slate-500">(you)</span>
+                          <span className="ml-1 text-[8px] font-normal text-faint">(you)</span>
                         ) : null}
                       </td>
                       <td className="px-3 py-3">
@@ -431,15 +434,15 @@ const MatchAnalysis: FC = () => {
                           {r.p.status ?? "PENDING"}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-slate-300">
+                      <td className="px-3 py-3 text-fg">
                         {fmtMs(r.runtime)}
                         {r.runtime != null && r.runtime === fastest ? (
-                          <span className="ml-1 text-[8px] text-lime-300">fastest</span>
+                          <span className="ml-1 text-[8px] text-accent-success">fastest</span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-3 text-slate-300">{fmtMem(r.memory)}</td>
-                      <td className="px-3 py-3 text-slate-300">{r.cov}</td>
-                      <td className="px-3 py-3 text-slate-500">{r.attempts}</td>
+                      <td className="px-3 py-3 text-fg">{fmtMem(r.memory)}</td>
+                      <td className="px-3 py-3 text-fg">{r.cov}</td>
+                      <td className="px-3 py-3 text-faint">{r.attempts}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -448,13 +451,13 @@ const MatchAnalysis: FC = () => {
           </div>
         </section>
         {/* Code review is the final section on every screen. */}
-        <section className="mt-4 overflow-hidden rounded-2xl border border-cyan-300/15 bg-[#0a0f16] p-5 shadow-[0_20px_60px_rgba(34,211,238,.04)] sm:p-6">
+        <section className="mt-4 overflow-hidden rounded-panel border border-line-mid bg-surface p-5 shadow-panel sm:p-6">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl border border-violet-300/25 bg-violet-300/[0.06] text-violet-300">
+            <div className="grid h-10 w-10 place-items-center rounded-card border border-accent-violet/25 bg-accent-violet/[0.06] text-accent-violet">
               <Code2 size={18} />
             </div>
             <div>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-violet-300">Code review</p>
+              <p className="text-[9px] uppercase tracking-[0.2em] text-accent-violet">Code review</p>
               <h2 className="mt-1 text-base font-bold">
                 {mode === "solo" ? "Your solution" : "Side-by-side compare"}
               </h2>
@@ -488,13 +491,13 @@ const MatchAnalysis: FC = () => {
               </div>
             </>
           ) : (
-            <div className="mt-6 flex h-32 items-center justify-center rounded-xl border border-dashed border-white/10 bg-[#070a0f] text-[10px] uppercase tracking-widest text-slate-600">
+            <div className="mt-6 flex h-32 items-center justify-center rounded-card border border-dashed border-line bg-void text-[10px] uppercase tracking-widest text-faint">
               No code submitted for this match
             </div>
           )}
           <button
             onClick={() => navigate("/problems")}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-slate-950 transition hover:bg-white"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-ink transition hover:bg-fg"
           >
             <Code2 size={14} /> Practice more problems
           </button>
@@ -504,8 +507,8 @@ const MatchAnalysis: FC = () => {
   )
 }
 
-function Stat({ icon: Icon, label, value, tone = "text-white" }: { icon: typeof Target; label: string; value: string; tone?: string }) { return <div className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#070a0f]/80 p-3.5 transition-colors hover:border-white/15 hover:bg-white/[0.035]"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/[0.04] text-slate-500 transition-colors group-hover:border-cyan-300/25 group-hover:text-cyan-300"><Icon size={14} /></div><div className="min-w-0"><p className="text-[9px] uppercase tracking-widest text-slate-600">{label}</p><p className={`mt-1 text-xl font-bold leading-none ${tone}`}>{value}</p></div></div> }
-function MiniMetric({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) { return <div className="flex items-center justify-between border-b border-white/[0.07] pb-3 text-[10px]"><span className="flex items-center gap-2 text-slate-500"><Icon size={13} /> {label}</span><b className="text-white">{value}</b></div> }
+function Stat({ icon: Icon, label, value, tone = "text-fg" }: { icon: typeof Target; label: string; value: string; tone?: string }) { return <div className="group flex items-center gap-3 rounded-card border border-line bg-void/80 p-3.5 transition-colors hover:border-line-mid hover:bg-surface-hover"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-btn border border-line bg-surface-hover text-faint transition-colors group-hover:border-accent-primary/25 group-hover:text-accent-primary"><Icon size={14} /></div><div className="min-w-0"><p className="text-[9px] uppercase tracking-widest text-faint">{label}</p><p className={`mt-1 text-xl font-bold leading-none ${tone}`}>{value}</p></div></div> }
+function MiniMetric({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) { return <div className="flex items-center justify-between border-b border-line pb-3 text-[10px]"><span className="flex items-center gap-2 text-faint"><Icon size={13} /> {label}</span><b className="text-fg">{value}</b></div> }
 function CodePane({
   title,
   subtitle,
@@ -519,19 +522,19 @@ function CodePane({
 }) {
   const toneRing =
     tone === "cyan"
-      ? "border-cyan-300/20"
+      ? "border-accent-primary/20"
       : tone === "violet"
-        ? "border-violet-300/20"
-        : "border-rose-300/20";
+        ? "border-accent-violet/20"
+        : "border-accent-danger/20";
   const toneText =
-    tone === "cyan" ? "text-cyan-300" : tone === "violet" ? "text-violet-300" : "text-rose-300";
+    tone === "cyan" ? "text-accent-primary" : tone === "violet" ? "text-accent-violet" : "text-accent-danger";
   return (
-    <div className={`overflow-hidden rounded-xl border ${toneRing} bg-[#070a0f]`}>
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+    <div className={`overflow-hidden rounded-card border ${toneRing} bg-void`}>
+      <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
         <p className={`text-[10px] font-bold uppercase tracking-widest ${toneText}`}>{title}</p>
-        <p className="text-[9px] text-slate-600">{subtitle}</p>
+        <p className="text-[9px] text-faint">{subtitle}</p>
       </div>
-      <pre className="max-h-72 overflow-auto p-4 text-[11px] leading-5 text-slate-300">
+      <pre className="max-h-72 overflow-auto p-4 text-[11px] leading-5 text-fg">
         <code>{code}</code>
       </pre>
     </div>
@@ -560,7 +563,7 @@ function PerformanceChart({
   const y = (v: number) => padY + plotH - (v / 100) * plotH;
 
   return (
-    <div className="mt-5 overflow-hidden rounded-xl border border-white/[0.07] bg-[#070a0f] p-3">
+    <div className="mt-5 overflow-hidden rounded-card border border-line bg-void p-3">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="h-40 w-full"
@@ -572,8 +575,8 @@ function PerformanceChart({
           <path
             key={g}
             d={`M${padX} ${y(g)}H${W - padX}`}
-            stroke="white"
-            strokeOpacity=".07"
+            stroke="var(--color-line)"
+            strokeWidth="1"
             strokeDasharray="3 5"
           />
         ))}
@@ -595,7 +598,7 @@ function PerformanceChart({
           )),
         )}
       </svg>
-      <div className="flex justify-between px-1 pt-1 text-[8px] text-slate-600">
+      <div className="flex justify-between px-1 pt-1 text-[8px] text-faint">
         {Array.from({ length: maxPoints }).map((_, i) => (
           <span key={i}>A{i + 1}</span>
         ))}
