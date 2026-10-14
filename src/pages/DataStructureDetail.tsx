@@ -456,7 +456,10 @@ const DataStructureDetail = () => {
                 <Terminal className="h-3.5 w-3.5 text-accent-primary/40" />
                 <span>// COMPLEXITY_ANALYSIS_METRICS</span>
               </div>
-              <div className="grid grid-cols-3 border border-subtle-line bg-surface-hover text-center text-xs mb-4 select-none">
+              {/* Horizontal scroll on phones — 3 rigid columns of 9px labels
+                  get crushed below ~360px otherwise. */}
+              <div className="mb-4 overflow-x-auto">
+              <div className="grid min-w-[22rem] grid-cols-3 border border-subtle-line bg-surface-hover text-center text-xs select-none">
                 <div className="border-r border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Operation</div>
                 <div className="border-r border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Average Case</div>
                 <div className="border-b border-subtle-line p-3 text-[9px] text-faint uppercase font-bold">Worst Case</div>
@@ -472,6 +475,7 @@ const DataStructureDetail = () => {
                 <div className="border-r border-b border-subtle-line p-3 text-subtle">Deletion</div>
                 <div className="border-r border-subtle-line p-3 text-accent-primary font-bold">{dsData.complexities.delete.average}</div>
                 <div className="p-3 text-accent-warning">{dsData.complexities.delete.worst}</div>
+              </div>
               </div>
             </div>
             <div className="border-t border-subtle-line pt-4 flex items-center justify-between text-[11px] select-none">

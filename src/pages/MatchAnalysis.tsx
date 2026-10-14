@@ -319,7 +319,7 @@ const MatchAnalysis = () => {
 
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-20 md:px-8 md:pb-6">
       {/* BACK */}
       <button
         type="button"

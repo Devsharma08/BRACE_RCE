@@ -137,14 +137,14 @@ const Profile = () => {
               </div>
             </div>
             <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.1fr_.9fr]">
-              <div className="flex gap-5">
-                <div className="relative grid h-20 w-20 shrink-0 place-items-center rounded-2xl border border-accent-primary/30 bg-accent-primary/10 text-xl font-bold text-accent-primary">
+              <div className="flex gap-3 sm:gap-5">
+                <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-accent-primary/30 bg-accent-primary/10 text-lg font-bold text-accent-primary sm:h-20 sm:w-20 sm:text-xl">
                   OP
                   <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-surface bg-accent-success" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Operative identity</p>
-                  <h1 className="mt-2 text-3xl font-bold tracking-tight text-fg">
+                  <h1 className="mt-2 text-2xl font-bold tracking-tight text-fg sm:text-3xl [overflow-wrap:anywhere]">
                     {profile?.username || "OPERATIVE"}
                   </h1>
                   <p className="mt-1 text-xs text-subtle">

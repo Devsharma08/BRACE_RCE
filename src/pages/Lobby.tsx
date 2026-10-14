@@ -364,7 +364,7 @@ const Lobby = () => {
             <nav
               aria-label="Lobby sections"
               role="tablist"
-              className="grid grid-cols-3 gap-3 border-b border-subtle-line pb-3"
+              className="grid grid-cols-3 gap-2 border-b border-subtle-line pb-3 sm:gap-3"
             >
               {tabDefs.map(({ key, label, Icon }) => (
                 <button
@@ -372,7 +372,7 @@ const Lobby = () => {
                   role="tab"
                   aria-selected={activeTab === key}
                   onClick={() => handleTabChange(key)}
-                  className={`group flex min-h-[76px] flex-col items-start justify-between rounded-2xl border p-3 text-left transition ${
+                  className={`group flex min-h-0 items-center gap-2 rounded-2xl border p-3 text-left transition sm:min-h-[76px] sm:flex-col sm:items-start sm:justify-between ${
                     activeTab === key
                       ? "border-accent/40 bg-accent/[0.08] text-accent-primary"
                       : "border-subtle-line bg-raised text-subtle hover:border-line-mid hover:bg-surface-hover"

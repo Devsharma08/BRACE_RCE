@@ -19,8 +19,8 @@ export default function GlobalModals() {
       {/* MATCH ACCEPTANCE MODAL (Matchmaking) */}
       {/* ----------------------------- */}
       {matchmakingStatus === "FOUND_PENDING" && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-surface-hover backdrop-blur-md">
-          <div className="flex flex-col items-center justify-center p-12 bg-raised border border-accent-primary/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-surface-hover p-4 backdrop-blur-md">
+          <div className="flex flex-col items-center justify-center p-8 bg-raised border border-accent-primary/30 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden sm:p-12">
             {/* Radar Sweep Effect */}
             <div className="absolute inset-0 bg-[conic-gradient(from_90deg_at_50%_50%,rgba(0,212,255,0)_0%,rgba(0,212,255,0.1)_100%)] animate-[spin_3s_linear_infinite]" />
             <div className="absolute inset-0 border-[40px] border-base rounded-full scale-150" />
