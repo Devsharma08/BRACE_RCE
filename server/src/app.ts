@@ -19,6 +19,7 @@ import { learningItemsRouter } from "./routes/learning-items.js";
 import { learningPathsRouter } from "./routes/learning-paths.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { feedbackRouter } from "./routes/feedback.js";
+import { statsRouter } from "./routes/stats.js";
 
 import { logger, logRequest } from "./lib/logger.js";
 import { metricsMiddleware, getMetrics, getMetricsContentType } from "./lib/metrics.js";
@@ -62,6 +63,7 @@ const CSRF_EXEMPT_PATHS = [
   "/ready",
   "/startup",
   "/metrics",
+  "/api/stats",   // public stats endpoint (live DB counts)
 ];
 
 /** Safe methods that don't require CSRF protection */
@@ -262,6 +264,7 @@ export const createApp = (): Express => {
   app.use(`${API_PREFIX}/admin`, adminRouter);
   app.use(`${API_PREFIX}/notifications`, notificationsRouter);
   app.use(`${API_PREFIX}/feedback`, feedbackRouter);
+  app.use(`${API_PREFIX}/stats`, statsRouter);
   app.use(`${API_PREFIX}/learning-items`, learningItemsRouter);
   app.use(`${API_PREFIX}/learning-paths`, learningPathsRouter);
 
@@ -278,6 +281,7 @@ export const createApp = (): Express => {
   app.use("/api/admin", adminRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/feedback", feedbackRouter);
+  app.use("/api/stats", statsRouter);
   app.use("/api/learning-items", learningItemsRouter);
   app.use("/api/learning-paths", learningPathsRouter);
 

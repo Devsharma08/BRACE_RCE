@@ -14,6 +14,8 @@ const AdminFeedback = () => {
   const resolveMutation = useResolveFeedback();
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [noteInput, setNoteInput] = useState<Record<string, string>>({});
+  // Render cap with a "show more" button so a long backlog can't unbounded-map.
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const handleResolve = async (item: AdminFeedback, newStatus: string) => {
     setResolvingId(item.id);
@@ -51,7 +53,7 @@ const AdminFeedback = () => {
               NO FEEDBACK YET
             </div>
           ) : (
-            feedback.map((item) => {
+            feedback.slice(0, visibleCount).map((item) => {
               const statusObj = statusOptions.find((s) => s.value === item.status) || statusOptions[0];
               return (
                 <div
@@ -120,6 +122,14 @@ const AdminFeedback = () => {
                 </div>
               );
             })
+          )}
+          {feedback && feedback.length > visibleCount && (
+            <button
+              onClick={() => setVisibleCount((c) => c + 50)}
+              className="mx-auto block border border-accent-primary/40 bg-accent-primary/10 px-4 py-2 text-xs font-bold tracking-widest text-accent-primary hover:bg-accent-primary/20 transition-all"
+            >
+              SHOW MORE ({feedback.length - visibleCount} REMAINING)
+            </button>
           )}
         </div>
       </div>

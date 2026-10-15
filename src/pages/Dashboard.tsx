@@ -469,7 +469,7 @@ export const Dashboard: React.FC = () => {
         </section>
 
         {/* ── ACTION HUB ───────────────────────────────────────────── */}
-        <section className="grid min-w-0 gap-4 md:grid-cols-[1.35fr_.65fr]">
+        <section className="grid mt-3 min-w-0 gap-4 md:grid-cols-[1.35fr_.65fr]">
           <div
             className={`relative overflow-hidden rounded-card border p-6 transition ${
               isQueued
@@ -477,7 +477,7 @@ export const Dashboard: React.FC = () => {
                 : "border-subtle-line bg-surface"
             }`}
           >
-            <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" />
+          {/* <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" /> */}
             <div className="flex items-start justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-accent-primary">
@@ -536,7 +536,7 @@ export const Dashboard: React.FC = () => {
             to="/rooms/create"
             className="group relative overflow-hidden rounded-card border border-subtle-line bg-surface p-6 transition hover:border-accent-success/30"
           >
-            <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" />
+            {/* <div className="absolute right-0 top-0 h-24 w-24 border-l border-b border-accent-primary/15" /> */}
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-accent-success">
               <Plus size={14} /> Custom room
             </div>

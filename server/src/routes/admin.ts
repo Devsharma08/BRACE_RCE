@@ -1,5 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
-import { authentication } from "../middleware/authentication";
+import { authentication } from "../middleware/authentication.js";
 import {
   listUsers,
   updateUser,

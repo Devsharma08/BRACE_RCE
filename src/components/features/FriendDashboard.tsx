@@ -359,16 +359,25 @@ export default function FriendsDashboard() {
     if (actingRequest) return;
     setActingRequest(requestId);
     try {
-      // Route is POST /friends/accept with a body — the old /accept/:id call
-      // never matched a handler, so accepts silently failed.
       await api.post("/friends/accept", { requestId, senderId });
       toast.success("Friend request accepted");
+      // Optimistically add the friend (sender) to the list
+      setFriends(prev => {
+        // Avoid duplicate
+        if (prev.some(f => f.id === senderId)) return prev;
+        // Try to get the friend object from socketFriends
+        const friendFromSocket = socketFriends.find(f => f.id === senderId);
+        if (friendFromSocket) {
+          return [...prev, friendFromSocket];
+        }
+        // Fallback placeholder
+        return [...prev, { id: senderId, username: "Loading...", avatarUrl: null, requestSent: false }];
+      });
       fetchFriends();
       fetchRequests();
-    } catch (err: unknown) {
-      // Surface the server's ownership/state message (404/403/400) verbatim.
+    } catch (err) {
       toast.error(apiErrorMessage(err, "Failed to accept request"));
-      fetchRequests();
+      setActingRequest(null);
     } finally {
       setActingRequest(null);
     }
@@ -390,16 +399,20 @@ export default function FriendsDashboard() {
     }
   };
 
-  const handleRemoveFriend = async (friendId: string) => {
+const handleRemoveFriend = async (friendId: string) => {
     try {
-      // Route is DELETE /friends/remove/:id — /friends/:id 404'd.
       await api.delete(`/friends/remove/${friendId}`);
       toast.success("Friend removed");
-      if (activeTab?.id === friendId) selectFriend(null);
-      fetchFriends();
-    } catch {
-      toast.error("Failed to remove friend");
+      // Optimistically remove friend from local state
+      setFriends(prev => prev.filter(f => f.id !== friendId));
+      if (activeTab?.id === friendId) {
+        selectFriend(null);
     }
+    // Refresh the query to stay in sync with server
+    fetchFriends();
+} catch (err) {
+  toast.error("Failed to remove friend");
+}
   };
 
   const handleBlockUser = async (userId: string) => {

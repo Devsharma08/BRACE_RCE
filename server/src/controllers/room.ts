@@ -1,4 +1,4 @@
-import type { AuthRequest } from "../middleware/authentication";
+import type { AuthRequest } from "../middleware/authentication.js";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { deriveEventDurationMs } from "../lib/eventTimeLimit.js";
@@ -23,7 +23,10 @@ class Rooms {
                     problems: { select: { id: true, name: true, problem_number: true, difficulty_level: true } },
                     performances: { select: { id: true, userId: true, status: true } }
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
+                // Cap the payload so a busy lobby can't stream an unbounded
+                // room list to every connected client.
+                take: 100
             });
 
             // Filter out events the requesting user is blocked from
@@ -62,7 +65,8 @@ class Rooms {
                     host: { select: { username: true, avatarUrl: true } },
                     problems: { select: { difficulty_level: true } }
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
+                take: 100
             });
             const safeEvents = events.map((event) => {
                 const { password, ...publicEvent } = event;
@@ -85,7 +89,8 @@ class Rooms {
                     host: { select: { username: true, avatarUrl: true } },
                     problems: true
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
+                take: 100
             });
             const displayTemplates = templates.map((template) => {
                 const { password, ...publicTemplate } = template;

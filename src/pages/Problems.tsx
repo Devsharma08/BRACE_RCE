@@ -264,7 +264,7 @@ export const Problems: React.FC = () => {
         {/* ── HEADER ────────────────────────────────────────────────────── */}
         <PageHeader
           as="h1"
-          className="border-b border-subtle-line pb-5"
+          className="border-b text-2xl sm:text-4xl border-subtle-line pb-5"
           eyebrow={
             <>
               <Code2 size={14} aria-hidden="true" />
@@ -301,9 +301,7 @@ export const Problems: React.FC = () => {
             {/* HERO — full-width anchor tile with the ghost 01 watermark */}
             <article className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-card border border-accent-primary/20 bg-accent-primary/[0.045] p-5 transition hover:border-accent-primary/40 md:col-span-2">
               <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-accent-primary/10 transition duration-500 group-hover:scale-110" />
-              <div className="pointer-events-none absolute bottom-5 right-7 font-mono text-[8rem] font-bold leading-none text-fg/[0.03]">
-                01
-              </div>
+             
               <div className="relative flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
                   <Target size={14} />
@@ -311,26 +309,24 @@ export const Problems: React.FC = () => {
                 </span>
                 <ArrowUpRight size={15} className="text-accent-primary transition group-hover:-translate-y-1 group-hover:translate-x-1" />
               </div>
-              <div className="relative mt-auto max-w-md">
+<div className="relative mt-auto max-w-md">
                 <p className="mb-3 text-[9px] uppercase tracking-[0.2em] text-faint">Your next training action</p>
                 <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">Choose a pattern to practice.</h2>
                 <p className="mt-3 max-w-sm text-xs leading-5 text-subtle">
                   Start with an indexed problem, open it in the terminal, and validate your
                   reasoning against real test cases.
-                </p>
+                  </p>
                 <Link
                   to="/ds"
                   className="mt-5 inline-flex items-center gap-2 rounded-full border border-accent-primary/30 px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
                 >
-                  Browse patterns <ChevronRight size={13} />
+                  Browse patterns
                 </Link>
               </div>
             </article>
-            {/* STUDY ROUTE */}
             <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-success/30">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-                  <BookOpen size={14} />
                   Study route
                 </span>
                 <span className="font-mono text-[9px] text-faint">01 / 04</span>
@@ -350,10 +346,8 @@ export const Problems: React.FC = () => {
             <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-warning/30">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
-                  <Flame size={14} />
                   Training signal
                 </span>
-                <Trophy size={15} className="text-faint" />
               </div>
               <div className="mt-auto">
                 <div className="flex items-end gap-5">
@@ -396,7 +390,7 @@ export const Problems: React.FC = () => {
                   className="group flex flex-1 items-center gap-3 px-5 py-3 transition hover:bg-white/[0.04]"
                 >
                   <span
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-[9px] font-bold ${PROGRESS_ACCENT[accent]}`}
+                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[9px] font-bold ${PROGRESS_ACCENT[accent]}`}
                   >
                     {title.slice(0, 2).toUpperCase()}
                   </span>
@@ -416,8 +410,7 @@ export const Problems: React.FC = () => {
                       />
                     </div>
                   </div>
-                  <ArrowUpRight size={13} className="shrink-0 text-faint transition group-hover:text-accent-primary" />
-                </Link>
+                  </Link>
               ))}
             </div>
           </section>

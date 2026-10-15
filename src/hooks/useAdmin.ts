@@ -40,8 +40,8 @@ export interface AdminQuestion {
   problem_hints: string[];
   timeLimitMs: number;
   createdAt: string;
-  test_cases: Array<{ id: string; input: string; expectedOutput: string; is_public: boolean }>;
-  code_snippets: Array<{ id: string; language: string; code: string }>;
+  /** Prisma `_count` projection — the table only shows how many test cases. */
+  _count: { test_cases: number };
 }
 
 // ─── Users ───

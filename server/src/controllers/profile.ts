@@ -1,4 +1,4 @@
-import type { AuthRequest } from "../middleware/authentication";
+import type { AuthRequest } from "../middleware/authentication.js";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { invalidateUserProblemsCache } from "./problems.js";

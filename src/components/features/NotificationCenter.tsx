@@ -148,20 +148,22 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
   return (
     <div className="relative" ref={rootRef}>
       {/* Bell trigger — the only element carrying title="Notifications" */}
-      <button
-        onClick={() => setOpen(!isOpen)}
-        title="Notifications"
-        aria-label="Notifications"
-        aria-expanded={isOpen}
-        className="relative grid h-9 w-9 place-items-center rounded-lg border border-line bg-surface-hover text-subtle transition hover:border-accent-primary/40 hover:text-accent-primary"
-      >
-        <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent-danger px-1 font-mono text-[9px] font-bold text-ink">
-            {unreadCount > 99 ? "99+" : unreadCount}
+<button
+          onClick={() => setOpen(!isOpen)}
+          title="Notifications"
+          aria-label="Notifications"
+          aria-expanded={isOpen}
+          className="relative grid h-9 w-9 place-items-center rounded-lg border border-line bg-surface-hover text-subtle transition hover:border-accent-primary/40 hover:text-accent-primary"
+        >
+          <span className="relative flex items-center justify-center">
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-danger px-1 font-mono text-[9px] font-bold text-ink">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </span>
-        )}
-      </button>
+        </button>
 
       {/* Popover */}
       {isOpen && (

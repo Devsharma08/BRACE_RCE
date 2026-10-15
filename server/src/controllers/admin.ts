@@ -146,7 +146,10 @@ export const listQuestions = async (req: Request, res: Response) => {
   if (!ok) return res.status(403).json({ status: 'error', message: 'Admin access required' });
 
   const questions = await prisma.problem.findMany({
-    include: { test_cases: true, code_snippets: true },
+    // The admin table only renders a test-case COUNT (and never the code
+    // snippets), so fetch counts instead of full rows — with 1400+ problems
+    // the old includes made this response multi-megabyte.
+    include: { _count: { select: { test_cases: true } } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -263,6 +266,8 @@ export const listActiveBattles = async (req: Request, res: Response) => {
       },
     },
     orderBy: { createdAt: 'desc' },
+    // Active battles only, but still unbounded in theory — cap the admin feed.
+    take: 100,
   });
 
   return res.json({ battles });

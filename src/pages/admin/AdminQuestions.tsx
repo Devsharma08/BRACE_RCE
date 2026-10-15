@@ -77,6 +77,10 @@ const AdminQuestions = () => {
     }
   };
 
+  // Render cap — the bank holds 1400+ problems, so render pages of 100 with a
+  // "show more" row instead of unbounded-mapping the whole table.
+  const [visibleCount, setVisibleCount] = useState(100);
+
   const isFormOpen = isEditing || isCreating;
 
   return (
@@ -143,8 +147,9 @@ const AdminQuestions = () => {
         {/* Table */}
         <div className="rounded-none border border-accent-primary/15 border-t-2 border-t-accent-primary/40 bg-raised overflow-hidden">
           <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(var(--color-surface-hover)_1px,transparent_1px)] [background-size:16px_16px]" />
-          <div className="p-4 border-b border-subtle-line text-xs font-bold text-faint tracking-widest uppercase relative z-10">
-            QUESTION DIRECTORY
+          <div className="relative z-10 flex items-center justify-between border-b border-subtle-line p-4 text-xs font-bold text-faint tracking-widest uppercase">
+            <span>QUESTION DIRECTORY</span>
+            <span>{questions?.length || 0} TOTAL</span>
           </div>
           <div className="overflow-y-auto overflow-x-auto relative z-10">
             {isLoading ? (
@@ -163,7 +168,7 @@ const AdminQuestions = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((q) => (
+                  {questions.slice(0, visibleCount).map((q) => (
                     <tr key={q.id} className="border-b border-subtle-line hover:bg-surface-hover">
                       <td className="px-4 py-3 text-fg font-bold">{q.name}</td>
                       <td className="px-4 py-3">
@@ -171,7 +176,7 @@ const AdminQuestions = () => {
                           {q.difficulty_level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-faint">{q.test_cases?.length || 0}</td>
+                      <td className="px-4 py-3 text-faint">{q._count?.test_cases ?? 0}</td>
                       <td className="px-4 py-3 text-faint">{new Date(q.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-1 justify-end">
@@ -185,6 +190,18 @@ const AdminQuestions = () => {
                       </td>
                     </tr>
                   ))}
+                  {questions.length > visibleCount && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setVisibleCount((c) => c + 100)}
+                          className="px-4 py-2 border border-accent-primary/40 bg-accent-primary/10 text-xs font-bold tracking-widest text-accent-primary hover:bg-accent-primary/20 transition-all"
+                        >
+                          SHOW MORE ({questions.length - visibleCount} REMAINING)
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             )}

@@ -43,6 +43,9 @@ interface Room {
 
 type LobbyTab = "ROOMS" | "TEMPLATES" | "MY_ARCHIVES";
 
+/** Safety cap on rendered room/template/archive cards in the lobby grid. */
+const MAX_ROOMS = 100;
+
 const Lobby = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -475,9 +478,16 @@ const Lobby = () => {
         ) : (
           <section className="mt-3 grid gap-3 md:grid-cols-2">
             {filteredItems.length ? (
-              filteredItems.map((room) =>
-                renderCard(room, activeTab === "MY_ARCHIVES"),
-              )
+              <>
+                {filteredItems.slice(0, MAX_ROOMS).map((room) =>
+                  renderCard(room, activeTab === "MY_ARCHIVES"),
+                )}
+                {filteredItems.length > MAX_ROOMS && (
+                  <div className="col-span-full border border-dashed border-subtle-line py-4 text-center text-[10px] uppercase tracking-widest text-faint">
+                    Showing {MAX_ROOMS} of {filteredItems.length} — refine filters to narrow the list
+                  </div>
+                )}
+              </>
             ) : (
               <div className="col-span-full border border-dashed border-subtle-line py-16 text-center">
                 <Archive size={30} aria-hidden className="mx-auto text-faint" />

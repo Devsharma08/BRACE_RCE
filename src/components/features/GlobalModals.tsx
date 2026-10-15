@@ -1,4 +1,5 @@
 import { useSocket } from "../../context/SocketContext";
+import { useSocketInvalidation } from "../../hooks/useSocketInvalidation";
 import { Swords } from "lucide-react";
 
 export default function GlobalModals() {
@@ -12,6 +13,21 @@ export default function GlobalModals() {
     acceptChallenge,
     declineChallenge,
   } = useSocket();
+
+  // Global `friends:update` invalidation. The Friends workspace registers its
+  // own listener, but a request can be ACCEPTED from the bell popover on ANY
+  // page (NotificationCenter) — without a global listener the shared
+  // ["friends-list"] (presence, owned by SocketContext), ["friend-requests"],
+  // ["blocked-users"] and ["friend-discover"] caches stayed stale, so the newly
+  // accepted friend only appeared after a manual refresh. Layout mounts this
+  // component on every route, so the friend graph now updates in realtime no
+  // matter where the accept happens.
+  useSocketInvalidation("friends:update", [
+    ["friends-list"],
+    ["friend-requests"],
+    ["blocked-users"],
+    ["friend-discover"],
+  ]);
 
   return (
     <>

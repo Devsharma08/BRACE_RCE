@@ -18,7 +18,7 @@ import {
 
 const cards = [
   {
-    href: "/battle",
+    href: "/lobby",
     icon: Swords,
     accent: "text-accent-violet",
     label: "Competition",

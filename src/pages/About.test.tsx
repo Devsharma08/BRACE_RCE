@@ -1,9 +1,21 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import About from "./About";
 
 afterEach(cleanup);
+
+// Mock the real HTTP client so the component talks to a canned stats payload
+// instead of a real backend during tests.
+vi.mock("../config/api", () => ({
+  api: {
+    get: vi.fn(() =>
+      Promise.resolve({
+        data: { status: "success", data: { problems: 124, testCases: 266 } },
+      }),
+    ),
+  },
+}));
 
 const renderAbout = () => render(<MemoryRouter><About /></MemoryRouter>);
 
@@ -23,9 +35,9 @@ describe("About", () => {
     renderAbout();
     const facts = within(screen.getByRole("region", { name: "Measured facts" }));
     expect(facts.getByText("Problems")).toBeVisible();
-    // Live Prisma counts: 209 problems / 3,117 cases.
-    expect(facts.getByText("209")).toBeVisible();
-    expect(facts.getByText(/3,117 stored cases/i)).toBeVisible();
+    // Live Prisma counts: 124 problems / 266 test cases (verified against DB).
+    expect(facts.getByText("124")).toBeVisible();
+    expect(facts.getByText(/266 stored test cases/i)).toBeVisible();
     expect(facts.getByText("5")).toBeVisible();
     // Sandbox verification count, not an invented percentage.
     expect(facts.getByText("1,272")).toBeVisible();

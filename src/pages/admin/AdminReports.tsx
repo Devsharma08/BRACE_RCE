@@ -7,6 +7,8 @@ const AdminReports = () => {
   const { data: reports, isLoading, refetch } = useAdminReports();
   const actOn = useActOnReport();
   const [processingId, setProcessingId] = useState<string | null>(null);
+  // Render cap with a "show more" row so large queues can't unbounded-map.
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const handleAction = async (report: AdminReport, status: 'DISMISSED' | 'APPROVED') => {
     const confirmed = window.confirm(
@@ -65,7 +67,7 @@ const AdminReports = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {reports.map((r) => (
+                  {reports.slice(0, visibleCount).map((r) => (
                     <tr key={r.id} className="border-b border-subtle-line hover:bg-surface-hover">
                       <td className="px-4 py-3 text-subtle font-mono text-[10px]">{r.questionId.slice(0, 8)}</td>
                       <td className="px-4 py-3 text-accent-primary">{r.reporter?.username || '—'}</td>
@@ -100,6 +102,18 @@ const AdminReports = () => {
                       </td>
                     </tr>
                   ))}
+                  {reports.length > visibleCount && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setVisibleCount((c) => c + 100)}
+                          className="px-4 py-2 border border-accent-primary/40 bg-accent-primary/10 text-xs font-bold tracking-widest text-accent-primary hover:bg-accent-primary/20 transition-all"
+                        >
+                          SHOW MORE ({reports.length - visibleCount} REMAINING)
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             )}

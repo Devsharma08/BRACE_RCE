@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Code2 } from "lucide-react";
+import { api } from "../config/api";
 
 /**
  * About — the platform's actual feature set, in text.
@@ -16,9 +18,40 @@ import { Code2 } from "lucide-react";
 
 const REPO = "https://github.com/Devsharma08/BRACE_RCE";
 
-const problems = 209;
-const cases = 3117;
+/**
+ * Pre-deployment harness measurement, not recomputed on the hot path:
+ * verify_execution.ts runs every stored reference through the real sandbox
+ * and reports the passing count.
+ */
 const verified = 1272;
+
+/**
+ * Live platform statistics. `problems` and `testCases` are read from the
+ * database on every visit; `verified` is a pre-deployment harness number
+ * (verify_execution.ts runs every stored reference through the real sandbox)
+ * so it is not recomputed on the hot path.
+ */
+export default function About() {
+  const [statsData, setStatsData] = useState<{ problems: number; testCases: number } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get("/stats")
+      .then((res) => {
+        if (!cancelled) setStatsData(res.data?.data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setStatsData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 const GROUPS: { title: string; items: string[] }[] = [
   {
@@ -34,7 +67,7 @@ const GROUPS: { title: string; items: string[] }[] = [
   {
     title: "Problems and grading",
     items: [
-      `${problems} problems and ${cases.toLocaleString()} stored test cases, graded against real expected outputs in a live sandbox.`,
+      `${isLoading ? "—" : statsData?.problems?.toLocaleString() ?? "—"} problems and ${isLoading ? "—" : statsData?.testCases?.toLocaleString() ?? "—"} stored test cases, graded against real expected outputs in a live sandbox.`,
       "Run a single case to see why it failed, or submit to grade the whole set at once. Passing every case marks the problem solved.",
       "Every case appears in the output panel with its input, its expected output, your actual output, and the time and memory it took.",
       "Custom problem studio: define a signature, and test cases plus starter snippets for all five languages are generated from it.",
@@ -67,7 +100,6 @@ const row =
 const label = "font-mono text-[11px] uppercase tracking-[0.18em] text-accent-primary";
 const body = "max-w-2xl text-sm leading-6 text-subtle";
 
-export default function About() {
   return (
     <div className="w-full bg-base text-fg">
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
@@ -114,9 +146,9 @@ export default function About() {
             <div className={row}>
               <dt className={label}>Problems</dt>
               <dd className="flex items-baseline gap-3 text-right">
-                <span className="font-mono text-sm font-bold text-fg">{problems}</span>
+                <span className="font-mono text-sm font-bold text-fg">{isLoading ? "—" : statsData?.problems?.toLocaleString() ?? "—"}</span>
                 <span className="text-xs text-faint">
-                  {cases.toLocaleString()} stored cases
+                  {isLoading ? "—" : statsData?.testCases?.toLocaleString() ?? "—"} stored test cases
                 </span>
               </dd>
             </div>

@@ -36,10 +36,10 @@ export const services: {
   signal: string;
 }[] = [
   { id: "01", category: "WORKSPACE PROTOCOL", title: "Problem workspace", description: "Browse algorithm problems beside a focused editor, hints, examples, and test cases.", detail: "side-by-side IDE / five runtimes", href: "/problems", icon: Code2, accent: "cyan", signal: "WORKSPACE READY" },
-  { id: "03", category: "VERIFICATION PROTOCOL", title: "Telemetry verification", description: "Execute complete suites in a secure sandbox and inspect verdicts, runtimes, and output diffs.", detail: "visible / hidden / edge tiers", href: "/terminal", icon: Gauge, accent: "lime", signal: "SUITE MONITORING" },
-  { id: "05", category: "COMPETITION PROTOCOL", title: "Battle arena", description: "Enter ranked rooms, synchronize with an opponent, and solve under a shared clock.", detail: "realtime rooms / match state", href: "/lobby", icon: Swords, accent: "violet", signal: "LOBBY ACTIVE" },
-  { id: "07", category: "NETWORK PROTOCOL", title: "Friends & challenges", description: "Track operative presence, compare progress, and issue direct coding challenges.", detail: "presence / requests / head-to-head", href: "/friends", icon: CircleUserRound, accent: "amber", signal: "NETWORK ONLINE" },
-  { id: "08", category: "REVIEW PROTOCOL", title: "Match review & replay", description: "Compare submitted code, inspect the timeline, and learn from every decisive moment.", detail: "replay / timeline / spectate", href: "/dashboard", icon: Eye, accent: "pink", signal: "REPLAY INDEXED" },
+  { id: "02", category: "VERIFICATION PROTOCOL", title: "Telemetry verification", description: "Execute complete suites in a secure sandbox and inspect verdicts, runtimes, and output diffs.", detail: "visible / hidden / edge tiers", href: "/terminal", icon: Gauge, accent: "lime", signal: "SUITE MONITORING" },
+  { id: "03", category: "COMPETITION PROTOCOL", title: "Battle arena", description: "Enter ranked rooms, synchronize with an opponent, and solve under a shared clock.", detail: "realtime rooms / match state", href: "/lobby", icon: Swords, accent: "violet", signal: "LOBBY ACTIVE" },
+  { id: "04", category: "NETWORK PROTOCOL", title: "Friends & challenges", description: "Track operative presence, compare progress, and issue direct coding challenges.", detail: "presence / requests / head-to-head", href: "/friends", icon: CircleUserRound, accent: "amber", signal: "NETWORK ONLINE" },
+  { id: "05", category: "REVIEW PROTOCOL", title: "Match review & replay", description: "Compare submitted code, inspect the timeline, and learn from every decisive moment.", detail: "replay / timeline / spectate", href: "/dashboard", icon: Eye, accent: "pink", signal: "REPLAY INDEXED" },
 ];
 
 const accentStyles: Record<
@@ -77,13 +77,13 @@ export function WorkspaceDirectory() {
             const styles = accentStyles[accent];
             const placement =
               id === "01" ? "lg:col-start-1 lg:col-span-7 lg:row-start-1 lg:row-span-2"
-              : id === "03" ? "lg:col-start-8 lg:col-span-5 lg:row-start-1"
-              : id === "05" ? "lg:col-start-1 lg:col-span-4 lg:row-start-3"
-              : id === "07" ? "lg:col-start-5 lg:col-span-4 lg:row-start-3"
+              : id === "02" ? "lg:col-start-8 lg:col-span-5 lg:row-start-1 lg:row-span-2"
+              : id === "03" ? "lg:col-start-1 lg:col-span-4 lg:row-start-3"
+              : id === "04" ? "lg:col-start-5 lg:col-span-4 lg:row-start-3"
               : "lg:col-start-9 lg:col-span-4 lg:row-start-3";
             const cardStyle = id === "01" ? "min-h-[390px]" : "min-h-[220px]";
             return (
-              <Link
+              <div
                 key={href + id}
                 to={href}
                 className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary`}
@@ -107,7 +107,7 @@ export function WorkspaceDirectory() {
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

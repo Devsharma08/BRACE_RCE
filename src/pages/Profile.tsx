@@ -50,6 +50,9 @@ interface MatchRecord {
   submissions?: any[];
 }
 
+/** Hard render cap for the battle-history ledger (grows one row per match). */
+const MAX_HISTORY_ROWS = 10;
+
 const Profile = () => {
   const navigate = useNavigate();
   // Post-battle wave: stats + history refresh, identity stays cached.
@@ -86,6 +89,7 @@ const Profile = () => {
 
   const stats = statsData?.stats || null;
   const history = statsData?.history || [];
+  const visibleHistory = history.slice(0, MAX_HISTORY_ROWS);
 
   // Block only on the FIRST load. On a refetch react-query keeps the previous
   // data and reports isFetching (not isLoading), and useAnalytics is called
@@ -129,7 +133,7 @@ const Profile = () => {
           </div>
 
           {/* ── IDENTITY CARD ───────────────────────────────────────────── */}
-          <section className="mt-6 overflow-hidden rounded-panel border border-line-mid bg-surface shadow-panel">
+          <section className="overflow-hidden rounded-panel border border-line-mid bg-surface shadow-panel">
             <div className="border-b border-line bg-surface-hover/40 px-6 py-3 font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
               <div className="flex items-center justify-between">
                 <span>BRACE // operative report</span>
@@ -217,7 +221,7 @@ const Profile = () => {
             <div className="overflow-hidden border border-line bg-surface">
               {history.length > 0 ? (
                 <div className="divide-y divide-line">
-                  {history.map(record => {
+                  {visibleHistory.map(record => {
                     const isWin = isWinnerStatus(record.status);
                     return (
                       <div
@@ -277,6 +281,11 @@ const Profile = () => {
                       </div>
                     );
                   })}
+                  {history.length > MAX_HISTORY_ROWS && (
+                    <div className="px-5 py-3 text-center text-[9px] uppercase tracking-widest text-faint">
+                      Showing {MAX_HISTORY_ROWS} of {history.length} battles — most recent first
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-3 p-10">
@@ -300,7 +309,7 @@ const Profile = () => {
           {/* ── ANALYTICS ─────────────────────────────────────────────────── */}
           {analytics && (
             <section aria-labelledby="analytics-heading">
-              <div className="mt-10 mb-6 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-2">
                 <BarChart3 size={15} className="text-accent-primary" />
                 <h2 className="text-[10px] uppercase tracking-[0.2em] text-subtle" id="analytics-heading">
                   Analytics
@@ -325,11 +334,11 @@ const Profile = () => {
                           return (
                             <div
                               key={index}
-                              className="flex-1 bg-accent-primary/15 transition hover:bg-accent-primary/50 cursor-pointer group"
+                              className="flex-1 bg-accent-primary/15 transition hover:bg-accent-primary/50 cursor-pointer group relative"
                               style={{ height: `${height}%` }}
                               title={`${point.date}: ${point.count} submissions`}
                             >
-                              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-mono text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-mono text-muted opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                                 {point.count}
                               </span>
                             </div>
@@ -352,10 +361,6 @@ const Profile = () => {
                       ))}
                     </div>
                   )}
-                  <div className="mt-4 flex items-center justify-between text-[8px] uppercase tracking-widest text-muted">
-                    <span>Less</span>
-                    <span>More</span>
-                  </div>
                 </div>
                 
                 <div className="overflow-hidden rounded-panel border border-line-mid bg-surface p-6 flex flex-col justify-between">
@@ -376,7 +381,7 @@ const Profile = () => {
               </div>
               
               {/* Full Analytics Panels */}
-              <div className="mt-6">
+              <div className="mt-4">
                 <AnalyticsErrorBoundary>
                   <AnalyticsPanels analytics={analytics} />
                 </AnalyticsErrorBoundary>

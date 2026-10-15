@@ -10,6 +10,8 @@ const AdminUsers = () => {
   const deleteUser = useDeleteUser();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Render cap with a "show more" row so large directories can't unbounded-map.
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const handleRoleChange = async (user: AdminUser, newRole: string) => {
     if (newRole === user.role) return;
@@ -84,7 +86,7 @@ const AdminUsers = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {users.slice(0, visibleCount).map((user) => (
                     <tr
                       key={user.id}
                       className="border-b border-subtle-line hover:bg-surface-hover transition-colors"
@@ -120,6 +122,18 @@ const AdminUsers = () => {
                       </td>
                     </tr>
                   ))}
+                  {users.length > visibleCount && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => setVisibleCount((c) => c + 100)}
+                          className="px-4 py-2 border border-accent-primary/40 bg-accent-primary/10 text-xs font-bold tracking-widest text-accent-primary hover:bg-accent-primary/20 transition-all"
+                        >
+                          SHOW MORE ({users.length - visibleCount} REMAINING)
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             )}
