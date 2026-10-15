@@ -158,16 +158,40 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   // Friends presence state
   const [friends, setFriends] = useState<Array<{ id: string; username: string; avatarUrl: string | null; isOnline: boolean }>>([]);
 
+  // Auth observation — SocketProvider is the PARENT of AuthProvider so it
+  // cannot call useAuth(). `enabled: false` means this never fetches on its
+  // own; it only mirrors the shared ["auth-me"] cache entry AuthContext
+  // owns, so login/logout is picked up without a second round-trip.
+  const { data: authUser } = useQuery<{ id?: string } | null>({
+    queryKey: ["auth-me"],
+    queryFn: async () => {
+      try {
+        const response = await api.get("/auth/me");
+        return response.data?.user ?? null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: false,
+    staleTime: 1000 * 60 * 15,
+  });
+  const userId: string | null = authUser?.id ?? null;
+
   // Task 6 — seed + reconcile presence.
   // `friends` starts as [] and nothing ever populated it, so `onlineIds`
   // was permanently empty and every dot read OFFLINE. Mirror the REST
   // friends list into `friends` (preserving any live isOnline flags), then
   // ask the server for a fresh snapshot so the dots reflect real socket
   // presence rather than a stale default.
+  // Guests have no friends list to seed presence from. This query used to run
+  // unconditionally, and because SocketProvider wraps the whole app it fired
+  // /api/friends on every page for every signed-out visitor — three 401s on a
+  // public /terminal visit, for data they could not use anyway.
   const { data: presenceFriends } = useQuery<{ friends: Array<{ id: string; username: string; avatarUrl: string | null }> }>({
     queryKey: ["friends-list"],
     queryFn: async () => (await api.get("/friends")).data,
     staleTime: 60_000,
+    enabled: Boolean(userId),
   });
   useEffect(() => {
     const list = presenceFriends?.friends;
@@ -237,21 +261,6 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   // below never fired until a full page refresh. Subscribing to the cache makes
   // socket creation react to login/logout immediately. `enabled: false` keeps
   // AuthContext as the sole network-fetch owner; this observer only mirrors it.
-  const { data: authUser } = useQuery<{ id?: string } | null>({
-    queryKey: ["auth-me"],
-    queryFn: async () => {
-      try {
-        const response = await api.get("/auth/me");
-        return response.data?.user ?? null;
-      } catch {
-        return null;
-      }
-    },
-    enabled: false,
-    staleTime: 1000 * 60 * 15,
-  });
-  const userId: string | null = authUser?.id ?? null;
-
   // Create socket when userId becomes available
   useEffect(() => {
     if (!userId || socketCreatedRef.current) return;

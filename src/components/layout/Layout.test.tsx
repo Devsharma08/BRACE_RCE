@@ -46,7 +46,6 @@ const railOffsetClass = "md:ml-[var(--sidebar-width)]";
 
 test.each([
   ["/dashboard", "DASHBOARD_PAGE"],
-  ["/problems", "PROBLEMS_PAGE"],
   ["/lobby", "LOBBY_PAGE"],
   ["/friends", "FRIENDS_PAGE"],
   ["/profile", "PROFILE_PAGE"],
@@ -62,6 +61,9 @@ test.each([
   ["/about", "ABOUT_PAGE"],
   // AdminLayout's sidebar is an in-flow <aside>, not a fixed rail.
   ["/admin", "ADMIN_PAGE"],
+  // /problems moved out of ConsoleShell so guests can browse the catalog; it
+  // renders with the ordinary public chrome, so there is no rail to dodge.
+  ["/problems", "PROBLEMS_PAGE"],
 ])("keeps the footer full-bleed on %s", (path, page) => {
   renderAt(path);
   expect(screen.getByText(page)).toBeInTheDocument();

@@ -1,19 +1,46 @@
 import { Router } from "express";
-import { authentication } from "../middleware/authentication.js";
+import { authentication, optionalAuthentication } from "../middleware/authentication.js";
 import { problemController } from "../controllers/problems.js";
 import { validate, validateQuery, createCustomProblemSchema, seedSystemProblemsSchema, paginationSchema } from "../middleware/validation.js";
 
 const problemsRouter: Router = Router();
 
-problemsRouter.use(authentication);
+/**
+ * Problem catalog routes.
+ *
+ * Reads of system problems are PUBLIC. The practice terminal at /terminal is
+ * reachable without an account, so the catalog it loads cannot sit behind a
+ * session check — that is what produced a wall of 401s on an anonymous visit.
+ * `optionalAuthentication` still runs here: it is free when there is no cookie,
+ * and a signed-in visitor gets their solved status, attempts and saved draft
+ * merged into the same response.
+ *
+ * Route AUTH is per-route, not a router-level `.use()`. Two reasons, both of
+ * which the obvious refactor gets wrong:
+ *
+ *   1. A `.use(authentication)` in front of these routes would block the
+ *      public reads it is meant to leave open.
+ *   2. Registration ORDER decides matches. `/custom` is a single segment, so an
+ *      earlier `GET /:id` would swallow it before the custom handler — silent
+ *      wrong data instead of an error. Keeping `/system` and `/custom`
+ *      registered ahead of `/:id` preserves the original behaviour.
+ *
+ * Everything that acts on behalf of a specific user stays behind the strict
+ * `authentication` middleware.
+ */
 
-// Fetching Problems
-problemsRouter.get("/system", validateQuery(paginationSchema), problemController.getSystemProblems);
-problemsRouter.get("/custom", validateQuery(paginationSchema), problemController.getMyCustomProblems);
-problemsRouter.get("/:id", problemController.getProblemById);
+// ── Public reads ───────────────────────────────────────────────────────────
+// Register the literal paths before /:id so they are not shadowed by it.
+problemsRouter.get("/system", optionalAuthentication, validateQuery(paginationSchema), problemController.getSystemProblems);
 
-// Creating Problems
-problemsRouter.post("/create", validate(createCustomProblemSchema), problemController.createCustomProblem);
-problemsRouter.post("/seed", validate(seedSystemProblemsSchema), problemController.seedSystemProblems);
+// ── User-scoped reads ──────────────────────────────────────────────────────
+problemsRouter.get("/custom", authentication, validateQuery(paginationSchema), problemController.getMyCustomProblems);
+
+// ── Public read by identifier (runs last: its `:id` matches one segment) ───
+problemsRouter.get("/:id", optionalAuthentication, problemController.getProblemById);
+
+// ── User-scoped writes ─────────────────────────────────────────────────────
+problemsRouter.post("/create", authentication, validate(createCustomProblemSchema), problemController.createCustomProblem);
+problemsRouter.post("/seed", authentication, validate(seedSystemProblemsSchema), problemController.seedSystemProblems);
 
 export { problemsRouter };

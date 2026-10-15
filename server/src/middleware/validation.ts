@@ -234,6 +234,11 @@ export const executeCodeSchema = z.object({
   // mode RUN; SUBMIT always grades every case regardless of what is sent here.
   testCaseIndex: z.number().int().min(0).optional(),
   roomId: z.string().optional(),
+  // Turnstile token from the guest bot check. Verified in executionGuard; the
+  // schema must declare it because `validate` REPLACES req.body with the
+  // parsed result, so an undeclared field is silently dropped before the
+  // guard ever sees it.
+  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 // Room schemas

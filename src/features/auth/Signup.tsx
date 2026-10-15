@@ -8,18 +8,7 @@ import { api } from '../../config/api';
 import { getInitialsAvatar } from '../../utils/avatar';
 import { initiateGoogleOAuthPKCE, handleGoogleCallbackPKCE } from '../../utils/oauth';
 import { isFeatureEnabled } from '../../config/features';
-
-/**
- * Cloudflare Turnstile site key.
- *
- * In production we deliberately do NOT fall back to Cloudflare's always-pass
- * test key ('1x00000000000000000000AA'). Doing so would render a real-looking
- * captcha that never actually protects the endpoint, i.e. a false sense of
- * security. Without a configured key the widget is simply not rendered and the
- * submit button stays disabled.
- */
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
-const TURNSTILE_ENABLED = isFeatureEnabled('turnstile') && TURNSTILE_SITE_KEY.trim().length > 0;
+import { TURNSTILE_ENABLED, TURNSTILE_SITE_KEY } from '../../config/turnstile';
 
 // Root.tsx falls back to the literal "not-configured" for GoogleOAuthProvider.
 // Treat it as unset here too — rendering the button with that placeholder sent

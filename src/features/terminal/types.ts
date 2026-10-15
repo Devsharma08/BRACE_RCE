@@ -73,4 +73,10 @@ export type ExecuteCodeRequest = {
   fileName?: string;
   timeTaken?: string;
   roomId?: string;
+  /**
+   * Turnstile token from the bot check that gates execution for anonymous
+   * callers. Single-use: the server rejects a replay, so a fresh token is
+   * minted for every request that needed one.
+   */
+  captchaToken?: string;
 };

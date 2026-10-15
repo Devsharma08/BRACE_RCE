@@ -35,9 +35,12 @@ const Layout = () => {
   //
   // /admin is deliberately absent: AdminLayout's sidebar is a normal in-flow
   // <aside>, not a fixed rail, so its footer already clears it.
+  //
+  // /problems is also absent — it moved OUT of ConsoleShell so guests can
+  // browse the catalog, and now renders with the ordinary public header/footer.
+  // Leaving it here would add a rail offset for a rail that no longer renders.
   const isConsoleRoute =
     pathname === '/dashboard' ||
-    pathname === '/problems' ||
     pathname === '/lobby' ||
     pathname === '/friends' ||
     pathname === '/profile' ||

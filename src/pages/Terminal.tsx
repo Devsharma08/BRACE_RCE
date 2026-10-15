@@ -10,8 +10,10 @@ import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import LoadingOverlay from "../features/terminal/components/LoadingOverlay";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import OutputPanel from "../features/terminal/components/OutputPanel";
+import ExecutionCaptchaModal from "../features/terminal/components/ExecutionCaptchaModal";
 import PracticeSidebar, { type PracticeProblem } from "../features/terminal/components/PracticeSidebar";
 import { buildProblemTestCases, formatExecutionOutput } from "../features/terminal/executionOutput";
+import { useExecutionGuard } from "../features/terminal/hooks/useExecutionGuard";
 import {
   outputGridTemplateRows,
   useTerminalLayout,
@@ -22,6 +24,7 @@ import { NotesPanel } from "../components/ui/NotesPanel";
 import { invalidateProblemQueries } from "../utils/problemCache";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { toast } from "sonner";
+import { TURNSTILE_ENABLED } from "../config/turnstile";
 
 /**
  * Extract user-friendly error message from API error response
@@ -79,7 +82,7 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
 const Terminal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // URL-driven: id or oid selects the initial problem
   const targetId = searchParams.get("id") || searchParams.get("oid") || searchParams.get("problemId") || "";
@@ -92,6 +95,93 @@ const Terminal = () => {
   // Bumped by Retry buttons — re-runs the catalog fetch without a remount.
   const [problemsNonce, setProblemsNonce] = useState(0);
   const retryProblems = useCallback(() => setProblemsNonce((n) => n + 1), []);
+
+  // Terminal mode: 'problems' (show problem list & test cases) | 'no-problem' (editor + output only)
+  const [mode, setMode] = useState<'problems' | 'no-problem'>('problems');
+
+  // ── Execution guard: rate limit + guest bot check ───────────
+  // Enforcement is deliberately split. The sandbox quota is the server's job
+  // (it keys on IP/user, so it cannot be bypassed by editing this bundle);
+  // this hook only short-circuits obviously wasteful clicks so the user gets
+  // an immediate answer instead of a 429 round-trip.
+  const executionGuard = useExecutionGuard();
+
+  /**
+   * Guests must clear a bot check before every execution, because Turnstile
+   * tokens are single-use. Signed-in users already prove identity per request
+   * via the session cookie, so they are not interrupted.
+   */
+  const captchaRequired = TURNSTILE_ENABLED && !isAuthenticated;
+
+  const [captchaOpen, setCaptchaOpen] = useState(false);
+  // Remount nonce — a new challenge per gated execution, never a replay.
+  const [captchaNonce, setCaptchaNonce] = useState(0);
+  const [captchaReason, setCaptchaReason] = useState<string | undefined>(undefined);
+
+  /**
+   * Held resolver for the open modal. The gate is awaited inside the run
+   * handlers, so this is the only way to hand a token (or a refusal) back to
+   * the call that is suspended waiting for it.
+   */
+  const captchaResolveRef = useRef<((token: string | null) => void) | null>(null);
+
+  // If the terminal unmounts mid-challenge (route change, sign-out) the pending
+  // run must not hang forever — settle it as cancelled.
+  useEffect(
+    () => () => {
+      captchaResolveRef.current?.(null);
+      captchaResolveRef.current = null;
+    },
+    [],
+  );
+
+  const requestCaptcha = useCallback((reason?: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      captchaResolveRef.current = resolve;
+      setCaptchaReason(reason);
+      setCaptchaNonce((n) => n + 1);
+      setCaptchaOpen(true);
+    });
+  }, []);
+
+  const settleCaptcha = useCallback((token: string | null) => {
+    const resolve = captchaResolveRef.current;
+    captchaResolveRef.current = null;
+    setCaptchaOpen(false);
+    setCaptchaReason(undefined);
+    resolve?.(token);
+  }, []);
+
+  /**
+   * Single entry point for "may this execution start, and with what token".
+   *
+   * Every check runs BEFORE the caller flips its executing flags, so a
+   * rejected run leaves no spinner, no "LOADING" status, and no half-written
+   * output panel behind.
+   *
+   * A burst of runs is charged to the budget up front (the modal may be
+   * abandoned, and the sandbox slot is still consumed by the server side).
+   */
+  const authorizeExecution = useCallback(async (): Promise<
+    { ok: true; captchaToken?: string } | { ok: false }
+  > => {
+    const verdict = executionGuard.check();
+    if (!verdict.allowed) {
+      toast.error(verdict.message ?? "Too many runs — try again shortly.");
+      return { ok: false };
+    }
+    if (captchaRequired) {
+      const token = await requestCaptcha();
+      if (!token) {
+        toast.error("Verification cancelled — your code was not run.");
+        return { ok: false };
+      }
+      executionGuard.record();
+      return { ok: true, captchaToken: token };
+    }
+    executionGuard.record();
+    return { ok: true };
+  }, [executionGuard, captchaRequired, requestCaptcha]);
 
   // Output-track ceiling, read from the workspace grid (see
   // measureWorkspaceCeiling) and consumed by useTerminalLayout.
@@ -205,6 +295,50 @@ const Terminal = () => {
 
   const formatEditorRef = useRef<(() => void) | null>(null);
 
+  // Hide Problems toggle — switches between the full catalog sidebar and a
+  // plain-scratch mode. Scratch mode is a REAL mode, not just a hidden panel:
+  // the sidebar is unmounted (not merely collapsed), the problem context is
+  // cleared, and the editor is reset to the bare language starter — otherwise
+  // the hidden problem's statement/snippets/test-cases stay live behind the
+  // curtain (stale oid on Run, stale tests in the Output panel, and a
+  // one-click re-reveal of the "hidden" problem).
+  // NOTE: declared AFTER the TerminalContext + layout hooks above — these
+  // callbacks close over `language`, `setCode`, panel state etc., and calling
+  // useCallback before those bindings exist throws "Cannot access before
+  // initialization".
+  const enterScratchMode = useCallback(() => {
+    setMode('no-problem');
+    setActiveProblem(null);
+    setActiveFile("");
+    setTestCases([]);
+    setOutput(null);
+    setOutputText("");
+    setCustomInput("");
+    setCustomInputActive(false);
+    setIsCustomInputRun(false);
+    // Drop the hidden problem's code entirely — the scratch editor starts
+    // from the default language wrapper for the CURRENT language.
+    const starter = getLanguageStarterCode(language);
+    setCode(starter);
+    setCodeForLanguage(language, starter);
+    // Collapse the sidebar chrome too so no sliver/toggle lingers.
+    setIsPanelOpen(false);
+    setIsSidebarCollapsed(true);
+  }, [language, setActiveFile, setCode, setCodeForLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
+  const exitScratchMode = useCallback(() => {
+    setMode('problems');
+    setIsPanelOpen(true);
+    setIsSidebarCollapsed(false);
+    if (sidebarWidth < 220) setSidebarWidth(360);
+  }, [setSidebarWidth, sidebarWidth]);
+  // The header "Hide/Show Problems" button must run the full enter/exit above —
+  // a bare setMode flip leaves the sidebar mounted, the problem context live,
+  // and the old code in the editor.
+  const toggleMode = useCallback(() => {
+    if (mode === 'problems') enterScratchMode();
+    else exitScratchMode();
+  }, [mode, enterScratchMode, exitScratchMode]);
+
   // ── Load all system problems on mount ─────────────────────
   useEffect(() => {
     const controller = new AbortController();
@@ -228,7 +362,10 @@ const Terminal = () => {
             ) ?? null;
         }
         if (!initial && data.length > 0) initial = data[0];
-        if (initial) loadProblem(initial, data);
+        // Scratch mode owns the editor: a catalog refresh (login restore,
+        // retry) must not yank the default wrapper away and load a problem
+        // the user explicitly hid.
+        if (initial && mode !== 'no-problem') loadProblem(initial, data);
       })
       .catch((e) => {
         if (e.name !== "AbortError") {
@@ -300,8 +437,10 @@ const Terminal = () => {
       // TerminalContext.changeLanguage will restore saved code for this language
       // or set empty string if none exists - then we set boilerplate
       const savedCode = getCodeForLanguage(newLang);
-      if (!savedCode && activeProblem) {
-        setCode(getBoilerplate(activeProblem, newLang));
+      // In scratch mode there is no problem — fall back to the default
+      // language wrapper, never a stale problem snippet.
+      if (!savedCode) {
+        setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getLanguageStarterCode(newLang));
       }
     },
     [activeProblem, setLanguage, setCode, getCodeForLanguage]
@@ -309,9 +448,12 @@ const Terminal = () => {
 
   // ── Reset code to starter boilerplate ─────────────────────
   const handleResetCode = useCallback(() => {
-    setCode(getBoilerplate(activeProblem, language));
+    // Scratch reset = default wrapper for the current language (no problem to
+    // pull a template from).
+    const starter = activeProblem ? getBoilerplate(activeProblem, language) : getLanguageStarterCode(language);
+    setCode(starter);
     // Also update the per-language storage
-    setCodeForLanguage(language, getBoilerplate(activeProblem, language));
+    setCodeForLanguage(language, starter);
   }, [activeProblem, language, setCode, setCodeForLanguage]);
 
   // ── Select problem from sidebar ───────────────────────────
@@ -335,6 +477,12 @@ const Terminal = () => {
       oid: string,
       mode: ExecutionMode = "RUN"
     ) => {
+      // Gate BEFORE the executing flags are raised. A run refused here (too
+      // fast, guest who dismissed the bot check) must return with the terminal
+      // exactly as it was, otherwise the button stays stuck in its spinner.
+      const authorization = await authorizeExecution();
+      if (!authorization.ok) return;
+
       const customInputValue = customInputActive ? customInput.trim() : "";
       const isCustomExecution = customInputValue.length > 0;
       setIsCustomInputRun(isCustomExecution);
@@ -357,6 +505,7 @@ const Terminal = () => {
           mode,
           customInput: customInputValue,
           testCaseIndex: runOneCaseOnly ? 0 : undefined,
+          captchaToken: authorization.captchaToken,
         });
         setOutput(data);
         setStatus("SUCCESS");
@@ -411,6 +560,7 @@ const Terminal = () => {
       setCustomInput,
       setIsCustomInputRun,
       setStatus,
+      authorizeExecution,
     ]
   );
 
@@ -418,6 +568,11 @@ const Terminal = () => {
   const handleRunSingleTestCase = useCallback(
     async (testCaseIndex: number) => {
       if (!testCases || !testCases[testCaseIndex]) return;
+
+      // Same gate as a full run: a single case still occupies a sandbox slot,
+      // so it is rate limited and bot checked identically.
+      const authorization = await authorizeExecution();
+      if (!authorization.ok) return;
 
       // The server owns the case by index and ships its real input, so any of
       // the 15 can be run on its own with a genuine pass/fail verdict.
@@ -438,6 +593,7 @@ const Terminal = () => {
           oid: activeFile,
           mode: "RUN",
           testCaseIndex,
+          captchaToken: authorization.captchaToken,
         });
 
         // The server already stamps the detail with the true stored index, so
@@ -481,7 +637,7 @@ const Terminal = () => {
         setResponseLoading(false);
       }
     },
-    [testCases, code, language, activeFile, setOutput, setStatus]
+    [testCases, code, language, activeFile, setOutput, setStatus, authorizeExecution]
   );
 
   const handleCodeChange = useCallback((nextCode: string) => setCode(nextCode), [setCode]);
@@ -506,7 +662,7 @@ const Terminal = () => {
       {/* ── PRACTICE SIDEBAR (COLLAPSIBLE & DRAGGABLE, auto-closes <220px) ────────────────
           On mobile this is an overlay drawer (absolute + backdrop) rather than a
           flex child, so opening it never pushes the workspace off-screen. */}
-      {isMobile && isSidebarOpen && (
+      {isMobile && isSidebarOpen && mode === 'problems' && (
         <button
           type="button"
           aria-label="Close problem sidebar"
@@ -515,6 +671,9 @@ const Terminal = () => {
         />
       )}
 
+      {/* In scratch mode the sidebar DOM is gone entirely — PracticeSidebar only
+          mounts in problems mode. */}
+      {mode === 'problems' && (
       <div
         style={{
           width: isSidebarOpen ? `min(${sidebarWidth}px, 100vw)` : "0px",
@@ -548,10 +707,8 @@ const Terminal = () => {
           </div>
         </div>
 
-        {/* SIDEBAR TOGGLE BUTTON.
-            `left-full` sits the button just outside the panel, which is off
-            screen on mobile where the panel is capped at 100vw. On mobile it
-            moves inside the panel instead. */}
+        {/* Collapse/expand toggle lives inside the panel (it sits just outside
+            via left-full on desktop, inside on mobile) — unmounted with it. */}
         <button
           onClick={() => {
             const next = !(isPanelOpen && !isSidebarCollapsed);
@@ -573,6 +730,7 @@ const Terminal = () => {
           )}
         </button>
       </div>
+      )}
 
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-base relative z-10 transition-all duration-300">
@@ -595,6 +753,14 @@ const Terminal = () => {
                 {activeProblem.difficulty_level.toUpperCase()}
               </span>
             )}
+            <button
+              onClick={toggleMode}
+              className="px-2 py-0.5 text-[9px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition"
+              title={mode === 'problems' ? "Hide Problems" : "Show Problems"}
+              aria-label={mode === 'problems' ? "Hide Problems" : "Show Problems"}
+            >
+              {mode === 'problems' ? "Hide Problems" : "Show Problems"}
+            </button>
             {activeProblem?.isSolved && (
               <span className="text-[10px] px-2 py-0.5 border border-accent-success/40 bg-accent-success/10 text-accent-success font-bold uppercase">
                 ✓ SOLVED
@@ -649,7 +815,7 @@ const Terminal = () => {
                       fileName={activeFileName}
                       onRun={() => void handleRunCode(code, language, activeFile, "RUN")}
                       onSubmit={() => void handleRunCode(code, language, activeFile, "SUBMIT")}
-                      showSubmit={true}
+                      showSubmit={mode !== 'no-problem'}
                       showFileExplorerToggle={false}
                       onToggleFileExplorer={() => {}}
                       isFileExplorerOpen={false}
@@ -658,7 +824,11 @@ const Terminal = () => {
                       onClearOutput={handleClearOutput}
                       onToggleNotes={() => setIsNotesOpen((p) => !p)}
                       isNotesOpen={isNotesOpen}
-                      onExit={() => navigate("/dashboard")}
+                      // Guests can open the terminal without an account — sending
+                      // them to the protected dashboard on exit would bounce them
+                      // straight to /signin. Take signed-in users to their
+                      // console and guests back to the public catalog instead.
+                      onExit={() => navigate(isAuthenticated ? "/dashboard" : "/problems")}
                       submissionTrigger={submissionTrigger}
                       timerRef={timerRef}
                       initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
@@ -709,6 +879,7 @@ const Terminal = () => {
                         onResizeStart={startOutputDragging}
                         setIsOutputActive={setIsOutputActive}
                         onRunSingleTestCase={handleRunSingleTestCase}
+                        showTests={mode !== 'no-problem'}
                       />
                     </div>
                   </>
@@ -738,6 +909,15 @@ const Terminal = () => {
 
       {/* NOTES PANEL */}
       <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
+
+      {/* Guest bot check — opened on demand by authorizeExecution(). */}
+      <ExecutionCaptchaModal
+        open={captchaOpen}
+        nonce={captchaNonce}
+        reason={captchaReason}
+        onVerified={(token) => settleCaptcha(token)}
+        onCancel={() => settleCaptcha(null)}
+      />
     </div>
   );
 };

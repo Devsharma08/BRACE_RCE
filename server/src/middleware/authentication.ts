@@ -16,6 +16,14 @@ export interface CustomJwtPayload extends jwt.JwtPayload {
     role?: string;
 }
 
+/**
+ * Strict authentication — rejects the request unless a valid session cookie is
+ * present. Use for any endpoint that acts on behalf of a specific user.
+ *
+ * Status codes are kept distinct on purpose: expired → 401 (the client should
+ * try refreshing), invalid signature → 403 (the token is forged or malformed,
+ * and a retry will not help).
+ */
 export const authentication = (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies?.token as string | undefined;
 
@@ -31,7 +39,6 @@ export const authentication = (req: Request, res: Response, next: NextFunction) 
         return next();
     }
 
-    // Preserve distinct status codes: expired → 401, invalid signature → 403.
     if (result.error === "EXPIRED") {
         return res.status(401).json({ status: "error", message: "Token has expired" });
     }
@@ -41,4 +48,43 @@ export const authentication = (req: Request, res: Response, next: NextFunction) 
     }
 
     return res.status(500).json({ status: "error", message: "Internal server error" });
+};
+
+/**
+ * Optional authentication — identifies the caller when they ARE signed in, and
+ * stays silent when they are not.
+ *
+ * For routes that serve public content but get better when personalised: the
+ * problem catalog is the case in point. Guests may read every system problem,
+ * but a signed-in caller also gets their own solved status and saved draft.
+ *
+ * The distinction the controllers must respect is `req.userId === undefined`
+ * meaning "guest" rather than "unknown user". Any database join keyed on the
+ * user — problem progress, saved code — has to be omitted entirely for a guest,
+ * because Prisma treats an `undefined` value in a `where` clause as "no filter"
+ * and would happily return every user's row.
+ *
+ * This is deliberately NOT a security boundary: an endpoint that needs a user
+ * must keep using the strict `authentication` middleware, not infer identity
+ * from an optional one.
+ */
+export const optionalAuthentication = (req: Request, _res: Response, next: NextFunction) => {
+    const token = req.cookies?.token as string | undefined;
+
+    // No cookie at all → anonymous visitor, continue unauthenticated.
+    if (!token) {
+        return next();
+    }
+
+    const result = verifyTokenResult(token);
+
+    // A present-but-bad token is also just "not authenticated" here. Returning
+    // 401 from an optional path would break the public read for a visitor who
+    // happens to be carrying a stale cookie — the opposite of what we want.
+    if (result.ok) {
+        (req as AuthRequest).userId = result.payload.userId as string;
+        (req as AuthRequest).userRole = result.payload.role as string | undefined;
+    }
+
+    return next();
 };

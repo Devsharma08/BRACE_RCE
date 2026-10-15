@@ -37,7 +37,8 @@ import { AuthProvider } from "./context/AuthContext.tsx";
 import { SocketProvider } from "./context/SocketContext.tsx";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import  {Login}  from "./features/auth/Login.tsx";
-import {Signup} from "./features/auth/Signup.tsx";
+import { Signup } from "./features/auth/Signup.tsx";
+import { ResetPassword } from "./features/auth/ResetPassword.tsx";
 import { TerminalProvider } from "./context/TerminalContext.tsx";
 import { RouteLoadingSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
@@ -107,68 +108,67 @@ export const Root = () => {
                       <Route path="about" element={<About />} />
                       <Route path="/signin" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
                       <Route path="/ds" element={<DataStructureDirectory />} />
                       <Route
                         path="/ds/:slug"
                         element={<DataStructureDetail />}
                       />
 
-                      {/* Protected Routes */}
-  
-                      <Route element={<ProtectedRoute />}>
-                        {/* Admin Console Routes.
-                            Wrapped in <AdminRoute> so non-admins never see the
-                            console. That guard is presentation only — every
-                            /api/admin/* endpoint independently re-checks the
-                            caller's role and 403s.
+{/* Public Routes - Terminal & Problems accessible without auth */}
+                       <Route path="terminal" element={
+                         <TerminalProvider>
+                           <Terminal />
+                         </TerminalProvider>
+                       } />
+                       <Route path="/problems" element={<Problems />} />
 
-                            NOTE: child paths MUST be relative. React Router v7
-                            throws "Absolute route path "/users" nested under
-                            path "/admin" is not valid" at runtime, which
-                            TypeScript/tsc will not catch. */}
-                        <Route element={<AdminRoute />}>
-                          <Route path="/admin" element={<AdminLayout />}>
-                            <Route index element={<AdminDashboard />} />
-                            <Route path="users" element={<AdminUsers />} />
-                            <Route path="questions" element={<AdminQuestions />} />
-                            <Route path="reports" element={<AdminReports />} />
-                            <Route path="settings" element={<AdminSettings />} />
-                            <Route path="feedback" element={<AdminFeedback />} />
-                            <Route path="battles/:roomId/spectate" element={<AdminSpectateView />} />
-                          </Route>
-                        </Route>
-                        {/* Console pages — all share <ConsoleShell />, which owns
-                            the rail, the mobile bottom nav and the sidebar
-                            offset. Declared as a PARENT route with children
-                            nested beneath it: mounted as a leaf it would have
-                            an empty <Outlet /> and render a blank page.
-                            Child paths are relative — React Router v7 throws
-                            "Absolute route path ... is not valid" at runtime
-                            and tsc does not catch it. */}
-                        <Route element={<ConsoleShell />}>
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/friends" element={<FriendsDashboard />} />
-                          <Route path="/profile" element={<Profile />} />
-                          {/* Post-battle review — ownership-checked match detail */}
-                          <Route path="/analysis/:matchId" element={<MatchAnalysis />} />
-                          <Route path="/lobby" element={<Lobby />} />
-                          <Route path="/problems" element={<Problems />} />
-                          <Route path="/rooms/create" element={<CreateRoom />} />
-                          <Route path="/create-room" element={<CreateRoom />} />
-                        </Route>
+                       {/* Protected Routes */}
+   
+                       <Route element={<ProtectedRoute />}>
+                         {/* Admin Console Routes.
+                             Wrapped in <AdminRoute> so non-admins never see the
+                             console. That guard is presentation only — every
+                             /api/admin/* endpoint independently re-checks the
+                             caller's role and 403s.
 
-                        {/* Fullscreen / standalone routes keep their own shell */}
-                        <Route path="/battle/:roomId" element={<Battle />} />
+                             NOTE: child paths MUST be relative. React Router v7
+                             throws "Absolute route path "/users" nested under
+                             path "/admin" is not valid" at runtime, which
+                             TypeScript/tsc will not catch. */}
+                         <Route element={<AdminRoute />}>
+                           <Route path="/admin" element={<AdminLayout />}>
+                             <Route index element={<AdminDashboard />} />
+                             <Route path="users" element={<AdminUsers />} />
+                             <Route path="questions" element={<AdminQuestions />} />
+                             <Route path="reports" element={<AdminReports />} />
+                             <Route path="settings" element={<AdminSettings />} />
+                             <Route path="feedback" element={<AdminFeedback />} />
+                             <Route path="battles/:roomId/spectate" element={<AdminSpectateView />} />
+                           </Route>
+                         </Route>
+                         {/* Console pages — all share <ConsoleShell />, which owns
+                             the rail, the mobile bottom nav and the sidebar
+                             offset. Declared as a PARENT route with children
+                             nested beneath it: mounted as a leaf it would have
+                             an empty <Outlet /> and render a blank page.
+                             Child paths are relative — React Router v7 throws
+                             "Absolute route path ... is not valid" at runtime
+                             and tsc does not catch it. */}
+                         <Route element={<ConsoleShell />}>
+                           <Route path="/dashboard" element={<Dashboard />} />
+                           <Route path="/friends" element={<FriendsDashboard />} />
+                           <Route path="/profile" element={<Profile />} />
+                           {/* Post-battle review — ownership-checked match detail */}
+                           <Route path="/analysis/:matchId" element={<MatchAnalysis />} />
+                           <Route path="/lobby" element={<Lobby />} />
+                           <Route path="/rooms/create" element={<CreateRoom />} />
+                           <Route path="/create-room" element={<CreateRoom />} />
+                         </Route>
 
-                        <Route
-                          path="terminal"
-                          element={
-                            <TerminalProvider>
-                              <Terminal />
-                            </TerminalProvider>
-                          }
-                        />
-                      </Route>
+                         {/* Fullscreen / standalone routes keep their own shell */}
+                         <Route path="/battle/:roomId" element={<Battle />} />
+                       </Route>
                     </Route>
                   </Routes>
               </AuthProvider>

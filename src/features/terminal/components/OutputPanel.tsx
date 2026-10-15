@@ -21,6 +21,8 @@ type OutputPanelProps = {
   setCustomInputActive: (active: boolean) => void;
   setIsOutputActive: (active: boolean) => void;
   onRunSingleTestCase?: (index: number) => void;
+  /** When false, hides the "Test Cases" tab and only shows "Output Logs" */
+  showTests?: boolean;
 };
 
 const getTabClassName = (isActive: boolean) =>
@@ -47,6 +49,7 @@ const OutputPanel = ({
   setCustomInputActive,
   setIsOutputActive,
   onRunSingleTestCase,
+  showTests = true,
 }: OutputPanelProps) => {
   const singleDetail: ExecutionDetail | undefined = isCustomInputRun
     ? output?.details?.[0]
@@ -141,9 +144,11 @@ const OutputPanel = ({
         <button className={getTabClassName(activeDiagTab === "LOGS")} onClick={() => setActiveDiagTab("LOGS")}>
           Output Logs
         </button>
-        <button className={getTabClassName(activeDiagTab === "TESTS")} onClick={() => setActiveDiagTab("TESTS")}>
-          Test Cases
-        </button>
+        {showTests && (
+          <button className={getTabClassName(activeDiagTab === "TESTS")} onClick={() => setActiveDiagTab("TESTS")}>
+            Test Cases
+          </button>
+        )}
       </div>
 
       {/* Content — overscroll-contain keeps wheel/trackpad scrolling from
@@ -161,7 +166,7 @@ const OutputPanel = ({
           <pre className="text-xs font-mono text-subtle whitespace-pre-wrap">{outputText}</pre>
         )}
 
-        {!isExecuting && activeDiagTab === "TESTS" && (
+        {!isExecuting && activeDiagTab === "TESTS" && showTests && (
           <div className="space-y-4">
             {renderedCases.length === 0 ? (
               <p className="text-faint text-xs font-mono">NO_TEST_CASES // SYNTAX_SEEDED_EXERCISE</p>

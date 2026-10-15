@@ -7,17 +7,7 @@ import { PageSkeleton } from '../../components/ui/Skeleton';
 import {api} from "../../config/api";
 import { initiateGoogleOAuthPKCE, handleGoogleCallbackPKCE } from '../../utils/oauth';
 import { isFeatureEnabled } from '../../config/features';
-
-/**
- * Cloudflare Turnstile site key.
- *
- * No fallback to Cloudflare's always-pass test key ('1x00000000000000000000AA'):
- * that key renders a real-looking widget which never actually blocks anything,
- * which is a false promise of security. When no key is configured the widget is
- * not rendered and an honest notice is shown instead.
- */
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
-const TURNSTILE_ENABLED = isFeatureEnabled('turnstile') && TURNSTILE_SITE_KEY.trim().length > 0;
+import { TURNSTILE_ENABLED, TURNSTILE_SITE_KEY } from '../../config/turnstile';
 
 // Root.tsx falls back to the literal "not-configured" for GoogleOAuthProvider.
 // Treat it as unset here too — rendering the button with that placeholder sent

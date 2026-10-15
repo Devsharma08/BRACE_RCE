@@ -1,7 +1,5 @@
 import type { ExecuteCodeRequest, ExecutionResult } from "./types";
-
-const rawUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000").replace(/\/+$/, "");
-const API_BASE_URL = rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
+import { api } from "../../config/api";
 
 const getErrorMessage = (payload: unknown, fallback: string) => {
   if (payload && typeof payload === "object") {
@@ -10,10 +8,6 @@ const getErrorMessage = (payload: unknown, fallback: string) => {
     if (typeof message === "string") return message;
   }
   return fallback;
-};
-
-const readJson = async <T>(response: Response): Promise<T> => {
-  return (await response.json()) as T;
 };
 
 // In-flight request deduplication cache
@@ -38,6 +32,11 @@ function getRequestKey(request: ExecuteCodeRequest): string {
 // The list endpoint is paginated (default limit 25) — page through until the
 // server returns fewer rows than requested so the terminal sidebar always sees
 // the full catalog, not just the first page.
+//
+// Goes through the shared axios client (not raw fetch) so the resolved API
+// version is used: backendURL points at /api/v1, while a hand-rolled fetch to
+// /api/problems/* hits the legacy mount. Same controller today, but one
+// consistent path avoids "works signed in, breaks in incognito" drift.
 export const fetchSystemProblems = async (
   signal?: AbortSignal,
   pageSize = 100,
@@ -45,13 +44,11 @@ export const fetchSystemProblems = async (
   const all: any[] = [];
   let page = 1;
   for (;;) {
-    const response = await fetch(
-      `${API_BASE_URL}/problems/system?page=${page}&limit=${pageSize}`,
-      { signal, credentials: "include" },
-    );
-    if (!response.ok) throw new Error("Failed to load problems");
-    const data = await readJson<{ status: string; problems: any[] }>(response);
-    const batch = Array.isArray(data.problems) ? data.problems : [];
+    const res = await api.get("/problems/system", {
+      params: { page, limit: pageSize },
+      signal,
+    });
+    const batch = Array.isArray(res.data?.problems) ? res.data.problems : [];
     all.push(...batch);
     if (batch.length < pageSize) break;
     page += 1;
@@ -61,10 +58,8 @@ export const fetchSystemProblems = async (
 
 // Fetch a single problem by ID or github_oid
 export const fetchProblemById = async (id: string, signal?: AbortSignal) => {
-  const response = await fetch(`${API_BASE_URL}/problems/${encodeURIComponent(id)}`, { signal, credentials: "include" });
-  if (!response.ok) throw new Error("Failed to load problem");
-  const data = await readJson<{ status: string; problem: any }>(response);
-  return data.problem;
+  const res = await api.get(`/problems/${encodeURIComponent(id)}`, { signal });
+  return res.data?.problem;
 };
 
 export const executeCode = async (request: ExecuteCodeRequest): Promise<ExecutionResult> => {
@@ -103,28 +98,24 @@ export const executeCode = async (request: ExecuteCodeRequest): Promise<Executio
     inFlightRequests.delete(key);
   }, EXECUTE_REQUEST_TIMEOUT_MS);
 
+  // Goes through the shared axios client so guests ride the SAME versioned
+  // path (/api/v1) as every other page — the raw-fetch /api/execute legacy
+  // mount is what 404'd incognito visits while signed-in runs kept working.
+  // axios rejects non-2xx natively, and its `signal` replaces the manual
+  // response.ok check below.
   try {
-    const response = await fetch(`${API_BASE_URL}/execute`, {
-      method: "POST",
+    const res = await api.post<ExecutionResult>("/execute", request, {
       headers: {
-        "Content-Type": "application/json",
         // Custom marker enforced by the server's /execute UI-only guard
         // whenever the browser sends an Origin header (executionGuard.ts).
         // A cross-origin page cannot set a custom header without a preflight
         // the origin allow-list would reject.
         "X-Requested-With": "XMLHttpRequest",
       },
-      credentials: "include",
-      body: JSON.stringify(request),
       signal: controller.signal,
     });
 
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null);
-      throw new Error(getErrorMessage(errorPayload, "Failed to execute code"));
-    }
-
-    return await readJson<ExecutionResult>(response);
+    return res.data;
   } catch (error) {
     // Distinguish our own timeout from the "superseded by a newer submission"
     // abort, which is a normal user action and must keep its existing behaviour.
@@ -135,6 +126,16 @@ export const executeCode = async (request: ExecuteCodeRequest): Promise<Executio
           "s and was stopped. Compiled languages are slower to run and to " +
           "compile — try again, or switch to a lighter language.",
       );
+    }
+    // axios wraps non-2xx in an error with `response.data` — surface the
+    // server's message (bot-check / quota / validation) instead of "Request
+    // failed with status code N".
+    if (error && typeof error === "object" && "response" in error) {
+      const payload = (error as { response?: unknown }).response;
+      const data = (payload && typeof payload === "object" && "data" in payload)
+        ? (payload as { data?: unknown }).data
+        : undefined;
+      throw new Error(getErrorMessage(data, "Failed to execute code"));
     }
     throw error;
   } finally {

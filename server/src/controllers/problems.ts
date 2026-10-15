@@ -1,4 +1,4 @@
-import type { AuthRequest } from "../middleware/authentication";
+import type { AuthRequest } from "../middleware/authentication.js";
 import type { Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { Level } from "../generated/prisma/client.js";
@@ -13,9 +13,35 @@ import { withDisplayProblemName } from "../utils/problemName.js";
 const PROBLEMS_CACHE_PREFIX = "problems:";
 const PROBLEMS_CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
 
-const systemKey = (userId: string, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${userId}:system:${page}:${limit}`;
-const customKey = (userId: string, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${userId}:custom:${page}:${limit}`;
-const detailKey = (userId: string, id: string) => `${PROBLEMS_CACHE_PREFIX}${userId}:detail:${id}`;
+/**
+ * Guests all share one cache namespace, because an anonymous response carries
+ * no per-user data to distinguish them by. Without this an `undefined` userId
+ * would be interpolated into the key as the literal string "undefined" — which
+ * works today, but reads like a bug and is exactly what a later "cleanup" turns
+ * into a shared-cache leak.
+ */
+const GUEST_CACHE_NAMESPACE = "guest";
+const cacheNamespace = (userId?: string): string => userId ?? GUEST_CACHE_NAMESPACE;
+
+const systemKey = (userId: string | undefined, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:system:${page}:${limit}`;
+const customKey = (userId: string | undefined, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:custom:${page}:${limit}`;
+const detailKey = (userId: string | undefined, id: string) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:detail:${id}`;
+
+/**
+ * The per-user columns merged into a problem payload. Guests never receive
+ * them, and the join is skipped rather than run with an undefined key:
+ * Prisma reads `where: { userId: undefined }` as "no filter on this field", so
+ * the query would return EVERY user's progress row for the problem — solved
+ * flags, attempt counts and saved drafts included.
+ */
+const USER_PROGRESS_SELECT = {
+    isSolved: true,
+    solvedAt: true,
+    attempts: true,
+    lastCode: true,
+    lastLanguage: true,
+    submissionTimes: true,
+} as const;
 
 /**
  * Ship every stored test case to the client, WITH its real input and expected
@@ -50,7 +76,7 @@ class Problems {
     // GET ALL SYSTEM PROBLEMS (enriched with solved status for the current user) - WITH PAGINATION
     async getSystemProblems(req: AuthRequest, res: Response) {
         try {
-            const userId = req.userId as string;
+            const userId = req.userId as string | undefined;
             const validatedQuery = (req as any).validatedQuery || req.query;
             const page = Math.max(1, parseInt(String(validatedQuery.page ?? "1"), 10) || 1);
             const limit = Math.min(100, Math.max(1, parseInt(String(validatedQuery.limit ?? "25"), 10) || 25));
@@ -100,17 +126,11 @@ class Problems {
                             orderBy: { id: "asc" },
                             select: { id: true, input: true, expectedOutput: true, is_public: true }
                         },
-                        userProgress: {
-                            where: { userId },
-                            select: {
-                                isSolved: true,
-                                solvedAt: true,
-                                attempts: true,
-                                lastCode: true,
-                                lastLanguage: true,
-                                submissionTimes: true,
-                            }
-                        }
+                        userProgress: userId
+                            ? { where: { userId }, select: USER_PROGRESS_SELECT }
+                            : // Guest: skip the join entirely. An undefined key
+                              // would match every user's row instead of none.
+                              false,
                     }
                 }),
                 prisma.problem.count({ where: { isCustom: false } })
@@ -152,7 +172,7 @@ class Problems {
     // GET SINGLE PROBLEM BY ID (full detail with snippets, test cases, user progress)
     async getProblemById(req: AuthRequest, res: Response) {
         try {
-            const userId = req.userId as string;
+            const userId = req.userId as string | undefined;
             const id = req.params.id as string;
             const cacheKey = detailKey(userId, id);
 
@@ -175,17 +195,11 @@ class Problems {
                         orderBy: { id: "asc" },
                         select: { id: true, input: true, expectedOutput: true, is_public: true }
                     },
-                    userProgress: {
-                        where: { userId },
-                        select: {
-                            isSolved: true,
-                            solvedAt: true,
-                            attempts: true,
-                            lastCode: true,
-                            lastLanguage: true,
-                            submissionTimes: true,
-                        }
-                    }
+                    userProgress: userId
+                        ? { where: { userId }, select: USER_PROGRESS_SELECT }
+                        : // Guest: skip the join entirely. An undefined key
+                          // would match every user's row instead of none.
+                          false,
                 }
             });
 
