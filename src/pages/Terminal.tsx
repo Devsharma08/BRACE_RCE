@@ -90,6 +90,108 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
   return getLanguageStarterCode(lang, problem.name);
 };
 
+/**
+ * Standalone, immediately-runnable scratch programs — one per language.
+ *
+ * These are NOT the same as `getLanguageStarterCode`, which stays a bare
+ * library snippet on purpose. The distinction is load-bearing:
+ *
+ * `getLanguageStarterCode` is the cross-language fallback for a PROBLEM that
+ * has no stored snippet for the selected language. It is handed to the
+ * server's `prepareFinalCode`, which prepends its own generated driver — a
+ * `public class Main` for Java (codeExecution.ts) and an `int main()` for C and
+ * C++ — and then invokes the solution it finds. Giving these language fallbacks
+ * their own entry point produced duplicate-main / duplicate-class compile
+ * errors, so they correctly define only `solution` / `class Solution`.
+ *
+ * Scratch mode has no problem, so no driver is ever generated, and a snippet
+ * that only *declares* something runs and prints nothing. That is the bug these
+ * templates fix: each one is a complete program with a real entry point, so the
+ * moment the terminal is in scratch mode and Run is pressed, output appears.
+ *
+ * `c11` shares the C template: the server's `getLanguage` already normalizes
+ * `c11` → `c`, and Monaco maps it to the `c` language id. Without handling it
+ * here it fell through to `default:` and a guest selecting C11 was handed the
+ * JavaScript starter — right language name in the picker, wrong code in the
+ * editor.
+ */
+const SCRATCH_STARTERS: Record<SupportedLanguage, string> = {
+  javascript: `/**
+ * Scratch program — runs as-is.
+ *
+ * The trailing call is what makes this print. Replace the body, or delete the
+ * call and write top-level statements.
+ */
+var solution = function () {
+    for (var i = 0; 5 > i; i++) {
+        console.log(i);
+    }
+};
+
+solution();
+`,
+  python: `# Scratch program — runs as-is.
+#
+# The __main__ guard is what makes this print. Write top-level statements if you
+# prefer, or replace the body.
+def solution(*args):
+    for i in range(5):
+        print(i)
+
+
+if __name__ == "__main__":
+    solution()
+`,
+  java: `// Scratch program — runs as-is. `public class Main` is the entry point;
+// Piston runs the first top-level class in source-launcher mode.
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        for (int i = 0; 5 > i; i++) {
+            System.out.println(i);
+        }
+    }
+}
+`,
+  // C and C++ both need exactly one `main`. The driver path never sees these.
+  c: `// Scratch program — runs as-is.
+#include <stdio.h>
+
+int main() {
+    for (int i = 0; 5 > i; i++) {
+        printf("%d\\n", i);
+    }
+    return 0;
+}
+`,
+  c11: `// Scratch program — runs as-is.
+#include <stdio.h>
+
+int main() {
+    for (int i = 0; 5 > i; i++) {
+        printf("%d\\n", i);
+    }
+    return 0;
+}
+`,
+  cpp: `// Scratch program — runs as-is.
+#include <iostream>
+
+using namespace std;
+
+int main() {
+    for (int i = 0; 5 > i; i++) {
+        cout << i << endl;
+    }
+    return 0;
+}
+`,
+};
+
+const getScratchStarterCode = (lang: SupportedLanguage): string =>
+  SCRATCH_STARTERS[lang] ?? SCRATCH_STARTERS.javascript;
+
 // ─────────────────────────────────────────────────────────────
 // Terminal Component
 // ─────────────────────────────────────────────────────────────
@@ -466,10 +568,11 @@ const Terminal = () => {
       // TerminalContext.changeLanguage will restore saved code for this language
       // or set empty string if none exists - then we set boilerplate
       const savedCode = getCodeForLanguage(newLang);
-      // In scratch mode there is no problem — fall back to the default
-      // language wrapper, never a stale problem snippet.
+      // In scratch mode there is no problem — fall back to a runnable scratch
+      // program, never a stale problem snippet (and never a bare declaration
+      // that would print nothing).
       if (!savedCode) {
-        setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getLanguageStarterCode(newLang));
+        setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getScratchStarterCode(newLang));
       }
     },
     [activeProblem, setLanguage, setCode, getCodeForLanguage]
@@ -477,9 +580,9 @@ const Terminal = () => {
 
   // ── Reset code to starter boilerplate ─────────────────────
   const handleResetCode = useCallback(() => {
-    // Scratch reset = default wrapper for the current language (no problem to
-    // pull a template from).
-    const starter = activeProblem ? getBoilerplate(activeProblem, language) : getLanguageStarterCode(language);
+    // Scratch reset = a runnable scratch program for the current language (no
+    // problem to pull a template from).
+    const starter = activeProblem ? getBoilerplate(activeProblem, language) : getScratchStarterCode(language);
     setCode(starter);
     // Also update the per-language storage
     setCodeForLanguage(language, starter);
