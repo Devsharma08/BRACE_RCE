@@ -45,6 +45,21 @@ const getErrorMessage = (err: unknown): string => {
 // Language / Snippet Helpers
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Stable id for the scratch file that backs "no-problem" mode.
+ *
+ * Must be a real, non-empty string: several guards in this file and in
+ * MonacoIDE key off a truthy `activeFile`/`oid` (the workspace fallback below,
+ * the effect that pushes `code` into the Monaco model, and the per-language
+ * fileKey). An empty string turns any of them into a silent no-op, which is
+ * what made the scratch editor render as a broken empty catalog.
+ *
+ * The `local-` prefix is the established convention for a file with no stored
+ * problem — Battle.tsx uses "local-battle" — and codeExecution.ts checks it
+ * explicitly to skip the DB lookup and grade the submitted source directly.
+ */
+const SCRATCH_FILE_ID = "local-scratch";
+
 const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string): string => {
   switch (lang) {
     case "python":
@@ -309,7 +324,21 @@ const Terminal = () => {
   const enterScratchMode = useCallback(() => {
     setMode('no-problem');
     setActiveProblem(null);
-    setActiveFile("");
+    // A real, stable id rather than "". Three separate guards key off `activeFile`
+    // being truthy and an empty string fails all of them, which is what made the
+    // scratch editor look broken:
+    //   1. the workspace below renders the "No problems in the databank yet"
+    //      fallback instead of the editor + output panel;
+    //   2. MonacoIDE only pushes `code` into the model when `oid` is truthy
+    //      (`if (editor && monaco && oid)`), so the starter wrapper set below
+    //      never reached the editor;
+    //   3. `activeFileKey` collapsed to "", so the Monaco model path was
+    //      unstable and per-language code could not round-trip.
+    // The `local-` prefix is the existing convention for a file with no stored
+    // problem (Battle uses "local-battle") and is handled deliberately on the
+    // server: codeExecution skips the DB fetch for `local-` oids and grades the
+    // submitted source directly against custom input.
+    setActiveFile(SCRATCH_FILE_ID);
     setTestCases([]);
     setOutput(null);
     setOutputText("");
