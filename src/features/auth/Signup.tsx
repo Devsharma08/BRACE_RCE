@@ -49,6 +49,11 @@ export const Signup = () => {
   const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  // const toast = useToast();
   
   const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -97,19 +102,135 @@ export const Signup = () => {
         captchaToken: captchaToken ?? undefined,
         avatarUrl: getInitialsAvatar(username)
       });
-      await checkAuth(); 
-      navigate('/');
+      // Send OTP for email verification
+      await api.post(`/auth/otp/send`, { email });
+      setOtpSent(true);
+      setLoading(false);
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed");
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleClick = () => {
+  const handleOtpVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || otpCode.length !== 6) {
+      setOtpError("Please enter a 6-digit code.");
+      return;
+    }
+    try {
+      setOtpLoading(true);
+      setOtpError('');
+      await api.post(`/auth/otp/verify`, { email, otp: otpCode });
+      // OTP verified, user is logged in
+      navigate('/');
+    } catch (err: any) {
+      setOtpError(err.response?.data?.message || "Invalid or expired code");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+const handleGoogleClick = () => {
     const redirectUri = `${window.location.origin}/signup`;
     initiateGoogleOAuthPKCE(GOOGLE_CLIENT_ID, redirectUri);
   };
+
+  const formContent = otpSent ? (
+    <form onSubmit={handleOtpVerify} className="space-y-5">
+      <div>
+        <label className="block text-sm font-medium text-subtle mb-2">Verification Code</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint">
+            <Lock size={18} />
+          </div>
+          <input
+            type="text"
+            value={otpCode}
+            onChange={(e) => setOtpCode(e.target.value)}
+            maxLength={6}
+            className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors"
+            placeholder="123456"
+            required
+            autoComplete="one-time-code"
+          />
+        </div>
+      </div>
+      {otpError && (
+        <div className="mb-4 p-3 bg-accent-danger/10 border border-accent-danger/50 rounded-none flex items-center gap-2 text-accent-danger text-sm">
+          <AlertCircle size={18} />
+          <span>{otpError}</span>
+        </div>
+      )}
+      <button
+        type="submit"
+        disabled={otpLoading || otpCode.length !== 6}
+        className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200"
+      >
+        {otpLoading ? "Verifying..." : "Verify"} {!otpLoading && <ArrowRight size={18} />}
+      </button>
+      <div className="mt-4 text-center text-sm text-subtle">
+        <button
+          type="button"
+          onClick={async () => {
+            await api.post(`/auth/otp/send`, { email });
+            toast.success("OTP resent");
+          }}
+          disabled={otpLoading}
+          className="text-accent hover:underline"
+        >
+          Resend code
+        </button>
+      </div>
+    </form>
+  ) : (
+    <form onSubmit={handleSignup} className="space-y-5">
+      <div>
+        <label className="block text-sm font-medium text-subtle mb-2">Username</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><User size={18} /></div>
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="CyberCoder" required />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-subtle mb-2">Password</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
+        </div>
+      </div>
+
+      {TURNSTILE_ENABLED ? (
+        <div className="flex justify-center py-2">
+          <Turnstile
+            key={captchaKey}
+            siteKey={TURNSTILE_SITE_KEY}
+            onSuccess={(token) => setCaptchaToken(token)}
+            onExpire={resetCaptcha}
+            onError={resetCaptcha}
+            options={{ theme: 'dark' }}
+          />
+        </div>
+      ) : (
+        <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
+          Bot protection not configured
+        </p>
+      )}
+
+      <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+        {loading ? "Creating account..." : "Sign Up"} {!loading && <ArrowRight size={18} />}
+      </button>
+    </form>
+  );
 
   if (authLoading) return <PageSkeleton />;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
@@ -152,7 +273,7 @@ export const Signup = () => {
 
       {/* Right Side: Form */}
       <div className="flex items-center justify-center px-4 py-12 relative">
-        <div className="max-w-md w-full bg-raised border border-accent-primary/15 p-8 relative z-10">
+        <div className="max-w-md w-full bg-surface bg-opacity-90 border border-accent/20 rounded-lg shadow-card p-8 relative z-10">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-fg mb-2">Create account</h1>
             <p className="text-subtle">Join the battle arena</p>
@@ -165,52 +286,7 @@ export const Signup = () => {
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-subtle mb-2">Username</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><User size={18} /></div>
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="CyberCoder" required />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-subtle mb-2">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
-              </div>
-            </div>
-
-            {TURNSTILE_ENABLED ? (
-              <div className="flex justify-center py-2">
-                <Turnstile
-                  key={captchaKey}
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onSuccess={(token) => setCaptchaToken(token)}
-                  onExpire={resetCaptcha}
-                  onError={resetCaptcha}
-                  options={{ theme: 'dark' }}
-                />
-              </div>
-            ) : (
-              <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
-                Bot protection not configured
-              </p>
-            )}
-
-            <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
-              {loading ? "Creating account..." : "Sign Up"} {!loading && <ArrowRight size={18} />}
-            </button>
-          </form>
+          {formContent}
 
           {GOOGLE_AUTH_ENABLED ? (
             <>

@@ -19,6 +19,7 @@ const Layout = () => {
   const isFullscreen =
     pathname === '/signin' ||
     pathname === '/signup' ||
+    pathname === '/reset-password' ||
     pathname.startsWith('/battle') ||
     pathname.startsWith('/terminal');
 

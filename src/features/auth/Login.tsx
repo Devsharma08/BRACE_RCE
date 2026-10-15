@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { Turnstile } from '@marsidev/react-turnstile';
-import { Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
+import { Mail, Lock, AlertCircle, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 import {api} from "../../config/api";
@@ -31,6 +31,13 @@ const GOOGLE_AUTH_ENABLED =
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Which panel the auth card shows: password sign-in, one-time email code, or
+  // the forgot-password request.
+  const [view, setView] = useState<'signin' | 'otp' | 'reset'>('signin');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  // Success/informational message shown above the form (e.g. "code sent").
+  const [info, setInfo] = useState('');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   // Remount nonce: bump whenever the widget reports an expired/errored token
   // (e.g. a page kept open across logout) so a fresh challenge renders.
@@ -86,6 +93,65 @@ export const Login = () => {
     }
   };
 
+  // Reset the card back to password sign-in, clearing transient state.
+  const switchView = (next: 'signin' | 'otp' | 'reset') => {
+    setView(next);
+    setError('');
+    setInfo('');
+    setOtpSent(false);
+    setOtp('');
+  };
+
+  // POST /auth/otp/send — the server emails a single-use 6-digit code.
+  const sendOtp = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      setInfo('');
+      await api.post(`/auth/otp/send`, { email });
+      setOtpSent(true);
+      setInfo(`A 6-digit code was sent to ${email}. It expires in 10 minutes.`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Could not send the verification code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpSent) {
+      await sendOtp();
+      return;
+    }
+    try {
+      setLoading(true);
+      setError('');
+      await api.post(`/auth/otp/verify`, { email, otp });
+      await checkAuth();
+      navigate('/');
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Invalid or expired verification code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError('');
+      setInfo('');
+      await api.post(`/auth/password-reset/request`, { email });
+      setInfo("If an account with that email exists, a password reset link has been sent. Check your inbox.");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Could not send the password reset email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleClick = () => {
     const redirectUri = `${window.location.origin}/signin`;
     initiateGoogleOAuthPKCE(GOOGLE_CLIENT_ID, redirectUri);
@@ -113,18 +179,35 @@ export const Login = () => {
           <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">Real</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Execution</div></div>
         </div>
       </div>
-      <div className="flex items-center justify-center px-4 py-12 relative">
-        <div className="max-w-md w-full bg-raised border border-accent-primary/15 p-8 relative z-10">
+      <div className="flex items-center justify-center px-6 py-12 relative">
+        <div className="max-w-lg w-full bg-surface bg-opacity-90 border border-accent/20 rounded-lg shadow-card p-8 relative z-10">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-fg mb-2">Welcome back</h1>
-            <p className="text-subtle">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-fg mb-2">
+              {view === 'signin' ? 'Welcome back' : view === 'otp' ? 'Email code sign-in' : 'Reset password'}
+            </h1>
+            <p className="text-subtle">
+              {view === 'signin'
+                ? 'Sign in to your account'
+                : view === 'otp'
+                  ? otpSent
+                    ? `We sent a 6-digit code to ${email}`
+                    : 'Sign in with a one-time code sent to your email'
+                  : "Enter your email and we'll send you a reset link"}
+            </p>
           </div>
           {error && (
-            <div className="mb-6 p-4 bg-accent-danger/10 border border-accent-danger/50 rounded-none flex items-center gap-3 text-accent-danger">
+            <div className="mb-6 p-4 bg-accent-danger/10 border border-accent-danger/30 rounded-lg flex items-center gap-3 text-accent-danger">
               <AlertCircle size={20} />
               <p className="text-sm">{error}</p>
             </div>
           )}
+          {info && (
+            <div className="mb-6 p-4 bg-accent/10 border border-accent/30 rounded-lg flex items-center gap-3 text-accent">
+              <Mail size={20} />
+              <p className="text-sm">{info}</p>
+            </div>
+          )}
+          {view === 'signin' && (
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
@@ -134,7 +217,12 @@ export const Login = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-subtle mb-2">Password</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-subtle">Password</label>
+                <button type="button" onClick={() => switchView('reset')} className="text-xs text-accent hover:underline transition-colors">
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
@@ -156,18 +244,74 @@ export const Login = () => {
                 Bot protection not configured
               </p>
             )}
-            <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+            <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
               {loading ? "Signing in..." : "Sign In"} {!loading && <ArrowRight size={18} />}
             </button>
+            <button type="button" onClick={() => switchView('otp')} disabled={loading} className="w-full text-sm text-subtle hover:text-accent transition-colors py-1">
+              Sign in with a one-time email code instead
+            </button>
           </form>
-{GOOGLE_AUTH_ENABLED ? (
+          )}
+
+          {view === 'otp' && (
+            <form onSubmit={handleOtpSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors disabled:opacity-60" placeholder="you@example.com" required />
+                </div>
+              </div>
+              {otpSent && (
+                <div>
+                  <label className="block text-sm font-medium text-subtle mb-2">Verification Code</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><KeyRound size={18} /></div>
+                    <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none font-mono tracking-[0.4em] text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="000000" required />
+                  </div>
+                </div>
+              )}
+              <button type="submit" disabled={loading || (otpSent && otp.length !== 6)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+                {loading ? (otpSent ? "Verifying..." : "Sending...") : otpSent ? "Verify & Sign In" : "Send Code"} {!loading && <ArrowRight size={18} />}
+              </button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" onClick={() => switchView('signin')} disabled={loading} className="text-subtle hover:text-accent transition-colors inline-flex items-center gap-1">
+                  <ArrowLeft size={14} /> Password sign in
+                </button>
+                {otpSent && (
+                  <button type="button" onClick={sendOtp} disabled={loading} className="text-accent hover:underline disabled:opacity-50">
+                    Resend code
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+
+          {view === 'reset' && (
+            <form onSubmit={handlePasswordResetRequest} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
+                </div>
+              </div>
+              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+                {loading ? "Sending..." : "Send Reset Link"} {!loading && <ArrowRight size={18} />}
+              </button>
+              <button type="button" onClick={() => switchView('signin')} disabled={loading} className="w-full text-sm text-subtle hover:text-accent transition-colors inline-flex items-center justify-center gap-1">
+                <ArrowLeft size={14} /> Back to sign in
+              </button>
+            </form>
+          )}
+{view === 'signin' && (GOOGLE_AUTH_ENABLED ? (
             <>
               <div className="mt-8 flex items-center gap-4 before:h-px before:flex-1 before:bg-surface-hover after:h-px after:flex-1 after:bg-surface-hover"><span className="text-xs font-medium text-subtle uppercase">Or continue with</span></div>
               <div className="mt-6 flex justify-center">
                 <button
                   type="button"
                   onClick={handleGoogleClick}
-                  className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-3 px-4 rounded-none font-bold transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-surface/10 hover:bg-surface/20 border border-accent/30 text-gray-800 py-3 px-4 rounded-none font-bold transition-all duration-200"
                   disabled={loading}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24">
@@ -184,7 +328,7 @@ export const Login = () => {
             <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
               Google sign-in not configured
             </p>
-          )}
+          ))}
           <p className="mt-8 text-center text-sm text-subtle">Don't have an account?{' '}<Link to="/signup" className="text-accent hover:underline font-medium transition-colors">Create one now</Link></p>
         </div>
       </div>

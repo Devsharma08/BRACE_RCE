@@ -114,6 +114,26 @@ export const googleCallbackSchema = z.object({
   redirect_uri: z.string().url("Invalid redirect URI"),
 });
 
+// ---- OTP + password-reset schemas ----
+
+export const otpSendSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const otpVerifySchema = z.object({
+  email: z.string().email("Invalid email format"),
+  otp: z.string().min(6, "Invalid OTP").max(6, "Invalid OTP"),
+});
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  oobCode: z.string().min(1, "Reset code is required"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
+});
+
 // Profile schemas
 export const updateProfileSchema = z.object({
   username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_-]+$/).optional(),

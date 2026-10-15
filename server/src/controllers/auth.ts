@@ -5,7 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { getToken } from "../lib/jwt.js";
 import type { AuthRequest } from "../middleware/authentication.js";
 import { OAuth2Client } from "google-auth-library";
-
+import { generateOtp } from "../lib/otp.js";
+import { sendGmailEmail } from "../lib/gmail.js";
+import { isFirebaseConfigured, getFirebaseAuth } from "../lib/firebase.js";
+import { setCached, getCached, deleteCached } from "../lib/cache.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, confirmPasswordReset } from "firebase/auth";
 
 export class AuthController {
 
@@ -31,7 +35,7 @@ export class AuthController {
         else if (username.length > 64) errors.push("username must be 64 characters or fewer");
 
         if (!email) errors.push("email is required");
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("email is invalid");
+        else if (!/^[^\s@]+@[^\s@]+\..+$/.test(email)) errors.push("email is invalid");
 
         if (!password) errors.push("password is required");
         else if (password.length < 8) errors.push("password must be at least 8 characters");
@@ -40,11 +44,233 @@ export class AuthController {
         return { username, email, password, errors };
     }
 
+    /**
+     * Send a single-use verification code to the user's email. The code is
+     * generated locally, stored in the in-memory cache with a 10-minute TTL, and
+     * delivered through Gmail's SMTP server.
+     */
+    otpSend = async (req: Request, res: Response) => {
+        const { email } = req.body;
+        if (typeof email !== "string") return res.status(400).json({ message: "Email is required" });
+
+        const normalized = email.trim().toLowerCase();
+        const user = await prisma.user.findUnique({ where: { email: normalized } });
+        if (!user) return res.status(404).json({ message: "No account found with this email address" });
+
+        let otp: string;
+        let storedOtp: { otp: string; expiresAt: number };
+        try {
+            otp = generateOtp();
+            const key = `otp:${normalized}`;
+            deleteCached(key);
+            storedOtp = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
+            setCached(key, storedOtp, 600);
+        } catch (err) {
+            console.error("Error generating OTP:", err);
+            return res.status(500).json({ message: "Could not generate a verification code" });
+        }
+
+        try {
+            await sendGmailEmail({
+                to: normalized,
+                subject: "Your BRACE RCE login code",
+                text: `Your BRACE RCE verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
+            });
+        } catch (err) {
+            console.error("Error sending OTP email:", err);
+            deleteCached(`otp:${normalized}`);
+            return res.status(500).json({ message: "Could not send the verification code. Please check your email settings." });
+        }
+
+        res.status(200).json({ message: "Verification code sent to your email" });
+    }
+
+    /**
+     * Verify an OTP that was previously emailed via /otp/send. On success the
+     * user is authenticated and issued the same session cookie + JWT used by the
+     * legacy /signin route, so OTP login is a drop-in replacement.
+     */
+    otpVerify = async (req: Request, res: Response) => {
+        const { email, otp } = req.body;
+        if (typeof email !== "string" || typeof otp !== "string") {
+            return res.status(400).json({ message: "Email and OTP are required" });
+        }
+        const normalized = email.trim().toLowerCase();
+
+        const stored: { otp: string; expiresAt: number } | undefined = getCached(`otp:${normalized}`);
+        if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
+            deleteCached(`otp:${normalized}`);
+            return res.status(401).json({ message: "Invalid or expired verification code" });
+        }
+        deleteCached(`otp:${normalized}`);
+
+        try {
+            // The OTP proves mailbox ownership for this email, so we issue our own
+            // session directly instead of attempting a Firebase password sign-in
+            // (the OTP is not a Firebase password).
+            const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
+            if (!prismaUser) {
+                return res.status(401).json({ message: "Invalid or expired verification code" });
+            }
+            return this.sendAuthResponse(res, prismaUser, { uid: prismaUser.id }, normalized);
+        } catch (err: any) {
+            console.error("OTP sign-in error:", err);
+            return res.status(401).json({ message: "Invalid or expired verification code" });
+        }
+    }
+
+    /** Request a Firebase password reset email (sent to the user's registered email). */
+    passwordResetRequest = async (req: Request, res: Response) => {
+        if (!isFirebaseConfigured()) return res.status(503).json({ message: "Password reset is not configured on the server" });
+        const { email } = req.body;
+        if (typeof email !== "string") return res.status(400).json({ message: "Email is required" });
+        const normalized = email.trim().toLowerCase();
+
+        try {
+            await sendPasswordResetEmail(getFirebaseAuth(), normalized);
+        } catch (err: any) {
+            // Deliberately swallowed: reporting failures here would let an attacker
+            // distinguish registered from unregistered emails (account enumeration).
+            // The failure is visible server-side for operators to diagnose.
+            console.error("Password reset email error:", err);
+        }
+
+        // Always return the same response so the existence of the account cannot be inferred from this endpoint.
+        res.status(200).json({ message: "If an account with this email exists, a password reset link has been sent." });
+    }
+
+    /** Confirm the reset using the oobCode from the Firebase reset email. */
+    passwordResetConfirm = async (req: Request, res: Response) => {
+        if (!isFirebaseConfigured()) return res.status(503).json({ message: "Password reset is not configured on the server" });
+        const { oobCode, newPassword } = req.body;
+        if (typeof oobCode !== "string" || typeof newPassword !== "string") {
+            return res.status(400).json({ message: "Oob code and new password are required" });
+        }
+
+        try {
+            await confirmPasswordReset(getFirebaseAuth(), oobCode, newPassword);
+        } catch (err: any) {
+            console.error("Password reset confirm error:", err);
+            if (err.code === "auth/weak-password") return res.status(400).json({ message: "The new password is invalid" });
+            if (["auth/expired-action-code", "auth/invalid-action-code", "auth/user-not-found"].includes(err.code)) {
+                return res.status(400).json({ message: "The reset link is invalid or has expired" });
+            }
+            return res.status(400).json({ message: "Could not reset the password" });
+        }
+
+        res.status(200).json({ message: "Password reset successful. You can now sign in with your new password." });
+    }
+
+    /**
+     * Firebase-backed account creation. Registers the user with Firebase Auth
+     * and synchronises a local Prisma record by email (so existing databases
+     * keep their user rows and the two systems stay "perfectly compatible").
+     */
+    firebaseSignup = async (req: Request, res: Response) => {
+        if (!isFirebaseConfigured()) return res.status(503).json({ message: "Email registration is not configured on the server" });
+        const { username, email, password, avatarUrl } = req.body;
+        const { errors } = this.validateSignupBody(req.body);
+        if (errors.length > 0) return res.status(400).json({ message: errors[0] });
+
+        const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+        // Existing records (created with the legacy bcrypt flow) must not be duplicated. Reject with a friendly "sign in" prompt.
+        const existing = await prisma.user.findUnique({ where: { email: normalized } });
+        if (existing) {
+            return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
+        }
+
+        try {
+            await createUserWithEmailAndPassword(getFirebaseAuth(), normalized, password);
+        } catch (err: any) {
+            if (err.code === "auth/email-already-in-use") {
+                return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
+            }
+            console.error("Firebase signup error:", err);
+            return res.status(500).json({ message: "Something went wrong during registration" });
+        }
+
+        try {
+            const userId = uuidv4();
+            await prisma.user.create({
+                data: {
+                    id: userId,
+                    username,
+                    email: normalized,
+                    avatarUrl: typeof avatarUrl === "string" ? avatarUrl : undefined,
+                    role: "USER",
+                    updatedAt: new Date(),
+                },
+            });
+            await this.setTokenCookie(res, userId);
+            res.status(201).json({ message: "Registered successfully", user: { id: userId, username, avatarUrl: avatarUrl || undefined, email: normalized } });
+        } catch (err) {
+            console.error("Error creating local user record:", err);
+            return res.status(500).json({ message: "Something went wrong" });
+        }
+    }
+
+    /**
+     * Firebase-first sign-in. Existing email/password accounts that predate this
+     * integration keep working via the bcrypt fallback.
+     */
+    firebaseSignin = async (req: Request, res: Response) => {
+        const { email, password } = req.body;
+        if (typeof email !== "string" || typeof password !== "string") {
+            return res.status(400).json({ message: "Invalid request body" });
+        }
+        const normalized = email.trim().toLowerCase();
+
+        if (isFirebaseConfigured()) {
+            try {
+                const result = await signInWithEmailAndPassword(getFirebaseAuth(), normalized, password);
+                const { user } = result;
+                const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
+                return this.sendAuthResponse(res, prismaUser, user, normalized);
+            } catch (err) {
+                // Firebase rejected the credentials (or the account predates the
+                // Firebase migration) — fall through to the legacy bcrypt check so
+                // pre-existing accounts keep working.
+                console.error("Firebase sign-in failed, falling back to local credentials:", err);
+            }
+        }
+
+        try {
+            const user = await prisma.user.findUnique({ where: { email: normalized } });
+            if (!user) return res.status(404).json({ message: "User not found" });
+            const validPassword = await bcrypt.compare(password, user.password || "");
+            if (!validPassword) return res.status(401).json({ message: "Invalid password" });
+            await this.setTokenCookie(res, user.id);
+            return res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
+        } catch (bcryptErr) {
+            console.error("Local sign-in fallback failed:", bcryptErr);
+            return res.status(500).json({ message: "Something went wrong" });
+        }
+    }
+
+    signin = async (req: Request, res: Response) => {
+        try {
+            // Prefer Firebase for users created by this controller; fall back to bcrypt so the pre-existing account pool is unaffected.
+            const response = await this.firebaseSignin(req, res);
+            return response;
+        } catch (error) {
+            console.error("Error in signin:", error);
+            return res.status(500).json({ message: "Something went wrong" });
+        }
+    }
+
     signup = async (req: Request, res: Response) => {
         const { username, email, password, errors } = this.validateSignupBody(req.body);
 
         if (errors.length > 0) {
             return res.status(400).json({ message: errors[0] });
+        }
+
+        // Prefer Firebase so all new accounts live in Firebase Auth. When Firebase
+        // is not configured (self-hosted/dev setups) fall back to the legacy bcrypt
+        // path so signup keeps working exactly as before.
+        if (isFirebaseConfigured()) {
+            return this.firebaseSignup(req, res);
         }
 
         try {
@@ -72,31 +298,6 @@ export class AuthController {
             console.error("Error in signup:", error);
             return res.status(500).json({ message: "Something went wrong" })
         }
-
-    }
-
-    signin = async (req: Request, res: Response) => {
-        try {
-            const { email, password } = req.body;
-            if (typeof email !== "string" || typeof password !== "string") {
-                return res.status(400).json({ message: "Invalid request body" });
-            }
-
-            const user = await prisma.user.findUnique({ where: { email } })
-            if (!user) {
-                return res.status(404).json({ message: "User not found" })
-            }
-            const validPassword = await bcrypt.compare(password, user.password || "")
-            if (!validPassword) {
-                return res.status(401).json({ message: "Invalid password" })
-            }
-            await this.setTokenCookie(res, user.id);
-
-            res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
-        } catch (error) {
-            console.error("Error in signin:", error);
-            return res.status(500).json({ message: "Something went wrong" })
-        }
     }
 
     signout = async (req: Request, res: Response) => {
@@ -107,25 +308,30 @@ export class AuthController {
     me = async (req: AuthRequest, res: Response) => {
         try {
             const userId = req.userId;
-            // `role` is returned so the client can hide privileged surfaces.
-            // NOTE: this is UX only, never authorization — every admin endpoint
-            // independently re-checks the role server-side (isAdminReq) and
-            // returns 403. Do not treat a client-side check as a security boundary.
             const user = await prisma.user.findUnique({ where: { id: userId as string }, select: { id: true, username: true, avatarUrl: true, email: true, role: true } })
             if (!user) {
                 return res.status(404).json({ message: "User not found" });
             }
             return res.status(200).json({ message: "User found", user })
-        } catch (error) {
+        } catch {
             return res.status(500).json({ message: "Something went wrong" });
         }
     }
 
-    /**
-     * Find an existing account by email or create one from the Google profile.
-     * Shared by the ID-token flow (/google) and the PKCE code flow
-     * (/google/callback) so both produce identical accounts.
-     */
+    /** Shared helper that issues the session cookie + JWT and returns the user payload. */
+    private async sendAuthResponse(res: Response, prismaUser: any, firebaseUser: any, email: string) {
+        const userId = prismaUser?.id ?? firebaseUser.uid;
+        await this.setTokenCookie(res, userId);
+        const userPayload = prismaUser
+            ? { id: prismaUser.id, username: prismaUser.username, avatarUrl: prismaUser.avatarUrl, email }
+            : { id: firebaseUser.uid, username: firebaseUser.displayName ?? null, avatarUrl: firebaseUser.photoURL ?? null, email };
+        return res.status(200).json({
+            message: "Logged in successfully",
+            token: getToken(userId),
+            user: userPayload,
+        });
+    }
+
     private async findOrCreateGoogleUser(payload: { email?: string | null; name?: string | null; picture?: string | null }) {
         const email = payload.email as string;
 
@@ -134,7 +340,7 @@ export class AuthController {
         });
 
         if (!user) {
-            let emailPrefix = email ? email.split('@')[0] : 'user';
+            const emailPrefix = email ? email.split('@')[0] : 'user';
             let baseUsername = (payload.name || emailPrefix || 'user').replace(/[^a-zA-Z0-9_]/g, '');
             if (!baseUsername) baseUsername = "user";
             let count = 0;
@@ -202,21 +408,14 @@ export class AuthController {
                     avatarUrl: user.avatarUrl
                 }
             });
+        } catch (error) {
+            console.error("error in google auth", error);
+            return res.status(500).json({
+                message: "Unable to process google auth"
+            });
         }
-        catch(error) {
-        console.error("error in google auth", error);
-        return res.status(500).json({
-            message: "Unable to process google auth"
-        });
     }
-}
 
-    /**
-     * Complete the PKCE authorization-code flow started by the client
-     * (redirect_uri = the page that received ?code=). Exchange the code with
-     * Google, verify the returned ID token, then create/lookup the account and
-     * set the session cookie — same account semantics as the ID-token flow.
-     */
     googleCallback = async (req: Request, res: Response) => {
         const google_client_id = process.env.GOOGLE_CLIENT_ID;
         if (!google_client_id || !google_client_id.trim() || google_client_id.trim() === "not-configured") {
@@ -228,8 +427,6 @@ export class AuthController {
         const { code, code_verifier, redirect_uri } = req.body;
 
         try {
-            // GOOGLE_CLIENT_SECRET is only required for confidential "Web
-            // application" clients; public/desktop clients verify PKCE alone.
             const client = new OAuth2Client(google_client_id, process.env.GOOGLE_CLIENT_SECRET);
 
             const { tokens } = await client.getToken({
@@ -264,8 +461,7 @@ export class AuthController {
                     avatarUrl: user.avatarUrl
                 }
             });
-        }
-        catch (error) {
+        } catch (error) {
             console.error("error in google callback", error);
             return res.status(401).json({
                 message: "Google authorization failed"
