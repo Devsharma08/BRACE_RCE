@@ -115,15 +115,15 @@ export const Root = () => {
                         element={<DataStructureDetail />}
                       />
 
-{/* Public Routes - Terminal & Problems accessible without auth */}
-                       <Route path="terminal" element={
-                         <TerminalProvider>
-                           <Terminal />
-                         </TerminalProvider>
-                       } />
-                       <Route path="/problems" element={<Problems />} />
+ {/* Terminal is public so guests can experiment before signing up. */}
+                        <Route path="terminal" element={
+                          <TerminalProvider>
+                            <Terminal />
+                          </TerminalProvider>
+                        } />
 
-                       {/* Protected Routes */}
+                        {/* Protected Routes */}
+
    
                        <Route element={<ProtectedRoute />}>
                          {/* Admin Console Routes.
@@ -155,9 +155,10 @@ export const Root = () => {
                              Child paths are relative — React Router v7 throws
                              "Absolute route path ... is not valid" at runtime
                              and tsc does not catch it. */}
-                         <Route element={<ConsoleShell />}>
-                           <Route path="/dashboard" element={<Dashboard />} />
-                           <Route path="/friends" element={<FriendsDashboard />} />
+                          <Route element={<ConsoleShell />}>
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/problems" element={<Problems />} />
+                            <Route path="/friends" element={<FriendsDashboard />} />
                            <Route path="/profile" element={<Profile />} />
                            {/* Post-battle review — ownership-checked match detail */}
                            <Route path="/analysis/:matchId" element={<MatchAnalysis />} />

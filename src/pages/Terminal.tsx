@@ -116,77 +116,12 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
  * editor.
  */
 const SCRATCH_STARTERS: Record<SupportedLanguage, string> = {
-  javascript: `/**
- * Scratch program — runs as-is.
- *
- * The trailing call is what makes this print. Replace the body, or delete the
- * call and write top-level statements.
- */
-var solution = function () {
-    for (var i = 0; 5 > i; i++) {
-        console.log(i);
-    }
-};
-
-solution();
-`,
-  python: `# Scratch program — runs as-is.
-#
-# The __main__ guard is what makes this print. Write top-level statements if you
-# prefer, or replace the body.
-def solution(*args):
-    for i in range(5):
-        print(i)
-
-
-if __name__ == "__main__":
-    solution()
-`,
-  java: `// Scratch program — runs as-is. `public class Main` is the entry point;
-// Piston runs the first top-level class in source-launcher mode.
-import java.util.*;
-
-public class Main {
-    public static void main(String[] args) {
-        for (int i = 0; 5 > i; i++) {
-            System.out.println(i);
-        }
-    }
-}
-`,
-  // C and C++ both need exactly one `main`. The driver path never sees these.
-  c: `// Scratch program — runs as-is.
-#include <stdio.h>
-
-int main() {
-    for (int i = 0; 5 > i; i++) {
-        printf("%d\\n", i);
-    }
-    return 0;
-}
-`,
-  c11: `// Scratch program — runs as-is.
-#include <stdio.h>
-
-int main() {
-    for (int i = 0; 5 > i; i++) {
-        printf("%d\\n", i);
-    }
-    return 0;
-}
-`,
-  cpp: `// Scratch program — runs as-is.
-#include <iostream>
-
-using namespace std;
-
-int main() {
-    for (int i = 0; 5 > i; i++) {
-        cout << i << endl;
-    }
-    return 0;
-}
-`,
+  javascript: "// Scratch program — runs as-is.",
+  python: "# Scratch program — runs as-is.",
+  java: "// Scratch program — runs as-is.",
+  c: "// Scratch program — runs as-is.",
+  c11: "// Scratch program — runs as-is.",
+  "c++": "// Scratch program — runs as-is.",
 };
 
 const getScratchStarterCode = (lang: SupportedLanguage): string =>

@@ -12,6 +12,7 @@ import {
   User,
   UserPlus,
   X,
+  CircleHelp,
 } from 'lucide-react'
 import { NotificationCenter } from '../features/NotificationCenter'
 
@@ -25,11 +26,10 @@ import { NotificationCenter } from '../features/NotificationCenter'
 const links = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
-  { href: '/friends', label: 'Friends', icon: UserPlus, auth: true },
   { href: '/terminal', label: 'Terminal', icon: Terminal },
+  { href: '/problems', label: 'Problems', icon: CircleHelp },
+  { href: '/friends', label: 'Friends', icon: UserPlus, auth: true },
   { href: '/about', label: 'About', icon: Info },
-  // Admin-only. `admin: true` entries are filtered on the role so regular users
-  // never see a link that would land them on a clearance-denied screen.
   { href: '/admin', label: 'Admin', icon: Shield, admin: true },
 ]
 
