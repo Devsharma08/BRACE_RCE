@@ -9,7 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
 import { getDivision } from "../../hooks/useLeaderboard";
@@ -28,6 +28,7 @@ const NAV_LINKS = [
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { collapsed, toggle } = useSidebar();
   const displayName = (user?.username || "DEV").toUpperCase();
   const tier = getDivision(rating ?? 1000);
@@ -161,7 +162,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
             </div>
           )}
           <button
-            onClick={logout}
+            onClick={async () => {
+              await logout();
+              navigate("/");
+            }}
             aria-label="Sign out"
             title="Sign out"
             className={`flex w-full items-center justify-center gap-2 rounded-lg border border-accent-danger/20 bg-accent-danger/5 px-3 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition-all hover:border-accent-danger/40 hover:bg-accent-danger/10 ${

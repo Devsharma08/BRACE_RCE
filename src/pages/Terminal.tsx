@@ -346,6 +346,55 @@ const Terminal = () => {
   const isSidebarOpen = isPanelOpen && !isSidebarCollapsed;
 
   const formatEditorRef = useRef<(() => void) | null>(null);
+  // Remembers the active problem across scratch-mode hide/show transitions so
+  // exiting scratch can restore it instead of leaving a blank description.
+  const lastProblemRef = useRef<PracticeProblem | null>(null);
+
+  // ── Load problem into editor ───────────────────────────────
+  const loadProblem = useCallback(
+    (problem: PracticeProblem, allProblems?: PracticeProblem[]) => {
+      setActiveProblem(problem);
+      setActiveFile(problem.github_oid || problem.id);
+      setOutput(null);
+      setOutputText("");
+
+      // Extract Java class name from code_snippets if available
+      const javaSnippet = problem.code_snippets?.find(
+        (s) => s.language?.toLowerCase() === "java"
+      );
+      if (javaSnippet?.code) {
+        const classMatch = javaSnippet.code.match(/class\s+(\w+)/);
+        if (classMatch?.[1]) {
+          setJavaClassName(classMatch[1]);
+        } else {
+          setJavaClassName("Solution");
+        }
+      } else {
+        setJavaClassName("Solution");
+      }
+
+      // If there's previously saved draft code — restore it
+      const draftLang = (problem.lastLanguage as SupportedLanguage) || "javascript";
+      const draftCode = problem.lastCode ?? getBoilerplate(problem, draftLang);
+
+      setLanguage(draftLang);
+      setCode(draftCode);
+
+      // Load public test cases
+      const tcs = buildProblemTestCases({
+        test_cases: problem.test_cases ?? [],
+      } as any);
+      setTestCases(tcs);
+
+      setCustomInput("");
+      setCustomInputActive(false);
+      setIsCustomInputRun(false);
+
+      // Sync solved status on problem objects (in case we come from list)
+      if (allProblems) setProblems(allProblems);
+    },
+    [setActiveFile, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
+  );
 
   // Hide Problems toggle — switches between the full catalog sidebar and a
   // plain-scratch mode. Scratch mode is a REAL mode, not just a hidden panel:
@@ -358,8 +407,10 @@ const Terminal = () => {
   // callbacks close over `language`, `setCode`, panel state etc., and calling
   // useCallback before those bindings exist throws "Cannot access before
   // initialization".
-  const enterScratchMode = useCallback(() => {
+   const enterScratchMode = useCallback(() => {
     setMode('no-problem');
+    // Snapshot the current problem so exitScratchMode can restore it.
+    lastProblemRef.current = activeProblem;
     setActiveProblem(null);
     // A real, stable id rather than "". Three separate guards key off `activeFile`
     // being truthy and an empty string fails all of them, which is what made the
@@ -391,12 +442,18 @@ const Terminal = () => {
     setIsPanelOpen(false);
     setIsSidebarCollapsed(true);
   }, [language, setActiveFile, setCode, setCodeForLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
-  const exitScratchMode = useCallback(() => {
+const exitScratchMode = useCallback(() => {
     setMode('problems');
+    // Restore the problem that was visible before scratch mode hid it. Without
+    // this, exiting a hidden-problem state leaves activeProblem === null, so the
+    // sidebar and editor render a blank canvas and the description disappears.
+    if (lastProblemRef.current) {
+      loadProblem(lastProblemRef.current, problems);
+    }
     setIsPanelOpen(true);
     setIsSidebarCollapsed(false);
     if (sidebarWidth < 220) setSidebarWidth(360);
-  }, [setSidebarWidth, sidebarWidth]);
+  }, [setSidebarWidth, sidebarWidth, problems, loadProblem]);
   // The header "Hide/Show Problems" button must run the full enter/exit above —
   // a bare setMode flip leaves the sidebar mounted, the problem context live,
   // and the old code in the editor.
@@ -449,52 +506,6 @@ const Terminal = () => {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, problemsNonce]);
-
-  // ── Load problem into editor ───────────────────────────────
-  const loadProblem = useCallback(
-    (problem: PracticeProblem, allProblems?: PracticeProblem[]) => {
-      setActiveProblem(problem);
-      setActiveFile(problem.github_oid || problem.id);
-      setOutput(null);
-      setOutputText("");
-
-      // Extract Java class name from code_snippets if available
-      const javaSnippet = problem.code_snippets?.find(
-        (s) => s.language?.toLowerCase() === "java"
-      );
-      if (javaSnippet?.code) {
-        const classMatch = javaSnippet.code.match(/class\s+(\w+)/);
-        if (classMatch?.[1]) {
-          setJavaClassName(classMatch[1]);
-        } else {
-          setJavaClassName("Solution");
-        }
-      } else {
-        setJavaClassName("Solution");
-      }
-
-      // If there's previously saved draft code — restore it
-      const draftLang = (problem.lastLanguage as SupportedLanguage) || "javascript";
-      const draftCode = problem.lastCode ?? getBoilerplate(problem, draftLang);
-
-      setLanguage(draftLang);
-      setCode(draftCode);
-
-      // Load public test cases
-      const tcs = buildProblemTestCases({
-        test_cases: problem.test_cases ?? [],
-      } as any);
-      setTestCases(tcs);
-
-      setCustomInput("");
-      setCustomInputActive(false);
-      setIsCustomInputRun(false);
-
-      // Sync solved status on problem objects (in case we come from list)
-      if (allProblems) setProblems(allProblems);
-    },
-    [setActiveFile, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
-  );
 
   // ── Handle language switch (load boilerplate for new lang) ─
   const handleLanguageChange = useCallback(
@@ -890,12 +901,8 @@ const Terminal = () => {
                       onReset={handleResetCode}
                       onClearOutput={handleClearOutput}
                       onToggleNotes={() => setIsNotesOpen((p) => !p)}
-                      isNotesOpen={isNotesOpen}
-                      // Guests can open the terminal without an account — sending
-                      // them to the protected dashboard on exit would bounce them
-                      // straight to /signin. Take signed-in users to their
-                      // console and guests back to the public catalog instead.
-                      onExit={() => navigate(isAuthenticated ? "/dashboard" : "/problems")}
+                       isNotesOpen={isNotesOpen}
+                       onExit={() => navigate("/")}
                       submissionTrigger={submissionTrigger}
                       timerRef={timerRef}
                       initialSubmissionTimes={activeProblem?.submissionTimes ?? []}
