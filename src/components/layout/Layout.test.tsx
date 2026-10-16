@@ -7,16 +7,24 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
  *
  * ConsoleShell mounts a FIXED DashboardSidebar rail and a FIXED
  * MobileBottomNav, but Layout renders <Footer /> outside that shell. Without
- * `offsetRail` the rail paints over the footer's left edge (the giant
- * wordmark reads as trimmed) and the bottom nav over the copyright row.
- * Layout owns the route list, so Layout owns the test for it.
+ * `offsetRail` the rail paints over the footer's left edge (the giant wordmark
+ * reads as trimmed) and the bottom nav over the copyright row. Layout owns the
+ * route list, so Layout owns the test for it.
+ *
+ * /problems is a public ConsoleShell route: ConsoleShell only renders the rail
+ * for authenticated users, so Layout must gate the footer offset on auth too —
+ * otherwise a signed-out visitor gets an indented footer against a full-width page.
  */
 
 // Header pulls in auth + scroll context, GlobalModals pulls in the socket —
-// neither is what we're asserting on, and both drag in providers Layout
-// itself doesn't provide.
+// neither is what we're asserting on.
 vi.mock("./Header", () => ({ default: () => <header>HEADER</header> }));
 vi.mock("../features/GlobalModals", () => ({ default: () => null }));
+
+let mockAuthenticated = true;
+vi.mock("../../context/AuthContext", () => ({
+  useAuth: () => ({ isAuthenticated: mockAuthenticated, isLoading: false }),
+}));
 
 const Layout = (await import("./Layout")).default;
 
@@ -50,6 +58,7 @@ test.each([
   ["/friends", "FRIENDS_PAGE"],
   ["/profile", "PROFILE_PAGE"],
   ["/create-room", "CREATE_ROOM_PAGE"],
+  ["/problems", "PROBLEMS_PAGE"],
 ])("offsets the footer from the fixed rail on %s", (path, page) => {
   renderAt(path);
   expect(screen.getByText(page)).toBeInTheDocument();
@@ -61,12 +70,19 @@ test.each([
   ["/about", "ABOUT_PAGE"],
   // AdminLayout's sidebar is an in-flow <aside>, not a fixed rail.
   ["/admin", "ADMIN_PAGE"],
-  // /problems moved out of ConsoleShell so guests can browse the catalog; it
-  // renders with the ordinary public chrome, so there is no rail to dodge.
-  ["/problems", "PROBLEMS_PAGE"],
 ])("keeps the footer full-bleed on %s", (path, page) => {
   renderAt(path);
   expect(screen.getByText(page)).toBeInTheDocument();
+  expect(screen.getByRole("contentinfo").className).not.toContain(
+    railOffsetClass,
+  );
+});
+
+test("/problems keeps the footer full-bleed for unauthenticated visitors", () => {
+  mockAuthenticated = false;
+  renderAt("/problems");
+  mockAuthenticated = true;
+  expect(screen.getByText("PROBLEMS_PAGE")).toBeInTheDocument();
   expect(screen.getByRole("contentinfo").className).not.toContain(
     railOffsetClass,
   );

@@ -55,7 +55,7 @@ const accentStyles: Record<
 
 export function WorkspaceDirectory() {
   return (
-    <section aria-label="Available workspaces" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
+    <section aria-label="Available workspaces" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 animate-desc-fade">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
@@ -73,7 +73,7 @@ export function WorkspaceDirectory() {
 
         {/* Bento grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-12 lg:auto-rows-[220px]">
-          {services.map(({ id, category, title, description, detail, href, icon: Icon, accent, signal }) => {
+          {services.map(({ id, category, title, description, detail, href, icon: Icon, accent, signal }, idx) => {
             const styles = accentStyles[accent];
             const placement =
               id === "01" ? "lg:col-start-1 lg:col-span-7 lg:row-start-1 lg:row-span-2"
@@ -86,7 +86,8 @@ export function WorkspaceDirectory() {
               <div
                 key={href + id}
                 to={href}
-                className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary`}
+                className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary animate-desc-fade`}
+                style={{ animationDelay: `${0.1 + idx * 0.1}s` }}
               >
                 <div className={`absolute right-7 top-7 grid h-11 w-11 place-items-center rounded-full border border-line bg-surface/60 ${styles.text} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
                   <Icon size={18} />

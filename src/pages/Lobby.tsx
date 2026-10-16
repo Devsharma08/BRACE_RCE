@@ -326,7 +326,7 @@ const Lobby = () => {
     <div className="flex w-full text-fg font-mono">
 
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main className="relative z-10 flex-1 min-w-0 w-full px-4 sm:px-6 lg:px-8 py-5 pb-24 md:pb-10">
+      <main className="relative z-10 mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
         {/* Dot-grid texture. Paired with `relative z-10` on this <main>:
             the grid is position:fixed inset-0, so at z-0 it would paint over
             the heading, and at -z-10 it falls behind the shell's own
@@ -339,8 +339,8 @@ const Lobby = () => {
           <div aria-hidden className="absolute -right-10 -top-20 h-56 w-56 rounded-full border border-accent/10" />
           <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-success">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success" />
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-primary shadow-glow-primary" />
                 Live operations / lobby
               </div>
               <h1 className="mt-3 max-w-xl text-2xl font-bold tracking-tight sm:text-4xl">
@@ -547,9 +547,15 @@ const Lobby = () => {
                 <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">archives</div>
               </div>
             </div>
-            <div className="mt-8 hidden aspect-square place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
-              <div className="grid h-2/3 w-2/3 place-items-center rounded-full border border-accent/20">
-                <Wifi size={22} aria-hidden className="text-accent-primary" />
+            <div className="mt-8 hidden aspect-square relative place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
+              <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
+                <div className="radar-ring" />
+                <div className="radar-ring radar-ring--delay-1" />
+                <div className="radar-ring radar-ring--delay-2" />
+                <div className="radar-ring radar-ring--delay-3" />
+                <div className="relative z-10 grid h-2/3 w-2/3 place-items-center rounded-full border border-accent/20">
+                  <Wifi size={22} aria-hidden className="text-accent-primary" />
+                </div>
               </div>
             </div>
             <div className="mt-6 hidden space-y-3 border-t border-subtle-line pt-5 text-[9px] uppercase tracking-widest text-subtle sm:block">

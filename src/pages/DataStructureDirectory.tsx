@@ -1,11 +1,10 @@
 import type { FC } from "react";
-import { Link } from "react-router-dom";
-import { Layers3, Waypoints, Target, BookOpen, Flame, Trophy, ChevronRight, ArrowUpRight, Trees, List, Braces, Search, LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Code2, Trophy } from "lucide-react";
 import { CategoryDirectory } from "../features/home/components/CategoryDirectory";
 import { DS_ALGORITHMS } from "../data/dsAlgorithms";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
-import { dsCompletionState } from "../data/dsTopics";
+import { MetricCard } from "../components/ui/MetricCard";
 
 const domainCount = Object.keys(DS_ALGORITHMS).length;
 const algorithmCount = Object.values(DS_ALGORITHMS).reduce(
@@ -13,233 +12,73 @@ const algorithmCount = Object.values(DS_ALGORITHMS).reduce(
   0,
 );
 
-/** Header quick-jump cards — the slug drives the live completion state. */
-const PROTOCOL_CARDS = [
-  { slug: "tree", icon: Trees, title: "Trees", desc: "DFS / BFS traversals, level order, diameter." },
-  { slug: "array", icon: List, title: "Arrays", desc: "Two-pointers, sliding windows, prefix sums." },
-  { slug: "stack", icon: Braces, title: "Stacks", desc: "Monotonic stacks, min-stack, parenthesis matching." },
-  { slug: "searching", icon: Search, title: "Searching", desc: "Binary search on answer, lower bounds, rotation." },
-];
-
-/** CategoryDirectory rows that have a learning-path topic behind them. */
-const LEDGER_HREFS = [
-  "/ds/tree",
-  "/ds/dynamic-programming",
-  "/ds/array",
-  "/ds/linked-list",
-  "/ds/searching",
-  "/ds/math",
-  "/ds/stack",
-  "/ds/greedy",
-];
-
 /**
  * /ds — data-structure taxonomy landing.
  *
- * Opens with the same console page-header idiom used across the app
- * (eyebrow strip → h1 → description → stat chips), then the ledger rows
- * route into each /ds/:slug console. Completion state is live from the
- * learning-path API (useDsTopicProgress).
+ * Page header → metric row (secondary) → domain ledger (primary).
+ * The ledger is the main content and gets the most space.
  */
 const DataStructureDirectory: FC = () => {
-  // Hooks must run inside the component body — a module-scope call crashes
-  // with "Invalid hook call" (React rules of hooks).
   const { data: analytics } = useAnalytics(true);
   const { bySlug } = useDsTopicProgress();
   const totalSolved = analytics?.summary?.totalSolved ?? 0;
   const currentStreak = analytics?.summary?.currentStreak ?? 0;
 
   const progressByHref: Record<string, { total: number; completed: number; inProgress: number }> = {};
-  for (const href of LEDGER_HREFS) {
-    const page = bySlug[href.replace("/ds/", "")];
+  Object.keys(DS_ALGORITHMS).forEach((slug) => {
+    const href = `/ds/${slug}`;
+    const page = bySlug[slug];
     if (page) progressByHref[href] = page;
-  }
-
-  // Study-route card: completed ledger domains / all ledger domains (live).
-  const studyTotal = LEDGER_HREFS.length;
-  const studyCompleted = LEDGER_HREFS.filter(
-    (href) => (progressByHref[href]?.completed ?? 0) >= (progressByHref[href]?.total ?? 1) && (progressByHref[href]?.total ?? 0) > 0,
-  ).length;
-  const studyPct = studyTotal > 0 ? Math.round((studyCompleted / studyTotal) * 100) : 0;
+  });
 
   return (
-    <div className="flex w-full text-fg font-mono relative">
-      {/* Dot-grid texture */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
+    <main className="relative z-10 flex-1 min-w-0 w-full px-3 py-5 md:px-6 md:py-6 pb-16 md:pb-6 selection:bg-accent/30 selection:text-accent-primary">
+      <div className="mx-auto max-w-6xl px-2 sm:px-4">
 
-
-
-      {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
-      <main
-        className="
-          relative z-10 flex-1 min-w-0 w-full
-         
-          px-4 py-6 md:px-8 md:py-8
-          pb-20 md:pb-8
-          flex flex-col gap-6
-        "
-      >
-        <div className="flex flex-col gap-10">
-        {/* HEADER — eyebrow strip → h1 → description → stat chips */}
-        <header className="flex flex-col justify-between gap-5 border-b border-subtle-line pb-5">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-accent-primary">
-              <Layers3 size={13} />
-              <span>DS // corpus taxonomy</span>
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight sm:text-3xl">
-              Master every <span className="text-accent-primary">structure.</span>
-            </h1>
-            <p className="text-xs text-subtle leading-relaxed max-w-xl">
-              Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
-            </p>
+        {/* ── PAGE HEADER ── */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-[0.2em] text-accent-primary">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary shadow-glow-primary" />
+            Learning taxonomy
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-[9px] uppercase tracking-widest">
-            <span className="border border-accent-primary/25 bg-accent-primary/5 px-2.5 py-1.5 text-accent-primary">
-              Domains <strong className="ml-1 text-fg">{domainCount}</strong>
-            </span>
-            <span className="border border-accent-success/25 bg-accent-success/5 px-2.5 py-1.5 text-accent-success">
-              Algorithms <strong className="ml-1 text-fg">{algorithmCount}</strong>
-            </span>
-            <span className="border border-subtle-line px-2.5 py-1.5 text-faint">
-              <Waypoints size={12} className="mr-1 inline" /> corpus synced
-            </span>
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-1.5 border border-accent-primary/40 bg-accent-primary/10 px-2.5 py-1.5 text-accent-primary transition hover:bg-accent-primary/20"
-            >
-              <LayoutDashboard size={12} />
-              Dashboard
-            </Link>
-          </div>
-        </header>
-
-        {/* OVERVIEW CARDS */}
-        {/* JUMP TO A PROTOCOL — four foundational DS entry points */}
-        <section aria-label="Jump to a protocol">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-accent-primary/20 bg-accent-primary/5">
-              <Target size={11} className="text-accent-primary" />
-            </span>
-            <h2 className="text-[10px] uppercase tracking-[0.2em] text-muted">
-              Jump to a protocol
-            </h2>
-            <span className="h-px flex-1 bg-subtle-line" />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {PROTOCOL_CARDS.map((entry) => {
-              const progress = bySlug[entry.slug];
-              const state = dsCompletionState(progress);
-              return (
-                <Link
-                  key={entry.slug}
-                  to={`/ds/${entry.slug}`}
-                  className={`group relative flex flex-col gap-2 rounded-card border bg-surface px-4 py-3.5 transition hover:bg-surface-hover ${
-                    state === "COMPLETED"
-                      ? "border-accent-success/60"
-                      : state === "PARTIAL"
-                        ? "border-accent-warning/50"
-                        : "border-subtle-line hover:border-accent-primary/40"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <entry.icon
-                      size={16}
-                      className={`transition ${
-                        state === "COMPLETED"
-                          ? "text-accent-success"
-                          : state === "PARTIAL"
-                            ? "text-accent-warning"
-                            : "text-accent-primary/60 group-hover:text-accent-primary"
-                      }`}
-                    />
-                    {state === "COMPLETED" && (
-                      <span className="border border-accent-success/50 bg-accent-success/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest text-accent-success">
-                        completed
-                      </span>
-                    )}
-                    {state === "PARTIAL" && progress && (
-                      <span className="border border-accent-warning/50 bg-accent-warning/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest text-accent-warning">
-                        {progress.completed}/{progress.total} done
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-bold text-fg group-hover:text-accent-primary">{entry.title}</h3>
-                  <p className="text-[9px] text-subtle">{entry.desc}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <article className="group relative overflow-hidden rounded-2xl border border-accent-primary/20 bg-accent-primary/5 p-5 transition hover:border-accent-primary/40">
-            <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-accent-primary/10" />
-            <div className="relative flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
-                <Layers3 size={13} />
-                Corpus roadmap
-              </span>
-              <ArrowUpRight size={14} className="text-accent-primary" />
-            </div>
-            <h2 className="relative mt-7 text-lg font-bold text-fg">{domainCount} domains</h2>
-            <p className="relative mt-2 text-xs leading-5 text-subtle">
-              {algorithmCount} algorithm patterns across {domainCount} data-structure domains. Each domain opens into its own /ds/:slug console — pseudocode, implementation, and a matching problem set.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-subtle-line bg-surface p-5">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-              <BookOpen size={13} />
-              Study route
-            </div>
-            <div className="mt-7 flex items-end justify-between">
-              <div>
-                <p className="text-lg font-bold text-fg">Learning paths</p>
-                <p className="mt-1 text-xs text-subtle">{domainCount} domains · {algorithmCount} algorithms</p>
-              </div>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-muted">path / open</span>
-            </div>
-            <div className="mt-5 h-1 overflow-hidden bg-surface-hover">
-              <div className="h-full bg-accent-success transition-all" style={{ width: `${studyPct}%` }} />
-            </div>
-            <p className="mt-3 text-[9px] uppercase tracking-widest text-muted">
-              {studyCompleted}/{studyTotal} domains completed · live from your learning paths
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-subtle-line bg-surface p-5 md:col-span-2 xl:col-span-1">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
-              <Flame size={13} />
-              Training signal
-            </div>
-            <div className="mt-7 grid grid-cols-2 gap-3">
-              <div className="border-l border-accent-warning/40 pl-3">
-                <p className="text-lg font-bold text-fg">
-                  {currentStreak}
-                </p>
-                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">active streak</p>
-              </div>
-              <div className="border-l border-subtle-line pl-3">
-                <p className="text-lg font-bold text-fg">
-                  {totalSolved}
-                </p>
-                <p className="mt-1 text-[9px] uppercase tracking-widest text-muted">completed</p>
-              </div>
-            </div>
-            <p className="mt-6 text-[9px] uppercase tracking-widest text-muted">
-              <Trophy size={12} className="inline mr-1 text-accent-warning" />
-              Complete a challenge to populate your performance telemetry
-            </p>
-          </article>
-        </div>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            Data <span className="text-accent-primary">structures</span>
+          </h1>
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-subtle sm:text-sm">
+            Eight domains, one execution engine. Open a structure, study the
+            theory and implementations, then solve the matching problems.
+          </p>
         </div>
 
-        {/* DOMAIN LEDGER — live completion state from the learning paths */}
-        <CategoryDirectory showHeader={true} progressByHref={progressByHref} />
+        {/* ── METRIC ROW (secondary importance) ── */}
+        <div className="grid gap-3 mb-8 sm:grid-cols-2 sm:gap-4 md:grid-cols-3">
+          <MetricCard
+            label="Domains"
+            value={domainCount}
+            unit="total"
+            icon={LayoutDashboard}
+          />
+          <MetricCard
+            label="Algorithms"
+            value={algorithmCount}
+            unit="patterns"
+            icon={Code2}
+          />
+          <MetricCard
+            label="Solved"
+            value={totalSolved}
+            unit="challenges"
+            icon={Trophy}
+            trend={`${currentStreak} day streak`}
+            trendTone="positive"
+          />
+        </div>
+
+        {/* ── DOMAIN LEDGER (primary importance — most space) ── */}
+        <CategoryDirectory showHeader={false} progressByHref={progressByHref} />
+
+      </div>
     </main>
-    </div>
   );
 };
 

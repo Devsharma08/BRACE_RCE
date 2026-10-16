@@ -358,7 +358,7 @@ export const Dashboard: React.FC = () => {
          <section className="relative isolate overflow-hidden border-y border-subtle-line py-5">
            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="font-mono text-3xl font-black tracking-[-0.05em] text-fg sm:text-4xl md:text-6xl">
+              <h1 className="font-mono text-2xl font-black tracking-[-0.05em] text-fg sm:text-4xl md:text-6xl">
                 Good {timeOfDay.toLowerCase()},<br />
                 <span className="text-accent">{username}</span>
               </h1>

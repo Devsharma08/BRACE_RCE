@@ -7,8 +7,7 @@ import {
   Link2,
   ListFilter,
   Search,
-  Sigma,
-  Sparkles,
+   Sigma,
   Waypoints,
 } from "lucide-react";
 import { dsCompletionState } from "../../../data/dsTopics";
@@ -64,15 +63,15 @@ export function CategoryDirectory({
   progressByHref?: Record<string, ProgressEntry>;
 }) {
   return (
-    <section aria-label="Problem categories" className="w-full px-4 py-12 sm:px-6 sm:py-16">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+    <section aria-label="Problem categories" className="w-full px-2 py-6 sm:px-4 sm:py-8">
+      <div className="mx-auto max-w-6xl px-2 sm:px-4">
         {/* Section header */}
         {showHeader && (
-        <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
-          <h2 className="mt-3 font-mono text-2xl font-bold tracking-[-0.04em] text-fg md:text-3xl">
+        <div className="mb-8 sm:mb-12 text-center max-w-3xl mx-auto">
+          <h2 className="mt-2 font-mono text-xl font-bold tracking-[-0.03em] text-fg md:text-2xl">
             Every structure
           </h2>
-          <p className="mt-5 max-w-2xl text-sm leading-5 text-faint mx-auto">
+          <p className="mt-3 max-w-2xl text-xs leading-5 text-faint mx-auto md:text-sm">
             Data structures // Categories. Choose a domain, open its problem path, and build signal through focused repetition.
           </p>
         </div>
@@ -80,7 +79,7 @@ export function CategoryDirectory({
 
         {/* Ledger rows */}
         <div className="border-b border-subtle-line">
-          <div className="hidden grid-cols-[72px_1.1fr_2fr_110px_32px] gap-6 border-b border-subtle-line px-4 py-3 font-mono text-[9px] uppercase tracking-[0.2em] text-faint md:grid">
+          <div className="hidden grid-cols-[60px_1fr_1.5fr_80px_28px] gap-4 border-b border-subtle-line px-3 py-2 font-mono text-[8px] uppercase tracking-[0.2em] text-faint md:grid md:grid-cols-[72px_1.1fr_2fr_110px_32px] md:px-4 md:py-3 md:text-[9px]">
             <span>Index</span>
             <span>Domain</span>
             <span>Training focus</span>
@@ -94,14 +93,14 @@ export function CategoryDirectory({
               <Link
                 key={id}
                 to={href}
-                className={`group relative grid gap-4 border-b border-line px-4 py-5 transition last:border-0 hover:bg-surface-hover md:grid-cols-[72px_1.1fr_2fr_110px_32px] md:items-center md:gap-6 md:py-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
+                className={`group relative grid gap-3 border-b border-line px-3 py-3 transition last:border-0 hover:bg-surface-hover md:grid-cols-[72px_1.1fr_2fr_110px_32px] md:items-center md:gap-6 md:py-4 md:px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
                   state === "COMPLETED" ? "bg-accent-success/[0.03]" : ""
                 }`}
               >
-                <span className={`font-mono text-sm font-bold ${accents[accent].split(" ")[0]}`}>{id}</span>
-                <div className="flex items-center gap-3">
+                <span className={`font-mono text-xs font-bold ${accents[accent].split(" ")[0]} md:text-sm`}>{id}</span>
+                <div className="flex items-center gap-2.5 md:gap-3">
                   <span
-                    className={`grid h-9 w-9 place-items-center border bg-surface/60 ${
+                    className={`grid h-7 w-7 place-items-center border bg-surface/60 ${
                       state === "COMPLETED"
                         ? "border-accent-success/70 text-accent-success"
                         : state === "PARTIAL"
@@ -109,12 +108,13 @@ export function CategoryDirectory({
                           : `border-line ${accents[accent].split(" ")[0]}`
                     }`}
                   >
-                    <Icon size={16} />
+                    <Icon size={14} />
                   </span>
-                  <h3 className="font-mono text-base font-bold text-fg md:text-lg">{title}</h3>
+                  <h3 className="font-mono text-sm font-bold text-fg md:text-base">{title}</h3>
                 </div>
-                <p className="max-w-xl text-xs leading-5 text-faint md:text-sm">{description}</p>
-                <span className="flex flex-col gap-1 font-mono text-[10px] uppercase tracking-widest text-faint">
+                <p className="max-w-lg text-[10px] leading-4 text-faint md:hidden">{description}</p>
+                <p className="hidden max-w-xl text-xs leading-5 text-faint md:block md:text-sm">{description}</p>
+                <span className="flex flex-col gap-1 font-mono text-[9px] uppercase tracking-widest text-faint">
                   {count}
                   {state === "COMPLETED" && (
                     <span className="w-max border border-accent-success/50 bg-accent-success/10 px-1.5 py-0.5 text-accent-success">
@@ -128,7 +128,7 @@ export function CategoryDirectory({
                   )}
                 </span>
                 <ArrowUpRight
-                  size={16}
+                  size={14}
                   className={`text-faint transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${
                     state === "COMPLETED" ? "text-accent-success" : accents[accent].split(" ")[0]
                   }`}

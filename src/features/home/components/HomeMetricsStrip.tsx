@@ -35,9 +35,9 @@ const metrics = [
 ];
 
 const HomeMetricsStrip = () => (
-  <section aria-label="Home proof metrics" className="w-full px-4 py-6 sm:px-6 sm:py-8">
+  <section aria-label="Home proof metrics" className="w-full px-4 py-6 sm:px-6 sm:py-8 animate-desc-fade">
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric) => (
+      {metrics.map((metric, idx) => (
         <MetricCard
           key={metric.label}
           label={metric.label}
@@ -45,7 +45,8 @@ const HomeMetricsStrip = () => (
           unit={metric.unit}
           description={metric.description}
           dotTone={metric.dotTone}
-          className="p-2.5 pb-2 sm:p-3 sm:pb-2.5"
+          className="p-2.5 pb-2 sm:p-3 sm:pb-2.5 animate-desc-fade"
+          style={{ animationDelay: `${0.15 + idx * 0.08}s` }}
         />
       ))}
     </div>

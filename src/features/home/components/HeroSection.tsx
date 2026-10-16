@@ -48,7 +48,7 @@ export const BracePixelHero: FC = () => {
   return (
     <section
       id="top"
-      className="relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink"
+      className="relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink animate-desc-fade"
     >
       {/* Ambient glow + grid backdrop, contained by the wrapper's overflow-hidden. */}
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
@@ -87,9 +87,9 @@ export const BracePixelHero: FC = () => {
           <span className="text-faint">/</span>
           <span className="hidden sm:inline">RCE // field notes</span>
           <span className="sm:hidden">RCE</span>
-          <span className="rounded-full border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
+          {/* <span className="rounded-full border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
             READY
-          </span>
+          </span> */}
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
         </div>
 

@@ -1,674 +1,352 @@
-import React, { useCallback, useState, useMemo, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { TableSkeleton } from "../components/ui/Skeleton";
-import { useAuth } from "../context/AuthContext";
-import { queryKeys } from "../lib/queryKeys";
-import { useDebounce } from "../hooks/useDebounce";
-import { fetchAllProblems } from "../utils/problemCache";
 import {
-  AlertTriangle,
-  ArrowUpRight,
-  BookOpen,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Code2,
   Filter,
-  Flame,
-  LayoutGrid,
-  List,
+  LayoutDashboard,
   Search,
-  Target,
-  Trophy,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
+import { useDebounce } from "../hooks/useDebounce";
+import { fetchAllProblems } from "../utils/problemCache";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
-import BentoGrid from "../features/problems/components/BentoGrid";
-import { PageHeader } from "../components/ui/PageHeader";
-import { Panel, PanelBody } from "../components/ui/Panel";
-import { EmptyState } from "../components/ui/EmptyState";
 
-/**
- * EVERY data structure on this page lives in ONE side panel — the mock's
- * "Data structure progress" card — instead of being spread across bento tiles.
- * `accent` keys into PROGRESS_ACCENT; `description` is the one-line teaser the
- * panel shows under each structure's name. Array order is the panel order.
- */
-const DS_PANEL = [
-  { slug: "array", accent: "cyan", description: "Indexing, traversal, and window patterns." },
-  { slug: "stack", accent: "amber", description: "Ordering, buffering, and monotonic patterns." },
-  { slug: "linked-list", accent: "lime", description: "Pointer movement and structural updates." },
-  { slug: "tree", accent: "pink", description: "Recursion, traversal, and hierarchical search." },
-  { slug: "searching", accent: "cyan", description: "Divide-and-conquer sorting and boundary lookups." },
-  { slug: "dynamic-programming", accent: "violet", description: "Optimal substructure over overlapping subproblems." },
-  { slug: "math", accent: "violet", description: "Number theory, modular arithmetic, and geometry." },
-  { slug: "greedy", accent: "lime", description: "Local-choice heuristics and interval scheduling." },
-] as const;
-
-/** Two-letter chip colours per accent — the mock's progressAccent map, on tokens. */
-const PROGRESS_ACCENT: Record<string, string> = {
-  cyan: "text-accent-primary border-accent-primary/25 bg-accent-primary/[0.05]",
-  violet: "text-accent-violet border-accent-violet/25 bg-accent-violet/[0.05]",
-  lime: "text-accent-success border-accent-success/25 bg-accent-success/[0.05]",
-  amber: "text-accent-warning border-accent-warning/25 bg-accent-warning/[0.05]",
-  pink: "text-accent-pink border-accent-pink/25 bg-accent-pink/[0.05]",
+type Problem = {
+  id: string;
+  name: string;
+  problem_number: number;
+  difficulty_level: "EASY" | "MEDIUM" | "HARD";
+  isSolved: boolean;
+  attempts: number;
+  lastLanguage: string;
+  topic: string;
+  pattern: string;
 };
 
-/** Difficulty pills on the semantic ramp (lime / amber / rose in the mock). */
-const difficultyStyles: Record<string, string> = {
-  EASY: "border-accent-success/30 bg-accent-success/[0.06] text-accent-success",
-  MEDIUM: "border-accent-warning/30 bg-accent-warning/[0.06] text-accent-warning",
-  HARD: "border-accent-danger/30 bg-accent-danger/[0.06] text-accent-danger",
+type SystemProblem = {
+  id?: string;
+  github_oid?: string;
+  name: string;
+  problem_number?: number;
+  difficulty_level?: string;
+  isSolved?: boolean;
+  attempts?: number;
+  lastLanguage?: string;
 };
 
-/**
- * Shared pager for both views.
- *
- * Card view needs it outside the table's panel (the cards are their own
- * surfaces), so it was extracted rather than duplicated — two copies of paging
- * arithmetic is exactly how "Showing 1–15" and "Showing 16–30" drift apart.
- */
-const ProblemsPagination: React.FC<{
-  currentPage: number;
-  totalPages: number;
-  filteredCount: number;
-  itemsPerPage: number;
-  onPage: (page: number) => void;
-  /** "standalone" is a card in its own right (card view); "flush" sits inside
-   *  the table panel's footer, where a bordered box would box the box. */
-  variant?: "standalone" | "flush";
-}> = ({ currentPage, totalPages, filteredCount, itemsPerPage, onPage, variant = "standalone" }) => {
-  if (filteredCount === 0) return null;
-  const first = (currentPage - 1) * itemsPerPage + 1;
-  const last = Math.min(currentPage * itemsPerPage, filteredCount);
-  return (
-    <nav
-      aria-label="Problem index pagination"
-      className={`flex flex-col gap-3 px-5 py-4 text-[9px] uppercase tracking-widest text-faint sm:flex-row sm:items-center sm:justify-between ${
-        variant === "standalone" ? "mt-4 rounded-card border border-subtle-line bg-raised" : ""
-      }`}
-    >
-      <span>
-        Showing {first}–{last} of {filteredCount}
-      </span>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onPage(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-          className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:pointer-events-none disabled:opacity-30"
-        >
-          <ChevronLeft size={13} className="inline" /> PREV
-        </button>
-        <span className="border border-accent-primary/30 px-3 py-2 text-accent-primary">
-          {currentPage} / {totalPages}
-        </span>
-        <button
-          onClick={() => onPage(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-          className="border border-subtle-line px-3 py-2 text-subtle transition hover:border-accent-primary/30 hover:text-accent-primary disabled:pointer-events-none disabled:opacity-30"
-        >
-          NEXT <ChevronRight size={13} className="inline" />
-        </button>
-      </div>
-    </nav>
-  );
-};
-// The table is the default view; the card grid is one click away.
-//
-// On persisting the choice: a REF is the wrong tool here. Writing to a ref does
-// not trigger a render, so clicking "Grid" would store the value and leave the
-// table on screen until something unrelated re-rendered the page. A ref is also
-// discarded on unmount, so it loses the value on exactly the navigation this is
-// meant to protect.
-//
-// sessionStorage survives re-renders, remounts and reloads, so the choice stays
-// in state (so the UI follows it) and is mirrored there on every change.
-const VIEW_STORAGE_KEY = "brace.problems.view";
+const PAGE_SIZE = 8;
 
-type ProblemView = "table" | "cards";
+const DIFFICULTIES = ["All difficulties", "Easy", "Medium", "Hard"];
 
-const readStoredView = (): ProblemView => {
-  if (typeof window === "undefined") return "table";
-  try {
-    return window.sessionStorage.getItem(VIEW_STORAGE_KEY) === "cards" ? "cards" : "table";
-  } catch {
-    // Private mode / blocked storage: fall back to the default view.
-    return "table";
-  }
-};
-
-const storeView = (v: ProblemView) => {
-  try {
-    window.sessionStorage.setItem(VIEW_STORAGE_KEY, v);
-  } catch {
-    // Non-fatal — the choice just will not outlive this tab.
-  }
-};
-
-export const Problems: React.FC = () => {
-
-  const { data: analytics } = useAnalytics(false);
-  const { bySlug: dsProgress } = useDsTopicProgress();
+export default function Problems() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [query, setQuery] = useState("");
+  const [difficulty, setDifficulty] = useState("All difficulties");
+  const [page, setPage] = useState(1);
+  const debouncedQuery = useDebounce(query, 300);
 
-  const [isPending, startTransition] = useTransition();
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 300);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("ALL");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const itemsPerPage = 15;
+  useAnalytics(false);
+  const { bySlug } = useDsTopicProgress();
 
-  /** Table by default; the card grid is one click away. Held in state so the UI
-   *  follows the toggle, and mirrored into sessionStorage so the choice
-   *  survives a re-render, a remount and a reload. A ref would do neither —
-   *  writing one does not re-render, and it is discarded on unmount. */
-  const [view, setView] = useState<ProblemView>(readStoredView);
-  const handleViewChange = useCallback((next: ProblemView) => {
-    setView(next);
-    storeView(next);
-  }, []);
-
-  const handleSearchChange = (val: string) => {
-    startTransition(() => {
-      setSearchTerm(val);
-      setCurrentPage(1);
-    });
-  };
-
-  const handleDifficultyChange = (diff: string) => {
-    startTransition(() => {
-      setSelectedDifficulty(diff);
-      setCurrentPage(1);
-    });
-  };
-
-  const { data: problems = [], isLoading: loading, isError: isProblemsError, refetch: refetchProblems } = useQuery<any[]>({
-    queryKey: queryKeys.problems.system({ userId: user?.id }),
-    // Problem definitions never change during a session — fetch once per mount
-    // window instead of on every visit. Progress changes (solved/attempts) are
-    // handled by invalidateProblemQueries() at the write sites.
+  const {
+    data: rawProblems = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["problems", "system", user?.id],
+    queryFn: () => fetchAllProblems<SystemProblem>("/problems/system"),
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
-    queryFn: async () => {
-      // Paginated endpoint — fetch every page so the list matches the
-      // Terminal sidebar catalog instead of just the first 25 rows.
-      return fetchAllProblems("/problems/system");
-    },
+    placeholderData: [],
   });
 
-  /** One panel row per structure: real progress from the learning-path graph
-   *  plus the teaser copy from DS_PANEL. */
-  const dsSummaries = useMemo(
-    () =>
-      DS_PANEL.map(({ slug, accent, description }) => {
-        const progress = dsProgress[slug];
-        const problemIds = new Set(progress?.problemIds ?? []);
-        const solved = problems.filter((problem: any) => problem.isSolved && problemIds.has(String(problem.id))).length;
-        const total = problemIds.size;
-        return {
-          slug,
-          accent,
-          description,
-          title: DS_TOPIC_LABELS[slug] ?? slug,
-          solved,
-          total,
-          completion: total > 0 ? Math.round((solved / total) * 100) : 0,
-        };
-      }),
-    [dsProgress, problems],
-  );
-
-  /** Reverse index built from the learning-path graph: problem id → topic label.
-   *  Feeds the DOMAIN column and the domain half of the search query; problems
-   *  that belong to no structure fall back to an em dash. */
+  // Reverse index: problem id -> topic label, reusing the learning-path graph so
+  // every row/chip communicates the same group the DS pages teach.
   const topicByProblemId = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const [slug, progress] of Object.entries(dsProgress)) {
+    for (const [slug, progress] of Object.entries(bySlug)) {
+      const label = DS_TOPIC_LABELS[slug] ?? slug;
       for (const problemId of progress?.problemIds ?? []) {
-        if (!(problemId in map)) map[problemId] = DS_TOPIC_LABELS[slug] ?? slug;
+        if (!(problemId in map)) map[problemId] = label;
       }
     }
     return map;
-  }, [dsProgress]);
+  }, [bySlug]);
 
-  const solvedCount = useMemo(
-    () => problems.filter((problem: any) => problem.isSolved).length,
-    [problems],
+
+  const problems: Problem[] = useMemo(
+    () =>
+      rawProblems.map((p) => {
+        const topic = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "Uncategorized";
+        return {
+          id: p.id ?? p.github_oid ?? String(p.problem_number ?? 0),
+          name: p.name,
+          problem_number: p.problem_number ?? 0,
+          difficulty_level: (p.difficulty_level || "MEDIUM").toUpperCase() as Problem["difficulty_level"],
+          isSolved: !!p.isSolved,
+          attempts: p.attempts ?? 0,
+          lastLanguage: p.lastLanguage ?? "javascript",
+          topic,
+          pattern: topic,
+        };
+      }),
+    [rawProblems, topicByProblemId],
   );
 
-  // Filter by title, problem number, or the structure the problem belongs to.
-  const filteredProblems = problems.filter((p) => {
-    const domain = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "";
-    const matchesSearch = `${p.name} ${p.problem_number ?? ""} ${domain}`
-      .toLowerCase()
-      .includes(debouncedSearch.toLowerCase());
-
-    const matchesDiff =
-      selectedDifficulty === "ALL" ||
-      (p.difficulty_level || "MEDIUM").toUpperCase() === selectedDifficulty.toUpperCase();
-
-    return matchesSearch && matchesDiff;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredProblems.length / itemsPerPage));
-  const currentProblems = filteredProblems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
+  const filtered = useMemo(
+    () =>
+      problems.filter(
+        (p) =>
+          `${p.name} ${p.topic} ${p.pattern}`.toLowerCase().includes(debouncedQuery.toLowerCase()) &&
+          (difficulty === "All difficulties" || p.difficulty_level === difficulty.toUpperCase()),
+      ),
+    [problems, debouncedQuery, difficulty],
   );
+
+  // Pagination — reset to the first page whenever the filter changes so the
+  // user never lands on a now-empty page two clicks away from their term.
+  const setQueryAndPage = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const setDifficultyAndPage = (value: string) => {
+    setDifficulty(value);
+    setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
+
+  const startIndex = (page - 1) * PAGE_SIZE + 1;
+  const endIndex = Math.min(page * PAGE_SIZE, filtered.length);
+
 
   return (
-    <main className="relative z-10 w-full min-w-0 flex-1 px-4 py-6 pb-20 font-mono text-fg md:px-8 md:py-8 md:pb-8">
-      <div className="mx-auto max-w-[1500px]">
-        {/* ── HEADER ────────────────────────────────────────────────────── */}
-        <PageHeader
-          as="h1"
-          className="border-b text-2xl sm:text-4xl border-subtle-line pb-5"
-          eyebrow={
-            <>
-              <Code2 size={14} aria-hidden="true" />
-              Training command center
-            </>
-          }
-          title={
-            <>
-              Build your next <span className="text-accent-primary">signal.</span>
-            </>
-          }
-          description="Choose a path, study the pattern, then prove it in the execution workspace."
-          actions={
-            <div className="grid w-full grid-cols-2 gap-2 text-[9px] uppercase tracking-widest sm:w-auto">
-              <span className="border border-accent-success/25 bg-accent-success/[0.05] px-3 py-2 text-accent-success">
-                Solved <b className="text-fg">{solvedCount}</b>
-              </span>
-              <span className="border border-accent-primary/25 bg-accent-primary/[0.05] px-3 py-2 text-accent-primary">
-                Indexed <b className="text-fg">{problems.length}</b>
-              </span>
-            </div>
-          }
-        />
+    <main className="flex-1 min-w-0 w-full bg-base text-fg font-mono px-4 py-5 md:px-6 md:py-6 pb-20 md:pb-8 selection:bg-accent/30 selection:text-accent-primary">
+      {/* Dot-grid texture */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
 
-        {/* ── TRAINING OVERVIEW ───────────────────────────────────────────
-            Two columns at lg: the three bento tiles on the left, and ONE
-            "Data structure progress" panel on the right that owns every
-            structure — no per-structure tiles anywhere else on the page. */}
-        <section
-          aria-label="Training overview"
-          className="mt-5 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]"
-        >
-          <div className="grid min-w-0 gap-4 md:grid-cols-2 md:grid-rows-[3fr_2fr]">
-            {/* HERO — full-width anchor tile with the ghost 01 watermark */}
-            <article className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-card border border-accent-primary/20 bg-accent-primary/[0.045] p-5 transition hover:border-accent-primary/40 md:col-span-2">
-              <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full border border-accent-primary/10 transition duration-500 group-hover:scale-110" />
-             
-              <div className="relative flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-primary">
-                  <Target size={14} />
-                  Next move
-                </span>
-                <ArrowUpRight size={15} className="text-accent-primary transition group-hover:-translate-y-1 group-hover:translate-x-1" />
-              </div>
-<div className="relative mt-auto max-w-md">
-                <p className="mb-3 text-[9px] uppercase tracking-[0.2em] text-faint">Your next training action</p>
-                <h2 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">Choose a pattern to practice.</h2>
-                <p className="mt-3 max-w-sm text-xs leading-5 text-subtle">
-                  Start with an indexed problem, open it in the terminal, and validate your
-                  reasoning against real test cases.
-                  </p>
-                <Link
-                  to="/ds"
-                  className="mt-5 inline-flex items-center gap-2 rounded-full border border-accent-primary/30 px-4 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-                >
-                  Browse patterns
-                </Link>
-              </div>
-            </article>
-            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-success/30">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-                  Study route
-                </span>
-                <span className="font-mono text-[9px] text-faint">01 / 04</span>
-              </div>
-              <div className="mt-auto">
-                <p className="text-lg font-bold text-fg">Foundations</p>
-                <p className="mt-1 text-xs text-subtle">Arrays &rarr; stacks &rarr; trees &rarr; graphs</p>
-                <div className="mt-4 flex gap-1">
-                  {["bg-accent-success", "bg-fg/20", "bg-fg/20", "bg-fg/20"].map((tone, index) => (
-                    <span key={index} className={`h-1.5 flex-1 ${tone}`} />
-                  ))}
-                </div>
-              </div>
-            </article>
-
-            {/* TRAINING SIGNAL */}
-            <article className="group flex min-h-[180px] flex-col overflow-hidden rounded-card border border-subtle-line bg-raised p-5 transition hover:border-accent-warning/30">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-warning">
-                  Training signal
-                </span>
-              </div>
-              <div className="mt-auto">
-                <div className="flex items-end gap-5">
-                  <div>
-                    <p className="text-3xl font-bold text-fg">{analytics?.summary?.currentStreak ?? "—"}</p>
-                    <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">active streak</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-fg">{analytics?.summary?.totalSolved ?? solvedCount}</p>
-                    <p className="mt-1 text-[9px] uppercase tracking-widest text-faint">completed</p>
-                  </div>
-                </div>
-                <p className="mt-3 text-[9px] uppercase tracking-widest text-faint">Connect your profile to track progress</p>
-              </div>
-            </article>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 relative z-10">
+        {/* ── HERO ───────────────────────────────────────────────────── */}
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary shadow-glow-primary" />
+            Training command center
           </div>
-
-          {/* ── DATA STRUCTURE PROGRESS — the single home for all of them ── */}
-          <section
-            aria-label="Data structure progress"
-            className="flex min-w-0 flex-col overflow-hidden rounded-card border border-subtle-line bg-raised shadow-panel"
-          >
-            <div className="border-b border-subtle-line bg-white/[0.025] px-5 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Domain coverage</p>
-                  <h2 className="mt-1 text-lg font-bold text-fg">Data structure progress</h2>
-                </div>
-                <span className="text-[9px] uppercase tracking-widest text-faint">
-                  {solvedCount} / {problems.length} solved
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-1 flex-col divide-y divide-subtle-line">
-              {dsSummaries.map(({ slug, accent, description, title, solved, total, completion }) => (
-                <Link
-                  key={slug}
-                  to={`/ds/${slug}`}
-                  aria-label={`${title}: ${solved} of ${total || 0} problems solved`}
-                  className="group flex flex-1 items-center gap-3 px-5 py-3 transition hover:bg-white/[0.04]"
-                >
-                  <span
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-[9px] font-bold ${PROGRESS_ACCENT[accent]}`}
-                  >
-                    {title.slice(0, 2).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="truncate text-xs font-bold text-fg group-hover:text-accent-primary">{title}</h3>
-                      <span className="shrink-0 font-mono text-sm font-bold text-fg">
-                        {solved}
-                        <span className="text-[8px] font-normal text-faint">/{total || 0}</span>
-                      </span>
-                    </div>
-                    <p className="mt-1 truncate text-[9px] text-subtle">{description}</p>
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-accent-primary/60 transition-all duration-500"
-                        style={{ width: `${completion}%` }}
-                      />
-                    </div>
-                  </div>
-                  </Link>
-              ))}
-            </div>
-          </section>
+          <h1 className="max-w-2xl text-2xl font-bold tracking-tight text-fg sm:text-4xl ">
+            Problem <span className="text-accent-primary">index</span>
+          </h1>
+          <p className="max-w-xl text-xs leading-relaxed text-subtle">
+            A clean queue for deliberate practice. Browse the catalog, filter by
+            difficulty or topic, and launch any challenge straight into the
+            terminal.
+          </p>
+          {/* Learning entrypoint — button links to the /ds taxonomy page */}
+          <div className="pt-1">
+            <Link
+              to="/ds"
+              className="inline-flex items-center gap-2 rounded-full bg-accent-primary px-5 py-2 text-[10px] font-bold uppercase tracking-widest text-ink transition hover:opacity-90"
+            >
+              <LayoutDashboard size={12} aria-hidden />
+              Explore learning paths
+            </Link>
+          </div>
         </section>
 
-        {/* ── PROBLEM FILTERS ─────────────────────────────────────────── */}
-        <Panel ariaLabel="Problem filters" className="mt-6">
-          <PanelBody className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <label className="relative block w-full lg:max-w-sm">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-accent-primary/50" />
-              <input
-                type="text"
-                aria-label="Search problems"
-                value={searchTerm}
-                onChange={(event) => handleSearchChange(event.target.value)}
-                placeholder="Search title or problem number..."
-                className="w-full border border-subtle-line bg-void py-3 pl-10 pr-4 text-xs text-fg outline-none transition placeholder:text-faint focus:border-accent-primary/50"
-              />
-            </label>
+
+        {/* ── PROBLEM INDEX ───────────────────────────────────────── */}
+        <section
+          aria-label="Problem index"
+          className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel"
+        >
+          <div className="flex flex-col gap-3 border-b border-line p-3 sm:p-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-2">
+              <LayoutDashboard size={15} className="text-accent-primary" />
+              <h2 className="text-base font-bold text-fg">Queue</h2>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 flex items-center gap-2 text-[9px] uppercase tracking-widest text-faint">
-                <Filter size={13} /> Difficulty
-              </span>
-              {["ALL", "EASY", "MEDIUM", "HARD"].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => handleDifficultyChange(level)}
-                  aria-pressed={selectedDifficulty === level}
-                  className={`border px-3 py-2 text-[9px] font-bold uppercase tracking-widest transition ${
-                    selectedDifficulty === level
-                      ? "border-accent-primary/50 bg-accent-primary/[0.08] text-accent-primary"
-                      : "border-subtle-line text-subtle hover:border-white/25 hover:text-fg"
-                  }`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-
-            {/* View switch — cards vs table */}
-            <div className="flex items-center gap-1 border border-subtle-line p-1">
-              {([
-                { id: "cards" as const, label: "Cards", Icon: LayoutGrid },
-                { id: "table" as const, label: "Table", Icon: List },
-              ]).map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => handleViewChange(id)}
-                  aria-pressed={view === id}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest transition ${
-                    view === id
-                      ? "bg-accent-primary/[0.10] text-accent-primary"
-                      : "text-subtle hover:text-fg"
-                  }`}
-                >
-                  <Icon size={12} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </PanelBody>
-        </Panel>
-
-        {/* QUERY FAILURE — not in the mock, but losing the list silently would
-            be worse; same themed retry block this page has always had. */}
-        {isProblemsError && !loading && (
-          <div className="mt-6 flex flex-col items-center gap-3 border border-accent-danger/30 bg-accent-danger/10 p-10 text-center">
-            <div className="w-12 h-12 rounded-none border border-accent-danger/40 bg-accent-danger/20 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-accent-danger" />
-            </div>
-            <p className="text-sm font-mono font-bold tracking-widest text-accent-danger">
-              FAILED TO QUERY PROBLEM REPOSITORY
-            </p>
-            <p className="text-xs font-mono text-subtle max-w-md">
-              The server did not return the problem list. Check your connection and retry the query.
-            </p>
-            <button
-              onClick={() => refetchProblems()}
-              className="mt-1 px-5 py-2 text-xs font-mono font-bold tracking-widest border border-accent-danger/50 bg-accent-danger/20 hover:bg-accent-danger/30 text-accent-danger rounded-none transition-all active:scale-95"
-            >
-              RETRY QUERY
-            </button>
-          </div>
-        )}
-        {/* ── CARD VIEW (default) ────────────────────────────────────────
-              The bento grid sits OUTSIDE the bordered table panel below, so
-              the cards own their own rounded surfaces instead of being stacked
-              inside a second frame. */}
-        {!isProblemsError && view === "cards" && (
-          <section aria-label="Problem cards" className="mt-3">
-            <div className="mb-3 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Problem index</p>
-                <p className="mt-1 text-xs text-subtle">
-                  {loading
-                    ? "Syncing the catalog…"
-                    : `${filteredProblems.length} challenge${filteredProblems.length === 1 ? "" : "s"} ready to solve.`}
-                </p>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-[132px] animate-pulse rounded-card border border-subtle-line bg-raised"
-                  />
-                ))}
-              </div>
-            ) : filteredProblems.length === 0 ? (
-              <EmptyState
-                icon={AlertTriangle}
-                title="No challenges match those filters"
-                message="Adjust the search or difficulty filter, or reset both to browse the full index."
-                action={
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setSelectedDifficulty("ALL");
-                    }}
-                    className="border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-                  >
-                    Clear filters
-                  </button>
-                }
-              />
-            ) : (
-              <BentoGrid problems={currentProblems} topicByProblemId={topicByProblemId} />
-            )}
-
-            {!loading && filteredProblems.length > 0 && (
-              <ProblemsPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                filteredCount={filteredProblems.length}
-                itemsPerPage={itemsPerPage}
-                onPage={setCurrentPage}
-              />
-            )}
-          </section>
-        )}
-
-        {/* ── TABLE VIEW ─────────────────────────────────────────────── */}
-        {!isProblemsError && view === "table" && (
-          <section
-            aria-label="Problem index"
-            className="mt-3 overflow-hidden rounded-card border border-subtle-line bg-raised shadow-panel"
-          >
-            <div className="flex items-center justify-between border-b border-subtle-line bg-white/[0.025] px-5 py-4">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Problem index</p>
-                <p className="mt-1 text-xs text-subtle">Select a challenge to open its execution workspace.</p>
-              </div>
-              <span className="text-[9px] uppercase tracking-widest text-faint">{filteredProblems.length} matches</span>
-            </div>
-
-            {/* Column heads are md+ only — below that every row stacks (mock). */}
-            <div className="hidden grid-cols-[70px_1.6fr_120px_1fr_110px] gap-5 border-b border-subtle-line bg-white/[0.025] px-5 py-3 text-[9px] uppercase tracking-[0.2em] text-faint md:grid">
-              <span>#</span>
-              <span>Problem</span>
-              <span>Difficulty</span>
-              <span>Domain</span>
-              <span />
-            </div>
-
-            {loading ? (
-              <div className="p-4">
-                <TableSkeleton rows={8} />
-              </div>
-            ) : filteredProblems.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 px-6 py-20 text-center">
-                <AlertTriangle size={22} className="text-accent-warning" />
-                <p className="text-xs uppercase tracking-widest text-subtle">No matching problems</p>
-                <p className="text-xs text-faint">Adjust the search or difficulty filter.</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setSelectedDifficulty("ALL");
-                  }}
-                  className="mt-1 border border-accent-primary/40 px-4 py-2 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10"
-                >
-                  Clear filters
-                </button>
-              </div>
-            ) : (
-              /* Task 4: horizontal scroll on phones. Rows use an md+ grid
-                 (stacked below that), but long names + domain labels still
-                 overflow ~360px viewports — the wrapper scrolls instead of
-                 stretching the page. min-w keeps columns meaningful. */
-              <div className="overflow-x-auto">
-                <div className={`flex min-w-[640px] flex-col ${isPending ? "opacity-60 transition-opacity" : ""}`}>
-                {currentProblems.map((p, idx) => {
-                  const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
-                  const problemNumber = p.problem_number || (currentPage - 1) * itemsPerPage + idx + 1;
-                  const domainLabel = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "—";
-
-                  return (
-                    <button
-                      key={p.id || idx}
-                      onClick={() => navigate(`/terminal?id=${p.id || p.github_oid}`)}
-                      className="group grid w-full gap-3 border-b border-white/5 px-5 py-4 text-left transition last:border-0 hover:bg-accent-primary/[0.035] md:grid-cols-[70px_1.6fr_120px_1fr_110px] md:items-center md:gap-5"
-                    >
-                      <span className="hidden text-[10px] text-faint md:block">#{problemNumber}</span>
-
-                      {/* STATUS BOX + TITLE */}
-                      <span className="flex min-w-0 items-center gap-3 text-sm font-bold text-fg transition group-hover:text-accent-primary">
-                        <span
-                          className={`grid h-7 w-7 shrink-0 place-items-center border text-[9px] ${
-                            p.isSolved
-                              ? "border-accent-success/30 bg-accent-success/[0.06] text-accent-success"
-                              : "border-subtle-line bg-void text-faint"
-                          }`}
-                        >
-                          {p.isSolved ? "✓" : String(problemNumber).slice(-1)}
-                        </span>
-                        <span className="truncate">{p.name}</span>
-                      </span>
-
-                      {/* DIFFICULTY */}
-                      <span
-                        className={`w-fit border px-2 py-1 text-[9px] font-bold uppercase tracking-widest ${
-                          difficultyStyles[diff] ?? difficultyStyles.MEDIUM
-                        }`}
-                      >
-                        {diff}
-                      </span>
-
-                      {/* DOMAIN — the structure this problem was indexed under.
-                          Low-priority: hidden on phones to keep rows compact. */}
-                      <span className="hidden truncate text-xs text-subtle md:block">{domainLabel}</span>
-
-                      {/* OPEN affordance: always visible on touch, hover-revealed on md+ */}
-                      <span className="text-right text-[9px] uppercase tracking-widest text-accent-primary opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
-                        Open <ChevronRight size={13} className="inline" />
-                      </span>
-                    </button>
-                  );
-                })}
-                </div>
-              </div>
-            )}
-            {/* PAGINATION — the shared pager, rendered inside the table's bottom border. */}
-            {!loading && filteredProblems.length > 0 && (
-              <footer className="border-t border-subtle-line bg-white/[0.02]">
-                <ProblemsPagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  filteredCount={filteredProblems.length}
-                  itemsPerPage={itemsPerPage}
-                  onPage={setCurrentPage}
-                  variant="flush"
+              <label className="relative">
+                <Search className="absolute left-3 top-2 text-faint" size={13} />
+                <input
+                  aria-label="Search problems"
+                  value={query}
+                  onChange={(e) => setQueryAndPage(e.target.value)}
+                  placeholder="Search title, pattern..."
+                  className="h-8 w-full rounded-lg border border-line bg-surface px-8 pr-3 text-[11px] text-fg outline-none placeholder:text-faint focus:border-accent/40 sm:w-56"
                 />
-              </footer>
-            )}
-          </section>
-        )}
+              </label>
+              <label className="relative">
+                <Filter className="pointer-events-none absolute left-3 top-2.5 text-faint" size={14} />
+                <select
+                  aria-label="Filter by difficulty"
+                  value={difficulty}
+                  onChange={(e) => setDifficultyAndPage(e.target.value)}
+                  className="h-8 w-full appearance-none rounded-lg border border-line bg-surface px-8 pr-7 text-[11px] text-fg outline-none focus:border-accent/40 sm:w-44"
+                >
+                  {DIFFICULTIES.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-2.5 text-faint" size={12} />
+              </label>
+            </div>
+          </div>
+
+          {/* Desktop table — hidden on mobile, shown at md+ */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[640px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-line font-mono text-[8px] uppercase tracking-[0.15em] text-faint">
+                  <th className="px-3 py-2 font-medium">Problem</th>
+                  <th className="px-3 py-2 font-medium">Difficulty</th>
+                  <th className="px-3 py-2 font-medium">Topic</th>
+                  <th className="px-3 py-2 font-medium">Attempts</th>
+                  <th className="px-3 py-2 font-medium">Language</th>
+                  <th className="px-3 py-2 text-right font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paged.map((problem) => (
+                  <ProblemRow key={problem.id} problem={problem} navigate={navigate} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile stacked cards — shown below md, hidden at md+ */}
+          <div className="md:hidden space-y-2">
+            {paged.map((problem) => (
+              <ProblemCard key={problem.id} problem={problem} navigate={navigate} />
+            ))}
+          </div>
+
+          {filtered.length === 0 && !isLoading && (
+            <p className="px-4 py-8 text-center text-xs text-subtle">
+              {isError ? "Failed to load the problem catalog. Retry?" : "No problems match this filter."}
+            </p>
+          )}
+
+          {filtered.length > 0 && (
+            <div className="flex items-center justify-between border-t border-line px-4 py-3 text-[10px] font-mono text-faint sm:px-5">
+              <span>
+                {startIndex}-{endIndex} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="grid h-7 w-7 place-items-center rounded-lg border border-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                <span className="text-[8px] uppercase tracking-widest text-accent-primary">
+                  Page {page} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="grid h-7 w-7 place-items-center rounded-lg border border-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </main>
   );
-};
+}
+
+function Badge({ value }: { value: Problem["difficulty_level"] }) {
+  const tone =
+    value === "EASY"
+      ? "border-accent-success/20 bg-accent-success/10 text-accent-success"
+      : value === "MEDIUM"
+      ? "border-accent-warning/20 bg-accent-warning/10 text-accent-warning"
+      : "border-accent-danger/20 bg-accent-danger/10 text-accent-danger";
+  return (
+    <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold ${tone}`}>
+      {value}
+    </span>
+  );
+}
+
+function ProblemRow({ problem, navigate }: { problem: Problem; navigate: ReturnType<typeof useNavigate> }) {
+  return (
+    <tr
+      className="group border-b border-line transition hover:bg-accent/5"
+      onClick={() => navigate(`/terminal?id=${problem.id}`)}
+    >
+      <td className="px-3 py-3 cursor-pointer">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[8px] text-faint">#{problem.problem_number}</span>
+          <div>
+            <span className="font-semibold text-fg group-hover:text-accent-primary">{problem.name}</span>
+            <p className="mt-0.5 text-[9px] text-faint">{problem.pattern}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-3">
+        <Badge value={problem.difficulty_level} />
+      </td>
+      <td className="px-3 py-3 text-[11px] text-subtle">{problem.topic}</td>
+      <td className="px-3 py-3 font-mono text-[11px] text-subtle">{problem.attempts}</td>
+      <td className="px-3 py-3 font-mono text-[9px] text-faint">{problem.lastLanguage}</td>
+      <td className="px-3 py-3 text-right text-[11px]">
+        <span className={problem.isSolved ? "text-accent-success" : "text-faint"}>
+          {problem.isSolved ? "Solved" : "Open"}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function ProblemCard({ problem, navigate }: { problem: Problem; navigate: ReturnType<typeof useNavigate> }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/terminal?id=${problem.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate(`/terminal?id=${problem.id}`);
+        }
+      }}
+      className="flex flex-col gap-2.5 rounded-panel border border-line bg-surface p-3.5 transition hover:border-accent/40 hover:bg-accent/5 cursor-pointer"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-faint shrink-0">#{problem.problem_number}</span>
+          <span className="font-semibold text-fg">{problem.name}</span>
+        </div>
+        <Badge value={problem.difficulty_level} />
+      </div>
+      <p className="text-[10px] text-faint">{problem.pattern}</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        <span className="text-subtle">Topic: <span className="text-fg">{problem.topic}</span></span>
+        <span className="text-subtle">Attempts: <span className="font-mono text-fg">{problem.attempts}</span></span>
+        <span className="text-subtle">Lang: <span className="font-mono text-fg">{problem.lastLanguage}</span></span>
+      </div>
+      <span className={`self-start text-xs ${problem.isSolved ? "text-accent-success" : "text-faint"}`}>
+        {problem.isSolved ? "Solved" : "Open"}
+      </span>
+    </div>
+  );
+}

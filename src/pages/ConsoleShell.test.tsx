@@ -17,10 +17,11 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
  */
 
 let mockIsAdmin = true;
+let mockAuthenticated = true;
 
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({
-    isAuthenticated: true,
+    isAuthenticated: mockAuthenticated,
     isAdmin: mockIsAdmin,
     isLoading: false,
     user: { username: "tester", email: "t@example.com", role: "ADMIN" },
@@ -94,5 +95,14 @@ describe("ConsoleShell layout route", () => {
     const { container } = renderAt("/dashboard");
     // Layout.tsx owns the single document <main>; the shell must not add one.
     expect(container.querySelectorAll("main")).toHaveLength(0);
+  });
+
+  test("renders the child page without the rail for unauthenticated visitors", () => {
+    mockAuthenticated = false;
+    renderAt("/problems");
+    mockAuthenticated = true;
+    expect(screen.getByText("PROBLEMS_PAGE")).toBeInTheDocument();
+    expect(screen.queryByText("RAIL")).not.toBeInTheDocument();
+    expect(screen.queryByText("BOTTOM_NAV")).not.toBeInTheDocument();
   });
 });

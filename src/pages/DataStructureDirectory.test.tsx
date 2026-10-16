@@ -22,16 +22,15 @@ vi.mock("../hooks/useDsTopicProgress", () => ({
 afterEach(cleanup);
 
 describe("DataStructureDirectory (/ds)", () => {
-  test("opens with the console page header before the ledger", () => {
+  test("opens with the page header before the ledger", () => {
     render(
       <MemoryRouter>
         <DataStructureDirectory />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("heading", { name: /Master every/ })).toBeInTheDocument();
-    expect(screen.getAllByText(/DS \/\/ corpus taxonomy/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: /Data structures/ })).toBeInTheDocument();
+    expect(screen.getByText(/Learning taxonomy/)).toBeInTheDocument();
     expect(screen.getByText(/Domains/)).toBeInTheDocument();
-    expect(screen.getByText(/corpus synced/)).toBeInTheDocument();
   });
 
   test("renders the ledger exactly once, routing into /ds/:slug consoles", () => {
@@ -40,8 +39,6 @@ describe("DataStructureDirectory (/ds)", () => {
         <DataStructureDirectory />
       </MemoryRouter>,
     );
-    // The internal CategoryDirectory header is suppressed — no duplicate.
-    expect(screen.getAllByText(/Master every/)).toHaveLength(1);
     const section = screen.getByRole("region", { name: "Problem categories" });
     const links = within(section).getAllByRole("link");
     expect(links).toHaveLength(8);

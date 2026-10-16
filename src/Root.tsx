@@ -28,7 +28,7 @@ const Profile = lazy(() => import("./pages/Profile.tsx"));
 const MatchAnalysis = lazy(() => import("./pages/MatchAnalysis.tsx"));
 const Battle = lazy(() => import("./pages/Battle.tsx").then((m) => ({ default: m.Battle })));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
-const Problems = lazy(() => import("./pages/Problems.tsx").then((m) => ({ default: m.Problems })));
+const Problems = lazy(() => import("./pages/Problems.tsx"));
 const FriendsDashboard = lazy(() => import("./components/features/FriendDashboard.tsx"));
 const CreateRoom = lazy(() => import("./pages/CreateRoom.tsx"));
 const Lobby = lazy(() => import("./pages/Lobby.tsx"));
@@ -155,23 +155,32 @@ export const Root = () => {
                              Child paths are relative — React Router v7 throws
                              "Absolute route path ... is not valid" at runtime
                              and tsc does not catch it. */}
-                          <Route element={<ConsoleShell />}>
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/problems" element={<Problems />} />
-                            <Route path="/friends" element={<FriendsDashboard />} />
-                           <Route path="/profile" element={<Profile />} />
-                           {/* Post-battle review — ownership-checked match detail */}
-                           <Route path="/analysis/:matchId" element={<MatchAnalysis />} />
-                           <Route path="/lobby" element={<Lobby />} />
-                           <Route path="/rooms/create" element={<CreateRoom />} />
-                           <Route path="/create-room" element={<CreateRoom />} />
-                         </Route>
+                           <Route element={<ConsoleShell />}>
+                             <Route path="/dashboard" element={<Dashboard />} />
+                             <Route path="/friends" element={<FriendsDashboard />} />
+                            <Route path="/profile" element={<Profile />} />
+                            {/* Post-battle review — ownership-checked match detail */}
+                            <Route path="/analysis/:matchId" element={<MatchAnalysis />} />
+                            <Route path="/lobby" element={<Lobby />} />
+                            <Route path="/rooms/create" element={<CreateRoom />} />
+                            <Route path="/create-room" element={<CreateRoom />} />
+                          </Route>
 
-                         {/* Fullscreen / standalone routes keep their own shell */}
-                         <Route path="/battle/:roomId" element={<Battle />} />
-                       </Route>
-                    </Route>
-                  </Routes>
+                          {/* Fullscreen / standalone routes keep their own shell */}
+                          <Route path="/battle/:roomId" element={<Battle />} />
+                        </Route>
+
+                        {/* /problems is the catalog — deliberately PUBLIC so guests
+                            can browse the problem set before signing up. It still
+                            renders through ConsoleShell, which shows the DashboardSidebar
+                            rail only for authenticated users; unauthenticated visitors
+                            get a full-width catalog page and are signed-out via the
+                            global Header chrome. */}
+                        <Route element={<ConsoleShell />}>
+                          <Route path="/problems" element={<Problems />} />
+                        </Route>
+                     </Route>
+                   </Routes>
               </AuthProvider>
             </SocketProvider>
             </GoogleOAuthProvider>

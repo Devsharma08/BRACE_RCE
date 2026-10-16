@@ -29,6 +29,19 @@ const ConsoleShell = () => {
   // that also call useMyRating() share one request instead of adding any.
   const { data: myRating } = useMyRating(isAuthenticated);
 
+  // Unauthenticated visitors on a public console route (/problems) get a
+  // full-width canvas: no fixed rail, no mobile nav, and no rail-offset on the
+  // footer. Authenticated users get the full DashboardSidebar + bottom nav shell.
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-0 w-full bg-base text-fg font-mono">
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex min-h-0 w-full bg-base text-fg font-mono">
       <DashboardSidebar rating={myRating?.rating} />

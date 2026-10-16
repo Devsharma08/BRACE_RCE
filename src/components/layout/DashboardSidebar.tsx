@@ -47,16 +47,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
         aria-expanded={!collapsed}
         className="
           fixed top-1/2 -translate-y-1/2 z-50 hidden md:flex
-          left-[var(--sidebar-width)]
+          left-[calc(var(--sidebar-width)-12px)]
           items-center justify-center
-          w-4 h-10
+          w-6 h-10
           rounded-r-md border border-l-0 border-subtle-line
           bg-panel text-subtle
           transition-all duration-300
           hover:border-accent hover:text-accent
         "
       >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
       </button>
 
       <aside
@@ -75,7 +75,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
           {/* USER PROFILE CARD — always shows the avatar photo; the full
               identity block only appears when expanded */}
           <div className="relative border-b border-subtle-line p-4">
-            <div className="absolute right-0 top-0 h-20 w-20 border-l border-b border-accent-primary/15" />
+            {/* <div className="absolute right-0 top-0 h-20 w-20 border-l border-b border-accent-primary/15" /> */}
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-accent-primary/30">
                 {user?.avatarUrl ? (
@@ -155,12 +155,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
             collapsed ? "flex flex-col items-center gap-2 p-3" : "p-4"
           }`}
         >
-          {!collapsed && (
+          {/* {!collapsed && (
             <div className="mb-3 flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-accent-success">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success" />
               system ready
             </div>
-          )}
+          )} */}
           <button
             onClick={async () => {
               await logout();

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Header from './Header'
 import { Footer } from './Footer'
 import GlobalModals from '../features/GlobalModals'
+import { useAuth } from '../../context/AuthContext'
 
 /**
  * Shell layout wrapping all public-facing pages.
@@ -11,6 +12,7 @@ import GlobalModals from '../features/GlobalModals'
  */
 const Layout = () => {
   const { pathname } = useLocation()
+  const { isAuthenticated } = useAuth();
 
   // These routes manage their own full-screen layout.
   // /dashboard is NOT fullscreen: it renders the DashboardSidebar shell and
@@ -31,22 +33,27 @@ const Layout = () => {
   // FIXED DashboardSidebar rail and the FIXED MobileBottomNav, but the footer
   // is rendered by Layout OUTSIDE that shell — so on these paths the footer
   // needs its own rail offset + bottom-nav clearance (see Footer.offsetRail)
-  // or the rail paints over its left edge and the nav over the copyright row.
+  // or the rail paints over the footer's left edge and the nav over the copyright row.
   //
   // /admin is deliberately absent: AdminLayout's sidebar is a normal in-flow
   // <aside>, not a fixed rail, so its footer already clears it.
   //
-  // /problems is also absent — it moved OUT of ConsoleShell so guests can
-  // browse the catalog, and now renders with the ordinary public header/footer.
-  // Leaving it here would add a rail offset for a rail that no longer renders.
+  // /problems is rendered inside ConsoleShell so authenticated users get the
+  // fixed DashboardSidebar rail; ConsoleShell only mounts that rail for
+  // authenticated users, so the footer must also gate on auth — otherwise a
+  // signed-out visitor would get a footer indented 245px against a page that
+  // has no rail to offset from (the footer would read as trimmed, the inverse
+  // of the bug offsetRail fixes).
   const isConsoleRoute =
-    pathname === '/dashboard' ||
+    isAuthenticated &&
+    (pathname === '/dashboard' ||
     pathname === '/lobby' ||
     pathname === '/friends' ||
     pathname === '/profile' ||
+    pathname === '/problems' ||
     pathname.startsWith('/analysis') ||
     pathname === '/rooms/create' ||
-    pathname === '/create-room';
+    pathname === '/create-room');
 
   return (
     // Full-screen routes pin the SHELL (not just each page) to the dynamic

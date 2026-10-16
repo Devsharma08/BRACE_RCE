@@ -126,10 +126,10 @@ const Header = () => {
 
           {/* DESKTOP ACTIONS */}
           <div className='hidden items-center gap-2 md:flex'>
-            <div className='flex items-center gap-2 border border-accent-success/20 bg-accent-success/[0.05] px-2 py-1 text-[9px] uppercase tracking-widest text-accent-success'>
+            {/* <div className='flex items-center gap-2 border border-accent-success/20 bg-accent-success/[0.05] px-2 py-1 text-[9px] uppercase tracking-widest text-accent-success'>
               <span className='h-1.5 w-1.5 rounded-full bg-accent-success shadow-[0_0_9px_rgba(0,255,135,0.9)]' />
               ready
-            </div>
+            </div> */}
             {isAuthenticated && (
               <div className='flex h-9 w-9 items-center justify-center'>
                 <NotificationCenter />

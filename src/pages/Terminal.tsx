@@ -441,7 +441,7 @@ const Terminal = () => {
     // Collapse the sidebar chrome too so no sliver/toggle lingers.
     setIsPanelOpen(false);
     setIsSidebarCollapsed(true);
-  }, [language, setActiveFile, setCode, setCodeForLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
+  }, [language, activeProblem, setActiveFile, setCode, setCodeForLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
 const exitScratchMode = useCallback(() => {
     setMode('problems');
     // Restore the problem that was visible before scratch mode hid it. Without
@@ -818,7 +818,7 @@ const exitScratchMode = useCallback(() => {
             <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
           <div className="flex items-center gap-3">
-            {activeProblem?.difficulty_level && (
+            {/* {activeProblem?.difficulty_level && (
               <span
                 className={`text-[10px] px-2 py-0.5 border font-bold uppercase ${
                   activeProblem.difficulty_level.toUpperCase() === "EASY"
@@ -830,7 +830,7 @@ const exitScratchMode = useCallback(() => {
               >
                 {activeProblem.difficulty_level.toUpperCase()}
               </span>
-            )}
+            )} */}
             <button
               onClick={toggleMode}
               className="px-2 py-0.5 text-[9px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition"
@@ -839,14 +839,14 @@ const exitScratchMode = useCallback(() => {
             >
               {mode === 'problems' ? "Hide Problems" : "Show Problems"}
             </button>
-            {activeProblem?.isSolved && (
+            {/* {activeProblem?.isSolved && (
               <span className="text-[10px] px-2 py-0.5 border border-accent-success/40 bg-accent-success/10 text-accent-success font-bold uppercase">
                 ✓ SOLVED
               </span>
             )}
             <span className="truncate text-faint uppercase">
               {problemsLoading ? "LOADING..." : activeFileName}
-            </span>
+            </span> */}
           </div>
         </div>
 
