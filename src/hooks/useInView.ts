@@ -21,12 +21,16 @@ import { useMediaQuery } from "./useMediaQuery";
  * jsdom) start revealed too, so content can never be stuck at opacity 0.
  */
 type UseInViewOptions = {
-  /** CSS root-margin for the observation box. Defaults to a 10%-viewport bottom lead-in. */
+  /** CSS root-margin for the observation box. */
   rootMargin?: string;
 };
 
 export function useInView<T extends HTMLElement>({
-  rootMargin = "0px 0px 10% 0px",
+  // Trigger well before the element crosses the fold: the one-time cost of a
+  // reveal (React commit + layerization/raster of a viewport-sized subtree)
+  // then lands while the section is still off-screen, instead of mid-scroll
+  // where it drops frames — and a fast fling can't outrun it as easily.
+  rootMargin = "0px 0px 30% 0px",
 }: UseInViewOptions = {}) {
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const ref = useRef<T | null>(null);
@@ -47,7 +51,16 @@ export function useInView<T extends HTMLElement>({
     // (and renders instantly, since `animation: none` applies in that mode).
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) setInView(true);
+        for (const entry of entries) {
+          // Reveal when intersecting, OR when the element is already ABOVE
+          // the viewport — a fast fling can move an element past the root
+          // between observer samples; without this it would stay at
+          // opacity 0 until the user scrolls back up.
+          if (entry.isIntersecting || entry.boundingClientRect.top < 0) {
+            setInView(true);
+            return;
+          }
+        }
       },
       { rootMargin },
     );

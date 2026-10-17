@@ -754,7 +754,9 @@ body.dragging-active * {
      to turn a position:sticky descendant's containing block upside down.
    The class is only added by useInView when the element scrolls into view. */
 .animate-reveal {
-  animation: descFade 1s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  /* 0.7s rather than the legacy 1s: the fade still reads clearly but spends
+     far less time compositing a viewport-sized layer while the user scrolls. */
+  animation: descFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   animation-delay: 0s;
 }
 
