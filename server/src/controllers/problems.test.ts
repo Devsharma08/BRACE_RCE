@@ -24,6 +24,7 @@ jest.mock("../utils/problemName.js", () => ({
 (prisma.testCase.createMany as any) = jest.fn();
 (prisma.codeSnippet.deleteMany as any) = jest.fn();
 (prisma.codeSnippet.createMany as any) = jest.fn();
+(prisma.user.findUnique as any) = jest.fn();
 
 describe("Problems Controller Routes (/api/v1/problems)", () => {
   const app = createApp();
@@ -76,6 +77,47 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
       expect(res.body.problems).toHaveLength(1);
       expect(res.body.problems[0].name).toBe("Two Sum");
       expect(res.body.pagination).toBeDefined();
+    });
+
+    test("should mask non-public test cases' input and expected output", async () => {
+      (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
+        {
+          id: "prob-1",
+          name: "Masked Cases Problem",
+          problem_number: 1,
+          isCustom: false,
+          problem_definition: "Test",
+          problem_hints: [],
+          difficulty_level: "EASY",
+          timeLimitMs: 60000,
+          createdAt: new Date(),
+          code_snippets: [],
+          test_cases: [
+            { id: "tc-1", input: "1", expectedOutput: "1", is_public: true },
+            { id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false },
+            { id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false },
+          ],
+          userProgress: [],
+        },
+      ]);
+      (prisma.problem.count as jest.Mock<any>).mockResolvedValue(1);
+
+      const res = await request(app)
+        .get("/api/v1/problems/system")
+        .set("Cookie", cookieHeader);
+
+      expect(res.status).toBe(200);
+      const cases = res.body.problems[0].test_cases;
+      // Public case is preserved verbatim.
+      expect(cases[0]).toEqual({ id: "tc-1", input: "1", expectedOutput: "1", is_public: true });
+      // Hidden cases keep their id and is_public flag but have blanked content.
+      expect(cases[1].id).toBe("tc-2");
+      expect(cases[1].is_public).toBe(false);
+      expect(cases[1].input).toBe("");
+      expect(cases[1].expectedOutput).toBe("");
+      expect(cases[2].id).toBe("tc-3");
+      expect(cases[2].input).toBe("");
+      expect(cases[2].expectedOutput).toBe("");
     });
   });
 
@@ -140,6 +182,7 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
 
   describe("POST /api/v1/problems/seed", () => {
     test("should seed system problems array", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ role: "ADMIN" });
       (prisma.problem.upsert as jest.Mock<any>).mockResolvedValue({
         id: "seed-1",
         name: "Seeded Problem",
@@ -167,7 +210,31 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
       expect(res.body.seeded).toHaveLength(1);
     });
 
+    test("should return 403 for a non-admin user", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ role: "USER" });
+
+      const res = await request(app)
+        .post("/api/v1/problems/seed")
+        .set("Cookie", cookieHeader)
+        .send({
+          problems: [
+            {
+              problem_number: 1,
+              name: "Seeded Problem",
+              problem_definition: "Test problem",
+              difficulty_level: "EASY",
+              test_cases: [{ input: "1", expectedOutput: "1" }],
+            },
+          ],
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toBe("Admin access required");
+    });
+
     test("should return 400 if problems array is not provided", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ role: "ADMIN" });
+
       const res = await request(app)
         .post("/api/v1/problems/seed")
         .set("Cookie", cookieHeader)

@@ -95,11 +95,13 @@ export const signupSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
   avatarUrl: z.string().url("Invalid avatar URL").optional(),
+  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const signinSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
+  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const googleAuthSchema = z.object({
@@ -118,11 +120,13 @@ export const googleCallbackSchema = z.object({
 
 export const otpSendSchema = z.object({
   email: z.string().email("Invalid email format"),
+  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const otpVerifySchema = z.object({
   email: z.string().email("Invalid email format"),
   otp: z.string().min(6, "Invalid OTP").max(6, "Invalid OTP"),
+  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const passwordResetRequestSchema = z.object({

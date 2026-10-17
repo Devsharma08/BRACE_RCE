@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 import { JWT_SECRET, verifyTokenResult } from '../lib/jwt.js';
+import { prisma } from '../lib/prisma.js';
 
 const SECRET_KEY = JWT_SECRET;
 
@@ -87,4 +88,29 @@ export const optionalAuthentication = (req: Request, _res: Response, next: NextF
     }
 
     return next();
+};
+
+/**
+ * Admin role guard — must be stacked AFTER `authentication` so that `req.userId`
+ * is populated. The JWT intentionally omits `role` (it is not a claim the
+ * frontend should cache), so the authoritative check re-reads the role from the
+ * database on every request. Returns 403 for non-admins, never 401 — a missing
+ * role is an authorization failure, not an authentication one.
+ */
+export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    const userId = (req as AuthRequest).userId;
+    if (!userId) {
+        return res.status(403).json({ status: "error", message: "Admin access required" });
+    }
+
+    const caller = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
+
+    if ((caller?.role || "").toUpperCase() !== "ADMIN") {
+        return res.status(403).json({ status: "error", message: "Admin access required" });
+    }
+
+    next();
 };

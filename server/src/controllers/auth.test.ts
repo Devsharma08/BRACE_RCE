@@ -412,7 +412,8 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Logged in successfully");
       expect(res.body.user.id).toBe("user-123");
-      expect(res.body.token).toBeDefined();
+      // Token is now delivered exclusively via httpOnly cookie — never in body.
+      expect(res.body.token).toBeUndefined();
       expect(res.headers["set-cookie"]).toBeDefined();
       expect(signInWithEmailAndPassword.mock.calls[0][1]).toBe("test@example.com");
     });
@@ -512,7 +513,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Logged in successfully");
       expect(res.body.user.id).toBe("user-otp");
-      expect(res.body.token).toBeDefined();
+      expect(res.body.token).toBeUndefined();
       expect(res.headers["set-cookie"]).toBeDefined();
       // Codes are single-use.
       expect(getCached(`otp:otp-verify@example.com`)).toBeUndefined();

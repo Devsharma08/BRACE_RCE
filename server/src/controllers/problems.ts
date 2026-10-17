@@ -44,22 +44,27 @@ const USER_PROGRESS_SELECT = {
 } as const;
 
 /**
- * Ship every stored test case to the client, WITH its real input and expected
- * output — including the ones flagged `is_public: false`.
+ * Ship test cases to the client with hidden cases masked.
  *
- * This used to blank the non-public pairs so the answers would not sit in the
- * page source. The product decision is the opposite: the terminal's Output
- * window is where a learner is meant to read every case, so all 15 render in
- * full. `is_public` is still carried through because the panel labels the first
- * three as samples and the rest as withheld-in-spirit, and because the case
- * count on the problem cards is derived from it.
+ * Public (sample) cases are sent verbatim — the learner is meant to see them and
+ * run against them in practice mode. Non-public ("hidden") cases are still
+ * present in the array (so the UI can report the total case count and render
+ * placeholders), but their `input` and `expectedOutput` are blanked. Sending the
+ * answer keys for hidden cases in an API response — let alone one that could be
+ * cached to a CDN edge node — defeats the purpose of withholding them.
  *
- * Both the list and detail endpoints call this so the two cannot drift.
+ * The execution service already knows every expected output (it compares
+ * submissions against them server-side), so grading is unaffected; this only
+ * prevents the client from ever seeing the hidden answers at all.
  */
 function shipTestCases<
     T extends { id: string; input: string; expectedOutput: string; is_public: boolean },
 >(cases: T[]): T[] {
-    return cases ?? [];
+    return (cases ?? []).map((tc) =>
+        tc.is_public
+            ? tc
+            : { ...tc, input: "", expectedOutput: "" }
+    );
 }
 
 /** Drop every cached problem payload for one user (call after a progress write). */

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authentication, optionalAuthentication } from "../middleware/authentication.js";
+import { authentication, optionalAuthentication, isAdmin } from "../middleware/authentication.js";
 import { problemController } from "../controllers/problems.js";
 import { validate, validateQuery, createCustomProblemSchema, seedSystemProblemsSchema, paginationSchema } from "../middleware/validation.js";
 
@@ -41,6 +41,6 @@ problemsRouter.get("/:id", optionalAuthentication, problemController.getProblemB
 
 // ── User-scoped writes ─────────────────────────────────────────────────────
 problemsRouter.post("/create", authentication, validate(createCustomProblemSchema), problemController.createCustomProblem);
-problemsRouter.post("/seed", authentication, validate(seedSystemProblemsSchema), problemController.seedSystemProblems);
+problemsRouter.post("/seed", authentication, isAdmin, validate(seedSystemProblemsSchema), problemController.seedSystemProblems);
 
 export { problemsRouter };
