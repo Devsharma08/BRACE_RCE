@@ -2036,6 +2036,10 @@ export const Battle = () => {
           )}
         </div>
 
+        {/* `max-w-none` on this tab is load-bearing: it lives inside the
+            width-controlled panel wrapper (0px when hidden), so the global
+            `button { max-width: 100%; overflow: hidden }` would clamp it
+            to 0px and crop the chevron. */}
         <button
           onClick={() => {
             const next = !(isPanelOpen && !isSidebarCollapsed);
@@ -2044,7 +2048,7 @@ export const Battle = () => {
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse panel" : "Expand panel"}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/20 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full`}
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/20 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full max-w-none`}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
             <ChevronLeft className="w-5 h-5" />

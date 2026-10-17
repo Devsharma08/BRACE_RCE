@@ -786,7 +786,12 @@ const exitScratchMode = useCallback(() => {
         </div>
 
         {/* Collapse/expand toggle lives inside the panel (it sits just outside
-            via left-full on desktop, inside on mobile) — unmounted with it. */}
+            via left-full on desktop, inside on mobile) — unmounted with it.
+            `max-w-none` is load-bearing: the wrapper's inline width is 0 when
+            the panel is hidden, and the global `button { max-width: 100%;
+            overflow: hidden }` would clamp this tab to 0px and crop the
+            chevron. Without it the icon renders only as long as the panel
+            is at least as wide as the button. */}
         <button
           onClick={() => {
             const next = !(isPanelOpen && !isSidebarCollapsed);
@@ -794,7 +799,7 @@ const exitScratchMode = useCallback(() => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 hover:bg-accent-primary/10 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] ${
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 hover:bg-accent-primary/10 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] max-w-none ${
             isMobile ? "right-3 rounded-r-lg" : "left-full rounded-r-lg"
           }`}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
