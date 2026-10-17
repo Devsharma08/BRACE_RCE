@@ -10,7 +10,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api } from "../../../config/api";
-import { useInView } from "../../../hooks/useInView";
 
 /**
  * CommunitySupport — home "developer voice & reviews" + feedback desk.
@@ -35,13 +34,6 @@ const capabilities = [
 ] as const;
 
 export function CommunitySupport() {
-  // The sticky Signal desk must NOT sit under an animated ancestor: an
-  // element with a running (or fill-mode-forwards) transform turns its
-  // descendants' containing block into the transformed box, which kills
-  // position:sticky — exactly what the section-wide animate-desc-fade in
-  // a1d7866 did. Reveal only the right-hand column; the section, the grid,
-  // and the aside itself never animate.
-  const { ref: columnRef, inView: columnInView } = useInView<HTMLDivElement>();
   const [feedback, setFeedback] = useState("");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -104,11 +96,7 @@ export function CommunitySupport() {
           </div>
         </aside>
 
-        <div
-          ref={columnRef}
-          className={`min-w-0 ${columnInView ? "animate-reveal" : ""}`}
-          style={columnInView ? undefined : { opacity: 0 }}
-        >
+        <div className="min-w-0">
           {/* Desk header */}
           <header className="flex items-center justify-between border-b border-line pb-4 font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
             <span className="flex items-center gap-2">

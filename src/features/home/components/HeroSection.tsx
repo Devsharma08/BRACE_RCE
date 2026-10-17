@@ -4,7 +4,6 @@ import type { FC } from 'react'
 import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../../hooks/useMediaQuery'
-import { useInView } from '../../../hooks/useInView'
 
 /**
  * Home hero — the "signal" hero: the three-word headline over a heartbeat trace
@@ -45,16 +44,11 @@ export const BracePixelHero: FC = () => {
   // to remove the element from the DOM, not just restyle it. The headline text
   // never animates, so it needs no gating.
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-  // Revealed via IntersectionObserver: at load (already on screen) that is
-  // immediate, otherwise the fade plays as the hero scrolls in.
-  const { ref, inView } = useInView<HTMLElement>()
 
   return (
     <section
-      ref={ref}
       id="top"
-      className={`relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink ${inView ? 'animate-reveal' : ''}`}
-      style={inView ? undefined : { opacity: 0 }}
+      className="relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink"
     >
       {/* Ambient glow + grid backdrop, contained by the wrapper's overflow-hidden. */}
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />

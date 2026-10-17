@@ -5,7 +5,6 @@ import {
   Code2,
   Layers3,
 } from "lucide-react";
-import { useInView } from "../../../hooks/useInView";
 
 /**
  * QuickNavCards — four uniform navigation cards on the home page.
@@ -59,9 +58,8 @@ const cards = [
 ];
 
 export function QuickNavCards() {
-  const { ref, inView } = useInView<HTMLElement>();
   return (
-    <section ref={ref} aria-label="Quick navigation" className={`w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 ${inView ? "animate-reveal" : ""}`} style={inView ? undefined : { opacity: 0 }}>
+    <section aria-label="Quick navigation" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
@@ -79,12 +77,11 @@ export function QuickNavCards() {
 
         {/* Card grid — uniform radius, surface, border, icon, heading, copy */}
         <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
-                    {cards.map(({ href, icon: Icon, accent, label, title, description, footerLabel, footerAction }, index) => (
+                    {cards.map(({ href, icon: Icon, accent, label, title, description, footerLabel, footerAction }) => (
             <Link
               key={href}
               to={href}
-              className={`group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${inView ? "animate-reveal" : ""}`}
-              style={inView ? { animationDelay: `${0.1 + index * 0.12}s` } : undefined}
+              className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
             >
               {/* Label + icon row */}
               <div className="flex items-center justify-between">
