@@ -101,7 +101,7 @@ const label = "font-mono text-[11px] uppercase tracking-[0.18em] text-accent-pri
 const body = "max-w-2xl text-sm leading-6 text-subtle";
 
   return (
-    <div className="w-full bg-base text-fg min-h-[100dvh]">
+    <div className="w-full bg-base text-fg">
       <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
         <header className="border-b border-line pb-10">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
@@ -194,19 +194,9 @@ const body = "max-w-2xl text-sm leading-6 text-subtle";
           ))}
         </section>
 
-        <footer className="border-t border-line pt-8 sticky bottom-0 z-20 bg-base/95 backdrop-blur-md backdrop-filter">
+        <footer className="border-t border-line pt-8">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-            Built by operators · MIT
-          </p>
-          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-            A direct channel for the people testing, shaping, and stress-testing the execution cycle.
-          </p>
-          <div className="mt-1 flex items-center gap-1 text-accent-success">
-            <span className="w-1 h-1 shrink-0 rounded-full bg-accent-success">●</span>
-            <span className="text-accent-success">channel open</span>
-          </div>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-            Feedback is routed to the engineering log.
+            Built by Dev Sharma · MIT
           </p>
         </footer>
       </div>

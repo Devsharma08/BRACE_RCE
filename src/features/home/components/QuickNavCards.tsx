@@ -5,6 +5,7 @@ import {
   Code2,
   Layers3,
 } from "lucide-react";
+import { useInView } from "../../../hooks/useInView";
 
 /**
  * QuickNavCards — four uniform navigation cards on the home page.
@@ -58,8 +59,9 @@ const cards = [
 ];
 
 export function QuickNavCards() {
+  const { ref, inView } = useInView<HTMLElement>();
   return (
-    <section aria-label="Quick navigation" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 animate-desc-fade">
+    <section ref={ref} aria-label="Quick navigation" className={`w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 ${inView ? "animate-reveal" : ""}`} style={inView ? undefined : { opacity: 0 }}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
@@ -81,8 +83,8 @@ export function QuickNavCards() {
             <Link
               key={href}
               to={href}
-              className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary animate-desc-fade"
-              style={{ animationDelay: `${0.1 + index * 0.12}s` }}
+              className={`group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${inView ? "animate-reveal" : ""}`}
+              style={inView ? { animationDelay: `${0.1 + index * 0.12}s` } : undefined}
             >
               {/* Label + icon row */}
               <div className="flex items-center justify-between">

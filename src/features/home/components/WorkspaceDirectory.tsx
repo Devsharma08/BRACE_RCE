@@ -8,6 +8,7 @@ import {
   LockKeyhole,
   Swords,
 } from "lucide-react";
+import { useInView } from "../../../hooks/useInView";
 
 /**
  * WorkspaceDirectory — home "choose your workspace" bento.
@@ -54,8 +55,9 @@ const accentStyles: Record<
 } as const;
 
 export function WorkspaceDirectory() {
+  const { ref, inView } = useInView<HTMLElement>();
   return (
-    <section aria-label="Available workspaces" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 animate-desc-fade">
+    <section ref={ref} aria-label="Available workspaces" className={`w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24 ${inView ? "animate-reveal" : ""}`} style={inView ? undefined : { opacity: 0 }}>
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
@@ -86,8 +88,8 @@ export function WorkspaceDirectory() {
               <div
                 key={href + id}
                 to={href}
-                className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary animate-desc-fade`}
-                style={{ animationDelay: `${0.1 + idx * 0.1}s` }}
+                className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${inView ? "animate-reveal" : ""}`}
+                style={inView ? { animationDelay: `${0.1 + idx * 0.1}s` } : undefined}
               >
                 <div className={`absolute right-7 top-7 grid h-11 w-11 place-items-center rounded-full border border-line bg-surface/60 ${styles.text} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
                   <Icon size={18} />

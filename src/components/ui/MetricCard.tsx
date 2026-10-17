@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
 
 // ─── MetricCard ──────────────────────────────────────────────────────────────
 // Shared metric tile: label + value + optional icon/unit/trend/description.
@@ -16,6 +16,8 @@ type MetricCardProps = {
   valueTone?: "default" | "positive" | "warning" | "danger";
   icon?: ComponentType<{ className?: string }>;
   className?: string;
+  /** Optional inline styles — used by HomeMetricsStrip for stagger delays. */
+  style?: CSSProperties;
 };
 
 const dotClasses = {
@@ -50,8 +52,9 @@ export const MetricCard = ({
   valueTone = "default",
   icon: Icon,
   className = "",
+  style,
 }: MetricCardProps) => (
-  <div className={`min-w-0 rounded-card border border-subtle-line bg-surface p-4 transition-colors hover:bg-surface-hover sm:p-5 ${className}`}>
+  <div style={style} className={`min-w-0 rounded-card border border-subtle-line bg-surface p-4 transition-colors hover:bg-surface-hover sm:p-5 ${className}`}>
     <span className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-widest text-subtle">
       {Icon && <Icon className="size-3.5 shrink-0 text-accent-primary/50" aria-hidden="true" />}
       {dotTone && <span className={`size-1.5 shrink-0 rounded-full ${dotClasses[dotTone]}`} aria-hidden="true" />}

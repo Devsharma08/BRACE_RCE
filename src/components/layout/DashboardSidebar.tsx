@@ -47,16 +47,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
         aria-expanded={!collapsed}
         className="
           fixed top-1/2 -translate-y-1/2 z-50 hidden md:flex
-          left-[calc(var(--sidebar-width)-12px)]
+          left-[var(--sidebar-width)]
           items-center justify-center
-          w-6 h-10
+          w-4 h-10
           rounded-r-md border border-l-0 border-subtle-line
           bg-panel text-subtle
           transition-all duration-300
           hover:border-accent hover:text-accent
         "
       >
-        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
 
       <aside

@@ -745,6 +745,28 @@ body.dragging-active * {
   animation-delay: 2.4s;
 }
 
+/* Scroll-triggered reveal for the home sections — same motion as
+   .animate-desc-fade, but fill-mode `backwards`:
+   - holds the `from` state during stagger delays (no visible pop when the
+     class is applied while the element is entering),
+   - RELEASES the transform once the animation ends, so hover lifts
+     (-translate-y) keep working and no transformed ancestor is left behind
+     to turn a position:sticky descendant's containing block upside down.
+   The class is only added by useInView when the element scrolls into view. */
+.animate-reveal {
+  animation: descFade 1s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: 0s;
+}
+
+/* Reduced motion: never animate. useInView starts revealed in this mode, so
+   content is simply present — nothing waits for a trigger. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal,
+  .animate-desc-fade {
+    animation: none;
+  }
+}
+
 /* Size the complete 100 × 15 matrix from its frame, not the viewport.
    Square cells and proportional gaps preserve the artwork at every width. */
 .home-hero .pixel-grid {

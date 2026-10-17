@@ -1,4 +1,5 @@
 import { MetricCard } from "../../../components/ui/MetricCard";
+import { useInView } from "../../../hooks/useInView";
 
 // ─── HomeMetricsStrip ────────────────────────────────────────────────────────
 // Proof strip below the hero. Values come from the same local harness snapshot
@@ -34,27 +35,30 @@ const metrics = [
   },
 ];
 
-const HomeMetricsStrip = () => (
-  <section aria-label="Home proof metrics" className="w-full px-4 py-6 sm:px-6 sm:py-8 animate-desc-fade">
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric, idx) => (
-        <MetricCard
-          key={metric.label}
-          label={metric.label}
-          value={metric.value}
-          unit={metric.unit}
-          description={metric.description}
-          dotTone={metric.dotTone}
-          className="p-2.5 pb-2 sm:p-3 sm:pb-2.5 animate-desc-fade"
-          style={{ animationDelay: `${0.15 + idx * 0.08}s` }}
-        />
-      ))}
-    </div>
-<p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-subtle">
-  Architecture Benchmarks & Harness Specifications — live telemetry contract verified on the About page.
-</p>
-  </section>
-);
+const HomeMetricsStrip = () => {
+  const { ref, inView } = useInView<HTMLElement>();
+  return (
+    <section ref={ref} aria-label="Home proof metrics" className={`w-full px-4 py-6 sm:px-6 sm:py-8 ${inView ? "animate-reveal" : ""}`} style={inView ? undefined : { opacity: 0 }}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((metric, idx) => (
+          <MetricCard
+            key={metric.label}
+            label={metric.label}
+            value={metric.value}
+            unit={metric.unit}
+            description={metric.description}
+            dotTone={metric.dotTone}
+            className={`p-2.5 pb-2 sm:p-3 sm:pb-2.5 ${inView ? "animate-reveal" : ""}`}
+            style={inView ? { animationDelay: `${0.15 + idx * 0.08}s` } : undefined}
+          />
+        ))}
+      </div>
+      <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-widest text-subtle">
+        Architecture Benchmarks &amp; Harness Specifications — live telemetry contract verified on the About page.
+      </p>
+    </section>
+  );
+};
 
 export { HomeMetricsStrip };
 export default HomeMetricsStrip;
