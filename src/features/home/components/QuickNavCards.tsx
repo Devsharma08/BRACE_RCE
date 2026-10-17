@@ -59,8 +59,8 @@ const cards = [
 
 export function QuickNavCards() {
   return (
-    <section aria-label="Quick navigation" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+    <section aria-label="Quick navigation" className="w-full py-12 sm:py-16 lg:py-24">
+      <div className="mx-auto max-w-6xl">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">

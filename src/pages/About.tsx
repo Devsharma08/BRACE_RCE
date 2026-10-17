@@ -98,13 +98,13 @@ const GROUPS: { title: string; items: string[] }[] = [
 const row =
   "flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-line py-3";
 const label = "font-mono text-[11px] uppercase tracking-[0.18em] text-accent-primary";
-const body = "max-w-2xl text-sm leading-6 text-subtle";
+const body = "max-w-6xl text-sm leading-6 text-subtle";
 
   return (
     <div className="w-full bg-base text-fg">
-      <div className="mx-auto w-full max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
+      <div className="mx-auto w-full max-w-6xl py-16 sm:py-20">
         <header className="border-b border-line pb-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
+          <p className="font-mono ml-1 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             About
           </p>
           <h1
@@ -196,7 +196,7 @@ const body = "max-w-2xl text-sm leading-6 text-subtle";
 
         <footer className="border-t border-line pt-8">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
-            Built by Dev Sharma · MIT
+            Built by Dev Sharma 
           </p>
         </footer>
       </div>

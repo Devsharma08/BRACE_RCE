@@ -25,13 +25,25 @@ export default function BracePreloader() {
     // Reduced motion skips the choreography — just clear the veil quickly.
     const total = reduced ? 250 : 1900;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
 
-    const timer = setTimeout(() => setDone(true), total);
+    const timer = setTimeout(() => {
+      // Restore scrolling — set on BOTH html and body to be safe across
+      // browsers that consult either element for the scroll container.
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      setDone(true);
+    }, total);
+
     return () => {
       clearTimeout(timer);
-      document.body.style.overflow = previousOverflow;
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
     };
   }, []);
 

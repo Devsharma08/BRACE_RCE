@@ -66,8 +66,8 @@ export function CommunitySupport() {
   }
 
   return (
-    <section aria-label="Community support and reviews" className="w-full px-4 py-12 sm:px-6 sm:py-16 lg:py-24">
-      <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-16 lg:items-start lg:min-h-screen">
+    <section aria-label="Community support and reviews" className="w-full py-12 sm:py-16 lg:py-24">
+      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-16 lg:items-start lg:min-h-screen">
         {/* Sticky signal desk.
             `lg:top-4` rather than `top-0`: the app header is sticky at 58px but
             auto-hides after 3s of downward scroll, so a 58px offset would leave
@@ -79,7 +79,7 @@ export function CommunitySupport() {
             remaining scroll room to stick within. `lg:min-h-screen` gives that
             room so the aside stays pinned while the right column scrolls past,
             releasing only once the whole grid has been traversed. */}
-        <aside className="bg-base lg:sticky lg:top-4 z-10">
+        <aside className="bg-base lg:sticky lg:top-20 z-10">
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             <MessageCircle size={14} /> Signal desk
           </div>

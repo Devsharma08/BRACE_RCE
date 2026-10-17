@@ -60,8 +60,13 @@ const Layout = () => {
     // viewport: a 100vh wrapper on a phone is taller than the visible area, so
     // the document picks up a phantom scroll strip and the page's bottom edge
     // (e.g. the terminal output panel) sits under the browser chrome.
+    //
+    // `app-x-clip` contains page-level horizontal overflow WITHOUT breaking
+    // position:sticky (overflow-x: clip, not hidden — see index.css). A plain
+    // overflow-x: hidden here or on body/html would make sticky descendants
+    // stick within this box instead of the viewport.
     <div
-      className={`flex flex-col w-full bg-base text-fg ${isFullscreen ? "viewport-shell" : "min-h-screen"}`}
+      className={`app-x-clip flex flex-col w-full bg-base text-fg ${isFullscreen ? "viewport-shell" : "min-h-screen"}`}
     >
       <GlobalModals />
 
@@ -81,7 +86,7 @@ const Layout = () => {
             Header is sticky (in document flow), so main needs no top padding.
             The footer is a normal document-flow element so scrolling is natural.
           */}
-          <main className="flex-1 w-full bg-base">
+          <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 bg-base">
             <Outlet />
           </main>
 

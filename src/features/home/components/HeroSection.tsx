@@ -48,7 +48,7 @@ export const BracePixelHero: FC = () => {
   return (
     <section
       id="top"
-      className="relative w-full overflow-hidden bg-base text-fg selection:bg-accent-primary selection:text-ink"
+      className="relative w-full bg-base text-fg selection:bg-accent-primary selection:text-ink"
     >
       {/* Ambient glow + grid backdrop, contained by the wrapper's overflow-hidden. */}
       <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
@@ -58,7 +58,7 @@ export const BracePixelHero: FC = () => {
             gutters: signal top-right, structure centred left, runtime
             bottom-right. Large screens only — below lg the content fills the
             width and there is no gutter to sit in. */}
-        <div className="pointer-events-none absolute right-5 top-[24%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
+         <div className="pointer-events-none absolute right-5 top-[24%] hidden font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
           signal
         </div>
         <div className="pointer-events-none absolute left-5 top-1/2 hidden -translate-y-1/2 font-mono text-[9px] uppercase tracking-[0.35em] text-faint lg:block [writing-mode:vertical-rl]">
@@ -80,16 +80,13 @@ export const BracePixelHero: FC = () => {
           a `vh`-based hero overflows the visible area and its CTAs end up
           off-screen. The section is NOT `overflow-hidden` for layout purposes
           (only the backdrop layers are), so nothing below it can be clipped. */}
-      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-58px)] max-w-6xl flex-col items-center justify-center px-5 py-8 text-center sm:py-10 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-58px)] max-w-6xl flex-col items-center justify-center py-8 text-center sm:py-10">
         {/* Eyebrow */}
         <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.26em] text-accent-primary">
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
           <span className="text-faint">/</span>
           <span className="hidden sm:inline">RCE // field notes</span>
           <span className="sm:hidden">RCE</span>
-          {/* <span className="rounded-full border border-accent-success/25 bg-accent-success/[0.06] px-2 py-1 text-[8px] tracking-widest text-accent-success">
-            READY
-          </span> */}
           <span className="h-px w-8 bg-accent-primary sm:w-12" />
         </div>
 

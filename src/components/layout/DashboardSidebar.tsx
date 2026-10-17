@@ -75,7 +75,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = memo(({ rating }) => {
           {/* USER PROFILE CARD — always shows the avatar photo; the full
               identity block only appears when expanded */}
           <div className="relative border-b border-subtle-line p-4">
-            {/* <div className="absolute right-0 top-0 h-20 w-20 border-l border-b border-accent-primary/15" /> */}
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-accent-primary/30">
                 {user?.avatarUrl ? (

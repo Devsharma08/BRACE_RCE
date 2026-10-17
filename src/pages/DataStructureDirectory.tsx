@@ -32,8 +32,8 @@ const DataStructureDirectory: FC = () => {
   });
 
   return (
-    <main className="relative z-10 flex-1 min-w-0 w-full px-3 py-5 md:px-6 md:py-6 pb-16 md:pb-6 selection:bg-accent/30 selection:text-accent-primary">
-      <div className="mx-auto max-w-6xl px-2 sm:px-4">
+    <main className="relative z-10 flex-1 min-w-0 w-full py-5 pb-16 md:py-6 md:pb-6 selection:bg-accent/30 selection:text-accent-primary">
+      <div className="mx-auto max-w-6xl">
 
         {/* ── PAGE HEADER ── */}
         <div className="mb-8">

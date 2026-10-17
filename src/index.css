@@ -275,8 +275,10 @@
 
 html {
   scroll-behavior: smooth;
-  /* Prevent horizontal overflow at the document level */
-  overflow-x: hidden;
+  /* No overflow-x here: combined with the body's, it turned the document into
+     a non-viewport scroll container and disabled ALL position:sticky on the
+     page. Horizontal containment lives on `.app-x-clip` (overflow-x: clip)
+     in Layout.tsx, which clips without breaking sticky. */
 }
 
 body {
@@ -285,9 +287,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-base);
   color: var(--text-primary);
-  /* Prevent body-level horizontal scroll */
-  overflow-x: hidden;
+  /* Horizontal overflow is contained on a dedicated wrapper (`.app-x-clip`),
+     NOT here: `overflow-x: hidden` on body/html makes the body a scroll
+     container, and any position:sticky element inside (e.g. the home Signal
+     desk) sticks within the body box instead of the viewport — i.e. it never
+     pins. See `.app-x-clip` below. */
   min-height: 100vh;
+  overflow-y: auto;
+}
+
+/* Page-level horizontal containment that preserves position:sticky.
+   `overflow-x: clip` (unlike `hidden`) does not create a scroll container,
+   so sticky descendants keep sticking to the viewport while stray wide
+   children (hero trace, ambient glows) still cannot cause page sideways
+   scroll. Applied in Layout.tsx around the whole shell. */
+.app-x-clip {
+  overflow-x: clip;
 }
 
 /* Full-screen shells (terminal, battle, auth): pin to the DYNAMIC viewport so a
@@ -890,9 +905,6 @@ body.dragging-active * {
   justify-content: center;
   background-color: var(--bg-base);
   overflow: hidden;
-  /* Isolate the intro's paint work from the app underneath — the compositor
-     can rasterize this layer once instead of repainting the page behind it. */
-  contain: strict;
 }
 
 /* "Brace RCE v2.0" — phase 1 fades in from 20px below, holds 500ms, then
@@ -901,8 +913,8 @@ body.dragging-active * {
    only after the first has finished (its forwards fill parks it off-screen),
    so they never fight over `transform`. */
 .preloader-text {
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 5vw, 3rem);
+  font-family: var(--font-mono);
+  font-size: clamp(2.5rem, 8vw, 5rem);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--text-primary);
@@ -928,6 +940,7 @@ body.dragging-active * {
   background-color: var(--bg-base);
   border-top: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
   box-shadow: 0 -24px 60px color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  /* Start off-screen below, rise to cover the text by the end of the exit phase */
   transform: translateY(100%);
   /* Same GPU rationale as the text — rise stays on the compositor thread. */
   will-change: transform;
@@ -984,9 +997,9 @@ body.dragging-active * {
    only works if the gradient actually covers every glyph — an oversized,
    no-repeat band whose position animates off the box leaves transparent text
    with nothing behind it, and the words vanish. So: `background-size: 100%`
-   and no animation, guaranteeing the gradient always spans each word's box.
+    and no animation, guaranteeing the gradient always spans each word's box.
 
-   All motion lives on the background trace instead (see `.signal-drift`). */
+    All motion lives on the background trace instead (see `.signal-drift`). */
 .signal-word {
   background-size: 100% 100%;
   background-repeat: no-repeat;
