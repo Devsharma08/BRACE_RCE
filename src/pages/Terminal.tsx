@@ -21,6 +21,8 @@ import {
 import type { ExecutionMode, SupportedLanguage } from "../features/terminal/types";
 import type { ProblemTimerRef } from "../features/terminal/components/ProblemTimer";
 import { NotesPanel } from "../components/ui/NotesPanel";
+import { useSocket } from "../context/SocketContext";
+import ProblemReport from "../features/terminal/components/ProblemReport";
 import { invalidateProblemQueries } from "../utils/problemCache";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { toast } from "sonner";
@@ -135,6 +137,7 @@ const Terminal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { socket, activeBattleRoom, customLobby } = useSocket();
 
   // URL-driven: id or oid selects the initial problem
   const targetId = searchParams.get("id") || searchParams.get("oid") || searchParams.get("problemId") || "";
@@ -295,6 +298,7 @@ const Terminal = () => {
     codeByLanguage,
     setCodeForLanguage,
     getCodeForLanguage,
+    setActiveProblemId,
   } = useContext(TerminalContext);
 
   const { setStatus } = useContext(TerminalContext);
@@ -358,6 +362,10 @@ const Terminal = () => {
       setOutput(null);
       setOutputText("");
 
+      // Invalidate the code cache so stale snippets from a previous problem are
+      // not restored when the user switches languages on this problem.
+      setActiveProblemId(problem.id);
+
       // Extract Java class name from code_snippets if available
       const javaSnippet = problem.code_snippets?.find(
         (s) => s.language?.toLowerCase() === "java"
@@ -393,7 +401,7 @@ const Terminal = () => {
       // Sync solved status on problem objects (in case we come from list)
       if (allProblems) setProblems(allProblems);
     },
-    [setActiveFile, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
+    [setActiveFile, setActiveProblemId, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
   );
 
   // Hide Problems toggle — switches between the full catalog sidebar and a
@@ -409,9 +417,9 @@ const Terminal = () => {
   // initialization".
    const enterScratchMode = useCallback(() => {
     setMode('no-problem');
-    // Snapshot the current problem so exitScratchMode can restore it.
     lastProblemRef.current = activeProblem;
     setActiveProblem(null);
+    setActiveProblemId(null);
     // A real, stable id rather than "". Three separate guards key off `activeFile`
     // being truthy and an empty string fails all of them, which is what made the
     // scratch editor look broken:
@@ -441,7 +449,7 @@ const Terminal = () => {
     // Collapse the sidebar chrome too so no sliver/toggle lingers.
     setIsPanelOpen(false);
     setIsSidebarCollapsed(true);
-  }, [language, activeProblem, setActiveFile, setCode, setCodeForLanguage, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
+  }, [language, activeProblem, setActiveFile, setCode, setCodeForLanguage, setActiveProblemId, setCustomInput, setCustomInputActive, setIsCustomInputRun, setOutput, setTestCases]);
 const exitScratchMode = useCallback(() => {
     setMode('problems');
     // Restore the problem that was visible before scratch mode hid it. Without
@@ -511,13 +519,13 @@ const exitScratchMode = useCallback(() => {
   const handleLanguageChange = useCallback(
     (newLang: SupportedLanguage) => {
       setLanguage(newLang);
-      // TerminalContext.changeLanguage will restore saved code for this language
-      // or set empty string if none exists - then we set boilerplate
+      // The context's changeLanguage restores saved code for this language
+      // (only for the SAME problem, since the cache is cleared on problem
+      // change), or sets an empty string if none exists.
       const savedCode = getCodeForLanguage(newLang);
-      // In scratch mode there is no problem — fall back to a runnable scratch
-      // program, never a stale problem snippet (and never a bare declaration
-      // that would print nothing).
       if (!savedCode) {
+        // In scratch mode there is no problem — fall back to a runnable scratch
+        // program, never a stale problem snippet.
         setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getScratchStarterCode(newLang));
       }
     },
@@ -844,6 +852,13 @@ const exitScratchMode = useCallback(() => {
             >
               {mode === 'problems' ? "Hide Problems" : "Show Problems"}
             </button>
+            {activeProblem && (
+              <ProblemReport
+                activeProblem={activeProblem}
+                socket={socket}
+                eventId={activeBattleRoom?.roomId || customLobby?.roomCode || undefined}
+              />
+            )}
             {/* {activeProblem?.isSolved && (
               <span className="text-[10px] px-2 py-0.5 border border-accent-success/40 bg-accent-success/10 text-accent-success font-bold uppercase">
                 ✓ SOLVED

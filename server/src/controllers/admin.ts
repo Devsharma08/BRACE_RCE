@@ -138,6 +138,35 @@ export const actOnReport = async (req: Request, res: Response) => {
 };
 
 // ─────────────────────────────────────────────────────────
+// QUESTION REPORTS (open-side filing)
+// ─────────────────────────────────────────────────────────
+
+// Creates a `questionReport` row against a problem. Requires a valid session
+// (any authenticated user) but not the ADMIN role — reporting is open, and the
+// record lands in the admin's report queue for review.
+export const createQuestionReport = async (req: AuthRequest, res: Response) => {
+  if (!req.userId) return res.status(401).json({ status: 'error', message: 'Authentication required' });
+
+  const { questionId, reason, detail } = req.body as { questionId?: string; reason?: string; detail?: string };
+
+  if (!questionId) return res.status(400).json({ status: 'error', message: 'questionId is required' });
+  if (!reason) return res.status(400).json({ status: 'error', message: 'reason is required' });
+
+  const report = await db.questionReport.create({
+    data: {
+      questionId,
+      reportedBy: req.userId,
+      reporter: { connect: { id: req.userId } },
+      // reason is the verbatim category sent by the client (trimmed + length-limited).
+      reason: String(reason).trim().slice(0, 500),
+      status: 'FLAGGED',
+    },
+  });
+
+  return res.json({ report });
+};
+
+// ─────────────────────────────────────────────────────────
 // QUESTION MANAGEMENT
 // ─────────────────────────────────────────────────────────
 

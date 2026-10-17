@@ -1,4 +1,5 @@
 import { Router, type Router as ExpressRouter } from "express";
+import { createQuestionReport } from "../controllers/admin.js";
 import { authentication } from "../middleware/authentication.js";
 import {
   listUsers,
@@ -34,8 +35,11 @@ router.get("/feedback", listFeedback);
 router.patch("/feedback/:id", resolveFeedback);
 
 // ── Question Reports ──
+router.post("/reports", createQuestionReport);
 router.get("/reports", listReports);
 router.patch("/reports/:reportId", actOnReport);
+
+// Create a new question report (open-side filing)
 
 // ── Question Management ──
 router.get("/questions", listQuestions);
