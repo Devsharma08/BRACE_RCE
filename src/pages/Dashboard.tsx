@@ -204,7 +204,7 @@ export const Dashboard: React.FC = () => {
   }, [matchmakingStatus]);
 
   if (isLoading) return <TableSkeleton />;
-  if (!isLoading && !isAuthenticated && !user) return <Navigate to="/signin" />;
+  if (!isLoading && !isAuthenticated && !user) return <Navigate to="/" />;
 
   const username = user?.username || "OPERATIVE";
   const userRating = myRating?.rating ?? 1000;

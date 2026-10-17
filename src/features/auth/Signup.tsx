@@ -42,7 +42,7 @@ export const Signup = () => {
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
-  // const toast = useToast();
+  const [otpInfo, setOtpInfo] = useState('');
   
   const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -110,6 +110,7 @@ export const Signup = () => {
     try {
       setOtpLoading(true);
       setOtpError('');
+      setOtpInfo('');
       await api.post(`/auth/otp/verify`, { email, otp: otpCode });
       // OTP verified, user is logged in
       navigate('/');
@@ -151,6 +152,12 @@ const handleGoogleClick = () => {
           <span>{otpError}</span>
         </div>
       )}
+      {otpInfo && (
+        <div className="mb-4 p-3 bg-accent/10 border border-accent/30 rounded-none flex items-center gap-2 text-accent text-sm">
+          <Mail size={18} />
+          <span>{otpInfo}</span>
+        </div>
+      )}
       <button
         type="submit"
         disabled={otpLoading || otpCode.length !== 6}
@@ -162,8 +169,16 @@ const handleGoogleClick = () => {
         <button
           type="button"
           onClick={async () => {
-            await api.post(`/auth/otp/send`, { email });
-            toast.success("OTP resent");
+            // Local info state instead of the removed toast (the old
+            // `toast.success` referenced an undefined `toast` and crashed
+            // this button at runtime).
+            try {
+              await api.post(`/auth/otp/send`, { email });
+              setOtpError("");
+              setOtpInfo("Code resent — check your inbox.");
+            } catch {
+              setOtpError("Could not resend the code. Try again.");
+            }
           }}
           disabled={otpLoading}
           className="text-accent hover:underline"
@@ -236,25 +251,28 @@ const handleGoogleClick = () => {
         <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" />
         <div className="w-full border-t border-subtle-line mb-8"></div>
         <div className="flex flex-col gap-8 w-full">
+          {/* Current feature set — keep in sync with the home bento
+              (WorkspaceDirectory) and the About telemetry. Honest claims only:
+              five runtimes, not an inflated count. */}
           <div className="flex gap-4">
             <span className="text-xs font-mono text-accent font-bold">01</span>
             <div>
-              <p className="text-sm text-fg font-medium mb-1">Create your profile</p>
-              <p className="text-xs text-subtle">Choose a handle — it's your callsign in every match.</p>
+              <p className="text-sm text-fg font-medium mb-1">Practice in the workspace</p>
+              <p className="text-xs text-subtle">Side-by-side editor with hints, examples, and test cases across five runtimes — JS, Python, Java, C, C++.</p>
             </div>
           </div>
           <div className="flex gap-4">
             <span className="text-xs font-mono text-accent font-bold">02</span>
             <div>
-              <p className="text-sm text-fg font-medium mb-1">Enter the lobby</p>
-              <p className="text-xs text-subtle">Join or host rooms. Challenge others directly.</p>
+              <p className="text-sm text-fg font-medium mb-1">Compete in live rooms</p>
+              <p className="text-xs text-subtle">1v1 duels on one problem with a shared clock; your rating updates after each match.</p>
             </div>
           </div>
           <div className="flex gap-4">
             <span className="text-xs font-mono text-accent font-bold">03</span>
             <div>
-              <p className="text-sm text-fg font-medium mb-1">Build your record</p>
-              <p className="text-xs text-subtle">Every solve tracked. Rating adjusts after each match.</p>
+              <p className="text-sm text-fg font-medium mb-1">Verify every run</p>
+              <p className="text-xs text-subtle">Visible, hidden, and edge tests with verdicts, runtimes, and output diffs — then replay decisive matches.</p>
             </div>
           </div>
         </div>
@@ -265,7 +283,7 @@ const handleGoogleClick = () => {
         <div className="max-w-md w-full bg-surface bg-opacity-90 border border-accent/20 rounded-lg shadow-card p-8 relative z-10">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-fg mb-2">Create account</h1>
-            <p className="text-subtle">Join the battle arena</p>
+            <p className="text-subtle">Create a handle and start solving in the sandbox</p>
           </div>
 
           {error && (

@@ -157,16 +157,19 @@ export const Login = () => {
       >
         <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.6))' }} />
         <div className="flex flex-col gap-1 mb-6">
-          <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Battle.</span>
-          <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Ranked.</span>
-          <span className="text-3xl font-bold text-accent" style={{ fontFamily: "'Orbitron', sans-serif" }}>Code.</span>
+          <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Solve.</span>
+          <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Compete.</span>
+          <span className="text-3xl font-bold text-accent" style={{ fontFamily: "'Orbitron', sans-serif" }}>Verify.</span>
         </div>
-        <span className="text-xs font-mono text-subtle tracking-widest uppercase mb-8">Remote Code Execution Arena</span>
+        {/* Feature strip mirrors what the app actually ships: five runtimes
+            (JS/Python/Java/C/C++), 1v1 realtime rooms, and sandbox isolation.
+            The old panel claimed "12+ Languages" — the harness has five. */}
+        <span className="text-xs font-mono text-subtle tracking-widest uppercase mb-8">Workspace · sandboxed runs · live 1v1 duels</span>
         <div className="w-full border-t border-subtle-line mb-8"></div>
         <div className="flex items-center justify-between w-full">
+          <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">5</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Runtimes</div></div>
           <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">1v1</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Live battles</div></div>
-          <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">12+</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Languages</div></div>
-          <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">Real</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Execution</div></div>
+          <div className="text-center"><div className="text-xl font-black text-accent-primary font-mono">100%</div><div className="text-[9px] text-faint uppercase tracking-[0.15em]">Sandboxed</div></div>
         </div>
       </div>
       <div className="flex items-center justify-center px-6 py-12 relative">
@@ -301,7 +304,7 @@ export const Login = () => {
                 <button
                   type="button"
                   onClick={handleGoogleClick}
-                  className="w-full flex items-center justify-center gap-2 bg-surface/10 hover:bg-surface/20 border border-accent/30 text-gray-800 py-3 px-4 rounded-none font-bold transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-surface/10 hover:bg-surface/20 border border-accent/30 py-3 px-4 rounded-none font-bold transition-all duration-200"
                   disabled={loading}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24">
