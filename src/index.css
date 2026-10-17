@@ -301,13 +301,22 @@ body {
 }
 
 /* Keep every button within its parent on narrow screens. Text CTAs may
-   ellipsize; icon buttons retain their explicit square dimensions. */
-button {
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+   ellipsize; icon buttons retain their explicit square dimensions.
+
+   MUST live inside @layer base: unlayered author CSS outranks layered CSS,
+   so written here without a layer it silently beat every Tailwind
+   max-width / overflow utility on any button — e. the panel expand tabs,
+   which got clamped to an 18px padding-only sliver with the chevron fully
+   clipped, because their containing block is the 0px-wide panel wrapper.
+   In the base layer the utilities override it as intended. */
+@layer base {
+  button {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* ── Global Focus Visible Ring ───────────────────────────────────────────── */
@@ -957,5 +966,28 @@ body.dragging-active * {
 @media (prefers-reduced-motion: reduce) {
   .signal-drift {
     animation: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOOT PRELOADER — BRACE RCE V2
+   ═══════════════════════════════════════════════════════════════════════════
+   Full-screen shell: headline enters from bottom, holds, then exits upward
+   to reveal the HeroSection beneath. The text uses the brand gradients and
+   the same font stack as the rest of the app.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes brPreloadSlide {
+  0%   { opacity: 0; transform: translateY(32px); }
+  40%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-48px); }
+}
+.br-preload-enter {
+  animation: brPreloadSlide 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.15s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .br-preload-enter {
+    animation: none;
+    opacity: 1;
   }
 }

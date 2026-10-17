@@ -785,13 +785,13 @@ const exitScratchMode = useCallback(() => {
           </div>
         </div>
 
-        {/* Collapse/expand toggle lives inside the panel (it sits just outside
-            via left-full on desktop, inside on mobile) — unmounted with it.
-            `max-w-none` is load-bearing: the wrapper's inline width is 0 when
-            the panel is hidden, and the global `button { max-width: 100%;
-            overflow: hidden }` would clamp this tab to 0px and crop the
-            chevron. Without it the icon renders only as long as the panel
-            is at least as wide as the button. */}
+        {/* Collapse/expand toggle sits just outside the panel via left-full on
+            desktop (right-3 inside the drawer on mobile when open). When the
+            panel is hidden its wrapper is 0px wide, so mobile switches to
+            left-0 — right-3 there would push the tab off-screen entirely.
+            `max-w-none` plus the button reset living in @layer base keep the
+            global `button { max-width: 100% }` from clamping the tab to a
+            padding-only sliver with the chevron clipped. */}
         <button
           onClick={() => {
             const next = !(isPanelOpen && !isSidebarCollapsed);
@@ -799,8 +799,8 @@ const exitScratchMode = useCallback(() => {
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 hover:bg-accent-primary/10 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] max-w-none ${
-            isMobile ? "right-3 rounded-r-lg" : "left-full rounded-r-lg"
+          className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 hover:bg-accent-primary/10 transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] max-w-none rounded-r-lg ${
+            isMobile ? (isSidebarOpen ? "right-3" : "left-0") : "left-full"
           }`}
           title={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
           aria-label={isPanelOpen && !isSidebarCollapsed ? "Collapse sidebar" : "Expand sidebar"}
