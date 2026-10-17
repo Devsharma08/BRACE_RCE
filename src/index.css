@@ -879,6 +879,89 @@ body.dragging-active * {
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════════
+   PRELOADER — one-shot intro for fresh page loads (BracePreloader.tsx)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.preloader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-base);
+  overflow: hidden;
+  /* Isolate the intro's paint work from the app underneath — the compositor
+     can rasterize this layer once instead of repainting the page behind it. */
+  contain: strict;
+}
+
+/* "Brace RCE v2.0" — phase 1 fades in from 20px below, holds 500ms, then
+   phase 3 (delay = 600 + 500) slides it up out of the viewport. Two
+   non-overlapping transform animations on one element: the second starts
+   only after the first has finished (its forwards fill parks it off-screen),
+   so they never fight over `transform`. */
+.preloader-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-primary);
+  /* Promote to a compositor layer up-front, so the first transform frame
+     doesn't pay layerization cost mid-choreography. */
+  will-change: transform, opacity;
+  animation:
+    preloader-text-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    preloader-text-out 700ms cubic-bezier(0.65, 0, 0.35, 1) 1100ms forwards;
+}
+
+.preloader-version {
+  color: var(--accent-primary);
+  text-shadow: 0 0 24px color-mix(in srgb, var(--accent-primary) 45%, transparent);
+}
+
+/* Dark curtain — rises from the bottom edge in sync with the text exit and
+   covers it. Identical background to the overlay, so unmounting at 1900ms is
+   seamless; the glowing top edge is what you actually see sweep upward. */
+.preloader-curtain {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-base);
+  border-top: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
+  box-shadow: 0 -24px 60px color-mix(in srgb, var(--accent-primary) 14%, transparent);
+  transform: translateY(100%);
+  /* Same GPU rationale as the text — rise stays on the compositor thread. */
+  will-change: transform;
+  animation: preloader-curtain-up 700ms cubic-bezier(0.65, 0, 0.35, 1) 1100ms forwards;
+}
+
+@keyframes preloader-text-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes preloader-text-out {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-70vh); }
+}
+
+@keyframes preloader-curtain-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader-text {
+    animation: none;
+  }
+  /* No motion: the curtain simply sits over the text; the component clears
+     the whole overlay after ~250ms. */
+  .preloader-curtain {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    HOME HERO — headline gradient + animated background trace
    ═══════════════════════════════════════════════════════════════════════════
    Split of responsibility, which is the whole point of this design:
@@ -954,39 +1037,4 @@ body.dragging-active * {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   BOOT PRELOADER — BRACE RCE V2
-   ═══════════════════════════════════════════════════════════════════════════
-   Sequence:
-   1. 500 ms delay before the animation starts.
-   2. "BRACE RCE" text slides from top:50px → top:0px.
-   3. The background shell slides upward to top:0px at the same time.
-   Both share the same keyframe timeline so they move in lockstep.
-   ═══════════════════════════════════════════════════════════════════════════ */
-@keyframes brPreloadIn {
-  0%   { top: 50px; opacity: 0; }
-  100% { top: 0px;  opacity: 1; }
-}
-.br-preload-text {
-  position: relative;
-  animation: brPreloadIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.5s;
-  animation-fill-mode: forwards;
-  text-shadow: 0 0 30px color-mix(in srgb, var(--accent-primary) 60%, transparent),
-               0 0 60px color-mix(in srgb, var(--accent-primary) 40%, transparent);
-  font-family: var(--font-mono);
-}
-.br-preload-bg {
-  position: relative;
-  animation: brPreloadIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.5s;
-  animation-fill-mode: forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-  .br-preload-text,
-  .br-preload-bg {
-    animation: none;
-    top: 0px;
-    opacity: 1;
-  }
-}
+/* End of file */

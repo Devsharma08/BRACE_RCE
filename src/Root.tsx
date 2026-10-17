@@ -42,6 +42,7 @@ import { ResetPassword } from "./features/auth/ResetPassword.tsx";
 import { TerminalProvider } from "./context/TerminalContext.tsx";
 import { RouteLoadingSkeleton } from "./components/ui/Skeleton.tsx";
 import { ScrollToTop } from "./components/shared/ScrollToTop.tsx";
+import { BracePreloader } from "./features/home/components/BracePreloader.tsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.tsx";
 import { AdminRoute } from "./components/shared/AdminRoute.tsx";
 
@@ -70,6 +71,12 @@ export const Root = () => {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <Router>
+          {/* One-shot intro for fresh page loads only: mounted OUTSIDE Suspense
+              so lazy chunk loading can never hide it behind the route fallback.
+              Root never remounts on client-side navigation, so route
+              transitions (e.g. any page -> home) never replay it. Renders until
+              its choreography ends, then returns null. */}
+          <BracePreloader />
           <Suspense fallback={<RouteLoadingSkeleton />}>
             <ScrollToTop />
             {/* Sonner toast viewport — styled to match the dark cyber-arena theme */}
