@@ -17,6 +17,7 @@ import {
 import type { ExecutionMode, SupportedLanguage } from "../types";
 import { TerminalContext } from "../../../context/TerminalContext.tsx";
 import { toast } from "sonner";
+import { useIsMobile } from "../../../hooks/useMediaQuery";
 
 import ProblemTimer, { type ProblemTimerRef } from "./ProblemTimer";
 
@@ -89,6 +90,7 @@ const EditorToolbar = ({
 }: EditorToolbarProps) => {
   const navigate = useNavigate();
   const context = useContext(TerminalContext);
+  const isMobileToolbar = useIsMobile();
   if (!context) {
     throw new Error("EditorToolbar must be used inside a TerminalContext.Provider");
   }
@@ -186,7 +188,7 @@ const EditorToolbar = ({
           onClick={handleCopyCode}
           title="Copy code to clipboard"
           aria-label={copied ? "Code copied to clipboard" : "Copy code to clipboard"}
-          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
+          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-1.5 py-1 text-[9px] font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95 sm:px-2 sm:py-1.5"
         >
           {copied ? (
             <Check className="w-3.5 h-3.5 text-accent-success" />
@@ -201,7 +203,7 @@ const EditorToolbar = ({
           onClick={onFormat}
           title="Format active code"
           aria-label="Format active code"
-          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-2 py-1.5 text-xs font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95"
+          className="flex items-center justify-center rounded-btn border border-subtle-line bg-base/50 px-1.5 py-1 text-[9px] font-mono text-subtle transition-all duration-150 hover:border-border-hi hover:bg-surface-hover active:scale-95 sm:px-2 sm:py-1.5"
         >
           <IndentationIcon className="w-3.5 h-3.5 text-subtle" />
         </button>
@@ -228,19 +230,19 @@ const EditorToolbar = ({
           onClick={onClearOutput}
           title="Clear output"
           aria-label="Clear output"
-          className="flex items-center justify-center rounded-btn border border-accent-primary/40 px-2 py-1.5 text-xs font-mono text-accent-primary transition-all duration-150 hover:bg-accent-primary/10 active:scale-95"
+          className="flex items-center justify-center rounded-btn border border-accent-primary/40 px-1.5 py-1 text-[9px] font-mono text-accent-primary transition-all duration-150 hover:bg-accent-primary/10 active:scale-95 sm:px-2 sm:py-1.5"
         >
           <Clear className="w-3.5 h-3.5 text-accent-primary" />
         </button>
 
         {/* RESET TEMPLATE */}
-        {!isCompact && (
+        {!isCompact && !isMobileToolbar && (
           <button
             type="button"
             onClick={onReset}
             title="Reset to original problem template"
             aria-label="Reset to original problem template"
-            className="flex items-center justify-center rounded-btn border border-accent-danger/20 bg-accent-danger/5 px-2 py-1.5 text-xs font-mono text-accent-danger transition-all duration-150 hover:border-accent-danger/40 hover:bg-accent-danger/10 active:scale-95"
+            className="flex items-center justify-center rounded-btn border border-accent-danger/20 bg-accent-danger/5 px-1.5 py-1 text-[9px] font-mono text-accent-danger transition-all duration-150 hover:border-accent-danger/40 hover:bg-accent-danger/10 active:scale-95 sm:px-2 sm:py-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5 text-accent-danger" />
           </button>
@@ -248,7 +250,7 @@ const EditorToolbar = ({
 
         {/* LANGUAGE SELECTOR */}
         <select
-          className="min-w-0 rounded-btn border border-accent-primary/20 bg-surface px-2 py-1.5 text-[10px] font-mono text-accent-primary outline-none transition focus:border-accent-primary/40"
+          className="min-w-0 rounded-btn border border-accent-primary/20 bg-surface px-1.5 py-1 text-[9px] font-mono text-accent-primary outline-none transition focus:border-accent-primary/40 sm:px-2 sm:py-1.5 sm:text-[10px]"
           value={language}
           onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
           aria-label="Select programming language"
@@ -267,16 +269,16 @@ const EditorToolbar = ({
           aria-busy={executingMode === "RUN"}
           title="Run solution (Ctrl+Enter)"
           aria-label="Run solution"
-          className={`flex items-center justify-center rounded-btn border border-accent-primary/40 bg-elevated px-4 py-1.5 text-xs font-mono font-bold tracking-wider text-accent-primary transition-all duration-150 hover:border-accent-primary hover:bg-accent-primary/10 active:scale-95 ${
+          className={`flex items-center justify-center rounded-btn border border-accent-primary/40 bg-elevated px-2.5 py-1 text-[9px] font-mono font-bold tracking-wider text-accent-primary transition-all duration-150 hover:border-accent-primary hover:bg-accent-primary/10 active:scale-95 sm:px-4 sm:py-1.5 sm:text-xs ${
             disabled ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          }}`}
         >
           {executingMode === "RUN" ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-primary" />
           ) : (
             <Play className="w-3.5 h-3.5 text-accent-primary" />
           )}
-          {!isCompact && <span className="ml-1 text-[10px]">RUN</span>}
+          {!isCompact && !isMobileToolbar && <span className="ml-1 text-[9px]">RUN</span>}
         </button>
 
         {/* SUBMIT CODE BUTTON */}
@@ -287,16 +289,16 @@ const EditorToolbar = ({
             aria-busy={executingMode === "SUBMIT"}
             title="Submit solution for full tests validation"
             aria-label="Submit solution"
-            className={`flex items-center justify-center rounded-btn border border-accent-success/30 bg-accent-success/10 px-4 py-1.5 text-xs font-mono font-bold tracking-wider text-accent-success transition-all duration-150 hover:bg-accent-success hover:text-ink hover:font-black active:scale-95 shadow-glow-success ${
+            className={`flex items-center justify-center rounded-btn border border-accent-success/30 bg-accent-success/10 px-2.5 py-1 text-[9px] font-mono font-bold tracking-wider text-accent-success transition-all duration-150 hover:bg-accent-success hover:text-ink hover:font-black active:scale-95 shadow-glow-success sm:px-4 sm:py-1.5 sm:text-xs ${
               disabled ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            }}`}
           >
             {executingMode === "SUBMIT" ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-success" />
             ) : (
               <Send className="w-3.5 h-3.5 text-accent-success" />
             )}
-            {!isCompact && <span className="ml-1 text-[10px]">SUBMIT</span>}
+            {!isCompact && !isMobileToolbar && <span className="ml-1 text-[9px]">SUBMIT</span>}
           </button>
         )}
       </div>

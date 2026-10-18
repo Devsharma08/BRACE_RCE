@@ -102,7 +102,7 @@ const body = "max-w-6xl text-sm leading-6 text-subtle";
 
   return (
     <div className="w-full bg-base text-fg">
-      <div className="mx-auto w-full max-w-6xl py-16 sm:py-20">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-12 pb-20 md:pb-24">
         <header className="border-b border-line pb-10">
           <p className="font-mono ml-1 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             About

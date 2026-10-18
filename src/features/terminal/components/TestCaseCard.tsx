@@ -39,19 +39,19 @@ export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps)
       : "border-accent-danger/30 bg-accent-danger/10";
 
   return (
-    <div className={`border ${statusColor} p-4`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono font-bold text-subtle">CASE #{index + 1}</span>
+    <div className={`border ${statusColor} p-3 sm:p-4`}>
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <span className="text-[9px] font-mono font-bold text-subtle">CASE #{index + 1}</span>
           {/* All 15 cases render with their real input and expected output, so the
               label only marks which three are the documented samples. */}
           {!isHidden && (
-            <span className="text-[10px] font-bold px-2 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
+            <span className="text-[8px] sm:text-[10px] font-bold px-1.5 py-0.5 border border-accent-primary/25 bg-accent-primary/[0.05] text-accent-primary">
               SAMPLE
             </span>
           )}
           {hasResult && (
-            <span className={`text-[9px] font-bold px-2 py-0.5 ${
+            <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 ${
               passed
                 ? "border border-accent-success/30 bg-accent-success/10 text-accent-success shadow-glow-success"
                 : "border border-accent-danger/30 bg-accent-danger/10 text-accent-danger shadow-glow-danger"
@@ -65,57 +65,57 @@ export const TestCaseCard = memo(function TestCaseCard(props: TestCaseCardProps)
         {onRunSingleTestCase && !isExecutingAny && (
           <button
             onClick={() => onRunSingleTestCase(index)}
-            className="flex items-center gap-1 border border-accent-primary/40 bg-elevated px-2 py-1 text-[9px] font-mono font-bold tracking-wider text-accent-primary transition-all hover:bg-accent-primary/10"
+            className="flex items-center gap-1 border border-accent-primary/40 bg-elevated px-1.5 py-1 text-[8px] font-mono font-bold tracking-wider text-accent-primary transition-all hover:bg-accent-primary/10 sm:text-[9px]"
           >
             <Play className="w-2.5 h-2.5" />
-            RUN TEST #{index + 1} ONLY
+            RUN #{index + 1}
           </button>
         )}
         {isRunningThis && <Loader2 className="w-3.5 h-3.5 animate-spin text-accent-primary" />}
       </div>
 
       {/* Per-input cost — real measurements from the execution runtime */}
-      {match?.metrics && (
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          <div className="border border-accent-primary/20 bg-accent-primary/5 px-2.5 py-2">
-            <span className="text-[8px] uppercase tracking-widest text-faint">Time</span>
-            <strong className="mt-0.5 block font-mono text-xs font-bold text-accent-primary">
-              {match.metrics.durationMs}ms
-            </strong>
+        {match?.metrics && (
+          <div className="mb-2 grid grid-cols-2 gap-1.5 sm:mb-3 sm:gap-2">
+            <div className="border border-accent-primary/20 bg-accent-primary/5 px-1.5 py-1.5 sm:px-2.5 sm:py-2">
+              <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-faint">Time</span>
+              <strong className="mt-0.5 block font-mono text-[10px] font-bold text-accent-primary">
+                {match.metrics.durationMs}ms
+              </strong>
+            </div>
+            <div className="border border-accent-violet/20 bg-accent-violet/5 px-1.5 py-1.5 sm:px-2.5 sm:py-2">
+              <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-faint">Space</span>
+              <strong className="mt-0.5 block font-mono text-[10px] font-bold text-accent-violet">
+                {(match.metrics.memoryKb / 1024).toFixed(1)}MB
+              </strong>
+            </div>
           </div>
-          <div className="border border-accent-violet/20 bg-accent-violet/5 px-2.5 py-2">
-            <span className="text-[8px] uppercase tracking-widest text-faint">Space</span>
-            <strong className="mt-0.5 block font-mono text-xs font-bold text-accent-violet">
-              {(match.metrics.memoryKb / 1024).toFixed(1)}MB
-            </strong>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Prefer the expected output the RUN returned for this case.
           `match.expectedOutput` is always populated for a graded case, whereas
           the locally cached copy can be missing or stale — that is what made the
           Expected box read as a dash (or the literal "null") next to a perfectly
           good Actual box. The local copy is only the fallback. */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid gap-2 sm:gap-3">
         <div>
-          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
-          <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
+          <div className="text-[8px] sm:text-[9px] text-faint uppercase tracking-widest mb-1">Input</div>
+          <div className="border border-subtle-line bg-terminal-bg p-1.5 text-[9px] sm:text-[10px] font-mono text-subtle whitespace-pre-wrap sm:p-2">
             {item.input || "-"}
           </div>
         </div>
         <div>
-          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
-          <div className="border border-subtle-line bg-terminal-bg p-2 text-[10px] font-mono text-subtle whitespace-pre-wrap">
+          <div className="text-[8px] sm:text-[9px] text-faint uppercase tracking-widest mb-1">Expected</div>
+          <div className="border border-subtle-line bg-terminal-bg p-1.5 text-[9px] sm:text-[10px] font-mono text-subtle whitespace-pre-wrap sm:p-2">
             {expectedText}
           </div>
         </div>
       </div>
 
       {hasResult && match?.output !== undefined && (
-        <div className="mt-3">
-          <div className="text-[9px] text-faint uppercase tracking-widest mb-1">Actual</div>
-          <div className={`border p-2 text-[10px] font-mono whitespace-pre-wrap ${
+        <div className="mt-2 sm:mt-3">
+          <div className="text-[8px] sm:text-[9px] text-faint uppercase tracking-widest mb-1">Actual</div>
+          <div className={`border p-1.5 sm:p-2 text-[9px] sm:text-[10px] font-mono whitespace-pre-wrap ${
             passed ? "border-accent-success/15 text-accent-success" : "border-accent-danger/15 text-accent-danger"
           }`}>
             {match?.output || "empty"}

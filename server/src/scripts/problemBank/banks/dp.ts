@@ -81,8 +81,8 @@ export default bank([
     ),
   },
   {
-    k: 'dp-maximum-subarray-sum',
-    n: 'Maximum Subarray Sum Returned',
+    k: 'dp-maximum-subarray-sum-return',
+    n: 'Maximum Subarray Sum: Return Sum',
     num: 281,
     d: 'MEDIUM',
     c: 'Dynamic Programming',

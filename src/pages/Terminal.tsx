@@ -381,9 +381,18 @@ const Terminal = () => {
         setJavaClassName("Solution");
       }
 
-      // If there's previously saved draft code — restore it
-      const draftLang = (problem.lastLanguage as SupportedLanguage) || "javascript";
-      const draftCode = problem.lastCode ?? getBoilerplate(problem, draftLang);
+      // If there's previously saved draft code — restore it.
+      // Only auto-load in Normal Mode (no active battle, lobby, or event).
+      // During active Events (1v1, custom lobby, battle), the problem is fetched
+      // fresh from the event context and draft code must NOT be restored
+      // (it could be from a different challenge or reveal answers).
+      const isNormalMode = !activeBattleRoom && !customLobby;
+      const draftLang = isNormalMode
+        ? ((problem.lastLanguage as SupportedLanguage) || "javascript")
+        : "javascript";
+      const draftCode = isNormalMode
+        ? (problem.lastCode ?? getBoilerplate(problem, draftLang))
+        : getBoilerplate(problem, "javascript");
 
       setLanguage(draftLang);
       setCode(draftCode);
@@ -401,7 +410,7 @@ const Terminal = () => {
       // Sync solved status on problem objects (in case we come from list)
       if (allProblems) setProblems(allProblems);
     },
-    [setActiveFile, setActiveProblemId, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases]
+    [setActiveFile, setActiveProblemId, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases, activeBattleRoom, customLobby]
   );
 
   // Hide Problems toggle — switches between the full catalog sidebar and a
@@ -513,7 +522,7 @@ const exitScratchMode = useCallback(() => {
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, problemsNonce]);
+  }, [user?.id, problemsNonce, submissionTrigger]);
 
   // ── Handle language switch (load boilerplate for new lang) ─
   const handleLanguageChange = useCallback(
@@ -602,19 +611,22 @@ const exitScratchMode = useCallback(() => {
           setProblems((prev) =>
             prev.map((p) =>
               p.id === activeProblem.id
-                ? { ...p, isSolved: true, solvedAt: new Date().toISOString(), attempts: (p.attempts ?? 0) + 1 }
+                ? { ...p, isSolved: true, solvedAt: new Date().toISOString(), attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage }
                 : p
             )
           );
           setActiveProblem((prev) =>
-            prev ? { ...prev, isSolved: true, solvedAt: new Date().toISOString() } : prev
+            prev ? { ...prev, isSolved: true, solvedAt: new Date().toISOString(), lastCode: nextCode, lastLanguage: nextLanguage } : prev
           );
         } else if (mode === "SUBMIT" && activeProblem) {
-          // Still count the attempt
+          // Still count the attempt and save lastCode/lastLanguage
           setProblems((prev) =>
             prev.map((p) =>
-              p.id === activeProblem.id ? { ...p, attempts: (p.attempts ?? 0) + 1 } : p
+              p.id === activeProblem.id ? { ...p, attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage } : p
             )
+          );
+          setActiveProblem((prev) =>
+            prev ? { ...prev, lastCode: nextCode, lastLanguage: nextLanguage } : prev
           );
         }
       } catch (error) {
@@ -826,7 +838,7 @@ const exitScratchMode = useCallback(() => {
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col bg-base relative z-10 transition-all duration-300">
         {/* HEADER BAR */}
-        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-3 py-2 text-xs font-mono text-accent-primary/80 sm:px-4">
+        <div className="flex w-full items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-2 py-1.5 text-[9px] font-mono text-accent-primary/80 sm:px-4 sm:text-xs sm:py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate">SYS // PRACTICE_WORKSPACE</span>
           </div>
@@ -846,11 +858,11 @@ const exitScratchMode = useCallback(() => {
             )} */}
             <button
               onClick={toggleMode}
-              className="px-2 py-0.5 text-[9px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition"
+              className="px-1.5 py-0.5 text-[8px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition sm:px-2 sm:text-[9px]"
               title={mode === 'problems' ? "Hide Problems" : "Show Problems"}
               aria-label={mode === 'problems' ? "Hide Problems" : "Show Problems"}
             >
-              {mode === 'problems' ? "Hide Problems" : "Show Problems"}
+              {mode === 'problems' ? (isMobile ? "✕" : "Hide Problems") : (isMobile ? "≡" : "Show Problems")}
             </button>
             {activeProblem && (
               <ProblemReport

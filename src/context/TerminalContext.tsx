@@ -50,6 +50,7 @@ export type TerminalContextType = {
   codeByLanguage: Record<SupportedLanguage, string>;
   setCodeForLanguage: (lang: SupportedLanguage, code: string) => void;
   getCodeForLanguage: (lang: SupportedLanguage) => string;
+  setActiveProblemId: (id: string | null) => void;
 
   // File explorer
   filesData: FileEntry[];
@@ -77,7 +78,20 @@ export const TerminalProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<SupportedLanguage>("javascript");
   const [code, setCodeState] = useState("");
 
-  // Sync code ↔ codeByLanguage for current language
+  // Tracks which problem the codeByLanguage cache belongs to. When the
+  // problem changes, the cache is cleared so stale code from a previous
+  // problem is never restored for a different one.
+  const [activeProblemId, setActiveProblemId] = useState<string | null>(null);
+
+  // Reset the per-language cache whenever the active problem changes. The
+  // useEffect below (code → codeByLanguage[language]) repopulates the current
+  // language on the next tick, so the new problem's starter code is restored
+  // for all other languages instead of bleeding from the previous problem.
+  useEffect(() => {
+    setCodeByLanguage(initialCodeByLanguage);
+  }, [activeProblemId]);
+
+  // Sync code → codeByLanguage for current language
   useEffect(() => {
     setCodeByLanguage(prev => ({ ...prev, [language]: code }));
   }, [code, language]);
@@ -91,15 +105,14 @@ export const TerminalProvider = ({ children }: { children: ReactNode }) => {
     return codeByLanguage[lang] || "";
   }, [codeByLanguage]);
 
-  // When language changes, restore saved code for that language
+  // When language changes, restore saved code for that language. The per-problem
+  // cache reset above ensures this only returns code from the SAME problem.
   const changeLanguage = useCallback((newLang: SupportedLanguage) => {
     setLanguageState(newLang);
     const savedCode = codeByLanguage[newLang];
     if (savedCode) {
       setCodeState(savedCode);
     } else {
-      // Only use boilerplate if NO previous code exists for this language
-      // The boilerplate will be set by the consumer (Terminal.tsx)
       setCodeState("");
     }
   }, [codeByLanguage]);
@@ -142,6 +155,7 @@ export const TerminalProvider = ({ children }: { children: ReactNode }) => {
     codeByLanguage,
     setCodeForLanguage,
     getCodeForLanguage,
+    setActiveProblemId,
     filesData,
     setFilesData,
     responseContent,
@@ -187,6 +201,7 @@ export const TerminalContext = createContext<TerminalContextType>({
   codeByLanguage: initialCodeByLanguage,
   setCodeForLanguage: () => {},
   getCodeForLanguage: () => "",
+  setActiveProblemId: () => {},
   filesData: [],
   setFilesData: () => {},
   responseContent: "",

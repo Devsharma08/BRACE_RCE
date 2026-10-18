@@ -66,7 +66,7 @@ export function CommunitySupport() {
   }
 
   return (
-    <section aria-label="Community support and reviews" className="w-full py-12 sm:py-16 lg:py-24">
+    <section aria-label="Community support and reviews" className="w-full px-5 md:px-0 py-10 sm:py-14 lg:py-20">
       <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-16 lg:items-start lg:min-h-screen">
         {/* Sticky signal desk.
             `lg:top-4` rather than `top-0`: the app header is sticky at 58px but

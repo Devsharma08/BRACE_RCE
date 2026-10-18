@@ -55,8 +55,9 @@ const accentStyles: Record<
 
 export function WorkspaceDirectory() {
   return (
-    <section aria-label="Available workspaces" className="w-full py-12 sm:py-16 lg:py-24">
-      <div className="mx-auto max-w-6xl">
+    <section aria-label="Available workspaces" className="w-full py-10 sm:py-14 lg:py-20 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-75 [background-image:linear-gradient(rgba(148,163,184,.1)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.1)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <div className="mx-auto max-w-6xl relative">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
@@ -113,7 +114,7 @@ export function WorkspaceDirectory() {
         </div>
 
         {/* Pre-flight strip */}
-        <div className="mt-12 grid gap-5 border-y border-subtle-line py-8 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="mt-12 grid gap-5 border-y border-subtle-line px-5 md:px-0 py-8 md:grid-cols-[1fr_auto] md:items-center">
           <div>
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-success">
               <LockKeyhole size={13} /> pre-flight verified

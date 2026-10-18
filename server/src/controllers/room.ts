@@ -439,9 +439,13 @@ class Rooms {
             if (!isAdmin && !isSpectate && userId) {
                 const isBlocked = await prisma.eventBlock.findFirst({
                     where: { eventId: event.id, blockedUserId: userId },
+                    select: { reason: true },
                 });
                 if (isBlocked) {
-                    return res.status(403).json({ message: "You are blocked from this event" });
+                    return res.status(403).json({
+                        message: "You are blocked from this event",
+                        blockReason: isBlocked.reason ?? undefined,
+                    });
                 }
             }
 
@@ -745,7 +749,13 @@ class Rooms {
 
             const blocks = await prisma.eventBlock.findMany({
                 where: { eventId: event.id },
-                include: {
+                select: {
+                    id: true,
+                    eventId: true,
+                    blockedUserId: true,
+                    blockedById: true,
+                    reason: true,
+                    createdAt: true,
                     blockedUser: { select: { id: true, username: true, avatarUrl: true } },
                     blockedBy: { select: { id: true, username: true } },
                 },

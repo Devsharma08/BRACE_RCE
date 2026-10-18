@@ -3,6 +3,7 @@ import { Loader2, Check, X, AlertTriangle } from "lucide-react";
 import type { ExecutionDetail, ExecutionResult, ProblemTestCase } from "../types";
 import type { MouseEvent } from "react";
 import { TestCaseCard } from './TestCaseCard';
+import { useIsMobile } from "../../../hooks/useMediaQuery";
 
 type OutputPanelProps = {
   isExecuting: boolean;
@@ -26,7 +27,7 @@ type OutputPanelProps = {
 };
 
 const getTabClassName = (isActive: boolean) =>
-  `cursor-pointer border-b-2 px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 ${
+  `cursor-pointer border-b-2 px-2 py-1 text-[8px] font-mono uppercase tracking-wider transition-all duration-150 active:scale-95 sm:px-3 sm:py-1.5 sm:text-[10px] ${
     isActive
       ? "border-b-accent-primary bg-accent-primary/10 text-accent-primary"
       : "border-b-transparent text-subtle hover:text-fg"
@@ -51,6 +52,7 @@ const OutputPanel = ({
   onRunSingleTestCase,
   showTests = true,
 }: OutputPanelProps) => {
+  const isMobile = useIsMobile();
   const singleDetail: ExecutionDetail | undefined = isCustomInputRun
     ? output?.details?.[0]
     : undefined;
@@ -140,13 +142,13 @@ const OutputPanel = ({
       />
 
       {/* Diagnostic tabs */}
-      <div className="flex items-center gap-0 border-b border-subtle-line bg-base/50 px-2">
+      <div className="flex items-center gap-0 border-b border-subtle-line bg-base/50 px-1 sm:px-2">
         <button className={getTabClassName(activeDiagTab === "LOGS")} onClick={() => setActiveDiagTab("LOGS")}>
-          Output Logs
+          {isMobile ? "Logs" : "Output Logs"}
         </button>
         {showTests && (
           <button className={getTabClassName(activeDiagTab === "TESTS")} onClick={() => setActiveDiagTab("TESTS")}>
-            Test Cases
+            {isMobile ? "Tests" : "Test Cases"}
           </button>
         )}
       </div>
@@ -154,7 +156,7 @@ const OutputPanel = ({
       {/* Content — overscroll-contain keeps wheel/trackpad scrolling from
           chaining to the page, and a stable gutter keeps the themed scrollbar
           visible instead of flashing over the cards. */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 themed-scroll [scrollbar-gutter:stable]">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-4 themed-scroll [scrollbar-gutter:stable]">
         {isExecuting && (
           <div className="flex items-center gap-2 p-3 text-accent-primary text-xs font-mono font-bold tracking-widest border border-accent-primary/20 bg-accent-primary/5 shadow-glow-accent">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -187,26 +189,26 @@ const OutputPanel = ({
                 </div>
 
                 {/* Aggregate execution metrics — measured cost of the inputs below */}
-                {successfulDetails.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <div className="border border-accent-primary/20 bg-accent-primary/5 p-3">
-                      <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Avg time</div>
-                      <div className=" font-mono font-bold text-accent-primary">{avgDuration.toFixed(0)}ms</div>
-                    </div>
-                    <div className="border border-accent-violet/20 bg-accent-violet/5 p-3">
-                      <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Avg space</div>
-                      <div className=" font-mono font-bold text-accent-violet">{(avgMemoryKb / 1024).toFixed(1)}MB</div>
-                    </div>
-                    <div className="border border-accent-success/20 bg-accent-success/5 p-3">
-                      <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Fastest</div>
-                      <div className=" font-mono font-bold text-accent-success">{bestDuration}ms</div>
-                    </div>
-                    <div className="border border-accent-warning/20 bg-accent-warning/5 p-3">
-                      <div className="text-[9px] text-subtle uppercase tracking-widest mb-1">Slowest</div>
-                      <div className=" font-mono font-bold text-accent-warning">{worstDuration}ms</div>
-                    </div>
-                  </div>
-                )}
+                 {successfulDetails.length > 0 && (
+                   <div className={`grid gap-2 ${isMobile ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-4"}`}>
+                     <div className="border border-accent-primary/20 bg-accent-primary/5 p-1.5 sm:p-3">
+                       <div className="text-[7px] sm:text-[9px] text-subtle uppercase tracking-widest mb-0.5 sm:mb-1">Avg time</div>
+                       <div className="font-mono font-bold text-xs text-accent-primary">{avgDuration.toFixed(0)}ms</div>
+                     </div>
+                     <div className="border border-accent-violet/20 bg-accent-violet/5 p-1.5 sm:p-3">
+                       <div className="text-[7px] sm:text-[9px] text-subtle uppercase tracking-widest mb-0.5 sm:mb-1">Avg space</div>
+                       <div className="font-mono font-bold text-xs text-accent-violet">{(avgMemoryKb / 1024).toFixed(1)}MB</div>
+                     </div>
+                     <div className="border border-accent-success/20 bg-accent-success/5 p-1.5 sm:p-3">
+                       <div className="text-[7px] sm:text-[9px] text-subtle uppercase tracking-widest mb-0.5 sm:mb-1">Fastest</div>
+                       <div className="font-mono font-bold text-xs text-accent-success">{bestDuration}ms</div>
+                     </div>
+                     <div className="border border-accent-warning/20 bg-accent-warning/5 p-1.5 sm:p-3">
+                       <div className="text-[7px] sm:text-[9px] text-subtle uppercase tracking-widest mb-0.5 sm:mb-1">Slowest</div>
+                       <div className="font-mono font-bold text-xs text-accent-warning">{worstDuration}ms</div>
+                     </div>
+                   </div>
+                 )}
                 {renderedCases.map(({ item, match, isHidden }, index) => (
                   <TestCaseCard
                     key={index}

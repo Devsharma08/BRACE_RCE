@@ -464,19 +464,19 @@ const CreateRoom = () => {
                   staged / awaiting deploy
                 </span>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => setStagedSignature(null)}
-                    className="border border-subtle-line px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-subtle transition hover:text-fg"
-                  >
-                    Edit configuration
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCreateRoom()}
-                    disabled={loading}
-                    className="flex items-center justify-center gap-2 bg-accent-primary px-5 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                  >
+                   <button
+                     type="button"
+                     onClick={() => setStagedSignature(null)}
+                     className="border border-subtle-line px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-subtle transition hover:text-fg sm:px-5 sm:py-3 sm:text-[10px]"
+                   >
+                     Edit configuration
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => handleCreateRoom()}
+                     disabled={loading}
+                     className="flex items-center justify-center gap-1.5 bg-accent-primary px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-5 sm:py-3 sm:text-[10px]"
+                   >
                     {loading ? (
                       <Activity size={14} className="animate-pulse" aria-hidden />
                     ) : (
@@ -505,7 +505,7 @@ const CreateRoom = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Graph traversal / night shift"
-                      className="mt-2 h-12 w-full border border-subtle-line bg-void px-4 text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
+                      className="mt-2 h-10 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/50 sm:h-12 sm:px-4 sm:text-sm"
                     />
                   </label>
 
@@ -516,7 +516,7 @@ const CreateRoom = () => {
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
                       placeholder="Describe the room…"
-                      className="mt-2 min-h-20 w-full border border-subtle-line bg-void p-4 font-sans text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
+                      className="mt-2 min-h-20 w-full border border-subtle-line bg-void p-3 font-sans text-xs text-fg outline-none placeholder:text-faint focus:border-accent/50 sm:p-4 sm:text-sm"
                     />
                   </label>
 

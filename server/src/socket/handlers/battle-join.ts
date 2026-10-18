@@ -5,7 +5,7 @@ import type { HandlerCtx } from "../types.js";
 export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
     const { socket, userId, io, getActiveBattleForUser } = ctx;
 
-    socket.on('join_battle', async (roomId: string, ack?: (response: { success: boolean; error?: string }) => void) => {
+    socket.on('join_battle', async (roomId: string, ack?: (response: { success: boolean; error?: string; blockReason?: string }) => void) => {
         console.log(`User ${userId} requested to join room ${roomId}`)
         try {
             // Determine if roomId is a UUID (from matchmaking) or a 6-char roomCode
@@ -37,9 +37,10 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
             // Block check: blocked users cannot join
             const blockCheck = await prisma.eventBlock.findFirst({
                 where: { eventId: event.id, blockedUserId: userId },
+                select: { reason: true },
             });
             if (blockCheck) {
-                ack?.({ success: false, error: 'You are blocked from this event' });
+                ack?.({ success: false, error: 'You are blocked from this event', blockReason: blockCheck.reason ?? undefined });
                 return;
             }
 

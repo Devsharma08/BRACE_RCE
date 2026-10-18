@@ -156,11 +156,11 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
   const diffClass = getDiffClass(diff);
 
   return (
-    <div className="problem-contain flex flex-col h-full min-w-0 overflow-y-auto overflow-x-hidden px-4 py-4 gap-4 themed-scroll">
+    <div className="problem-contain flex flex-col h-full min-w-0 overflow-y-auto overflow-x-hidden px-3 py-3 gap-3 themed-scroll sm:px-4 sm:py-4 sm:gap-4">
       {/* Title & metadata */}
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">
-          <h2 className="min-w-0 max-w-full break-words text-sm font-bold leading-tight text-fg [overflow-wrap:anywhere]">
+          <h2 className="min-w-0 max-w-full break-words text-xs font-bold leading-tight text-fg [overflow-wrap:anywhere] sm:text-sm">
             {problem.problem_number != null ? `#${problem.problem_number} ` : ""}
             {problem.name}
           </h2>
@@ -191,7 +191,7 @@ const ProblemTab = ({ problem }: { problem: PracticeProblem | null }) => {
         </div>
         {problem.problem_definition && problem.problem_definition.trim().length > 0 ? (
           <div
-            className="min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
+            className="min-w-0 max-w-full break-words overflow-hidden text-xs leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] sm:text-sm [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(problem.problem_definition) }}
           />
         ) : (
@@ -358,46 +358,46 @@ const ProblemsListTab = ({
             const diff = (p.difficulty_level || "MEDIUM").toUpperCase();
             const isActive = activeProblem?.id === p.id;
             return (
-              <button
-                key={p.id}
-                onClick={() => onSelect(p)}
-                className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 border-b border-subtle-line transition-all cursor-pointer group ${isActive
+               <button
+                 key={p.id}
+                 onClick={() => onSelect(p)}
+                 className={`w-full text-left flex items-center gap-2 px-2 py-2 border-b border-subtle-line transition-all cursor-pointer group sm:gap-2.5 sm:px-3 sm:py-2.5 ${isActive
                     ? "bg-accent-primary/10 border-l-2 border-l-accent-primary"
                     : "hover:bg-surface-hover border-l-2 border-l-transparent"
                   }`}
-              >
-                {/* Solved icon */}
-                <span className="shrink-0">
-                  {p.isSolved ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent-success" />
-                  ) : (
-                    <Circle className="w-3.5 h-3.5 text-faint" />
-                  )}
-                </span>
+               >
+                 {/* Solved icon */}
+                 <span className="shrink-0">
+                   {p.isSolved ? (
+                     <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent-success" />
+                   ) : (
+                     <Circle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-faint" />
+                   )}
+                 </span>
 
-                {/* Problem info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {p.problem_number != null && (
-                      <span className="text-[9px] text-subtle font-mono shrink-0">#{p.problem_number}</span>
-                    )}
-                    <span className={`text-[11px] font-bold truncate ${isActive ? "text-accent-primary" : "text-fg group-hover:text-fg"}`}>
-                      {p.name}
-                    </span>
-                  </div>
-                  {p.attempts != null && p.attempts > 0 && !p.isSolved && (
-                    <span className="text-[9px] text-accent-warning/70 font-mono">{p.attempts} attempt{p.attempts !== 1 ? "s" : ""}</span>
-                  )}
-                </div>
+                 {/* Problem info */}
+                 <div className="flex-1 min-w-0">
+                   <div className="flex items-center gap-1">
+                     {p.problem_number != null && (
+                       <span className="text-[8px] sm:text-[9px] text-subtle font-mono shrink-0">#{p.problem_number}</span>
+                     )}
+                     <span className={`text-[10px] sm:text-xs font-bold truncate ${isActive ? "text-accent-primary" : "text-fg group-hover:text-fg"}`}>
+                       {p.name}
+                     </span>
+                   </div>
+                   {p.attempts != null && p.attempts > 0 && !p.isSolved && (
+                     <span className="text-[8px] sm:text-[9px] text-accent-warning/70 font-mono">{p.attempts} attempt{p.attempts !== 1 ? "s" : ""}</span>
+                   )}
+                 </div>
 
-                {/* Difficulty badge */}
-                <span
-                  className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase ${getDiffClass(diff)}`}
-                >
-                  {diff.charAt(0)}
-                </span>
+                 {/* Difficulty badge */}
+                 <span
+                   className={`shrink-0 text-[8px] px-1 sm:px-1.5 py-0.5 rounded border font-bold uppercase ${getDiffClass(diff)}`}
+                 >
+                   {diff.charAt(0)}
+                 </span>
 
-                <ChevronRight className={`w-3 h-3 shrink-0 transition-colors ${isActive ? "text-accent-primary" : "text-faint group-hover:text-subtle"}`} />
+                 <ChevronRight className={`w-2.5 h-2.5 shrink-0 transition-colors sm:w-3 sm:h-3 ${isActive ? "text-accent-primary" : "text-faint group-hover:text-subtle"}`} />
               </button>
             );
           })
@@ -446,13 +446,13 @@ const PracticeSidebar = ({
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activeTab === tab
+            className={`flex-1 flex items-center justify-center gap-1 py-2 text-[8px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer sm:gap-1.5 sm:py-2.5 sm:text-[10px] ${activeTab === tab
                 ? "border-b-accent-primary text-accent-primary bg-accent-primary/5"
                 : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"
               }`}
           >
-            {tab === "PROBLEM" ? <BookOpen className="w-3 h-3" /> : <LayoutList className="w-3 h-3" />}
-            {tab}
+            {tab === "PROBLEM" ? <BookOpen className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <LayoutList className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
+            {tab === "PROBLEM" ? "PROBLEM" : "PROBLEMS"}
           </button>
         ))}
       </div>

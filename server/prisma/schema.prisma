@@ -106,6 +106,7 @@ model Problem {
   codeSubmissions    CodeSubmission[]
 
   timeLimitMs Int? @default(600000)
+  data_structure String? @db.Text
 
   // playlist relation (connects to event)
   events Event[] @relation("EventProblems")
@@ -337,6 +338,13 @@ model Feedback {
   @@index([status, createdAt])
 }
 
+enum ReportCategory {
+  QUESTION
+  DOUBT
+  TESTCASE
+  OTHER
+}
+
 enum ReportStatus {
   FLAGGED
   REVIEWED
@@ -345,14 +353,17 @@ enum ReportStatus {
 }
 
 model QuestionReport {
-  id         String       @id @default(uuid())
+  id         String        @id @default(uuid())
   questionId String
   reportedBy String
-  reporter   User         @relation("ReportsFiled", fields: [reportedBy], references: [id])
-  reason     String       @db.Text
-  status     ReportStatus @default(FLAGGED)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  reporter   User          @relation("ReportsFiled", fields: [reportedBy], references: [id])
+  reason     String        @db.Text
+  detail     String?       @db.Text
+  category   ReportCategory @default(OTHER)
+  status     ReportStatus  @default(FLAGGED)
+  resolvedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@index([questionId, status])
 }

@@ -59,8 +59,9 @@ const cards = [
 
 export function QuickNavCards() {
   return (
-    <section aria-label="Quick navigation" className="w-full py-12 sm:py-16 lg:py-24">
-      <div className="mx-auto max-w-6xl">
+    <section aria-label="Quick navigation" className="w-full py-10 sm:py-14 lg:py-20 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-75 [background-image:linear-gradient(rgba(148,163,184,.1)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.1)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <div className="mx-auto max-w-6xl relative">
         {/* Section header — identical treatment to every other section */}
         <div className="mb-10 sm:mb-14 text-center max-w-3xl mx-auto">
           <div className="flex items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
@@ -81,7 +82,7 @@ export function QuickNavCards() {
             <Link
               key={href}
               to={href}
-              className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-5 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
+              className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-6 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
             >
               {/* Label + icon row */}
               <div className="flex items-center justify-between">

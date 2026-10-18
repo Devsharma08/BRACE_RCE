@@ -60,8 +60,11 @@ const AdminReports = () => {
                   <tr className="border-b border-subtle-line">
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Question ID</th>
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Reported By</th>
+                    <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Category</th>
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Reason</th>
+                    <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Detail</th>
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Status</th>
+                    <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Resolved At</th>
                     <th className="px-4 py-2 text-left text-faint tracking-widest uppercase">Created</th>
                     <th className="px-4 py-2 text-right text-faint tracking-widest uppercase">Actions</th>
                   </tr>
@@ -71,11 +74,22 @@ const AdminReports = () => {
                     <tr key={r.id} className="border-b border-subtle-line hover:bg-surface-hover">
                       <td className="px-4 py-3 text-subtle font-mono text-[10px]">{r.questionId.slice(0, 8)}</td>
                       <td className="px-4 py-3 text-accent-primary">{r.reporter?.username || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-0.5 rounded-none text-[10px] font-bold border border-subtle-line bg-surface-hover uppercase">
+                          {r.category}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-subtle max-w-xs truncate">{r.reason}</td>
+                      <td className="px-4 py-3 text-subtle max-w-xs truncate" title={r.detail ?? undefined}>
+                        {r.detail ? (r.detail.length > 80 ? r.detail.slice(0, 80) + '…' : r.detail) : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="px-2 py-0.5 rounded-none text-[10px] font-bold border border-subtle-line bg-surface-hover">
                           {r.status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-faint">
+                        {r.resolvedAt ? new Date(r.resolvedAt).toLocaleString() : '—'}
                       </td>
                       <td className="px-4 py-3 text-faint">{new Date(r.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3 text-right">
@@ -104,7 +118,7 @@ const AdminReports = () => {
                   ))}
                   {reports.length > visibleCount && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-3 text-center">
+                      <td colSpan={9} className="px-4 py-3 text-center">
                         <button
                           onClick={() => setVisibleCount((c) => c + 100)}
                           className="px-4 py-2 border border-accent-primary/40 bg-accent-primary/10 text-xs font-bold tracking-widest text-accent-primary hover:bg-accent-primary/20 transition-all"

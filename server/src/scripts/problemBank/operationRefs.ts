@@ -12,17 +12,20 @@
 export const OPERATION_PROBLEMS = [101, 109, 124, 132, 150, 160, 163];
 
 export const OPERATION_REFERENCES: Record<number, string> = {
-  101: `
+   101: `
 var MyQueue = function() { this.in = []; this.out = []; };
 MyQueue.prototype.push = function(x) { this.in.push(x); };
 MyQueue.prototype.pop = function() {
   if (this.out.length === 0) { while (this.in.length) this.out.push(this.in.pop()); }
   return this.out.pop();
 };
-MyQueue.prototype.peek = function() { return this.pop(); };
+MyQueue.prototype.peek = function() {
+  if (this.out.length === 0) { while (this.in.length) this.out.push(this.in.pop()); }
+  return this.out[this.out.length - 1];
+};
 MyQueue.prototype.empty = function() { return this.in.length === 0 && this.out.length === 0; };
 `,
-  109: `
+   109: `
 var TimeLimitedCache = function() { this.map = new Map(); };
 TimeLimitedCache.prototype.set = function(key, value, duration) {
   this.map.set(key, { value: value, expires: Date.now() + duration });
@@ -33,29 +36,31 @@ TimeLimitedCache.prototype.get = function(key) {
   if (Date.now() > e.expires) { this.map.delete(key); return -1; }
   return e.value;
 };
-TimeLimitedCache.prototype.count = function() { return this.map.size; };
+TimeLimitedCache.prototype.count = function() {
+  const now = Date.now();
+  for (const [k, e] of this.map.entries()) {
+    if (now > e.expires) this.map.delete(k);
+  }
+  return this.map.size;
+};
 `,
-  124: `
+   124: `
 var MedianFinder = function() { this.low = []; this.high = []; };
 MedianFinder.prototype.addNum = function(num) {
-  if (this.low.length === 0 || num <= this.low[this.low.length - 1]) {
-    this.low.push(num);
-    if (this.high.length && this.low[this.low.length - 1] > this.high[0]) {
-      const t = this.low.pop();
-      this.high.unshift(t);
-    }
-  } else {
-    this.high.unshift(num);
-    if (this.low.length && this.low[this.low.length - 1] > this.high[0]) {
-      const t = this.high.shift();
-      this.low.push(t);
-    }
+  // Two sorted arrays: low (max values, stored negated) and high (min values).
+  // Invariant: low.length == high.length or low.length == high.length + 1
+  this.low.push(-num);
+  this.low.sort((a, b) => a - b);
+  this.high.push(-this.low.shift());
+  this.high.sort((a, b) => a - b);
+  if (this.low.length < this.high.length) {
+    this.low.push(-this.high.shift());
+    this.low.sort((a, b) => a - b);
   }
 };
 MedianFinder.prototype.findMedian = function() {
-  if (this.low.length > this.high.length) return this.low[this.low.length - 1];
-  if (this.high.length > this.low.length) return this.high[0];
-  return (this.low[this.low.length - 1] + this.high[0]) / 2;
+  if (this.low.length > this.high.length) return -this.low[0];
+  return (-this.low[0] + this.high[0]) / 2;
 };
 `,
   132: `

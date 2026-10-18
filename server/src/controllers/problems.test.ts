@@ -79,7 +79,7 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
       expect(res.body.pagination).toBeDefined();
     });
 
-    test("should mask non-public test cases' input and expected output", async () => {
+    test("should ship all test cases with their real input and expected output", async () => {
       (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
         {
           id: "prob-1",
@@ -108,16 +108,13 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
 
       expect(res.status).toBe(200);
       const cases = res.body.problems[0].test_cases;
-      // Public case is preserved verbatim.
+      // Every case ships with its real input and expected output — including
+      // the non-public ones. The terminal Output panel renders all 15 in full.
       expect(cases[0]).toEqual({ id: "tc-1", input: "1", expectedOutput: "1", is_public: true });
-      // Hidden cases keep their id and is_public flag but have blanked content.
-      expect(cases[1].id).toBe("tc-2");
-      expect(cases[1].is_public).toBe(false);
-      expect(cases[1].input).toBe("");
-      expect(cases[1].expectedOutput).toBe("");
-      expect(cases[2].id).toBe("tc-3");
-      expect(cases[2].input).toBe("");
-      expect(cases[2].expectedOutput).toBe("");
+      // Hidden cases are still present (so the UI reports the total count) but
+      // their content is now sent whole, not blanked.
+      expect(cases[1]).toEqual({ id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false });
+      expect(cases[2]).toEqual({ id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false });
     });
   });
 

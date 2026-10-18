@@ -404,7 +404,7 @@ export const batch3: LegacyEntry[] = [
     funcName: 'countAndSay',
     argNames: ['n'],
     edge: [[1], [2], [3], [4], [5]],
-    gen: (r) => [r.int(1, 12)],
+     gen: (r) => [r.int(1, 15)],
     solve: (args) => {
       let term = '1';
       for (let step = 1; step < args[0]; step++) {

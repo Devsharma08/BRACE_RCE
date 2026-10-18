@@ -18,7 +18,7 @@ import { SPECIAL_TESTS } from './problemBank/specialTests.js';
 
 const PISTON = process.env.PISTON_URL ?? 'http://localhost:2000';
 const WRITE = process.argv.includes('--write');
-const TARGET = 12;
+const TARGET = 15;
 
 async function piston(code: string, stdin: string) {
   const res = await fetch(`${PISTON}/api/v2/execute`, {

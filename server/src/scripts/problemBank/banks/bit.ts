@@ -73,8 +73,8 @@ export default bank([
     ),
   },
   {
-    k: 'bit-reverse-integer',
-    n: 'Reverse Integer Bits',
+    k: 'bit-reverse-binary-digits',
+    n: 'Reverse Binary Digits',
     num: 306,
     d: 'EASY',
     c: 'Bit Manipulation',

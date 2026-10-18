@@ -48,10 +48,10 @@ export const BracePixelHero: FC = () => {
   return (
     <section
       id="top"
-      className="relative w-full bg-base text-fg selection:bg-accent-primary selection:text-ink"
+      className="relative w-full bg-base text-fg selection:bg-accent-primary selection:text-ink py-10 sm:py-14 lg:py-20"
     >
       {/* Ambient glow + grid backdrop, contained by the wrapper's overflow-hidden. */}
-      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.05)_1px,transparent_1px)] [background-size:32px_32px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(148,163,184,.24)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.24)_1px,transparent_1px)] [background-size:32px_32px]" />
       <div className="pointer-events-none absolute left-1/2 top-0 h-[560px] w-[760px] -translate-x-1/2 rounded-full bg-accent-primary/[0.05] blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 top-[28%] h-px bg-gradient-to-r from-transparent via-accent-primary/30 to-transparent" />
         {/* Three separate side markers, one per hero concept, split across the
@@ -189,7 +189,7 @@ export const BracePixelHero: FC = () => {
           </Link>
           <Link
             to="/terminal"
-            className="inline-flex items-center justify-center gap-2 border border-white/10 px-5 py-3 font-mono text-[10px] uppercase tracking-[.18em] text-subtle transition hover:border-accent-primary/50 hover:text-accent-primary"
+            className="inline-flex items-center px-5 justify-center gap-2 border border-white/10 px-2 py-1 font-mono text-[10px] uppercase tracking-[.18em] text-subtle transition hover:border-accent-primary/50 hover:text-accent-primary"
           >
             Open workspace
             <ArrowUpRight size={14} />

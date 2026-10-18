@@ -4,10 +4,9 @@ import { prisma } from '../lib/prisma.js';
 import { invalidateAllProblemsCache } from './problems.js';
 import { withDisplayProblemName } from '../utils/problemName.js';
 
-// Prisma client does not expose Feedback / QuestionReport / Setting models yet;
-// callers in routes/admin.ts still register these endpoints. Keep behavior
-// unchanged at runtime (these will throw if invoked) but allow the build/tests
-// to compile.
+// Prisma client exposes all models, but QuestionReport's `reporter` relation
+// conflicts with generated create-input types. We keep the `as any` shim for
+// report mutations to keep the create/update calls flexible.
 const db = prisma as any;
 
 // ─────────────────────────────────────────────────────────
@@ -130,9 +129,12 @@ export const actOnReport = async (req: Request, res: Response) => {
   const { status } = req.body as { status: 'DISMISSED' | 'APPROVED' };
 
   const updated = await db.questionReport.update({
-    where: { id: reportId },
-    data: { status: status as any },
-    });
+    where: { id: String(reportId) },
+    data: {
+      status: status as any,
+      resolvedAt: new Date(),
+    },
+  });
 
   return res.json({ report: updated });
 };
@@ -147,18 +149,27 @@ export const actOnReport = async (req: Request, res: Response) => {
 export const createQuestionReport = async (req: AuthRequest, res: Response) => {
   if (!req.userId) return res.status(401).json({ status: 'error', message: 'Authentication required' });
 
-  const { questionId, reason, detail } = req.body as { questionId?: string; reason?: string; detail?: string };
+  const { questionId, reason, detail, category } = req.body as {
+    questionId?: string;
+    reason?: string;
+    detail?: string;
+    category?: string;
+  };
 
   if (!questionId) return res.status(400).json({ status: 'error', message: 'questionId is required' });
   if (!reason) return res.status(400).json({ status: 'error', message: 'reason is required' });
+
+  const rawCat = String(category || "").toUpperCase();
+  const cat = ["QUESTION", "DOUBT", "TESTCASE", "OTHER"].includes(rawCat) ? rawCat : "OTHER";
 
   const report = await db.questionReport.create({
     data: {
       questionId,
       reportedBy: req.userId,
       reporter: { connect: { id: req.userId } },
-      // reason is the verbatim category sent by the client (trimmed + length-limited).
       reason: String(reason).trim().slice(0, 500),
+      detail: detail ? String(detail).trim().slice(0, 5000) : null,
+      category: cat as any,
       status: 'FLAGGED',
     },
   });

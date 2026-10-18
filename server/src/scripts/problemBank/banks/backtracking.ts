@@ -39,7 +39,7 @@ export default bank([
     cx: 'Time O(n!) in the worst case, Space O(n).',
     // n <= 12 keeps the search fast while giving 12 distinct inputs, which is
     // the minimum the bank requires (n <= 9 would only offer 9 cases).
-    con: ['1 <= n <= 12'],
+     con: ['1 <= n <= 15'],
     h: [
       'One queen per row removes the need for a row check.',
       'A diagonal is hit when the row gap equals the column gap.',
@@ -77,7 +77,7 @@ export default bank([
       place(0);
       return count;
     },
-    t: autoTests(
+     t: autoTests(
       [
         pub(4),
         pub(1),
@@ -85,11 +85,13 @@ export default bank([
         pub(3),
         pub(5),
         pub(6),
-        priv(7),
-        priv(8),
+        pub(13),
+        pub(14),
       ],
-      // Every n from 1 to 12 is a distinct case, so just walk the range.
-      (r) => [r.int(1, 12)],
+      // Walk n from 1 to 15.  n=13 has 1,784,413 solutions, n=14 has 6,640,509,
+      // and n=15 has 15,538,617 — the backtracking search finds these well within
+      // Piston's timeout, and each distinct n is a distinct test case.
+      (r) => [r.int(1, 15)],
       15,
       300,
     ),
@@ -255,8 +257,8 @@ export default bank([
     ),
   },
   {
-    k: 'btk-combination-sum',
-    n: 'Combination Sum',
+    k: 'btk-combination-sum-find-subsets',
+    n: 'Combination Sum: Find Subsets',
     num: 303,
     d: 'MEDIUM',
     c: 'Backtracking',

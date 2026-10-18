@@ -1472,7 +1472,7 @@ public class Main {
     if(c.getSimpleName().equals("Node"))return formatNode(v);
     if(c.isArray()){int len=Array.getLength(v);List<String>items=new ArrayList<>();for(int i=0;i<len;i++)items.add(format(Array.get(v,i)));return "["+String.join(",",items)+"]";}
     if(v instanceof Collection<?>){List<String>items=new ArrayList<>();for(Object o:(Collection<?>)v)items.add(format(o));return "["+String.join(",",items)+"]";}
-    if(c.getSimpleName().equals("String")){return "\""+v.toString()+"\"";}
+    if(c.getSimpleName().equals("String")){return (char)34+v.toString()+(char)34;}
     return v.toString();
   }
   private static String formatListNode(Object head){
@@ -2625,14 +2625,9 @@ export const executeCode = async (req: Request, res: Response) => {
               submissionTimes: { push: activityTick },
             }
           });
-          invalidateUserAnalyticsCache(userId);
-          // The practice path never went through invalidateUserProblemsCache,
-          // so the 10-minute problems cache kept serving the PRE-submit payload:
-          // the DB row said solved, yet the list still reported isSolved=false and
-          // attempts=0 for up to 10 minutes. Every other progress write path
-          // (submissionEvaluator, profile) already does this.
-          const { invalidateUserProblemsCache } = await import("../controllers/problems.js");
-          invalidateUserProblemsCache(userId);
+           invalidateUserAnalyticsCache(userId);
+           const { invalidateUserProblemsCache } = await import("../controllers/problems.js");
+           await invalidateUserProblemsCache(userId);
         }
       } catch (e) {
         console.error("Failed to upsert UserProblemProgress:", e);

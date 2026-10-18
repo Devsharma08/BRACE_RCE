@@ -31,8 +31,9 @@ import { BANK } from './problemBank/banks/index.js';
 import { prepareFinalCode } from '../services/codeExecution.js';
 
 const WRITE = process.argv.includes('--write');
+const SKIP_VERIFY = process.argv.includes('--skip-verify');
 // --verify-n=20 also implies verification, so match on prefix not equality.
-const VERIFY = process.argv.some((a) => a.startsWith('--verify')) || WRITE;
+const VERIFY = (process.argv.some((a) => a.startsWith('--verify')) || WRITE) && !SKIP_VERIFY;
 const ONLY = (process.argv.find((a) => a.startsWith('--langs=')) || '')
   .replace('--langs=', '')
   .split(',')

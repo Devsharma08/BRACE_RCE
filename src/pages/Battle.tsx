@@ -450,15 +450,19 @@ export const Battle = () => {
 
   const [showAnalyticsView, setShowAnalyticsView] = useState(false);
 
-  // A failed room load navigates back to the lobby (query-level error handling).
-  useEffect(() => {
-    if (!roomError) return;
-    const err: any = roomError;
-    console.error("Failed to load room", err);
-    toast.error(`Could not join room: ${err.response?.data?.message || err.message}`);
-    setLoading(false);
-    navigate("/lobby");
-  }, [roomError, navigate]);
+    // A failed room load navigates back to the lobby (query-level error handling).
+    useEffect(() => {
+      if (!roomError) return;
+      const err: any = roomError;
+      console.error("Failed to load room", err);
+      const blockReason = err.response?.data?.blockReason;
+      const msg = blockReason
+        ? `You are blocked from this event: ${blockReason}`
+        : `Could not join room: ${err.response?.data?.message || err.message}`;
+      toast.error(msg);
+      setLoading(false);
+      navigate("/lobby");
+    }, [roomError, navigate]);
 
   // Seed all local state from the fetched room (runs on every cache hit too).
   useEffect(() => {
@@ -1198,7 +1202,7 @@ export const Battle = () => {
     return (
       <div className="viewport-shell relative flex h-full w-full flex-col overflow-hidden bg-base">
         {/* ── TOP HEADER ── */}
-        <div className="flex items-center justify-between border-b border-subtle-line bg-raised px-6 py-2.5 font-mono text-xs z-30 shrink-0 w-full">
+        <div className="flex items-center justify-between border-b border-subtle-line bg-raised px-2 py-1.5 font-mono text-[9px] z-30 shrink-0 w-full sm:px-6 sm:py-2.5 sm:text-xs">
           <div className="flex items-center gap-3">
             <span className="text-accent-warning font-bold uppercase tracking-wider flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-accent-warning" />
@@ -1230,9 +1234,9 @@ export const Battle = () => {
             {battleState.status === "WAITING" && (
               <button
                 onClick={handleStartOperation}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[11px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all"
+                className="flex items-center gap-1 px-2 py-1 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[9px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
               >
-                <Play className="w-3 h-3" /> START OPERATION
+                <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> START
               </button>
             )}
             {battleState.status === "IN_PROGRESS" && (
@@ -1242,14 +1246,14 @@ export const Battle = () => {
                     handleHostEndMatch();
                   }
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[11px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all"
+                className="flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
               >
-                <StopCircle className="w-3 h-3" /> END MATCH
+                <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
               </button>
             )}
             <button
               onClick={() => navigate("/lobby")}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-subtle-line bg-surface-hover/60 text-subtle text-[11px] font-mono font-bold rounded hover:bg-surface-hover transition-all"
+              className="flex items-center gap-1 px-2 py-1 border border-subtle-line bg-surface-hover/60 text-subtle text-[9px] font-mono font-bold rounded hover:bg-surface-hover transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
             >
               LOBBY
             </button>
@@ -1583,11 +1587,11 @@ export const Battle = () => {
           </button>
 
           {isHostPanelOpen && (
-            <div className="bg-raised/95 border border-accent-warning/40 rounded-xl shadow-2xl backdrop-blur-md w-72 overflow-hidden animate-fade-in">
+            <div className="bg-raised/95 border border-accent-warning/40 rounded-xl shadow-2xl backdrop-blur-md w-72 sm:w-80 overflow-hidden animate-fade-in max-w-[90vw]">
               {/* Panel Header */}
-              <div className="px-4 py-3 border-b border-accent-warning/20 bg-accent-warning/10 flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-accent-warning tracking-widest flex items-center gap-2">
-                  <ShieldAlert className="w-3.5 h-3.5" /> HOST COMMAND CENTER
+              <div className="px-3 py-2 border-b border-accent-warning/20 bg-accent-warning/10 flex items-center justify-between sm:px-4 sm:py-3">
+                <span className="font-mono text-[9px] font-bold text-accent-warning tracking-widest flex items-center gap-1 sm:gap-2 sm:text-xs">
+                  <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> HOST COMMAND CENTER
                 </span>
                 <div className="flex items-center gap-1">
                   {battleState.status === "FINISHED" && (
@@ -1606,8 +1610,8 @@ export const Battle = () => {
               </div>
 
               {/* Participant List */}
-              <div className="p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
-                <p className="text-[10px] text-faint tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
+                <div className="p-2 sm:p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
+                <p className="text-[8px] sm:text-[10px] text-faint font-mono tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
                 {loading && roomParticipants.length === 0 ? (
                   // ── Loader: operative telemetry syncing
                   <div className="flex items-center justify-center gap-2 py-6 border border-line bg-base/40 rounded-none">
@@ -1623,8 +1627,8 @@ export const Battle = () => {
                   const intel = playerProgress[participantId];
                   const isMe = participantId === myUserId;
                   return (
-                    <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-2.5 flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[10px] font-mono font-bold text-fg">
+                    <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-1.5 sm:p-2.5 flex items-center gap-2 sm:gap-3">
+                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold text-fg">
                         {uname[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1707,6 +1711,9 @@ export const Battle = () => {
                           {uname[0]?.toUpperCase()}
                         </div>
                         <span className="text-xs font-mono text-fg flex-1 truncate">{uname}</span>
+                        {b.reason && (
+                          <span className="text-[8px] font-mono text-accent-danger truncate max-w-[120px]" title={b.reason}>{b.reason}</span>
+                        )}
                         <button
                           onClick={() => handleUnblockParticipant(pid)}
                           title="Unblock"
@@ -2060,7 +2067,7 @@ export const Battle = () => {
 
       <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
-        <div className="flex items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-3 py-2 font-mono text-xs z-30 shrink-0 sm:px-4">
+        <div className="flex items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-2 py-1.5 font-mono text-[9px] z-30 shrink-0 sm:px-4 sm:text-xs sm:py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-accent-primary font-bold uppercase tracking-wider flex items-center gap-2 min-w-0">
               <Code className="w-4 h-4 text-accent-primary shrink-0" />
@@ -2091,9 +2098,9 @@ export const Battle = () => {
                     void fetchBlockedParticipants();
                   }
                 }}
-                className="flex items-center gap-1.5 px-2 py-1 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[10px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all"
+                className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[8px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
               >
-                <ShieldAlert className="w-3 h-3" /> HOST
+                <ShieldAlert className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> HOST
               </button>
             )}
             {/* Terminate group (host/admin) — ends the event for everyone */}
@@ -2104,9 +2111,9 @@ export const Battle = () => {
                     socket?.emit("terminate_group", { roomId });
                   }
                 }}
-                className="flex items-center gap-1.5 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[10px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all"
+                className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[8px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
               >
-                <StopCircle className="w-3 h-3" /> END GROUP
+                <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END GROUP
               </button>
             )}
           </div>

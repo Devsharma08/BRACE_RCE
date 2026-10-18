@@ -27,7 +27,10 @@ export interface AdminReport {
   reportedBy: string;
   reporter: { id: string; username: string };
   reason: string;
+  detail: string | null;
+  category: 'QUESTION' | 'DOUBT' | 'TESTCASE' | 'OTHER';
   status: 'FLAGGED' | 'REVIEWED' | 'DISMISSED' | 'APPROVED';
+  resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

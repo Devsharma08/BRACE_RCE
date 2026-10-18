@@ -14,8 +14,8 @@ import { autoTests, pub, priv } from '../tests.js';
 
 export default bank([
   {
-    k: 'hp-kth-largest',
-    n: 'Kth Largest Element',
+    k: 'hp-kth-largest-array',
+    n: 'Kth Largest Element in Array',
     num: 270,
     d: 'MEDIUM',
     c: 'Heap',
@@ -177,8 +177,8 @@ export default bank([
     ),
   },
   {
-    k: 'hp-last-stone-weight-ii',
-    n: 'Last Stone Weight II',
+    k: 'hp-last-stone-weight-ii-minimize',
+    n: 'Last Stone Weight II: Minimize Final',
     num: 272,
     d: 'MEDIUM',
     c: 'Heap',
