@@ -1,0 +1,47 @@
+module.exports = {
+  apps: [
+    {
+      name: "brace-rce",
+      script: "./server/dist/index.js",
+      cwd: "./server",
+      instances: "max",
+      exec_mode: "cluster",
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+        NODE_MODE: "production",
+        PORT: 5000,
+      },
+      env_development: {
+        NODE_ENV: "development",
+        NODE_MODE: "development",
+        PORT: 5000,
+      },
+      kill_timeout: 30000,
+      drain_drainTime: 30000,
+      log_file: "./logs/app-combined.log",
+      log_type: "json",
+      merge_logs: true,
+      watch: false,
+      ignore_watch: ["node_modules", "logs", "server/dist"],
+      error_file: "./logs/app-err.log",
+      out_file: "./logs/app-out.log",
+    },
+    {
+      name: "brace-rce-worker",
+      script: "./server/dist/jobs/queueWorker.js",
+      cwd: "./server",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+        NODE_MODE: "production",
+      },
+      log_file: "./logs/worker-combined.log",
+      log_type: "json",
+      merge_logs: true,
+      kill_timeout: 30000,
+    },
+  ],
+};
