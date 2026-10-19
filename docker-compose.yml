@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # BRACE_RCE Main Application
+  # BRACE_RCE Main Application (PM2-managed: API server + queue worker)
   app:
     build:
       context: .
@@ -9,8 +9,9 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - PORT=${PORT:-5000}
+      - PORT=5000
       - NODE_ENV=${NODE_ENV:-production}
+      - NODE_MODE=${NODE_MODE:-production}
       - POSTGRES_USER=${POSTGRES_USER:-brace_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-brace_password}
       - POSTGRES_DB=${POSTGRES_DB:-brace_rce}
@@ -18,9 +19,34 @@ services:
       - JWT_SECRET=${JWT_SECRET:-production_super_secret_jwt_key_brace_2026}
       - PISTON_URL=${PISTON_URL:-http://piston:2000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5000}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - postgres
       - piston
+      - redis
+
+  # Nginx reverse proxy — TLS termination, static assets, WebSocket passthrough, rate limiting
+  # In production behind a load balancer (ALB/Cloudflare), this can be removed
+  # and TLS handled at the edge. For self-hosted deployments, use this service.
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - app_static_assets:/app/frontend
+    depends_on:
+      - app
+
+  # Redis — caching, BullMQ job queue, Socket.io adapter backing store
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
 
   # PostgreSQL Database
   postgres:
@@ -47,3 +73,4 @@ services:
 
 volumes:
   postgres_data:
+  app_static_assets:

@@ -3,32 +3,51 @@
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AWS / Vercel                             │
-├─────────────────────────────────────────────────────────────────┤
-│  Frontend (Vercel)          │  Backend (AWS ECS/Fargate)       │
-│  - React + Vite             │  - Node.js + Express             │
-│  - Static assets            │  - Socket.io (WebSockets)        │
-│  - CDN edge caching         │  - Prisma ORM                    │
-└─────────────────────────────┴───────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-   ┌──────────┐         ┌──────────┐         ┌──────────┐
-   │  Neon    │         │  Upstash │         │ Piston   │
-   │PostgreSQL│         │  Redis   │         │(ECS/EKS) │
-   └──────────┘         └──────────┘         └──────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                        AWS / Vercel                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│  Frontend (Vercel)          │  Backend (AWS ECS/Fargate)           │
+│  - React + Vite             │  - Node.js + Express (PM2 cluster)  │
+│  - Static assets            │  - Socket.io (w/ Redis adapter)      │
+│  - CDN edge caching         │  - Prisma ORM                        │
+└─────────────────────────────┴───────────────────────────────────────┘
+                               │
+          ┌────────────────────┼────────────────────┐
+          ▼                    ▼                    ▼
+    ┌──────────┐         ┌──────────┐         ┌──────────┐
+    │  Neon    │         │  Redis   │         │ Piston   │
+    │PostgreSQL│         │(BullMQ + │         │(ECS/EKS) │
+    └──────────┘         │ Socket.io│         └──────────┘
+                          │ cache)   │
+                          └──────────┘
 ```
+
+### New: Queue Architecture
+
+The backend uses **BullMQ** (backed by Redis) for asynchronous job processing:
+
+| Queue           | Purpose                          | Concurrency |
+|-----------------|----------------------------------|-------------|
+| `code-execution`| Async submission grading         | 4 workers   |
+| `emails`        | Gmail SMTP delivery (async)      | 2 workers   |
+| `notifications` | DB notification record creation  | 5 workers   |
+
+**PM2** runs two processes:
+- `brace-rce` (cluster mode, max instances) — HTTP API + Socket.io server
+- `brace-rce-worker` (fork mode, 1 instance) — Dedicated queue worker
+
+**Nginx** reverse proxy handles TLS termination, static asset caching, WebSocket upgrades, and rate limiting.
 
 ## Services Required
 
 | Service | Provider | Purpose | Est. Cost/Month |
 |---------|----------|---------|-----------------|
 | PostgreSQL | Neon | Primary database | $19 (Scale plan) |
-| Redis | Upstash | Caching, sessions, rate limiting | Free tier → $40 |
+| Redis | Upstash or self-hosted | Caching, BullMQ queues, Socket.io adapter | Free tier → $40 |
 | Code Execution | Piston | Sandbox for 5 languages | Self-hosted on ECS |
 | Frontend Hosting | Vercel | Static hosting + edge functions | Free → $20 |
-| Backend Hosting | AWS ECS/Fargate | Container orchestration | ~$50-100 |
+| Backend Hosting | AWS ECS/Fargate (PM2 cluster) | Container orchestration | ~$50-100 |
+| Load Balancer | Cloudflare / AWS ALB | TLS termination, WebSocket routing, WAF | Free → $20 |
 | Monitoring | Sentry + CloudWatch | Error tracking + logs | Free tier → $26 |
 | DNS/SSL | Cloudflare / Vercel | Domain + certificates | Free |
 
@@ -69,16 +88,21 @@ DATABASE_URL="postgresql://..." pnpm run seed:learning-paths
 
 ### 2.1 Create Redis Database
 - Via Upstash Console: Create database in same region as Neon (us-east-1)
-- Enable **REST API** for serverless compatibility
+- Enable **REST API** and **Direct (Redis) connections** on the same database
 - Get credentials:
   - `UPSTASH_REDIS_REST_URL`
   - `UPSTASH_REDIS_REST_TOKEN`
-  - `REDIS_URL` (standard Redis protocol)
+  - `REDIS_URL` (standard Redis protocol — used by BullMQ + Socket.io adapter)
 
 ### 2.2 Configure for Production
 - Set eviction policy: `allkeys-lru`
-- Enable TLS
+- Enable TLS (`rediss://` scheme in REDIS_URL)
 - Configure max memory policy
+
+### 2.3 Application Usage
+- **BullMQ queues**: code-execution, emails, notifications
+- **Socket.io Redis adapter**: Publishes room messages across all cluster workers
+- **In-memory cache fallback**: node-cache when Redis is unavailable (graceful degradation)
 
 ---
 
@@ -122,7 +146,7 @@ DATABASE_URL="postgresql://..." pnpm run seed:learning-paths
 
 ---
 
-## Phase 4: Backend Deployment (AWS ECS/Fargate)
+## Phase 4: Backend Deployment (AWS ECS/Fargate + PM2)
 
 ### 4.1 Docker Image Build (GitHub Actions)
 ```yaml
@@ -184,15 +208,46 @@ UPSTASH_REDIS_REST_TOKEN
 REDIS_URL
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
-GITHUB_KEY
 SENTRY_DSN
 PISTON_URL=http://piston-service:2000  # Internal service discovery
 ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# Queue configuration
+CODE_EXEC_CONCURRENCY=4      # Piston sandbox workers
+EMAIL_CONCURRENCY=2          # Email sending workers
+NOTIFICATION_CONCURRENCY=5   # Notification DB workers
 ```
 
 ### 4.4 Domain & SSL
 - ALB with ACM certificate for `api.yourdomain.com`
 - Route53 alias record pointing to ALB
+- OR: Cloudflare proxy for `yourdomain.com` with TLS termination
+
+### 4.5 Nginx Reverse Proxy (Self-Hosted Deployments)
+The `nginx.conf` in the repository root provides:
+- TLS termination (with certbot/Let's Encrypt)
+- Static asset serving (frontend build from `/app/frontend`)
+- WebSocket Upgrade passthrough for Socket.io
+- Rate limiting: `api` zone (10 req/s), `login` zone (1 req/s)
+- Prometheus `/metrics` endpoint restricted to private networks
+
+### 4.6 Process Management (PM2)
+The `ecosystem.config.cjs` file configures:
+- `brace-rce`: PM2 cluster mode (`instances: "max"`) for horizontal scaling
+- `brace-rce-worker`: Single-instance queue worker for BullMQ jobs
+- Graceful shutdown: 30s `kill_timeout` for in-flight jobs
+- Auto-restart on crash with `max_memory_restart: 512M`
+
+```bash
+# Start
+pm2 start ecosystem.config.cjs
+
+# Monitor
+pm2 monit
+
+# Restart after deploy
+pm2 restart all
+```
 
 ---
 
