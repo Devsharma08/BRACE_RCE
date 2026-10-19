@@ -2,10 +2,8 @@ import type { Request, Response } from "express";
 import { prisma } from "./prisma.js";
 import { checkCacheHealth } from "./cache.js";
 import { logger } from "./logger.js";
+import { checkRedisHealth } from "./redis.js";
 
-/**
- * Health check types
- */
 export interface HealthCheckResult {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
@@ -14,6 +12,7 @@ export interface HealthCheckResult {
   checks: {
     database: ComponentHealth;
     cache: ComponentHealth;
+    redis: ComponentHealth;
     piston: ComponentHealth;
   };
 }
@@ -111,21 +110,27 @@ export async function deepHealthCheck(_req: Request, res: Response) {
   const start = Date.now();
   
   // Run all checks in parallel
-  const [database, cacheRaw, piston] = await Promise.all([
+  const [database, cacheRaw, redisHealth, piston] = await Promise.all([
     checkDatabase(),
     checkCacheHealth(),
+    checkRedisHealth(),
     checkPiston(),
   ]);
 
-  // Convert cache health to ComponentHealth format
   const cache: ComponentHealth = {
     status: cacheRaw.healthy ? "healthy" : "unhealthy",
     message: `Cache backend: ${cacheRaw.backend}`,
     details: { backend: cacheRaw.backend },
   };
 
-  // Determine overall status
-  const statuses = [database, cache, piston].map((c) => c.status);
+  const redis: ComponentHealth = {
+    status: redisHealth.healthy ? "healthy" : "unhealthy",
+    latencyMs: redisHealth.latencyMs,
+    message: `Redis backend: ${redisHealth.backend}`,
+    details: { backend: redisHealth.backend },
+  };
+
+  const statuses = [database, cache, redis, piston].map((c) => c.status);
   let overallStatus: "healthy" | "degraded" | "unhealthy" = "healthy";
   
   if (statuses.includes("unhealthy")) {
@@ -134,13 +139,6 @@ export async function deepHealthCheck(_req: Request, res: Response) {
     overallStatus = "degraded";
   }
 
-  // Convert cache health to ComponentHealth format
-  const cacheHealth: ComponentHealth = {
-    status: cacheRaw.healthy ? "healthy" : "unhealthy",
-    message: `Cache backend: ${cacheRaw.backend}`,
-    details: { backend: cacheRaw.backend },
-  };
-
   const result: HealthCheckResult = {
     status: overallStatus,
     timestamp: new Date().toISOString(),
@@ -148,26 +146,27 @@ export async function deepHealthCheck(_req: Request, res: Response) {
     version: process.env.npm_package_version || "unknown",
     checks: {
       database,
-      cache: cacheHealth,
+      cache,
+      redis,
       piston,
     },
   };
 
-  // Cache the result
   healthCheckCache = {
     result,
     expiresAt: Date.now() + HEALTH_CHECK_CACHE_TTL_MS,
   };
 
   const statusCode = overallStatus === "healthy" ? 200 : overallStatus === "degraded" ? 200 : 503;
-  
+
   logger.info(
     {
       overallStatus,
       durationMs: Date.now() - start,
       checks: {
         database: database.status,
-        cache: cacheHealth.status,
+        cache: cache.status,
+        redis: redis.status,
         piston: piston.status,
       },
     },
@@ -192,19 +191,21 @@ export function livenessCheck(_req: Request, res: Response) {
  * Readiness probe (for Kubernetes)
  */
 export async function readinessCheck(_req: Request, res: Response) {
-  const [database, cache] = await Promise.all([
+  const [database, cache, redisHealth] = await Promise.all([
     checkDatabase(),
     checkCacheHealth(),
+    checkRedisHealth(),
   ]);
 
-  const ready = database.status !== "unhealthy" && cache.healthy;
-  
+  const ready = database.status !== "unhealthy" && cache.healthy && redisHealth.healthy;
+
   res.status(ready ? 200 : 503).json({
     status: ready ? "ready" : "not ready",
     timestamp: new Date().toISOString(),
     checks: {
       database: database.status,
       cache: cache.healthy ? "healthy" : "unhealthy",
+      redis: redisHealth.healthy ? "healthy" : "unhealthy",
     },
   });
 }

@@ -141,6 +141,32 @@ export const codeExecutionQueueSize = new client.Gauge({
   registers: [register],
 });
 
+export const emailQueueSize = new client.Gauge({
+  name: "email_queue_size",
+  help: "Current size of email queue",
+  registers: [register],
+});
+
+export const notificationQueueSize = new client.Gauge({
+  name: "notification_queue_size",
+  help: "Current size of notification queue",
+  registers: [register],
+});
+
+export const queueFailedJobsTotal = new client.Counter({
+  name: "queue_failed_jobs_total",
+  help: "Total number of failed jobs across all queues",
+  labelNames: ["queue"],
+  registers: [register],
+});
+
+export const queueProcessedJobsTotal = new client.Counter({
+  name: "queue_processed_jobs_total",
+  help: "Total number of processed jobs across all queues",
+  labelNames: ["queue"],
+  registers: [register],
+});
+
 // Piston API metrics
 export const pistonRequestsTotal = new client.Counter({
   name: "piston_requests_total",

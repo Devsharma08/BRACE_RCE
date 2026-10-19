@@ -13,6 +13,9 @@ import {
 } from "./stateRedis.js";
 import { emitPresenceToFriends, getFriendIds } from "./presence.js";
 import type { HandlerCtx } from "./types.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { getRedisClient } from "../lib/redis.js";
+import { logger } from "../lib/logger.js";
 import { registerMessagingHandlers } from "./handlers/messaging.js";
 import { registerChallengeHandlers } from "./handlers/challenge.js";
 import { registerMatchmakingHandlers } from "./handlers/matchmaking.js";
@@ -28,6 +31,16 @@ import { registerIO } from "./ioRegistry.js";
 export const initSocketServer = (io: Server) => {
     // Expose io to HTTP controllers (friend events, notifications, ...)
     registerIO(io);
+
+    // Attach Redis adapter for multi-process Socket.io support
+    try {
+      const pubClient = getRedisClient();
+      const subClient = getRedisClient();
+      io.adapter(createAdapter(pubClient, subClient));
+      logger.info("Socket.io Redis adapter attached");
+    } catch (err) {
+      logger.warn(`Socket.io Redis adapter unavailable, falling back to in-memory adapter: ${String(err)}`);
+    }
 
     // Start module-level GC once
     initModuleGC(io);

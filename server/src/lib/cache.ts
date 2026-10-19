@@ -1,39 +1,67 @@
 import NodeCache from "node-cache";
-
-/**
- * In-memory cache using node-cache.
- * Fast, local cache with TTL support.
- * For horizontal scaling, consider Redis (but adds network latency).
- */
+import { getRedisClient } from "./redis.js";
 
 const cache = new NodeCache({
-  stdTTL: 300, // 5 minutes default
-  checkperiod: 60, // Check for expired keys every 60 seconds
-  useClones: false, // Don't clone objects for better performance
+  stdTTL: 300,
+  checkperiod: 60,
+  useClones: false,
 });
 
-/**
- * Read a cached value. Returns undefined on a miss or an expired entry.
- */
+let redisAvailable = false;
+
+async function tryRedis(): Promise<boolean> {
+  if (redisAvailable) return true;
+  try {
+    const client = getRedisClient();
+    if (client.isOpen) {
+      await client.ping();
+      redisAvailable = true;
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export async function getCachedAsync<T>(key: string): Promise<T | undefined> {
+  if (await tryRedis()) {
+    const client = getRedisClient();
+    try {
+      const raw = await client.get(key);
+      return raw ? (JSON.parse(raw) as T) : undefined;
+    } catch {
+      // Fall through to memory cache
+    }
+  }
+  return cache.get<T>(key);
+}
+
+export async function setCachedAsync<T>(key: string, value: T, ttlSeconds = 300): Promise<void> {
+  if (await tryRedis()) {
+    const client = getRedisClient();
+    try {
+      await client.set(key, JSON.stringify(value), { EX: ttlSeconds });
+      return;
+    } catch {
+      // Fall through to memory cache
+    }
+  }
+  cache.set(key, value, ttlSeconds);
+}
+
 export function getCached<T>(key: string): T | undefined {
   return cache.get<T>(key);
 }
 
-/**
- * Store a value. `ttlSeconds` defaults to 300s.
- */
 export function setCached<T>(key: string, value: T, ttlSeconds = 300): void {
   cache.set(key, value, ttlSeconds);
 }
 
-/** Drop a single entry. */
 export function deleteCached(key: string): void {
   cache.del(key);
 }
 
-/**
- * Drop every entry whose key starts with `prefix`.
- */
 export function deleteCachedByPrefix(prefix: string): number {
   const keys = cache.keys().filter((key) => key.startsWith(prefix));
   if (keys.length > 0) {
@@ -42,30 +70,48 @@ export function deleteCachedByPrefix(prefix: string): number {
   return keys.length;
 }
 
-/** Health check for cache backend */
-export function checkCacheHealth(): { backend: "memory"; healthy: boolean } {
+export async function deleteCachedByPrefixAsync(prefix: string): Promise<number> {
+  if (await tryRedis()) {
+    const client = getRedisClient();
+    try {
+      const keys = await client.keys(prefix + "*");
+      if (keys.length > 0) {
+        for (const k of keys) await client.del(k);
+      }
+      return keys.length;
+    } catch {
+      // Fall through to memory cache
+    }
+  }
+  return deleteCachedByPrefix(prefix);
+}
+
+export async function checkCacheHealth(): Promise<{ backend: "redis" | "memory"; healthy: boolean; latencyMs?: number }> {
+  try {
+    const client = getRedisClient();
+    if (client.isOpen) {
+      const start = Date.now();
+      await client.ping();
+      return { backend: "redis", healthy: true, latencyMs: Date.now() - start };
+    }
+  } catch {
+    // Fall through
+  }
   return { backend: "memory", healthy: true };
 }
 
-/** Clear all cache */
 export function clearCache(): void {
   cache.flushAll();
 }
 
-/** Get cache stats */
 export function getCacheStats(): NodeCache.Stats {
   return cache.getStats();
 }
 
-/** Get all keys matching prefix (for debugging) */
 export function getKeysByPrefix(prefix: string): string[] {
   return cache.keys().filter((key) => key.startsWith(prefix));
 }
 
-/**
- * Legacy synchronous in-memory cache (for GitHub controllers that need sync API).
- * Use the async functions above for new code.
- */
 export const internalCache = {
   get: <T>(key: string): T | undefined => cache.get<T>(key),
   set: <T>(key: string, value: T, ttlSeconds = 300): void => { cache.set(key, value, ttlSeconds); },
@@ -74,10 +120,6 @@ export const internalCache = {
   keys: (): string[] => cache.keys(),
 };
 
-/**
- * Placeholder for Redis - not used with node-cache
- * Kept for compatibility with socket state
- */
-export function getRedis(): null {
-  return null;
+export async function getRedis(): Promise<ReturnType<typeof getRedisClient>> {
+  return getRedisClient();
 }

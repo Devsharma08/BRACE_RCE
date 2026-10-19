@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { executeCode } from "../services/codeExecution.js";
 import { validate, executeCodeSchema } from "../middleware/validation.js";
 import { executionGuard } from "../middleware/executionGuard.js";
+import { enqueueAsyncGrading, checkGradingStatus } from "../services/asyncGrading.js";
 
 // Reject oversized submissions before they reach the execution service.
 const MAX_CODE_BYTES = 100 * 1024; // 100 KB
@@ -33,3 +34,7 @@ const codeSizeGuard = (req: any, res: any, next: any) => {
 };
 
 executeRouter.post("/", executionRateLimiter, validate(executeCodeSchema), executionGuard(), codeSizeGuard, executeCode);
+
+// Async submission grading via BullMQ queue
+executeRouter.post("/grade", executionRateLimiter, codeSizeGuard, enqueueAsyncGrading);
+executeRouter.get("/grade/:jobId", checkGradingStatus);

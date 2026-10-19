@@ -8,6 +8,9 @@ import { startRoomScheduler } from "./jobs/roomScheduler.js";
 import { prisma } from "./lib/prisma.js";
 import { initTracing } from "./lib/tracing.js";
 import { initSentry, flushSentry } from "./lib/sentry.js";
+import { startAllWorkers, stopAllWorkers } from "./lib/queue.js";
+import { closeRedisClient } from "./lib/redis.js";
+import { logger } from "./lib/logger.js";
 
 // Initialize observability early
 initTracing();
@@ -35,6 +38,28 @@ initSocketServer(io);
 
 // Room scheduling worker (scheduled opens / T-5min warnings / auto-close)
 startRoomScheduler(io);
+
+// Start BullMQ queue workers (code execution, email, notifications)
+const workers = await startAllWorkers();
+
+// ── Metrics: poll queue sizes every 10s ──
+import { codeExecutionQueueSize, emailQueueSize, notificationQueueSize } from "./lib/metrics.js";
+import { codeExecutionQueue, emailQueue, notificationQueue } from "./lib/queues.js";
+
+setInterval(async () => {
+  try {
+    const [code, email, notif] = await Promise.all([
+      codeExecutionQueue.getJobs("waiting").then((j) => j.length),
+      emailQueue.getJobs("waiting").then((j) => j.length),
+      notificationQueue.getJobs("waiting").then((j) => j.length),
+    ]);
+    codeExecutionQueueSize.set(code);
+    emailQueueSize.set(email);
+    notificationQueueSize.set(notif);
+  } catch {
+    // Queue may be unavailable
+  }
+}, 10000);
 
 // ── Queue retention: prune notifications older than 3 days, every 24h ──
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -77,21 +102,37 @@ httpServer.listen(port, () => {
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   console.log(`[server] Received ${signal}, shutting down gracefully...`);
-  
+
+  // Stop queue workers
+  try {
+    await stopAllWorkers(workers);
+    console.log('[server] Queue workers stopped');
+  } catch (e) {
+    console.error('[server] Error stopping workers:', e);
+  }
+
   // Close socket.io
   io.close(() => {
     console.log('[server] Socket.io closed');
   });
-  
+
+  // Close Redis connection
+  try {
+    await closeRedisClient();
+    console.log('[server] Redis connection closed');
+  } catch (e) {
+    console.error('[server] Error closing Redis:', e);
+  }
+
   // Flush Sentry events
   await flushSentry(5000);
-  
+
   // Close HTTP server
   httpServer.close(() => {
     console.log('[server] HTTP server closed');
     process.exit(0);
   });
-  
+
   // Force exit after 10 seconds
   setTimeout(() => {
     console.error('[server] Forced shutdown after timeout');
