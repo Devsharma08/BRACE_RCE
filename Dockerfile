@@ -11,7 +11,9 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-RUN --mount=type=cache,target=/.pnpm-store \
+ENV npm_config_pnpm_store_path=/.pnpm-store
+RUN --mount=type=bind,source=/dev/shm,target=/.pnpm-store \
+    mkdir -p /.pnpm-store && \
     pnpm install --frozen-lockfile
 
 COPY . .
@@ -33,8 +35,8 @@ ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
 ENV VITE_TURNSTLE_SITE_KEY=${VITE_TURNSTLE_SITE_KEY}
 ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 
-RUN if [ -z "$VITE_TURNSTILE_SITE_KEY" ] || [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
-      echo "WARNING: VITE_TURNSTILE_SITE_KEY and/or VITE_GOOGLE_CLIENT_ID build args are empty."; \
+RUN if [ -z "$VITE_TURNSTLE_SITE_KEY" ] || [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
+      echo "WARNING: VITE_TURNSTLE_SITE_KEY and/or VITE_GOOGLE_CLIENT_ID build args are empty."; \
       echo "         The production bundle will render 'not configured' for bot protection and Google sign-in."; \
       echo "         Pass them via docker-compose build.args (read from .env)."; \
     fi
@@ -56,7 +58,8 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-RUN --mount=type=cache,target=/.pnpm-store \
+ENV npm_config_pnpm_store_path=/.pnpm-store
+RUN --mount=type=bind,source=/dev/shm,target=/.pnpm-store \
     pnpm install --prod --frozen-lockfile --ignore-scripts
 
 RUN cd server && npx prisma generate
