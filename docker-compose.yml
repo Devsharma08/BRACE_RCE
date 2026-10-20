@@ -97,6 +97,8 @@ services:
     ports:
       - "2000:2000"
     command: ["sh", "-c", "mkdir -p /piston && cd /sys/fs/cgroup && mkdir -p isolate/init && echo 1 > isolate/cgroup.procs && echo '+cpuset +cpu +io +memory +pids' > cgroup.subtree_control && cd isolate && echo 1 > init/cgroup.procs && echo '+cpuset +memory' > cgroup.subtree_control && echo 'Initialized cgroup' && chown -R piston:piston /piston_api /piston && exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'"]
+    volumes:
+      - ./piston/data/piston/packages:/piston/packages
 
 volumes:
   postgres_data:
