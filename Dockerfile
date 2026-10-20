@@ -11,8 +11,8 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-RUN --mount=type=tmpfs,target=/tmp \
-    export PNPM_STORE_PATH=/tmp/pnpm-store && \
+RUN --mount=type=tmpfs,target=/root/.local/share/pnpm \
+    --mount=type=tmpfs,target=/tmp \
     pnpm install --frozen-lockfile
 
 COPY . .
@@ -80,8 +80,8 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-RUN --mount=type=tmpfs,target=/tmp \
-    export PNPM_STORE_PATH=/tmp/pnpm-store && \
+RUN --mount=type=tmpfs,target=/root/.local/share/pnpm \
+    --mount=type=tmpfs,target=/tmp \
     pnpm install --prod --frozen-lockfile --ignore-scripts
 
 RUN cd server && npx prisma generate
