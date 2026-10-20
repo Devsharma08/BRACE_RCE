@@ -11,9 +11,8 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-ENV npm_config_pnpm_store_path=/.pnpm-store
 RUN --mount=type=cache,target=/.pnpm-store \
-    pnpm install --frozen-lockfile
+    pnpm --store=/.pnpm-store install --frozen-lockfile
 
 COPY . .
 
@@ -57,9 +56,8 @@ COPY server/package.json ./server/
 
 COPY server/prisma ./server/prisma/
 
-ENV npm_config_pnpm_store_path=/.pnpm-store
 RUN --mount=type=cache,target=/.pnpm-store \
-    pnpm install --prod --frozen-lockfile --ignore-scripts
+    pnpm --store=/.pnpm-store install --prod --frozen-lockfile --ignore-scripts
 
 RUN cd server && npx prisma generate
 
