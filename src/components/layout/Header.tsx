@@ -95,7 +95,7 @@ const Header = () => {
           {/* BRAND */}
           <Link to='/' className='group flex shrink-0 items-center gap-3' onClick={() => setOpen(false)}>
             <img
-              src='/favicon.svg'
+              src='/brace-icon-v6.svg'
               alt='BRACE RCE'
               className='h-9 w-9 rounded-xl bg-accent-primary transition-transform duration-300 group-hover:rotate-6'
             />

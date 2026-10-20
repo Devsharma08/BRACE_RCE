@@ -248,7 +248,7 @@ const handleGoogleClick = () => {
           backgroundSize: '20px 20px'
         }}
       >
-        <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" />
+        <img src="/brace-icon-v6.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" />
         <div className="w-full border-t border-subtle-line mb-8"></div>
         <div className="flex flex-col gap-8 w-full">
           {/* Current feature set — keep in sync with the home bento

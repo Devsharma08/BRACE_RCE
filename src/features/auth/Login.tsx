@@ -155,7 +155,7 @@ export const Login = () => {
       <div className="hidden md:flex flex-col justify-center items-center relative overflow-hidden bg-panel p-12"
         style={{ backgroundImage: 'linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px)', backgroundSize: '48px 48px' }}
       >
-        <img src="/favicon.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.6))' }} />
+        <img src="/brace-icon-v6.svg" alt="BRACE RCE Logo" className="w-10 h-10 mb-8" style={{ filter: 'drop-shadow(0 0 8px rgba(0,212,255,0.6))' }} />
         <div className="flex flex-col gap-1 mb-6">
           <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Solve.</span>
           <span className="text-3xl font-bold text-fg" style={{ fontFamily: "'Orbitron', sans-serif" }}>Compete.</span>
