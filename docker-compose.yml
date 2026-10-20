@@ -25,7 +25,7 @@ services:
       - PISTON_URL=${PISTON_URL:-http://piston:2000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5000}
       - REDIS_URL=redis://redis:6379
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://bracerce.devsharma.dev,https://bracerce.server.devsharma.dev}
     volumes:
       - app_static_assets:/app/frontend
     depends_on:

@@ -15,6 +15,7 @@ import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
 import { useDebounce } from "../hooks/useDebounce";
 import { fetchAllProblems } from "../utils/problemCache";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
+import { SkeletonBox } from "../components/ui/Skeleton";
 
 type Problem = {
   id: string;
@@ -217,18 +218,42 @@ export default function Problems() {
                 </tr>
               </thead>
               <tbody>
-                {paged.map((problem) => (
-                  <ProblemRow key={problem.id} problem={problem} navigate={navigate} />
-                ))}
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-line">
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2">
+                          <SkeletonBox className="h-3 w-10" />
+                          <SkeletonBox className="h-4 w-48" />
+                        </div>
+                      </td>
+                      <td className="px-3 py-3"><SkeletonBox className="h-5 w-20 rounded-full" /></td>
+                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-24" /></td>
+                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-12" /></td>
+                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-16" /></td>
+                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-16" /></td>
+                    </tr>
+                  ))
+                ) : (
+                  paged.map((problem) => (
+                    <ProblemRow key={problem.id} problem={problem} navigate={navigate} />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Mobile stacked cards — shown below md, hidden at md+ */}
           <div className="md:hidden space-y-2">
-            {paged.map((problem) => (
-              <ProblemCard key={problem.id} problem={problem} navigate={navigate} />
-            ))}
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <SkeletonBox key={i} className="h-28 w-full" />
+              ))
+            ) : (
+              paged.map((problem) => (
+                <ProblemCard key={problem.id} problem={problem} navigate={navigate} />
+              ))
+            )}
           </div>
 
           {filtered.length === 0 && !isLoading && (
