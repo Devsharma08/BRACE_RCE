@@ -49,3 +49,7 @@ certbot/
 .cache/
 tmp/
 temp/
+
+# Piston packages (not needed for app build, can have restrictive permissions)
+piston/
+certbot/
