@@ -21,11 +21,8 @@ services:
       - PORT=5000
       - NODE_ENV=${NODE_ENV:-production}
       - NODE_MODE=${NODE_MODE:-production}
-      - POSTGRES_USER=${POSTGRES_USER:-brace_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-brace_password}
-      - POSTGRES_DB=${POSTGRES_DB:-brace_rce}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-brace_user}:${POSTGRES_PASSWORD:-brace_password}@postgres:5432/${POSTGRES_DB:-brace_rce}?schema=public
-      - DIRECT_URL=postgresql://${POSTGRES_USER:-brace_user}:${POSTGRES_PASSWORD:-brace_password}@postgres:5432/${POSTGRES_DB:-brace_rce}?schema=public
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
       - GITHUB_KEY=${GITHUB_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -40,7 +37,6 @@ services:
     volumes:
       - app_static_assets:/app/frontend
     depends_on:
-      - postgres
       - piston
       - redis
 
@@ -86,19 +82,6 @@ services:
       - "6379:6379"
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
 
-  # PostgreSQL Database
-  postgres:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-brace_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brace_password}
-      POSTGRES_DB: ${POSTGRES_DB:-brace_rce}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   # Piston Code Execution Engine
   piston:
     image: ghcr.io/engineer-man/piston:latest
@@ -113,5 +96,4 @@ services:
       - ./piston/data/piston/packages:/piston/packages
 
 volumes:
-  postgres_data:
   app_static_assets:

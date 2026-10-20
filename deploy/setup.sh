@@ -38,13 +38,14 @@ sudo -u ec2-user git clone https://github.com/Devsharma08/BRACE_RCE.git .
 # sudo -u ec2-user git clone https://<TOKEN>@github.com/Devsharma08/BRACE_RCE.git .
 
 # ─── 4. Environment file ────────────────────────────────────────────────────
-# Production .env — DO NOT commit this file (it is gitignored).
-# Replace placeholder values with real secrets from:
-#   - Google Cloud Console (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-#   - Cloudflare Turnstile dashboard (TURNSTILE_SECRET_KEY, VITE_TURNSTILE_SITE_KEY)
-#   - Gmail App Password (for OTP emails)
-#   - Your GitHub PAT (for problem import feature)
-cat > /opt/brace/.env << 'ENVEOF'
+  # Production .env — DO NOT commit this file (it is gitignored).
+  # Replace placeholder values with real secrets from:
+  #   - Google Cloud Console (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
+  #   - Cloudflare Turnstile dashboard (TURNSTILE_SECRET_KEY, VITE_TURNSTILE_SITE_KEY)
+  #   - Gmail App Password (for OTP emails)
+  #   - Your GitHub PAT (for problem import feature)
+  #   - Neon Dashboard (DATABASE_URL, DIRECT_URL)
+  cat > /opt/brace/.env << 'ENVEOF'
 # Frontend Environment Variables (Vite — inlined at build time)
 VITE_BACKEND_URL="/api"
 VITE_BASE_URL="/api"
@@ -53,22 +54,22 @@ VITE_TURNSTILE_SITE_KEY="YOUR_TURNSTILE_SITE_KEY"
 VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 
 # Backend Environment Variables
-POSTGRES_USER=brace_user
-POSTGRES_PASSWORD=brace_password
-POSTGRES_DB=brace_rce
+# Neon Serverless PostgreSQL — replace with your Neon connection strings
+DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx.c-2.region.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://USER:PASSWORD@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"
 
-GITHUB_KEY=
+GITHUB_KEY="your_github_token"
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
 
 # Cloudflare Turnstile (server-side secret — keep private)
-TURNISTILE_SECRET_KEY="YOUR_TURNISTILE_SECRET_KEY"
+TURNSTILE_SECRET_KEY="YOUR_TURNSTILE_SECRET_KEY"
 
 JWT_SECRET=changeme_to_a_long_random_string
 
 # Gmail SMTP (OTP delivery)
-GMAIL_USER=
-GMAIL_APP_PASSWORD=
+GMAIL_USER="your_gmail@gmail.com"
+GMAIL_APP_PASSWORD="your_app_password"
 
 # Piston
 PISTON_URL=http://piston:2000
@@ -102,12 +103,12 @@ sudo -u ec2-user docker build -t brace-app . || {
 sudo -u ec2-user docker-compose -f /opt/brace/docker-compose.yml up -d
 # NOTE: If using pre-built images, use: docker-compose -f /opt/brace/docker-compose.yml pull && docker-compose -f /opt/brace/docker-compose.yml up -d
 
-# ─── 7. Database migration ──────────────────────────────────────────────────
-sleep 5  # Wait for containers to start
-CONTAINER_ID=$(sudo -u ec2-user docker ps -q -f name=brace-app-1 2>/dev/null || sudo -u ec2-user docker ps -q -f name=app 2>/dev/null | head -1)
-if [ -n "$CONTAINER_ID" ]; then
-  sudo -u ec2-user docker exec "$CONTAINER_ID" sh -c "cd server && npx prisma db push" 2>&1
-fi
+  # ─── 7. Database migration ──────────────────────────────────────────────────
+  sleep 5  # Wait for containers to start
+  CONTAINER_ID=$(sudo -u ec2-user docker ps -q -f name=brace-app-1 2>/dev/null || sudo -u ec2-user docker ps -q -f name=app 2>/dev/null | head -1)
+  if [ -n "$CONTAINER_ID" ]; then
+    sudo -u ec2-user docker exec "$CONTAINER_ID" sh -c "cd server && npx prisma db push" 2>&1
+  fi
 
 # ─── 8. Install Piston runtimes ─────────────────────────────────────────────
 # Only install languages we support: JS/TS, Python, Java, C, C++
