@@ -31,7 +31,6 @@ const initialCodeByLanguage: Record<SupportedLanguage, string> = {
   "c++": "",
   java: "",
   c: "",
-  c11: "",
 };
 
 export const CodeProvider = ({ children }: { children: ReactNode }) => {

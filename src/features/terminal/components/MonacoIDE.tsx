@@ -34,14 +34,13 @@ type MonacoIDEProps = {
 
 // Monaco language ids differ from our SupportedLanguage union ("c++" is "cpp").
 // Passing "c++" straight through makes Monaco fall back to plaintext — that is
-// the blank/broken C++ editor. "c11" has no Monaco id either, so map to "c".
+// the blank/broken C++ editor.
 export const MONACO_LANGUAGE_IDS: Record<SupportedLanguage, string> = {
   javascript: "javascript",
   python: "python",
   java: "java",
   c: "c",
   "c++": "cpp",
-  c11: "c",
 };
 
 // Unique Monaco model paths: @monaco-editor/react reuses a model per `path`.

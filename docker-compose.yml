@@ -4,6 +4,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Vite inlines VITE_* into the browser bundle at build time. `.env` is
+        # dockerignored, so compose passes these explicitly (compose reads .env
+        # for ${...} interpolation — dockerignore does not affect that).
+        # Empty values => "not configured" banners in the UI.
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/api}
+        VITE_BASE_URL: ${VITE_BASE_URL:-/api}
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     ports:
       - "5000:5000"
     environment:

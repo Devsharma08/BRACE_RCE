@@ -18,6 +18,36 @@ COPY . .
 RUN cd server && npx prisma generate && pnpm run build
 
 # Build Frontend
+#
+# Vite inlines VITE_* variables into the browser bundle at BUILD time, so they
+# must exist in this stage. `.env` is dockerignored (never COPYed into the
+# image), and docker-compose `environment:` only reaches the Express process —
+# not the bundle — so these arrive as build args (docker-compose.yml build.args
+# interpolates them from the project's .env file).
+#
+# When these are empty the app still builds, but the UI shows
+# "Bot protection not configured" / "Google sign-in not configured".
+ARG VITE_BACKEND_URL="/api"
+ARG VITE_BASE_URL="/api"
+ARG VITE_API_URL="/api"
+ARG VITE_SOCKET_URL=""
+ARG VITE_TURNSTILE_SITE_KEY=""
+ARG VITE_GOOGLE_CLIENT_ID=""
+
+# Loud (but non-fatal) build-time signal instead of a silent misconfiguration.
+RUN if [ -z "$VITE_TURNSTILE_SITE_KEY" ] || [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
+      echo "WARNING: VITE_TURNSTILE_SITE_KEY and/or VITE_GOOGLE_CLIENT_ID build args are empty."; \
+      echo "         The production bundle will render 'not configured' for bot protection and Google sign-in."; \
+      echo "         Pass them via docker-compose build.args (read from .env)."; \
+    fi
+
+# NOTE on `docker build --check`: the SecretsUsedInArgOrEnv warning for
+# VITE_TURNSTILE_SITE_KEY / VITE_GOOGLE_CLIENT_ID is expected and safe — both
+# are PUBLIC browser values that Vite inlines into the JS bundle anyway (the
+# Turnstile site key and OAuth client ID are designed to be shipped to clients).
+# Real secrets (TURNSTILE_SECRET_KEY, GOOGLE_CLIENT_SECRET) are runtime-only
+# `environment:` entries in docker-compose.yml and are never baked into the image.
+
 RUN pnpm run build
 
 # --- STAGE 2: Production Runner ---

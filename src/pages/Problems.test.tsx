@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { api } from "../config/api";
@@ -67,6 +67,38 @@ const waitForTable = async () => {
 };
 
 describe("Problems page (redesigned)", () => {
+  test("shows skeleton rows while the catalog is still loading", async () => {
+    // Hold the request open so the pending state is observable. `placeholderData:
+    // []` puts the query into success status immediately (React Query v5), which
+    // is exactly why the skeleton must not be gated on `isLoading` alone.
+    let resolveProblems!: (value: { data: { problems: typeof problems } }) => void;
+    vi.mocked(api.get).mockImplementation(
+      () =>
+        new Promise<{ data: { problems: typeof problems } }>((resolve) => {
+          resolveProblems = resolve;
+        }),
+    );
+
+    renderProblems();
+    // Wait for React Query to kick off the fetch (it starts in an effect).
+    await waitFor(() => expect(resolveProblems).toBeDefined());
+
+    // First render: header row + PAGE_SIZE (8) skeleton rows, no empty-state text.
+    const table = getTable();
+    expect(within(table).getAllByRole("row")).toHaveLength(9);
+    expect(screen.queryByText(/No problems match this filter/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Problem index" }),
+    ).toHaveAttribute("aria-busy", "true");
+
+    resolveProblems({ data: { problems } });
+    const resolvedTable = await waitForTable();
+    expect(within(resolvedTable).getAllByRole("row")).toHaveLength(9);
+    expect(
+      screen.getByRole("region", { name: "Problem index" }),
+    ).toHaveAttribute("aria-busy", "false");
+  });
+
   test("renders the problem index table (first page)", async () => {
     renderProblems();
     const table = await waitForTable();

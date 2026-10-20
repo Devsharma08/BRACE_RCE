@@ -27,7 +27,6 @@ const LANGUAGE_OPTIONS: { value: SupportedLanguage; label: string; shortLabel: s
   { value: "c++", label: "C++", shortLabel: "C++" },
   { value: "java", label: "Java", shortLabel: "JAVA" },
   { value: "c", label: "C", shortLabel: "C" },
-  { value: "c11", label: "C11", shortLabel: "C11" },
 ];
 
 type EditorToolbarProps = {

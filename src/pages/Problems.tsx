@@ -58,6 +58,7 @@ export default function Problems() {
   const {
     data: rawProblems = [],
     isLoading,
+    isPlaceholderData,
     isError,
   } = useQuery({
     queryKey: ["problems", "system", user?.id],
@@ -66,6 +67,14 @@ export default function Problems() {
     gcTime: 30 * 60 * 1000,
     placeholderData: [],
   });
+
+  // Skeleton gate for the table/cards. `placeholderData: []` puts the query
+  // into `success` status before the first response lands (React Query v5), so
+  // `isLoading` stays FALSE for the entire first fetch — keying the skeleton
+  // off `isLoading` alone means it never renders and the empty-state message
+  // flashes instead. `isPlaceholderData` covers exactly that in-flight window;
+  // once real data arrives (or the query errors) it flips back off.
+  const showTableSkeleton = !isError && (isLoading || isPlaceholderData);
 
   // Reverse index: problem id -> topic label, reusing the learning-path graph so
   // every row/chip communicates the same group the DS pages teach.
@@ -167,6 +176,7 @@ export default function Problems() {
         {/* ── PROBLEM INDEX ───────────────────────────────────────── */}
         <section
           aria-label="Problem index"
+          aria-busy={showTableSkeleton}
           className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel"
         >
           <div className="flex flex-col gap-3 border-b border-line p-3 sm:p-4 md:flex-row md:items-center md:justify-between">
@@ -218,8 +228,10 @@ export default function Problems() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
+                {showTableSkeleton ? (
+                  // One skeleton row per page slot (PAGE_SIZE) so the table
+                  // height matches the real first page — no jump on resolve.
+                  Array.from({ length: PAGE_SIZE }).map((_, i) => (
                     <tr key={i} className="border-b border-line">
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
@@ -245,8 +257,8 @@ export default function Problems() {
 
           {/* Mobile stacked cards — shown below md, hidden at md+ */}
           <div className="md:hidden space-y-2">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+            {showTableSkeleton ? (
+              Array.from({ length: PAGE_SIZE }).map((_, i) => (
                 <SkeletonBox key={i} className="h-28 w-full" />
               ))
             ) : (
@@ -256,7 +268,7 @@ export default function Problems() {
             )}
           </div>
 
-          {filtered.length === 0 && !isLoading && (
+          {filtered.length === 0 && !showTableSkeleton && (
             <p className="px-4 py-8 text-center text-xs text-subtle">
               {isError ? "Failed to load the problem catalog. Retry?" : "No problems match this filter."}
             </p>

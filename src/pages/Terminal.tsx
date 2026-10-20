@@ -108,21 +108,14 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
  *
  * Scratch mode has no problem, so no driver is ever generated, and a snippet
  * that only *declares* something runs and prints nothing. That is the bug these
- * templates fix: each one is a complete program with a real entry point, so the
+ * * templates fix: each one is a complete program with a real entry point, so the
  * moment the terminal is in scratch mode and Run is pressed, output appears.
- *
- * `c11` shares the C template: the server's `getLanguage` already normalizes
- * `c11` → `c`, and Monaco maps it to the `c` language id. Without handling it
- * here it fell through to `default:` and a guest selecting C11 was handed the
- * JavaScript starter — right language name in the picker, wrong code in the
- * editor.
  */
 const SCRATCH_STARTERS: Record<SupportedLanguage, string> = {
   javascript: "// Scratch program — runs as-is.",
   python: "# Scratch program — runs as-is.",
   java: "// Scratch program — runs as-is.",
   c: "// Scratch program — runs as-is.",
-  c11: "// Scratch program — runs as-is.",
   "c++": "// Scratch program — runs as-is.",
 };
 

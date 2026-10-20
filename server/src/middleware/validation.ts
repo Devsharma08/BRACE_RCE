@@ -220,11 +220,11 @@ export const seedSystemProblemsSchema = z.object({
 });
 
 // Code execution schemas
-// Frontend SupportedLanguage uses "c++"/"c11"; normalize to the execution
-// engine's ids ("cpp"/"c") before validation so the C++ editor selection
+// Frontend SupportedLanguage uses "c++"; normalize to the execution
+// engine's id "cpp" before validation so the C++ editor selection
 // stops failing zod validation with a 400 on every RUN/SUBMIT.
 const executionLanguageSchema = z.preprocess(
-  (value) => (value === "c++" ? "cpp" : value === "c11" ? "c" : value),
+  (value) => (value === "c++" ? "cpp" : value),
   z.enum(["javascript", "python", "java", "cpp", "c"]),
 );
 

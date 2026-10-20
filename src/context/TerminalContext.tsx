@@ -69,7 +69,6 @@ const initialCodeByLanguage: Record<SupportedLanguage, string> = {
   "c++": "",
   java: "",
   c: "",
-  c11: "",
 };
 
 export const TerminalProvider = ({ children }: { children: ReactNode }) => {

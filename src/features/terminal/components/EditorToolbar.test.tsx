@@ -26,9 +26,8 @@ const mockContextValue = {
     python: "",
     "c++": "",
     java: "",
-    c: "",
-    c11: "",
-  },
+     c: "",
+   },
   setCodeForLanguage: vi.fn(),
   getCodeForLanguage: vi.fn(),
   // TerminalContext additional fields
