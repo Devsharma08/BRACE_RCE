@@ -1,6 +1,100 @@
 import type { ExecuteCodeRequest, ExecutionResult } from "./types";
 import { api } from "../../config/api";
 
+export interface AsyncGradingResult {
+  passed: number;
+  total: number;
+  status: string;
+  runtimeMs: number | null;
+  memoryKb: number | null;
+  details: Array<{
+    testCaseIndex: number;
+    output: string;
+    expectedOutput: string;
+    passed: boolean;
+    runtimeError: string | null;
+    metrics: {
+      durationMs: number;
+      memoryKb: number;
+      cpuMs: number;
+      wallMs: number;
+      compileMs: number;
+      compileMemoryKb: number;
+      roundTripMs: number;
+      exitCode: number | null;
+      signal: string | null;
+      sandboxStatus: string | null;
+      sandboxMessage: string | null;
+      outputTruncated: boolean;
+      stderr: string;
+      stdout: string;
+      compileOutput: string;
+    };
+  }>;
+}
+
+export interface AsyncGradingStatus {
+  status: "queued" | "running" | "completed" | "failed";
+  result?: AsyncGradingResult;
+  error?: string;
+}
+
+/**
+ * Submit a code submission for async grading via BullMQ queue.
+ * Returns immediately with a jobId to poll for results.
+ * Used for SUBMIT mode where the user can wait for results.
+ */
+export const submitForAsyncGrading = async (request: {
+  code: string;
+  language: string;
+  oid: string;
+}): Promise<{ status: string; jobId: string; totalCases: number }> => {
+  const res = await api.post("/execute/grade", request, {
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+    },
+  });
+  return res.data;
+};
+
+/**
+ * Poll for async grading results.
+ * Returns the current status: queued, running, completed, or failed.
+ */
+export const pollGradingStatus = async (jobId: string): Promise<AsyncGradingStatus> => {
+  const res = await api.get(`/execute/grade/${jobId}`);
+  const data = res.data;
+  if (data.status === "completed" && data.result) {
+    return { status: "completed", result: data.result };
+  }
+  if (data.status === "failed") {
+    return { status: "failed", error: data.error };
+  }
+  return { status: data.status === "queued" || data.status === "running" ? "running" : data.status };
+};
+
+/**
+ * Poll for async grading results with exponential backoff.
+ * Resolves when grading is complete or after maxAttempts.
+ */
+export const waitForGradingResult = async (
+  jobId: string,
+  maxAttempts = 30,
+  baseDelayMs = 1000
+): Promise<AsyncGradingStatus> => {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    const status = await pollGradingStatus(jobId);
+    if (status.status === "completed" || status.status === "failed") {
+      return status;
+    }
+    const delay = baseDelayMs * Math.pow(1.5, attempt);
+    await new Promise((resolve) => setTimeout(resolve, Math.min(delay, 10000)));
+    attempt++;
+  }
+  return { status: "running" };
+};
+
 const getErrorMessage = (payload: unknown, fallback: string) => {
   if (payload && typeof payload === "object") {
     const record = payload as Record<string, unknown>;

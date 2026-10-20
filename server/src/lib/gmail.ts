@@ -40,3 +40,18 @@ export async function sendGmailEmail(options: SendEmailOptions): Promise<SentMes
   return info;
 }
 
+/**
+ * Queue an email for asynchronous delivery via BullMQ.
+ *
+ * The email worker picks up the job and calls `sendGmailEmail` with retry/backoff.
+ * This allows the request cycle to return immediately without waiting for SMTP.
+ */
+export async function sendQueuedEmail(options: SendEmailOptions): Promise<string> {
+  const { emailQueue } = await import("./queues.js");
+  const job = await emailQueue.add("send", options, {
+    removeOnComplete: true,
+    removeOnFail: { age: 86400 },
+  });
+  return job.id || "unknown";
+}
+

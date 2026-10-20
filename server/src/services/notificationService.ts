@@ -5,9 +5,25 @@ import {
   retentionCutoff,
   NOTIFICATION_RETENTION_DAYS,
 } from "../types/notifications.js";
+import { notificationQueue } from "../lib/queues.js";
 
 const preview = (s: string, n = 120): string =>
   s.length > n ? `${s.slice(0, n)}…` : s;
+
+/**
+ * Queue a notification for async creation. Use for non-critical notifications
+ * where immediate DB write is not required (e.g., weekly analysis, system announcements).
+ * Critical real-time notifications (friend requests, challenge invitations)
+ * should still use `createNotification` synchronously since the Socket.io emit
+ * depends on the notification existing before the client receives it.
+ */
+export async function enqueueNotification(input: CreateNotificationInput): Promise<string> {
+  const job = await notificationQueue.add("create", input, {
+    removeOnComplete: true,
+    removeOnFail: { age: 86400 },
+  });
+  return job.id || "unknown";
+}
 
 export async function createNotification(input: CreateNotificationInput) {
   return prisma.notification.create({
@@ -136,7 +152,7 @@ export async function buildWeeklyAnalysis(userId: string) {
 
 export async function notifyWeeklyAnalysis(userId: string, username: string) {
   const w = await buildWeeklyAnalysis(userId);
-  return createNotification({
+  return enqueueNotification({
     userId,
     type: "WEEKLY_ANALYSIS",
     title: `Weekly coding analysis for ${username}`,

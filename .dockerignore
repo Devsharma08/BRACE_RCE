@@ -37,6 +37,9 @@ coverage/
 .docker/
 docker-compose.override.yml
 
+# Certbot
+certbot/
+
 # Git
 .git/
 .gitignore

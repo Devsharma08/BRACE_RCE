@@ -14,8 +14,19 @@ import {
 import { emitPresenceToFriends, getFriendIds } from "./presence.js";
 import type { HandlerCtx } from "./types.js";
 import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 import { getRedisClient } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
+
+// Separate Redis clients for pub/sub (Socket.io adapter) vs general use.
+// Using the shared singleton for both pub/sub and GET/SET causes "Can't execute
+// 'get': only (P|S)SUBSCRIBE allowed in this context" errors.
+const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+function createPubSubClient() {
+  const client = createClient({ url: REDIS_URL });
+  client.on("error", (err: Error) => logger.error(`Redis pub/sub client error: ${err.message}`));
+  return client;
+}
 import { registerMessagingHandlers } from "./handlers/messaging.js";
 import { registerChallengeHandlers } from "./handlers/challenge.js";
 import { registerMatchmakingHandlers } from "./handlers/matchmaking.js";
@@ -34,8 +45,8 @@ export const initSocketServer = (io: Server) => {
 
     // Attach Redis adapter for multi-process Socket.io support
     try {
-      const pubClient = getRedisClient();
-      const subClient = getRedisClient();
+      const pubClient = createPubSubClient();
+      const subClient = createPubSubClient();
       io.adapter(createAdapter(pubClient, subClient));
       logger.info("Socket.io Redis adapter attached");
     } catch (err) {

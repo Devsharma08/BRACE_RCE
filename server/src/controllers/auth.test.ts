@@ -38,8 +38,17 @@ jest.unstable_mockModule("../lib/firebase.js", () => ({
   getFirebaseAuth,
 }));
 
-const sendGmailEmail = jest.fn<(...args: any[]) => Promise<any>>();
-jest.unstable_mockModule("../lib/gmail.js", () => ({ sendGmailEmail }));
+const sendQueuedEmail = jest.fn<(...args: any[]) => Promise<string>>();
+const mockEmailQueueAdd = jest.fn().mockResolvedValue({ id: "mock-job-id" });
+jest.unstable_mockModule("../lib/gmail.js", () => ({
+  sendGmailEmail: jest.fn(),
+  sendQueuedEmail,
+}));
+jest.unstable_mockModule("../lib/queues.js", () => ({
+  emailQueue: { add: mockEmailQueueAdd },
+  codeExecutionQueue: { add: jest.fn() },
+  notificationQueue: { add: jest.fn() },
+}));
 
 // Imported after the mock registrations above — see the note at the top.
 const { createApp } = await import("../app.js");
@@ -78,7 +87,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
     jest.clearAllMocks();
     // Firebase-off defaults: legacy bcrypt signup/signin paths stay covered.
     isFirebaseConfigured.mockReturnValue(false);
-    sendGmailEmail.mockResolvedValue({ messageId: "test-message-id" });
+    sendQueuedEmail.mockResolvedValue("test-job-id");
     createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: "fb-new-uid" } });
     signInWithEmailAndPassword.mockRejectedValue(new Error("auth/invalid-credential"));
     sendPasswordResetEmail.mockResolvedValue(undefined);
@@ -456,8 +465,8 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Verification code sent to your email");
-      expect(sendGmailEmail).toHaveBeenCalledTimes(1);
-      const mail = sendGmailEmail.mock.calls[0][0] as any;
+      expect(sendQueuedEmail).toHaveBeenCalledTimes(1);
+      const mail = sendQueuedEmail.mock.calls[0][0] as any;
       expect(mail.to).toBe("otp-send@example.com");
       expect(mail.text).toMatch(/verification code is: \d{6}/);
       // The code must be cached so /otp/verify can check it.
@@ -473,7 +482,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
       expect(res.status).toBe(404);
       expect(res.body.message).toBe("No account found with this email address");
-      expect(sendGmailEmail).not.toHaveBeenCalled();
+      expect(sendQueuedEmail).not.toHaveBeenCalled();
     });
 
     test("returns 500 and stores no code when delivery fails", async () => {
@@ -482,7 +491,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
         username: "otpuser",
         email: "otp-fail@example.com",
       });
-      sendGmailEmail.mockRejectedValue(new Error("SMTP unavailable"));
+      sendQueuedEmail.mockRejectedValue(new Error("Queue unavailable"));
 
       const res = await request(app)
         .post("/api/v1/auth/otp/send")

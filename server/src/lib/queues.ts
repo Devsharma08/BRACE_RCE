@@ -1,11 +1,18 @@
 import { Queue } from "bullmq";
+import { createClient } from "redis";
 import { logger } from "./logger.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 
+function createRedisClient() {
+  const client = createClient({ url: REDIS_URL });
+  client.on("error", (err: Error) => logger.error(`Redis client error: ${err.message}`));
+  return client;
+}
+
 function createQueue(name: string) {
   return new Queue(name, {
-    connection: REDIS_URL as any,
+    connection: createRedisClient() as any,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: "exponential", delay: 5000 },

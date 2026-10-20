@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "brace-rce",
-      script: "./server/dist/index.js",
-      cwd: "./server",
+      script: "./dist/index.js",
+      cwd: ".",
       instances: "max",
       exec_mode: "cluster",
       max_memory_restart: "512M",
@@ -23,14 +23,14 @@ module.exports = {
       log_type: "json",
       merge_logs: true,
       watch: false,
-      ignore_watch: ["node_modules", "logs", "server/dist"],
+      ignore_watch: ["node_modules", "logs", "dist"],
       error_file: "./logs/app-err.log",
       out_file: "./logs/app-out.log",
     },
     {
       name: "brace-rce-worker",
-      script: "./server/dist/jobs/queueWorker.js",
-      cwd: "./server",
+      script: "./dist/jobs/queueWorker.js",
+      cwd: ".",
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "512M",

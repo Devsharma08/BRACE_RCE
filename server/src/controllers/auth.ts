@@ -6,7 +6,7 @@ import { getToken } from "../lib/jwt.js";
 import type { AuthRequest } from "../middleware/authentication.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateOtp } from "../lib/otp.js";
-import { sendGmailEmail } from "../lib/gmail.js";
+import { sendGmailEmail, sendQueuedEmail } from "../lib/gmail.js";
 import { isFirebaseConfigured, getFirebaseAuth } from "../lib/firebase.js";
 import { setCached, getCached, deleteCached } from "../lib/cache.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, confirmPasswordReset } from "firebase/auth";
@@ -73,15 +73,15 @@ export class AuthController {
         }
 
         try {
-            await sendGmailEmail({
+            await sendQueuedEmail({
                 to: normalized,
                 subject: "Your BRACE RCE login code",
                 text: `Your BRACE RCE verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
             });
         } catch (err) {
-            console.error("Error sending OTP email:", err);
+            console.error("Error queueing OTP email:", err);
             deleteCached(`otp:${normalized}`);
-            return res.status(500).json({ message: "Could not send the verification code. Please check your email settings." });
+            return res.status(500).json({ message: "Could not queue the verification code. Please try again." });
         }
 
         res.status(200).json({ message: "Verification code sent to your email" });

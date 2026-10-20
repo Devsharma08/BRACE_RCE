@@ -9,6 +9,6 @@ allowBuilds:
   '@sentry/node-cpu-profiler': true
   bcrypt: true
   esbuild: true
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: true
   prisma: true
   protobufjs: true

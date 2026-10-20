@@ -84,7 +84,7 @@ export function WorkspaceDirectory() {
               : "lg:col-start-9 lg:col-span-4 lg:row-start-3";
             const cardStyle = id === "01" ? "min-h-[390px]" : "min-h-[220px]";
             return (
-              <div
+              <Link
                 key={href + id}
                 to={href}
                 className={`group relative flex ${cardStyle} ${placement} flex-col overflow-hidden rounded-[28px] border border-line bg-surface/60 p-7 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover/60 md:p-8 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary`}
@@ -108,7 +108,7 @@ export function WorkspaceDirectory() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

@@ -4,17 +4,19 @@ import { saveSubmisssion } from "./submissionEvaluator.js";
 import { verifyToken } from '../lib/jwt.js';
 import CircuitBreaker from 'opossum';
 
-/** PISTON_URL must be set in production and must use HTTPS. */
+/** PISTON_URL must be set in production; HTTPS required only when exposed externally. */
 const PISTON_URL = (() => {
   const url = process.env.PISTON_URL;
   if (!url) {
     if (process.env.NODE_MODE === "production") {
       throw new Error("PISTON_URL must be set in production");
     }
-    return "http://127.0.0.1:2000"; // Dev fallback only
+    return "http://127.0.0.1:2000";
   }
-  if (process.env.NODE_MODE === "production" && !url.startsWith("https://")) {
-    throw new Error("PISTON_URL must use HTTPS in production");
+  // In Docker, PISTON_URL points to the internal service (e.g. http://piston:2000)
+  // and TLS is terminated at the Nginx edge. Only enforce HTTPS for external URLs.
+  if (process.env.NODE_MODE === "production" && !url.startsWith("https://") && !url.includes("piston")) {
+    throw new Error("PISTON_URL must use HTTPS in production for external URLs");
   }
   return url;
 })();

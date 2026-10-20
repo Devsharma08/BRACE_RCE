@@ -38,6 +38,9 @@ const mockContextValue = {
   status: 'IDLE' as const,
   setStatus: vi.fn(),
   setResponseContent: vi.fn(),
+  activeProblemId: null,
+  setActiveProblemId: vi.fn(),
+  clearCache: vi.fn(),
 };
 
 describe('EditorToolbar Component', () => {
