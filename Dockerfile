@@ -12,6 +12,7 @@ COPY server/package.json ./server/
 COPY server/prisma ./server/prisma/
 
 RUN --mount=type=tmpfs,target=/root/.local/share/pnpm \
+    --mount=type=tmpfs,target=/.pnpm-store \
     --mount=type=tmpfs,target=/tmp \
     pnpm install --frozen-lockfile
 
@@ -81,6 +82,7 @@ COPY server/package.json ./server/
 COPY server/prisma ./server/prisma/
 
 RUN --mount=type=tmpfs,target=/root/.local/share/pnpm \
+    --mount=type=tmpfs,target=/.pnpm-store \
     --mount=type=tmpfs,target=/tmp \
     pnpm install --prod --frozen-lockfile --ignore-scripts
 
