@@ -3,7 +3,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN npm install -g pnpm pm2 prisma
+RUN --mount=type=tmpfs,target=/root/.npm \
+    npm install -g pnpm pm2 prisma
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
@@ -69,7 +70,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NODE_MODE=production
 
-RUN npm install -g pnpm pm2 prisma
+RUN --mount=type=tmpfs,target=/root/.npm \
+    --mount=type=tmpfs,target=/tmp \
+    npm install -g pnpm pm2 prisma
 
 # Copy workspace package manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
