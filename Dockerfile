@@ -14,8 +14,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Generate Prisma Client & Build Server
-RUN cd server && npx prisma generate && pnpm run build
+    # Generate Prisma Client & Build Server
+    # t4g.micro (1GB RAM) needs more heap for TypeScript compilation
+    ENV NODE_OPTIONS=--max-old-space-size=2048
+    RUN cd server && npx prisma generate && pnpm run build
 
 # Build Frontend
 #
@@ -31,8 +33,16 @@ ARG VITE_BACKEND_URL="/api"
 ARG VITE_BASE_URL="/api"
 ARG VITE_API_URL="/api"
 ARG VITE_SOCKET_URL=""
-ARG VITE_TURNSTILE_SITE_KEY=""
+ARG VITE_TURNSTLE_SITE_KEY=""
 ARG VITE_GOOGLE_CLIENT_ID=""
+
+# Export ARGs as ENV so Vite can inline them into the browser bundle at build time
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_BASE_URL=${VITE_BASE_URL}
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
+ENV VITE_TURNSTLE_SITE_KEY=${VITE_TURNSTLE_SITE_KEY}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 
 # Loud (but non-fatal) build-time signal instead of a silent misconfiguration.
 RUN if [ -z "$VITE_TURNSTILE_SITE_KEY" ] || [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
