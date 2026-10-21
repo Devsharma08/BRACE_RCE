@@ -914,12 +914,10 @@ body.dragging-active * {
    so they never fight over `transform`. */
 .preloader-text {
   font-family: var(--font-mono);
-  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-size: clamp(1.5rem, 12vw, 5rem);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: clamp(0.03em, 1.5vw, 0.14em);
   color: var(--text-primary);
-  /* Promote to a compositor layer up-front, so the first transform frame
-     doesn't pay layerization cost mid-choreography. */
   will-change: transform, opacity;
   animation:
     preloader-text-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both,
@@ -939,10 +937,8 @@ body.dragging-active * {
   inset: 0;
   background-color: var(--bg-base);
   border-top: 1px solid color-mix(in srgb, var(--accent-primary) 40%, transparent);
-  box-shadow: 0 -24px 60px color-mix(in srgb, var(--accent-primary) 14%, transparent);
-  /* Start off-screen below, rise to cover the text by the end of the exit phase */
+  box-shadow: 0 clamp(-18px, -5vw, -24px) clamp(40px, 14vw, 60px) color-mix(in srgb, var(--accent-primary) 14%, transparent);
   transform: translateY(100%);
-  /* Same GPU rationale as the text — rise stays on the compositor thread. */
   will-change: transform;
   animation: preloader-curtain-up 700ms cubic-bezier(0.65, 0, 0.35, 1) 1100ms forwards;
 }
@@ -960,6 +956,13 @@ body.dragging-active * {
 @keyframes preloader-curtain-up {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .preloader-text {
+    font-size: clamp(1.25rem, 14vw, 3rem);
+    letter-spacing: 0.03em;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
