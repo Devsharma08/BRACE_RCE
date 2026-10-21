@@ -1,5 +1,5 @@
 {
-  "_comment": "redeploy trigger: 1792555816.3363833",
+  "_comment": "redeploy trigger: 1792565400.0000000",
 
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://bracerce.server.devsharma.dev/api/$1" },

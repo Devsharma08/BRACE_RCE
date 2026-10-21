@@ -113,14 +113,15 @@ sudo -u ec2-user docker-compose -f /opt/brace/docker-compose.yml up -d
   fi
 
 # ─── 8. Install Piston runtimes ─────────────────────────────────────────────
-# Only install languages we support: JS/TS, Python, Java, C, C++
+# Only install languages we support: JS, Java, Python, C, C++
 # (Go and Rust were previously installed but removed per requirements)
+# gcc provides compilation support for both C and C++
 PISTON_INSTALL_SCRIPT="
 runtimes = [
   {'language': 'python', 'version': '3.12.0', 'runtime': 'python'},
-  {'language': 'javascript', 'version': '20.11.1', 'runtime': 'node'},
+  {'language': 'node', 'version': '20.11.1', 'runtime': 'node'},
   {'language': 'java', 'version': '15.0.2', 'runtime': 'java'},
-  {'language': 'typescript', 'version': '5.0.3', 'runtime': 'node'},
+  {'language': 'gcc', 'version': '10.2.0', 'runtime': 'gcc'},
 ]
 import requests
 for r in runtimes:
