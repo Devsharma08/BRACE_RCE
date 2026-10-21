@@ -22,7 +22,13 @@ usermod -aG docker ec2-user
 
 # ─── 2. Docker Compose (standalone binary) ──────────────────────────────────
 DOCKER_COMPOSE_VERSION="2.29.2"
-curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-aarch64" \
+ARCH=$(uname -m)
+case "$ARCH" in
+  aarch64|arm64) COMPOSE_ARCH="aarch64" ;;
+  x86_64) COMPOSE_ARCH="x86_64" ;;
+  *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-${COMPOSE_ARCH}" \
   -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
@@ -54,9 +60,10 @@ VITE_TURNSTILE_SITE_KEY="YOUR_TURNSTILE_SITE_KEY"
 VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 
 # Backend Environment Variables
-# Neon Serverless PostgreSQL — replace with your Neon connection strings
-DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx.c-2.region.aws.neon.tech/neondb?sslmode=require"
-DIRECT_URL="postgresql://USER:PASSWORD@ep-xxx.region.aws.neon.tech/neondb?sslmode=require"
+  # Neon Serverless PostgreSQL — replace with your Neon connection strings
+  # Both urls from Neon Dashboard → Connection Details → Copy connection string
+  DATABASE_URL="postgresql://USER:PASSWORD@ep-<name>-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+  DIRECT_URL="postgresql://USER:PASSWORD@ep-<name>.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 GITHUB_KEY="your_github_token"
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
