@@ -1,0 +1,17 @@
+node_modules/
+.git/
+*.log
+.kilo/
+docs/
+problems_seed.json
+test_cases_backup.json
+test_cases_backup/
+.env.local
+.env
+server/.env*
+server/dist/
+server/node_modules/
+deploy/
+AGENTS.md
+.kilo/
+.gitignore
