@@ -9,7 +9,8 @@ import { isFeatureEnabled } from "./features";
  * not rendered and an honest notice is shown instead.
  */
 export const TURNSTILE_SITE_KEY = (
-  import.meta.env.VITE_TURNSTILE_SITE_KEY || ""
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ||
+  import.meta.env.VITE_TURNSTILITY_SITE_KEY || ""
 ).trim();
 
 /**
