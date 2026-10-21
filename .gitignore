@@ -45,3 +45,4 @@ piston
 # Scratch / debug artifacts (contain auth cookies — never commit)
 cookies*.txt
 headers.txt
+.vercel
