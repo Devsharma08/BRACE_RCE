@@ -1,4 +1,6 @@
 {
+  "_comment": "redeploy trigger: 1792555816.3363833",
+
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://bracerce.server.devsharma.dev/api/$1" },
     { "source": "/socket.io/(.*)", "destination": "https://bracerce.server.devsharma.dev/socket.io/$1" },
