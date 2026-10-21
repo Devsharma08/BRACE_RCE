@@ -58,13 +58,13 @@ COPY server/prisma ./server/prisma/
 
 RUN --mount=type=cache,target=/.pnpm-store \
     pnpm --store=/.pnpm-store install --prod --frozen-lockfile --ignore-scripts
-
-RUN cd server && npx prisma generate
+    
+COPY --from=builder /app/server/prisma.config.js ./server/prisma.config.js
+RUN mkdir -p /app/server/src && cd server && npx prisma generate
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/server/prisma ./server/prisma
-COPY --from=builder /app/server/prisma.config.js ./server/prisma.config.js
 COPY --from=builder /app/ecosystem.config.cjs ./ecosystem.config.cjs
 COPY --from=builder /app/nginx.conf ./nginx.conf
 
