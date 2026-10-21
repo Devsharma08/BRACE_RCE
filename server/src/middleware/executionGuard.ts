@@ -3,7 +3,6 @@ import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../lib/prisma.js";
 import { verifyToken } from "../lib/jwt.js";
 import { getAllowedOrigins } from "../lib/origins.js";
-import { expectsTurnstileChallenge, verifyTurnstileToken } from "../lib/turnstile.js";
 
 /**
  * UI-only guard for POST /execute — browser request verification, guest bot
@@ -22,14 +21,6 @@ import { expectsTurnstileChallenge, verifyTurnstileToken } from "../lib/turnstil
  *    - Neither header (curl, CI smoke scripts, Postman) → allowed through:
  *      non-browser clients are still held by the in-memory burst limiter and
  *      the daily quota below.
- *
- * 1b. GUEST BOT CHECK (Turnstile, secret-verified):
- *    - Only when the caller has NO verifiable session, and only when the
- *      deployment owns TURNSTILE_SECRET_KEY. Signed-in users already prove
- *      identity per request via the cookie resolved below.
- *    - The token is exchanged with Cloudflare's siteverify endpoint; the
- *      verdict is what decides, never the client's say-so. Tokens are
- *      single-use, so a cached verdict would only accept a spent token.
  *
  * 2. DAILY QUOTA + AUDIT (ExecutionQuota / ExecutionLog):
  *    - Key = sha256("u:<userId>") when the auth cookie verifies, else
@@ -120,29 +111,10 @@ export function executionGuard() {
       });
     }
 
-    // ── 1b. Guest bot check ─────────────────────────────────────
-    // Requester identity is resolved first because it decides whether a
-    // challenge is even expected: guests supply one, signed-in callers do not.
+    // ── Guest identification for audit ───────────────────────────────
+    // Requester identity is resolved here for the daily quota key and audit
+    // log below: authenticated user when the cookie verifies, else IP.
     const { rawKey, userId } = resolveRequester(req);
-
-    if (expectsTurnstileChallenge(userId === null)) {
-      const verdict = await verifyTurnstileToken(
-        req.body?.captchaToken,
-        req.ip ?? req.socket?.remoteAddress,
-      );
-      if (!verdict.success) {
-        // Log the machine-readable reason only — never the token, and the
-        // secret is not part of this object at all.
-        console.warn(
-          "[executionGuard] guest bot check rejected:",
-          verdict.errorCodes.join(",") || "unknown",
-        );
-        return res.status(403).json({
-          status: "error",
-          message: "Bot check failed. Complete the verification and try again.",
-        });
-      }
-    }
 
     // ── 2. Daily quota (persisted; fails open) ──────────────────────────────
     const keyHash = sha256(rawKey);

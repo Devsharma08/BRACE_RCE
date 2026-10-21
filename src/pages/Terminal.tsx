@@ -10,7 +10,6 @@ import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import LoadingOverlay from "../features/terminal/components/LoadingOverlay";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
 import OutputPanel from "../features/terminal/components/OutputPanel";
-import ExecutionCaptchaModal from "../features/terminal/components/ExecutionCaptchaModal";
 import PracticeSidebar, { type PracticeProblem } from "../features/terminal/components/PracticeSidebar";
 import { buildProblemTestCases, formatExecutionOutput } from "../features/terminal/executionOutput";
 import { useExecutionGuard } from "../features/terminal/hooks/useExecutionGuard";
@@ -26,7 +25,6 @@ import ProblemReport from "../features/terminal/components/ProblemReport";
 import { invalidateProblemQueries } from "../utils/problemCache";
 import { useIsMobile } from "../hooks/useMediaQuery";
 import { toast } from "sonner";
-import { TURNSTILE_ENABLED } from "../config/turnstile";
 
 /**
  * Extract user-friendly error message from API error response
@@ -129,7 +127,7 @@ const getScratchStarterCode = (lang: SupportedLanguage): string =>
 const Terminal = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const { socket, activeBattleRoom, customLobby } = useSocket();
 
   // URL-driven: id or oid selects the initial problem
@@ -147,61 +145,15 @@ const Terminal = () => {
   // Terminal mode: 'problems' (show problem list & test cases) | 'no-problem' (editor + output only)
   const [mode, setMode] = useState<'problems' | 'no-problem'>('problems');
 
-  // ── Execution guard: rate limit + guest bot check ───────────
-  // Enforcement is deliberately split. The sandbox quota is the server's job
-  // (it keys on IP/user, so it cannot be bypassed by editing this bundle);
-  // this hook only short-circuits obviously wasteful clicks so the user gets
-  // an immediate answer instead of a 429 round-trip.
+  // ── Execution guard: rate limit ───────────
+  // Enforcement is split: the sandbox quota is the server's job (it keys on
+  // IP/user, so it cannot be bypassed by editing this bundle); this hook only
+  // short-circuits obviously wasteful clicks so the user gets an immediate
+  // answer instead of a 429 round-trip.
   const executionGuard = useExecutionGuard();
 
   /**
-   * Guests must clear a bot check before every execution, because Turnstile
-   * tokens are single-use. Signed-in users already prove identity per request
-   * via the session cookie, so they are not interrupted.
-   */
-  const captchaRequired = TURNSTILE_ENABLED && !isAuthenticated;
-
-  const [captchaOpen, setCaptchaOpen] = useState(false);
-  // Remount nonce — a new challenge per gated execution, never a replay.
-  const [captchaNonce, setCaptchaNonce] = useState(0);
-  const [captchaReason, setCaptchaReason] = useState<string | undefined>(undefined);
-
-  /**
-   * Held resolver for the open modal. The gate is awaited inside the run
-   * handlers, so this is the only way to hand a token (or a refusal) back to
-   * the call that is suspended waiting for it.
-   */
-  const captchaResolveRef = useRef<((token: string | null) => void) | null>(null);
-
-  // If the terminal unmounts mid-challenge (route change, sign-out) the pending
-  // run must not hang forever — settle it as cancelled.
-  useEffect(
-    () => () => {
-      captchaResolveRef.current?.(null);
-      captchaResolveRef.current = null;
-    },
-    [],
-  );
-
-  const requestCaptcha = useCallback((reason?: string): Promise<string | null> => {
-    return new Promise((resolve) => {
-      captchaResolveRef.current = resolve;
-      setCaptchaReason(reason);
-      setCaptchaNonce((n) => n + 1);
-      setCaptchaOpen(true);
-    });
-  }, []);
-
-  const settleCaptcha = useCallback((token: string | null) => {
-    const resolve = captchaResolveRef.current;
-    captchaResolveRef.current = null;
-    setCaptchaOpen(false);
-    setCaptchaReason(undefined);
-    resolve?.(token);
-  }, []);
-
-  /**
-   * Single entry point for "may this execution start, and with what token".
+   * Single entry point for "may this execution start?".
    *
    * Every check runs BEFORE the caller flips its executing flags, so a
    * rejected run leaves no spinner, no "LOADING" status, and no half-written
@@ -211,25 +163,16 @@ const Terminal = () => {
    * abandoned, and the sandbox slot is still consumed by the server side).
    */
   const authorizeExecution = useCallback(async (): Promise<
-    { ok: true; captchaToken?: string } | { ok: false }
+    { ok: true } | { ok: false }
   > => {
     const verdict = executionGuard.check();
     if (!verdict.allowed) {
       toast.error(verdict.message ?? "Too many runs — try again shortly.");
       return { ok: false };
     }
-    if (captchaRequired) {
-      const token = await requestCaptcha();
-      if (!token) {
-        toast.error("Verification cancelled — your code was not run.");
-        return { ok: false };
-      }
-      executionGuard.record();
-      return { ok: true, captchaToken: token };
-    }
     executionGuard.record();
     return { ok: true };
-  }, [executionGuard, captchaRequired, requestCaptcha]);
+  }, [executionGuard]);
 
   // Output-track ceiling, read from the workspace grid (see
   // measureWorkspaceCeiling) and consumed by useTerminalLayout.
@@ -593,7 +536,6 @@ const exitScratchMode = useCallback(() => {
           mode,
           customInput: customInputValue,
           testCaseIndex: runOneCaseOnly ? 0 : undefined,
-          captchaToken: authorization.captchaToken,
         });
         setOutput(data);
         setStatus("SUCCESS");
@@ -684,7 +626,6 @@ const exitScratchMode = useCallback(() => {
           oid: activeFile,
           mode: "RUN",
           testCaseIndex,
-          captchaToken: authorization.captchaToken,
         });
 
         // The server already stamps the detail with the true stored index, so
@@ -1006,18 +947,9 @@ const exitScratchMode = useCallback(() => {
         </div>
       </main>
 
-      {/* NOTES PANEL */}
-      <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
-
-      {/* Guest bot check — opened on demand by authorizeExecution(). */}
-      <ExecutionCaptchaModal
-        open={captchaOpen}
-        nonce={captchaNonce}
-        reason={captchaReason}
-        onVerified={(token) => settleCaptcha(token)}
-        onCancel={() => settleCaptcha(null)}
-      />
-    </div>
+       {/* NOTES PANEL */}
+       <NotesPanel isOpen={isNotesOpen} onClose={() => setIsNotesOpen(false)} />
+     </div>
   );
 };
 

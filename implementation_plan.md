@@ -61,16 +61,9 @@ The design system established in `src/index.css` defines semantic tokens:
 - **Issue in `src/features/home/components/CommunitySupport.tsx`:**
   Hardcoded reviewer quotes, company logos, or artificial "99.98% uptime / 42.1ms median latency" claims in `HomeMetricsStrip.tsx` that are completely static and not wired to actual telemetry.
 - **Unethical Aspect:** In a production application, presenting hardcoded synthetic latency metrics as "Live evaluation harness snapshot" without an indicator that it is simulated or benchmark data is deceptive to users.
-- **Fix:** Either bind these to real API health check endpoints (`/health` or `/status`) or explicitly label them as "Target Specifications / Architecture Benchmarks".
+ - **Fix:** Either bind these to real API health check endpoints (`/health` or `/status`) or explicitly label them as "Target Specifications / Architecture Benchmarks".
 
-### 3.2 Cloudflare Turnstile Test Key in Production
-- **Issue in `src/features/auth/Login.tsx` & `src/features/auth/Signup.tsx`:**
-  ```tsx
-  const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "1x00000000000000000000AA";
-  ```
-  `1x00000000000000000000AA` is Cloudflare's **always-pass test key**. If a user deploys without `.env.production` set, bot protections are completely bypassed while showing a dummy widget, giving false security.
-
-### 3.3 Third-Party Tracking / External Avatar Leakage
+### 3.2 Third-Party Tracking / External Avatar Leakage
 - **Issue in `src/features/auth/Signup.tsx` & `src/components/features/ProfileScoreCard.tsx`:**
   ```tsx
   avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
@@ -113,10 +106,9 @@ The design system established in `src/index.css` defines semantic tokens:
 2. **Step 2: Clean CSS & Semantic Tokens**
    - Eliminate all instances of `bg-black/*` in favor of `--bg-surface`, `--bg-surface-hover`, or `--color-surface`.
    - Fix modal border-radius vs sharp corner accent conflicts.
-3. **Step 3: Security & Ethical Transparency Fixes**
-   - Replace Dicebear external API calls with resilient, privacy-preserving SVG avatar fallbacks.
-   - Warn or disable Cloudflare Turnstile dummy key if in production mode.
-   - Clarify or label benchmarking stats as live architecture benchmarks rather than fake simulated user data.
+ 3. **Step 3: Security & Ethical Transparency Fixes**
+    - Replace Dicebear external API calls with resilient, privacy-preserving SVG avatar fallbacks.
+    - Clarify or label benchmarking stats as live architecture benchmarks rather than fake simulated user data.
 4. **Step 4: Mobile & Accessibility Hardening**
    - Add `overflow-y-auto` to Header mobile navigation.
    - Ensure proper `pb-24` on mobile views containing bottom action bars so `MobileBottomNav` never overlaps interactive elements.

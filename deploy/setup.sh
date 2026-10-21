@@ -47,7 +47,6 @@ sudo -u ec2-user git clone https://github.com/Devsharma08/BRACE_RCE.git .
   # Production .env — DO NOT commit this file (it is gitignored).
   # Replace placeholder values with real secrets from:
   #   - Google Cloud Console (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET)
-  #   - Cloudflare Turnstile dashboard (TURNSTILE_SECRET_KEY, VITE_TURNSTILE_SITE_KEY)
   #   - Gmail App Password (for OTP emails)
   #   - Your GitHub PAT (for problem import feature)
   #   - Neon Dashboard (DATABASE_URL, DIRECT_URL)
@@ -56,7 +55,6 @@ sudo -u ec2-user git clone https://github.com/Devsharma08/BRACE_RCE.git .
 VITE_BACKEND_URL="/api"
 VITE_BASE_URL="/api"
 VITE_API_URL="/api"
-VITE_TURNSTILE_SITE_KEY="YOUR_TURNSTILE_SITE_KEY"
 VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 
 # Backend Environment Variables
@@ -68,9 +66,6 @@ VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 GITHUB_KEY="your_github_token"
 GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
 GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET"
-
-# Cloudflare Turnstile (server-side secret — keep private)
-TURNSTILE_SECRET_KEY="YOUR_TURNSTILE_SECRET_KEY"
 
 JWT_SECRET=changeme_to_a_long_random_string
 

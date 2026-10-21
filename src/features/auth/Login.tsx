@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { Turnstile } from '@marsidev/react-turnstile';
 import { Mail, Lock, AlertCircle, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageSkeleton } from '../../components/ui/Skeleton';
 import {api} from "../../config/api";
 import { initiateGoogleOAuthPKCE, handleGoogleCallbackPKCE } from '../../utils/oauth';
 import { isFeatureEnabled } from '../../config/features';
-import { TURNSTILE_ENABLED, TURNSTILE_SITE_KEY } from '../../config/turnstile';
 
 // Root.tsx falls back to the literal "not-configured" for GoogleOAuthProvider.
 // Treat it as unset here too — rendering the button with that placeholder sent
@@ -28,19 +26,10 @@ export const Login = () => {
   const [otp, setOtp] = useState('');
   // Success/informational message shown above the form (e.g. "code sent").
   const [info, setInfo] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  // Remount nonce: bump whenever the widget reports an expired/errored token
-  // (e.g. a page kept open across logout) so a fresh challenge renders.
-  const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
-
-  const resetCaptcha = () => {
-    setCaptchaToken(null);
-    setCaptchaKey((k) => k + 1);
-  };
 
   // Handle Google OAuth callback on mount
   useEffect(() => {
@@ -64,16 +53,10 @@ export const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Only require the captcha when one is actually configured, otherwise an
-    // un-configured widget would make sign-in impossible.
-    if (TURNSTILE_ENABLED && !captchaToken) {
-      setError("Please complete the captcha.");
-      return;
-    }
     try {
       setLoading(true);
       setError('');
-      await api.post(`/auth/signin`, { email, password, captchaToken: captchaToken ?? undefined });
+      await api.post(`/auth/signin`, { email, password });
       await checkAuth();
       navigate('/');
     } catch (err: any) {
@@ -220,26 +203,10 @@ export const Login = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
               </div>
-            </div>
-            {TURNSTILE_ENABLED ? (
-              <div className="flex justify-center py-2">
-                <Turnstile
-                  key={captchaKey}
-                  siteKey={TURNSTILE_SITE_KEY}
-                  onSuccess={(token) => setCaptchaToken(token)}
-                  onExpire={resetCaptcha}
-                  onError={resetCaptcha}
-                  options={{ theme: 'dark' }}
-                />
-              </div>
-            ) : (
-              <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
-                Bot protection not configured
-              </p>
-            )}
-            <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
-              {loading ? "Signing in..." : "Sign In"} {!loading && <ArrowRight size={18} />}
-            </button>
+             </div>
+             <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+               {loading ? "Signing in..." : "Sign In"} {!loading && <ArrowRight size={18} />}
+             </button>
             <button type="button" onClick={() => switchView('otp')} disabled={loading} className="w-full text-sm text-subtle hover:text-accent transition-colors py-1">
               Sign in with a one-time email code instead
             </button>

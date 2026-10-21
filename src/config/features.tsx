@@ -4,17 +4,16 @@
  * 
  * Usage:
  * import { FEATURES, isFeatureEnabled } from '../config/features';
- * 
- * if (isFeatureEnabled('turnstile')) { ... }
- * 
+ *
+ * if (isFeatureEnabled('googleOAuth')) { ... }
+ *
  * // Or in JSX:
- * {FEATURES.turnstile && <Turnstile />}
+ * {FEATURES.googleOAuth && <GoogleButton />}
  */
 
 // Default feature flags
 interface FeatureFlags {
   // Auth/Security
-  turnstile: boolean;
   googleOAuth: boolean;
   googleOAuthPKCE: boolean;
   
@@ -52,10 +51,9 @@ function getEnvFlag(key: string, defaultValue: boolean): boolean {
 
 // Feature flag configuration
 export const FEATURES: FeatureFlags = {
-  // Auth/Security
-  turnstile: getEnvFlag('VITE_FEATURE_TURNSTILE', true),
-  googleOAuth: getEnvFlag('VITE_FEATURE_GOOGLE_OAUTH', true),
-  googleOAuthPKCE: getEnvFlag('VITE_FEATURE_GOOGLE_OAUTH_PKCE', true),
+   // Auth/Security
+   googleOAuth: getEnvFlag('VITE_FEATURE_GOOGLE_OAUTH', true),
+   googleOAuthPKCE: getEnvFlag('VITE_FEATURE_GOOGLE_OAUTH_PKCE', true),
   
   // Real-time
   socketEvents: getEnvFlag('VITE_FEATURE_SOCKET_EVENTS', true),

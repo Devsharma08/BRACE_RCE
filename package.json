@@ -17,7 +17,6 @@
     "pm2:monit": "pm2 monit"
   },
   "dependencies": {
-    "@marsidev/react-turnstile": "^1.5.4",
     "@monaco-editor/react": "^4.7.0",
     "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.3.0",

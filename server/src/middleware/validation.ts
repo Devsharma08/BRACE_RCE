@@ -95,13 +95,11 @@ export const signupSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
   avatarUrl: z.string().url("Invalid avatar URL").optional(),
-  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const signinSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
-  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const googleAuthSchema = z.object({
@@ -120,13 +118,11 @@ export const googleCallbackSchema = z.object({
 
 export const otpSendSchema = z.object({
   email: z.string().email("Invalid email format"),
-  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const otpVerifySchema = z.object({
   email: z.string().email("Invalid email format"),
   otp: z.string().min(6, "Invalid OTP").max(6, "Invalid OTP"),
-  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 export const passwordResetRequestSchema = z.object({
@@ -238,11 +234,6 @@ export const executeCodeSchema = z.object({
   // mode RUN; SUBMIT always grades every case regardless of what is sent here.
   testCaseIndex: z.number().int().min(0).optional(),
   roomId: z.string().optional(),
-  // Turnstile token from the guest bot check. Verified in executionGuard; the
-  // schema must declare it because `validate` REPLACES req.body with the
-  // parsed result, so an undeclared field is silently dropped before the
-  // guard ever sees it.
-  captchaToken: z.string().min(1).max(4096).optional(),
 });
 
 // Room schemas

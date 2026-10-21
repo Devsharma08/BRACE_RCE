@@ -41,7 +41,7 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code-exe
 | **Database** | PostgreSQL via Prisma ORM 7 (Users, Rooms, Events, Problems, Test Cases, Friends, Notifications, Learning Paths …) |
 | **Authentication** | Firebase Authentication (email/password, email action codes) + Gmail SMTP via Nodemailer (OTP delivery) + Google OAuth + JWT httpOnly-cookie sessions |
 | **RCE Sandbox Engine** | Piston execution API behind a custom Polyglot Wrapper Synthesizer (Node.js, Python 3, Java 21, GCC / G++) |
-| **Hardening** | Helmet, CORS allow-list, CSRF protection, per-IP rate limits, daily execution quotas, optional Cloudflare Turnstile captcha |
+| **Hardening** | Helmet, CORS allow-list, CSRF protection, per-IP rate limits, daily execution quotas |
 | **Observability** | pino logging, Sentry, OpenTelemetry + Prometheus metrics |
 | **Testing** | Jest (server, ESM), Vitest (frontend), supertest, DB-driven problem verification suites |
 
@@ -91,7 +91,7 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code-exe
 - **Email OTP Login**: `POST /auth/otp/send` emails a **6-digit code via Gmail SMTP** (10-minute TTL, single-use, resend supported) and `POST /auth/otp/verify` exchanges it for a full session. Existing accounts only — OTP is a sign-in method, not a signup path.
 - **Password Reset Flow**: `POST /auth/password-reset/request` triggers Firebase's reset email (anti-enumeration — always returns a generic success), and `POST /auth/password-reset/confirm` completes the reset from the emailed action code. The in-app UI lives at `/reset-password` (works when the Firebase email template's Action URL points at it; otherwise Firebase's hosted page completes the flow).
 - **Session Model**: JWT issued by the API, stored in an **httpOnly cookie** and also returned in the response body; `GET /auth/me` restores the session.
-- **Hardening**: All auth endpoints are Zod-validated and rate-limited (`AUTH_RATE_MAX`, default 25 requests / IP / 15 min); the login form optionally gates submission behind **Cloudflare Turnstile** (`turnstile` feature flag + `VITE_TURNSTILE_SITE_KEY`).
+- **Hardening**: All auth endpoints are Zod-validated and rate-limited (`AUTH_RATE_MAX`, default 25 requests / IP / 15 min).
 - **UI**: Three-view login card — password sign-in, one-time email code, and forgot-password — plus dedicated `/signup` and `/reset-password` pages (`src/features/auth/`).
 
 ### 9. 👥 Real-time Friend List Updates
@@ -266,7 +266,6 @@ Setup: create a project at [console.firebase.google.com](https://console.firebas
 | `VITE_BACKEND_URL` | Axios base URL (e.g. `http://localhost:3000/api`) |
 | `VITE_API_URL` | Terminal-feature API base (falls back to `VITE_BACKEND_URL`) |
 | `VITE_SOCKET_URL` | Socket.io URL (falls back to `VITE_API_URL` → `VITE_BACKEND_URL`) |
-| `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key; captcha renders only when the `turnstile` feature flag is on and a key is set |
 | `VITE_GOOGLE_CLIENT_ID` | Google OAuth client for the Google login button |
 
 ### 3. Database Setup & Seeding

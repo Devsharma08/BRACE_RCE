@@ -29,7 +29,6 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GMAIL_USER=${GMAIL_USER}
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
-      - TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_KEY}
       - JWT_SECRET=${JWT_SECRET:-production_super_secret_jwt_key_brace_2026}
       - PISTON_URL=${PISTON_URL:-http://piston:2000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5000}

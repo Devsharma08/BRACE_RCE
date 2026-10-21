@@ -2,7 +2,7 @@ import React from "react";
 import { Shield, Trophy, Activity, Zap, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 // Imported from the shared util, NOT from the Signup page — pulling the auth
-// screen in here would drag react-router/Turnstile/GoogleLogin into a leaf
+// screen in here would drag react-router/GoogleLogin into a leaf
 // presentation component.
 import { getInitialsAvatar } from "../../utils/avatar";
 

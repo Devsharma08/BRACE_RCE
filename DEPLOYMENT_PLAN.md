@@ -274,9 +274,8 @@ pm2 restart all
   "env": {
     "VITE_BACKEND_URL": "https://api.yourdomain.com",
     "VITE_BASE_URL": "https://api.yourdomain.com",
-    "VITE_API_URL": "https://api.yourdomain.com",
-    "VITE_TURNSTILE_SITE_KEY": "@turnstile_site_key",
-    "VITE_GOOGLE_CLIENT_ID": "@google_client_id"
+     "VITE_API_URL": "https://api.yourdomain.com",
+     "VITE_GOOGLE_CLIENT_ID": "@google_client_id"
   }
 }
 ```
@@ -287,7 +286,6 @@ pm2 restart all
 | `VITE_BACKEND_URL` | `https://api.yourdomain.com` |
 | `VITE_BASE_URL` | `https://api.yourdomain.com` |
 | `VITE_API_URL` | `https://api.yourdomain.com` |
-| `VITE_TURNSTILE_SITE_KEY` | From Cloudflare Turnstile |
 | `VITE_GOOGLE_CLIENT_ID` | From Google Cloud Console |
 
 ### 5.3 Custom Domain
@@ -312,16 +310,6 @@ pm2 restart all
 - Frontend: `VITE_GOOGLE_CLIENT_ID`
 
 ---
-
-## Phase 7: Cloudflare Turnstile (Captcha)
-
-### 7.1 Create Site
-- Add domain `yourdomain.com`
-- Get Site Key and Secret Key
-
-### 7.2 Configure
-- Frontend: `VITE_TURNSTILE_SITE_KEY`
-- Backend: Add `TURNSTILE_SECRET_KEY` for server-side verification (if implemented)
 
 ---
 
@@ -461,7 +449,6 @@ aws ecs update-service \
 
 ### Integration
 - [ ] Google OAuth redirect URIs updated
-- [ ] Turnstile domains configured
 - [ ] CORS ALLOWED_ORIGINS updated
 - [ ] End-to-end testing passed
 

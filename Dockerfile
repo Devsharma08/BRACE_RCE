@@ -23,20 +23,18 @@ ARG VITE_BACKEND_URL="/api"
 ARG VITE_BASE_URL="/api"
 ARG VITE_API_URL="/api"
 ARG VITE_SOCKET_URL=""
-ARG VITE_TURNSTILE_SITE_KEY=""
 ARG VITE_GOOGLE_CLIENT_ID=""
 
 ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
 ENV VITE_BASE_URL=${VITE_BASE_URL}
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_SOCKET_URL=${VITE_SOCKET_URL}
-ENV VITE_TURNSTILE_SITE_KEY=${VITE_TURNSTILE_SITE_KEY}
 ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
 
-RUN if [ -z "$VITE_TURNSTILE_SITE_KEY" ] || [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
-      echo "WARNING: VITE_TURNSTILE_SITE_KEY and/or VITE_GOOGLE_CLIENT_ID build args are empty."; \
-      echo "         The production bundle will render 'not configured' for bot protection and Google sign-in."; \
-      echo "         Pass them via docker-compose build.args (read from .env)."; \
+RUN if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then \
+      echo "WARNING: VITE_GOOGLE_CLIENT_ID build arg is empty."; \
+      echo "         The production bundle will show 'not configured' for Google sign-in."; \
+      echo "         Pass it via docker-compose build.args (read from .env)."; \
     fi
 
 RUN pnpm run build

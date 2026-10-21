@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
-import { Turnstile } from '@marsidev/react-turnstile';
 import { Mail, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PageSkeleton } from '../../components/ui/Skeleton';
@@ -8,7 +7,6 @@ import { api } from '../../config/api';
 import { getInitialsAvatar } from '../../utils/avatar';
 import { initiateGoogleOAuthPKCE, handleGoogleCallbackPKCE } from '../../utils/oauth';
 import { isFeatureEnabled } from '../../config/features';
-import { TURNSTILE_ENABLED, TURNSTILE_SITE_KEY } from '../../config/turnstile';
 
 // Root.tsx falls back to the literal "not-configured" for GoogleOAuthProvider.
 // Treat it as unset here too — rendering the button with that placeholder sent
@@ -19,23 +17,12 @@ const GOOGLE_AUTH_ENABLED =
   GOOGLE_CLIENT_ID.length > 0 &&
   GOOGLE_CLIENT_ID !== 'not-configured';
 
-if (import.meta.env.PROD && !TURNSTILE_ENABLED && isFeatureEnabled('turnstile')) {
-  console.warn(
-    "[BRACE RCE] VITE_TURNSTILE_SITE_KEY is not set in this production build. " +
-      "Signup/sign-in captcha protection is DISABLED.",
-  );
-}
-
 export { getInitialsAvatar };
 
 export const Signup = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  // Remount nonce: bump whenever the widget reports an expired/errored token
-  // so a fresh challenge renders instead of a dead, already-consumed one.
-  const [captchaKey, setCaptchaKey] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -46,11 +33,6 @@ export const Signup = () => {
   
   const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
-
-  const resetCaptcha = () => {
-    setCaptchaToken(null);
-    setCaptchaKey((k) => k + 1);
-  };
 
   // Handle Google OAuth callback on mount
   useEffect(() => {
@@ -74,12 +56,6 @@ export const Signup = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Only gate on the captcha when one is actually configured. Hard-blocking
-    // on an un-configured widget would lock every user out of registration.
-    if (TURNSTILE_ENABLED && !captchaToken) {
-      setError("Please complete the captcha.");
-      return;
-    }
 
     try {
       setLoading(true);
@@ -88,7 +64,6 @@ export const Signup = () => {
         username,
         email,
         password,
-        captchaToken: captchaToken ?? undefined,
         avatarUrl: getInitialsAvatar(username)
       });
       // Send OTP for email verification
@@ -213,24 +188,7 @@ const handleGoogleClick = () => {
         </div>
       </div>
 
-      {TURNSTILE_ENABLED ? (
-        <div className="flex justify-center py-2">
-          <Turnstile
-            key={captchaKey}
-            siteKey={TURNSTILE_SITE_KEY}
-            onSuccess={(token) => setCaptchaToken(token)}
-            onExpire={resetCaptcha}
-            onError={resetCaptcha}
-            options={{ theme: 'dark' }}
-          />
-        </div>
-      ) : (
-        <p className="rounded-none border border-accent-warning/40 bg-accent-warning/5 px-3 py-2 text-center text-[11px] uppercase tracking-widest text-accent-warning">
-          Bot protection not configured
-        </p>
-      )}
-
-      <button type="submit" disabled={loading || (TURNSTILE_ENABLED && !captchaToken)} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
+      <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-accent shadow-[0_0_16px_rgba(0,212,255,0.25)] hover:bg-accent-primary hover:shadow-[0_0_24px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
         {loading ? "Creating account..." : "Sign Up"} {!loading && <ArrowRight size={18} />}
       </button>
     </form>
