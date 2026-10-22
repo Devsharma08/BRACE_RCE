@@ -20,6 +20,7 @@ import { learningPathsRouter } from "./routes/learning-paths.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { feedbackRouter } from "./routes/feedback.js";
 import { statsRouter } from "./routes/stats.js";
+import { matchmakingRouter } from "./routes/matchmaking.js";
 
 import { logger, logRequest } from "./lib/logger.js";
 import { metricsMiddleware, getMetrics, getMetricsContentType } from "./lib/metrics.js";
@@ -265,6 +266,7 @@ export const createApp = (): Express => {
   app.use(`${API_PREFIX}/notifications`, notificationsRouter);
   app.use(`${API_PREFIX}/feedback`, feedbackRouter);
   app.use(`${API_PREFIX}/stats`, statsRouter);
+app.use(`${API_PREFIX}/matchmaking`, matchmakingRouter);
   app.use(`${API_PREFIX}/learning-items`, learningItemsRouter);
   app.use(`${API_PREFIX}/learning-paths`, learningPathsRouter);
 

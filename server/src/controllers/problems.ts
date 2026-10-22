@@ -11,7 +11,7 @@ import { withDisplayProblemName } from "../utils/problemName.js";
 // user's progress to another. Definitions are static, so a 10-minute TTL is
 // safe and the namespace is dropped explicitly on any progress write.
 const PROBLEMS_CACHE_PREFIX = "problems:";
-const PROBLEMS_CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
+const PROBLEMS_CACHE_TTL_SECONDS = 2 * 60; // 2 minutes — fresh problem data for the terminal
 
 /**
  * Guests all share one cache namespace, because an anonymous response carries

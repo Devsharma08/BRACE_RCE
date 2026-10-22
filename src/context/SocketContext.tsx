@@ -113,7 +113,12 @@ function getOrCreateSocket(userId: string): Socket {
   const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
   // Pass user identity in auth handshake (server must support this)
-  socket = io(socketUrl, { auth: { userId }, withCredentials: true });
+  // Prefer WebSocket transport, fall back to polling only if WS unavailable.
+  socket = io(socketUrl, {
+    auth: { userId },
+    withCredentials: true,
+    transports: ["websocket", "polling"],
+  });
   socketSingletons.set(userId, socket);
   return socket;
 }
@@ -455,11 +460,21 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const cancelMatch = () => {
-    if (socketRef.current) {
+    if (socketRef.current && isConnected) {
       setIsClicked(true);
       setMatchmakingStatus("IDLE");
       setWaitingTime(0);
       socketRef.current.emit("cancel_matchmaking");
+    } else {
+      // Socket disconnected or not connected — use HTTP fallback so the
+      // matchmaking queue is cleaned up on the server even when WebSocket
+      // events can't propagate (e.g., through proxies without WS support).
+      setMatchmakingStatus("IDLE");
+      setWaitingTime(0);
+      setIsClicked(false);
+      api.post("/matchmaking/cancel").catch((err) => {
+        console.error("Matchmaking cancel (HTTP fallback) failed:", err);
+      });
     }
   };
 
@@ -522,9 +537,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const declineMatch = () => {
-    if (socketRef.current && pendingMatchId) {
+    if (socketRef.current && isConnected && pendingMatchId) {
       setIsClicked(true);
       socketRef.current.emit("decline_match", pendingMatchId);
+    } else {
+      // HTTP fallback when WebSocket is unavailable
+      setIsClicked(true);
+      api.post("/matchmaking/decline", { matchId: pendingMatchId })
+        .catch((err) => console.error("Match decline (HTTP fallback) failed:", err));
     }
   };
 

@@ -23,9 +23,36 @@ import { logger } from "../lib/logger.js";
 // 'get': only (P|S)SUBSCRIBE allowed in this context" errors.
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
 function createPubSubClient() {
-  const client = createClient({ url: REDIS_URL });
+  const client = createClient({
+    url: REDIS_URL,
+    // Auto-reconnect with bounded backoff so the adapter never stays "closed"
+    // — the root cause of silent WebSocket event drops observed in prod.
+    socket: {
+      reconnectStrategy: (retries) => {
+        const delay = Math.min(retries * 100, 5000);
+        return delay;
+      },
+    },
+  });
   client.on("error", (err: Error) => logger.error(`Redis pub/sub client error: ${err.message}`));
+  client.on("reconnecting", (delay: number) => logger.info(`Redis pub/sub reconnecting in ${delay}ms`));
+  client.on("ready", () => logger.info("Redis pub/sub client ready"));
   return client;
+}
+
+// Re-attach the Redis adapter if the underlying clients reconnect after a
+// network blip. Without this, a dropped Redis connection permanently breaks
+// Socket.io broadcasts across PM2 workers.
+function attachAdapterWithReconnect(io: Server, pubClient: any, subClient: any) {
+  const adapter = createAdapter(pubClient, subClient);
+  io.adapter(adapter);
+
+  const onReconnect = () => {
+    logger.info("Redis adapter re-attaching after reconnect");
+    io.adapter(createAdapter(pubClient, subClient));
+  };
+  pubClient.on("ready", onReconnect);
+  subClient.on("ready", onReconnect);
 }
 import { registerMessagingHandlers } from "./handlers/messaging.js";
 import { registerChallengeHandlers } from "./handlers/challenge.js";
@@ -47,7 +74,8 @@ export const initSocketServer = (io: Server) => {
     try {
       const pubClient = createPubSubClient();
       const subClient = createPubSubClient();
-      io.adapter(createAdapter(pubClient, subClient));
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+      attachAdapterWithReconnect(io, pubClient, subClient);
       logger.info("Socket.io Redis adapter attached");
     } catch (err) {
       logger.warn(`Socket.io Redis adapter unavailable, falling back to in-memory adapter: ${String(err)}`);
