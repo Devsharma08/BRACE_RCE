@@ -66,7 +66,7 @@ import { registerReportHandlers } from "./handlers/report.js";
 import { createSocketRateLimiter } from "./rateLimiter.js";
 import { registerIO } from "./ioRegistry.js";
 
-export const initSocketServer = (io: Server) => {
+export const initSocketServer = async (io: Server) => {
     // Expose io to HTTP controllers (friend events, notifications, ...)
     registerIO(io);
 

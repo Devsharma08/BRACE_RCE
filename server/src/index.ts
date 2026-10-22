@@ -34,7 +34,7 @@ const io = new Server(httpServer, {
 });
 
 // Inject custom socket logic
-initSocketServer(io);
+await initSocketServer(io);
 
 // Room scheduling worker (scheduled opens / T-5min warnings / auto-close)
 startRoomScheduler(io);
