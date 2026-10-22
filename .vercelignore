@@ -1,3 +1,15 @@
+piston/
+certbot/
+nginx.conf
+locations.conf
+ssl-common.conf
+docker-compose.yml
+Dockerfile
+.env*.example
+.vercel/
+.kilocode/
+.opencode/
+
 node_modules/
 .git/
 *.log
@@ -13,5 +25,4 @@ server/dist/
 server/node_modules/
 deploy/
 AGENTS.md
-.kilo/
 .gitignore
