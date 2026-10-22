@@ -1,7 +1,6 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://bracerce.server.devsharma.dev/api/$1" },
-    { "source": "/socket.io/(.*)", "destination": "https://bracerce.server.devsharma.dev/socket.io/$1" },
     { "source": "/health", "destination": "https://bracerce.server.devsharma.dev/health" },
     { "source": "/live", "destination": "https://bracerce.server.devsharma.dev/live" },
     { "source": "/ready", "destination": "https://bracerce.server.devsharma.dev/ready" },
