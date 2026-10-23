@@ -114,7 +114,7 @@ const handleGoogleClick = () => {
             value={otpCode}
             onChange={(e) => setOtpCode(e.target.value)}
             maxLength={6}
-            className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors"
+            className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded font-mono tracking-[0.4em] text-fg transition-all placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
             placeholder="123456"
             required
             autoComplete="one-time-code"
@@ -168,7 +168,8 @@ const handleGoogleClick = () => {
         <label className="block text-sm font-medium text-subtle mb-2">Username</label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><User size={18} /></div>
-          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="CyberCoder" required />
+          <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
+          placeholder="CyberCoder" required />
         </div>
       </div>
 
@@ -176,7 +177,8 @@ const handleGoogleClick = () => {
         <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
+          placeholder="you@example.com" required />
         </div>
       </div>
 
@@ -184,7 +186,8 @@ const handleGoogleClick = () => {
         <label className="block text-sm font-medium text-subtle mb-2">Password</label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
+          placeholder="........" required />
         </div>
       </div>
 

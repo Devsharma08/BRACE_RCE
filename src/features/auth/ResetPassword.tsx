@@ -88,7 +88,7 @@ export const ResetPassword = () => {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
                   placeholder="........"
                   minLength={8}
                   required
@@ -103,7 +103,7 @@ export const ResetPassword = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
                   placeholder="........"
                   minLength={8}
                   required

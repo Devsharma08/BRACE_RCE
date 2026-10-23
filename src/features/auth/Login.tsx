@@ -189,7 +189,7 @@ export const Login = () => {
               <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]" placeholder="you@example.com" required />
               </div>
             </div>
             <div>
@@ -201,7 +201,7 @@ export const Login = () => {
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Lock size={18} /></div>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="........" required />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]" placeholder="........" required />
               </div>
              </div>
              <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
@@ -219,7 +219,8 @@ export const Login = () => {
                 <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors disabled:opacity-60" placeholder="you@example.com" required />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={otpSent} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] disabled:opacity-60"
+          placeholder="you@example.com" required />
                 </div>
               </div>
               {otpSent && (
@@ -227,7 +228,8 @@ export const Login = () => {
                   <label className="block text-sm font-medium text-subtle mb-2">Verification Code</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><KeyRound size={18} /></div>
-                    <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none font-mono tracking-[0.4em] text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="000000" required />
+                    <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded font-mono tracking-[0.4em] text-fg transition-all placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
+          placeholder="000000" required />
                   </div>
                 </div>
               )}
@@ -253,7 +255,7 @@ export const Login = () => {
                 <label className="block text-sm font-medium text-subtle mb-2">Email Address</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-faint"><Mail size={18} /></div>
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-raised border border-accent-primary/15 rounded-none text-fg focus:outline-none focus:border-accent focus:shadow-[0_0_0_1px_rgba(0,212,255,0.15)] transition-colors" placeholder="you@example.com" required />
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded transition-all text-fg placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]" placeholder="you@example.com" required />
                 </div>
               </div>
               <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-accent shadow-accent hover:bg-accent-primary hover:shadow-accent-lg disabled:opacity-50 disabled:cursor-not-allowed text-ink py-3 px-4 rounded-none font-bold transition-all duration-200">
