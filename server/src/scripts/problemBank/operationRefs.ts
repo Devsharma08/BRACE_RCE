@@ -9,7 +9,7 @@
  * fix_operation_expected.ts (recomputes wrong stored expected outputs), so
  * there is exactly one copy of each algorithm.
  */
-export const OPERATION_PROBLEMS = [101, 109, 124, 132, 150, 160, 163];
+export const OPERATION_PROBLEMS = [101, 109, 124, 132, 150, 160, 163, 30];
 
 export const OPERATION_REFERENCES: Record<number, string> = {
    101: `
@@ -123,7 +123,7 @@ KthLargest.prototype.add = function(val) {
   return this.heap[this.heap.length - this.k];
 };
 `,
-  163: `
+   163: `
 var MaxStack = function() { this.s = []; this.m = []; };
 MaxStack.prototype.push = function(x) {
   this.s.push(x);
@@ -139,5 +139,13 @@ MaxStack.prototype.popMax = function() {
     if (this.s[i] === mx) { this.s.splice(i, 1); this.m.pop(); return mx; }
   }
 };
+`,
+   // #30 Clone Graph — adjacency list clone. Input is a JSON adjacency list,
+   // output is the deep-copied adjacency list (same structure).
+   30: `
+function cloneGraph(adj) {
+  if (!adj || adj.length === 0) return adj;
+  return JSON.parse(JSON.stringify(adj));
+}
 `,
 };

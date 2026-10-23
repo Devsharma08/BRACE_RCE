@@ -24,7 +24,7 @@ async function main() {
             const difficulty = problemData.difficulty_level?.toUpperCase() || Level.MEDIUM;
             
             const problem = await prisma.problem.upsert({
-                where: { problem_number: problemData.problem_number || -1 },
+                where: { problem_number: problemData.problem_number ?? undefined },
                 update: {
                     name: problemData.name,
                     github_oid: problemData.github_oid || null,
@@ -36,7 +36,7 @@ async function main() {
                 },
                 create: {
                     name: problemData.name,
-                    problem_number: problemData.problem_number,
+                    problem_number: problemData.problem_number ?? null,
                     github_oid: problemData.github_oid || null,
                     problem_definition: problemData.problem_definition,
                     problem_hints: problemData.problem_hints || [],

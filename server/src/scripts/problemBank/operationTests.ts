@@ -145,4 +145,26 @@ export const OPERATION_TESTS: OperationTestSpec[] = [
       return seq(ops);
     },
   },
+  // #30 Clone Graph — adjacency-list in/out (pure function, no class).
+  {
+    number: 30,
+    gen: (r) => {
+      const n = r.int(0, 8);
+      if (n === 0) return 'cloneGraph([])';
+      const adj: number[][] = Array.from({ length: n }, () => []);
+      for (let i = 0; i < n; i++) {
+        const deg = r.int(0, Math.min(3, n - 1));
+        const seen = new Set<number>();
+        for (let j = 0; j < deg; j++) {
+          let v;
+          do { v = r.int(0, n - 1); } while (v === i || seen.has(v));
+          seen.add(v);
+          adj[i].push(v);
+        }
+      }
+      // Sort neighbors for deterministic output (cloneGraph returns the same adjacency list)
+      adj.forEach((row) => row.sort((a, b) => a - b));
+      return `cloneGraph(${JSON.stringify(adj)})`;
+    },
+  },
 ];
