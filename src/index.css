@@ -334,6 +334,32 @@ body {
   }
 }
 
+/* ── Mobile viewport safety net ─────────────────────────────────────────────
+   Ensures content never touches the screen edges by padding every page's main
+   content container. Applied to all pages that don't manage their own padding.
+
+   Small text (≤9px) on phones becomes unreadable at 320px width — 16px of
+   horizontal padding leaves ~288px of readable width. Components that use
+   text-[8px] or text-[9px] get bumped to a slightly larger size below.
+
+   `--safe-area-inset-*` accounts for notches/dynamic islands on iOS. */
+@layer components {
+  .mobile-safe-padding {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  /* Bump critically small text on phones so it stays readable at 320-384px */
+  @media (max-width: 767px) {
+    .text-\[8px\] {
+      font-size: 9px;
+    }
+    .text-\[9px\] {
+      font-size: 10px;
+    }
+  }
+}
+
 /* ── Global Focus Visible Ring ───────────────────────────────────────────── */
 /* Replaces the browser default — consistent with the accent color */
 :focus-visible {
@@ -902,6 +928,7 @@ body.dragging-active * {
   z-index: 9999;
   display: flex;
   align-items: center;
+  text-align: center;
   justify-content: center;
   background-color: var(--bg-base);
   overflow: hidden;

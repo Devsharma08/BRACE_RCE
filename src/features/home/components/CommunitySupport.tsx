@@ -106,7 +106,7 @@ export function CommunitySupport() {
           </header>
 
           {/* Stats row */}
-          <div className="grid grid-cols-3 border-b border-line py-5 font-mono">
+          <div className="grid grid-cols-1 gap-4 border-b border-line py-5 font-mono sm:grid-cols-3 sm:gap-0 sm:text-center">
             <div>
               <div className="text-xl font-bold text-fg">OPEN</div>
               <div className="mt-1 text-[8px] uppercase tracking-widest text-faint">support channel</div>
