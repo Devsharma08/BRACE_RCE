@@ -52,4 +52,5 @@ temp/
 
 # Piston packages (not needed for app build, can have restrictive permissions)
 piston/
+piston.bak/
 certbot/

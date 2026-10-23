@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite & pnpm --prefix server run dev",
+    "start" : "vite & pnpm --prefix server run start",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",

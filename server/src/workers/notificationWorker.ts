@@ -24,6 +24,19 @@ const processor = async (job: Job<NotificationJobData>): Promise<{ id: string }>
     data: data as any,
   });
 
+  // Push the notification to the user's live sockets so it appears
+  // immediately without waiting for a list refetch. Previously the worker
+  // created the DB row and returned silently — anything going through
+  // enqueueNotification (weekly analysis, future queued join notifs, etc.)
+  // would never appear until the client happened to refetch.
+  try {
+    const { emitNotification } = await import("../socket/ioRegistry.js");
+    await emitNotification(userId, notif);
+  } catch (err) {
+    // Non-fatal: the DB row exists; the client will see it on next refetch.
+    logger.warn(`[notification] Socket emit failed for ${userId}: ${String(err)}`);
+  }
+
   return { id: notif.id };
 };
 
