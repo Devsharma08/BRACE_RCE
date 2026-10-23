@@ -458,7 +458,7 @@ const exitScratchMode = useCallback(() => {
 
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, problemsNonce, submissionTrigger]);
+  }, [user?.id, problemsNonce]);
 
   // ── Handle language switch (load boilerplate for new lang) ─
   const handleLanguageChange = useCallback(

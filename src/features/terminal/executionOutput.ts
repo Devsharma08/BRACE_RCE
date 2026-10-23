@@ -31,12 +31,8 @@ export const detectLanguageFromFileName = (fileName?: string): SupportedLanguage
   }
 };
 
-export const buildProblemTestCases = (data: FileContentResponse): ProblemTestCase[] => {
-  // Keep EVERY case the API returns, with its real input and expected output.
-  // All 15 render in the Output window; nothing is filtered and nothing is
-  // blanked. The filter that used to sit here dropped rows with an empty input,
-  // which removed legitimate no-input cases (and would have removed exactly the
-  // ones the server had withheld).
+export const buildProblemTestCases = (data: FileContentResponse | null | undefined): ProblemTestCase[] => {
+  if (!data) return [];
   return (data.test_cases ?? []).map((testCase) => ({
     // `expectedOutput` may arrive as null from an older cached payload, so it is
     // normalised to a string here. Leaving it null made the card render the

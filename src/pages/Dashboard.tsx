@@ -135,8 +135,8 @@ export const Dashboard: React.FC = () => {
     queryKey: ["dashboard-problems", user?.id],
     enabled: Boolean(user?.id),
     queryFn: async () => {
-      const probRes = await api.get("/problems/system").catch(() => null);
-      return (probRes?.data?.problems || []).slice(0, 4);
+      const probRes = await api.get("/problems/system", { params: { page: 1, limit: 4 } }).catch(() => null);
+      return probRes?.data?.problems || [];
     },
   });
 

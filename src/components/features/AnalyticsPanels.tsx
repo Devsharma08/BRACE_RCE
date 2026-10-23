@@ -628,7 +628,7 @@ export const AnalyticsPanels = memo(({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ActivityHeatmap data={activityData} />
         <div className="flex flex-col gap-4">
-          <StreakPanel streak={summary.currentStreak} />
+           <StreakPanel streak={summary.currentStreak} activityData={activityData} />
           <CompletionMetrics
             completionRate={summary.completionRate}
             growthRate={summary.growthRate}

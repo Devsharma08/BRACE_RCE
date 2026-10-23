@@ -10,9 +10,11 @@ import {
   Code,
   Zap,
   BarChart3,
+  LogOut,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 import { useSocketInvalidation } from "../hooks/useSocketInvalidation";
 import { ContentSkeleton } from "../components/ui/Skeleton";
 import { useAnalytics } from "../hooks/useAnalytics";
@@ -55,6 +57,7 @@ const MAX_HISTORY_ROWS = 10;
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   // Post-battle wave: stats + history refresh, identity stays cached.
   useSocketInvalidation("leaderboard:invalidate", [
     ["profile-stats"],
@@ -127,9 +130,16 @@ const Profile = () => {
               <ArrowLeft size={14} />
               Return to dashboard
             </Link>
-            <span className="border border-line bg-surface px-3 py-1.5 text-[9px] uppercase tracking-widest text-subtle">
-              Profile / operative record
-            </span>
+            <div className="flex items-center gap-3">
+             
+              <button
+                onClick={() => logout()}
+                className="flex items-center gap-1.5 rounded-btn border border-accent-danger/40 px-3 py-1.5 text-[9px] uppercase tracking-widest text-accent-danger transition-all hover:bg-accent-danger/10"
+              >
+                <LogOut size={12} />
+                Sign out
+              </button>
+            </div>
           </div>
 
           {/* ── IDENTITY CARD ───────────────────────────────────────────── */}

@@ -1,4 +1,4 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dices, FileCode2, Swords, X } from "lucide-react";
 import { toast } from "sonner";
@@ -32,10 +32,12 @@ export function ChallengeModal({ friend, open, onClose }: {
 }, [open, onClose]);
 
 
+  // Fetch system problems ONCE with a stable key — difficulty filtering is
+  // applied client-side so changing the difficulty selector does not trigger
+  // a redundant full-catalog refetch.
   const { data: systemProblems = [] } = useQuery<ProblemOption[]>({
-    queryKey: ["challenge-system-problems", difficulty],
+    queryKey: ["challenge-system-problems"],
     enabled: open && mode === "RANDOM",
-    // Static problem definitions — refreshed only when progress changes.
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
     queryFn: async () => fetchAllProblems<ProblemOption>("/problems/system"),
@@ -48,8 +50,13 @@ export function ChallengeModal({ friend, open, onClose }: {
     queryFn: async () => fetchAllProblems<ProblemOption>("/problems/custom"),
   });
 
+  const filteredSystemProblems = useMemo(() => {
+    if (difficulty === "ANY") return systemProblems;
+    return systemProblems.filter((p) => p.difficulty_level === difficulty);
+  }, [systemProblems, difficulty]);
+
   if (!open || !friend) return null;
-  const pool = mode === "RANDOM" ? systemProblems : [...systemProblems, ...customProblems];
+  const pool = mode === "RANDOM" ? filteredSystemProblems : [...systemProblems, ...customProblems];
   const filtered = pool.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).slice(0, 30);
 
   const handleSend = () => {
