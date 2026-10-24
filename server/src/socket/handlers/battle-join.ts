@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { deriveEventDurationMs } from "../../lib/eventTimeLimit.js";
 import type { HandlerCtx } from "../types.js";
+import { emitToUser, emitNotification } from "../ioRegistry.js";
 
 export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
     const { socket, userId, io, getActiveBattleForUser } = ctx;
@@ -44,6 +45,16 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
                 return;
             }
 
+            // Block re-join if user already participated (surrendered, finished, or has a final verdict)
+            const existingPerf = await prisma.userPersonalPerformance.findFirst({
+                where: { eventId: event.id, userId },
+                select: { status: true },
+            });
+            if (existingPerf?.status === 'SURRENDER' || existingPerf?.status === 'FINISHED') {
+                ack?.({ success: false, error: 'You have already participated in this event and cannot rejoin', blockReason: 'already_participated' });
+                return;
+            }
+
             // Join the socket room
             socket.join(roomId);
             if (event.roomCode && event.roomCode !== roomId) {
@@ -52,7 +63,22 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
             if (`room-${event.id}` !== roomId) {
                 socket.join(`room-${event.id}`);
             }
-            ack?.({ success: true });
+
+            // Fetch the full performance record for this user so we can
+            // broadcast it to existing participants in the room.
+            const joiningPerf = await prisma.userPersonalPerformance.findFirst({
+                where: { eventId: event.id, userId },
+                include: {
+                    user: { select: { id: true, username: true, avatarUrl: true, bio: true } },
+                }
+            });
+
+            // Fetch the joining user's info (needed even without a performance row,
+            // e.g. when the socket join races the HTTP enroll).
+            const joiningUser = joiningPerf?.user ?? await prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true, username: true, avatarUrl: true, bio: true },
+            });
 
             // Broadcast current participant roster to everyone in the room
             const currentPerformances = await prisma.userPersonalPerformance.findMany({
@@ -73,9 +99,53 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
             });
 
             const targetRooms = [event.roomCode, `room-${event.id}`, roomId].filter(Boolean) as string[];
-            for (const tr of targetRooms) {
+            const uniqueRooms = [...new Set(targetRooms)];
+
+            console.log(`[join_battle] broadcasting to rooms: [${uniqueRooms.join(', ')}] for user ${userId}`);
+
+            for (const tr of uniqueRooms) {
                 io.to(tr).emit('participants_updated', { performances: currentPerformances });
+                socket.to(tr).emit('participant_joined', {
+                    userId,
+                    performance: joiningPerf,
+                    user: joiningUser,
+                    roomId: event.id,
+                    roomCode: event.roomCode,
+                });
             }
+
+            // ── Host notification ────────────────────────────────────────────
+            // The host only sees participant_joined if they're in the room.
+            // Also push a persistent notification so the bell lights up,
+            // matching how friend requests / challenges already work.
+            if (event.hostId && event.hostId !== userId) {
+                const username = joiningUser?.username ?? "A player";
+                try {
+                    const { createNotification } = await import("../../services/notificationService.js");
+                    const notif = await createNotification({
+                        userId: event.hostId,
+                        type: "SYSTEM" as any,
+                        title: "Participant joined",
+                        body: `${username} joined your battle (${event.roomCode || event.id}).`,
+                        data: { eventId: event.id, joinedUserId: userId },
+                    });
+                    await emitNotification(event.hostId, notif);
+                } catch (notifErr) {
+                    console.error("[join_battle] host notification error:", notifErr);
+                }
+                // Also send a targeted emitToUser in case the host is not in
+                // the socket room yet (e.g. navigating to the battle page).
+                await emitToUser(event.hostId, "participant_joined", {
+                    userId,
+                    performance: joiningPerf,
+                    user: joiningUser,
+                    roomId: event.id,
+                    roomCode: event.roomCode,
+                });
+            }
+
+            // Now that all broadcasts are queued, acknowledge the join to this client
+            ack?.({ success: true });
 
             if (event && event.startedAt && event.status === 'IN_PROGRESS') {
                 // Global budget if the host set one; otherwise the sum of the

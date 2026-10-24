@@ -15,7 +15,7 @@ import type { SupportedLanguage, ExecutionResult } from "../features/terminal/ty
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
-import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye, AlignLeft } from "lucide-react";
+import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye, AlignLeft, Home } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
@@ -23,16 +23,20 @@ import { participantVerdict, verdictStyle } from "../utils/participantVerdict";
 import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
-import { invalidateProblemQueries } from "../utils/problemCache";
+import { invalidateProblemQueries, invalidatePostBattleQueries } from "../utils/problemCache";
 import DOMPurify from "dompurify";
 import { useEventAnalytics } from "../hooks/useEventAnalytics";
 import { EventAnalytics } from "../components/features/EventAnalytics";
 import { BattleStagingRoom } from "../components/features/BattleStagingRoom";
 
 
-interface BattleMessage {
+export interface BattleMessage {
   id: string;
   socketId: string;
+  senderId: string;
+  username: string;
+  role: string;
+  isHost: boolean;
   content: string;
   createdAt: string;
 }
@@ -160,11 +164,10 @@ const SpectateView = ({
         </div>
 
         {/* Status banner */}
-        <div className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${
-          battleState?.status === "IN_PROGRESS" ? "bg-accent-success/15 border border-accent-success/30 text-accent-success" :
-          battleState?.status === "WAITING" ? "bg-accent-warning/15 border border-accent-warning/30 text-accent-warning" :
-          "bg-surface-hover/60 border border-subtle-line text-subtle"
-        }`}>
+        <div className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${battleState?.status === "IN_PROGRESS" ? "bg-accent-success/15 border border-accent-success/30 text-accent-success" :
+            battleState?.status === "WAITING" ? "bg-accent-warning/15 border border-accent-warning/30 text-accent-warning" :
+              "bg-surface-hover/60 border border-subtle-line text-subtle"
+          }`}>
           <span>STATUS: {battleState?.status || "LOADING"}</span>
           {battleState?.startedAt && battleState?.totalDurationMs && (
             <GlobalTimer startedAt={battleState.startedAt} totalDurationMs={battleState.totalDurationMs} variant="compact" />
@@ -198,18 +201,16 @@ const SpectateView = ({
                         {intel?.status || "STANDBY"}{intel?.linesWritten !== undefined ? ` · ${intel.linesWritten} LINES` : ""}
                       </p>
                     </div>
-                    <span className={`text-xs font-bold px-2 py-1 rounded ${
-                      prog >= 100 ? "bg-accent-success/20 text-accent-success" :
-                      prog > 0 ? "bg-accent-primary/20 text-accent-primary" :
-                      "bg-surface-hover/60 text-faint"
-                    }`}>{prog}%</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded ${prog >= 100 ? "bg-accent-success/20 text-accent-success" :
+                        prog > 0 ? "bg-accent-primary/20 text-accent-primary" :
+                          "bg-surface-hover/60 text-faint"
+                      }`}>{prog}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        prog >= 100 ? "bg-gradient-to-r from-accent-success to-accent-success" :
-                        "bg-gradient-to-r from-accent-primary to-accent-primary"
-                      }`}
+                      className={`h-full rounded-full transition-all duration-700 ${prog >= 100 ? "bg-gradient-to-r from-accent-success to-accent-success" :
+                          "bg-gradient-to-r from-accent-primary to-accent-primary"
+                        }`}
                       style={{ width: `${prog}%` }}
                     />
                   </div>
@@ -235,7 +236,9 @@ export const Battle = () => {
   const routerState = location.state as { password?: string } | null;
   const sessionPassword = roomId ? sessionStorage.getItem(`room_password_${roomId}`) : null;
   const roomPassword = routerState?.password || sessionPassword || undefined;
-  const { socket } = useSocket();
+  // SocketContext now manages room joining/leaving centrally.
+  // We only need to bind event handlers here.
+  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom } = useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   // --- ROOM / EVENT STATE ---
@@ -250,6 +253,9 @@ export const Battle = () => {
   const [myUserId, setMyUserId] = useState<string>("");
   const [blockedParticipants, setBlockedParticipants] = useState<any[]>([]);
 
+  // Use a ref so this function is never a socket-effect dep (prevents spurious
+  // effect teardowns that drop socket room membership).
+  const fetchBlockedParticipantsRef = useRef<() => Promise<void>>(async () => {});
   const fetchBlockedParticipants = useCallback(async () => {
     if (!roomId) return;
     try {
@@ -260,10 +266,12 @@ export const Battle = () => {
       console.error("Failed to fetch blocked participants:", e);
     }
   }, [roomId]);
+  fetchBlockedParticipantsRef.current = fetchBlockedParticipants;
 
   const [playerProgress, setPlayerProgress] = useState<Record<string, { status: string; progress: number; linesWritten?: number }>>({});
   const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
+  const [isStartingOperation, setIsStartingOperation] = useState<boolean>(false);
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -420,9 +428,10 @@ export const Battle = () => {
   }, [activeProblem, code, language]);
 
 
-  const joinedRoomRef = useRef<string | null>(null);
-  const myUserIdRef = useRef("");
-  let joinAcknowledged = false;
+  // Centralized room state comes from SocketContext — no need for local refs.
+// joinBattleRoom/leaveBattleRoom are stable (useCallback in SocketProvider).
+// battleRoomStatus/currentBattleRoomId are tracked centrally.
+const myUserIdRef = useRef("");
 
   // Point 35: the room fetch goes through the query cache so navigating away
   // and back within gcTime re-seeds instantly instead of refetching.
@@ -450,19 +459,19 @@ export const Battle = () => {
 
   const [showAnalyticsView, setShowAnalyticsView] = useState(false);
 
-    // A failed room load navigates back to the lobby (query-level error handling).
-    useEffect(() => {
-      if (!roomError) return;
-      const err: any = roomError;
-      console.error("Failed to load room", err);
-      const blockReason = err.response?.data?.blockReason;
-      const msg = blockReason
-        ? `You are blocked from this event: ${blockReason}`
-        : `Could not join room: ${err.response?.data?.message || err.message}`;
-      toast.error(msg);
-      setLoading(false);
-      navigate("/lobby");
-    }, [roomError, navigate]);
+  // A failed room load navigates back to the lobby (query-level error handling).
+  useEffect(() => {
+    if (!roomError) return;
+    const err: any = roomError;
+    console.error("Failed to load room", err);
+    const blockReason = err.response?.data?.blockReason;
+    const msg = blockReason
+      ? `You are blocked from this event: ${blockReason}`
+      : `Could not join room: ${err.response?.data?.message || err.message}`;
+    toast.error(msg, { id: "join-error" });
+    setLoading(false);
+    navigate("/lobby");
+  }, [roomError, navigate]);
 
   // Seed all local state from the fetched room (runs on every cache hit too).
   useEffect(() => {
@@ -476,19 +485,29 @@ export const Battle = () => {
     const isUserHost = myId === roomData.hostId;
     setIsHost(isUserHost);
 
-    // Sync battleState status with database status
+    // Sync battleState status with database status.
+    // Only adopt the DB status if the socket hasn't already advanced the
+    // battle to IN_PROGRESS/FINISHED (otherwise a stale fetchedRoom snapshot
+    // would overwrite real-time socket updates and revert the UI to WAITING).
     if (roomData.status) {
-      setBattleState((prev: any) => ({
-        ...prev,
-        status: roomData.status,
-        startedAt: roomData.startedAt,
-        finishedAt: roomData.finishedAt,
-        totalDurationMs: roomData.totalTimeLimitMs,
-      }));
+        const currentStatus = battleState.status;
+        const isSocketAdvanced =
+            currentStatus === "IN_PROGRESS" ||
+            currentStatus === "FINISHED" ||
+            currentStatus === "COUNTDOWN";
+        if (!isSocketAdvanced) {
+            setBattleState((prev: any) => ({
+                ...prev,
+                status: roomData.status,
+                startedAt: roomData.startedAt,
+                finishedAt: roomData.finishedAt,
+                totalDurationMs: roomData.totalTimeLimitMs,
+            }));
+        }
     }
 
     if (isUserHost) {
-      void fetchBlockedParticipants();
+      void fetchBlockedParticipantsRef.current();
     }
 
     // Store all participants for host panel
@@ -503,8 +522,8 @@ export const Battle = () => {
     setPlayerProgress(initialProgress);
 
     let targetProblems = [];
-    if (roomData.type === "ONE_VS_ONE") {
-      targetProblems = [roomData.commonProblem];
+    if (roomData.type === "ONE_VS_ONE" || roomData.type === "FRIENDS") {
+      targetProblems = roomData.commonProblem ? [roomData.commonProblem] : [];
       setProblems(targetProblems);
       const oppPerf = roomData.performances?.find(
         (p: any) => p.user.id !== myId,
@@ -526,55 +545,65 @@ export const Battle = () => {
     });
     setCodes(initialCodes);
     setLoading(false);
-  }, [fetchedRoom]);
 
-  // Setup Sockets - Fixed: single join with ack, proper reconnect handling
-  useEffect(() => {
-    if (!socket || !roomId) return;
-
-    let mounted = true;
-
-    const joinRoom = () => {
-      if (!mounted) return;
-      // Use acknowledgment to confirm join
-      socket.emit("join_battle", roomId, (ack: { success: boolean; error?: string }) => {
-        if (!mounted) return;
-        if (ack?.success) {
-          joinAcknowledged = true;
-          joinedRoomRef.current = roomId;
-        } else {
+    // Centralized room joining — SocketContext handles join_battle with
+    // deduplication and auto-rejoin on reconnect. No need for local refs.
+    if (socket && roomId) {
+      joinBattleRoom(roomId, (ack: { success: boolean; error?: string }) => {
+        if (!ack?.success) {
           console.error("Failed to join battle:", ack?.error);
           toast.error("Failed to join battle room");
           navigate("/lobby");
         }
       });
-    };
-
-    // Join immediately if connected
-    if (socket.connected) {
-      joinRoom();
     }
+  }, [fetchedRoom]);
 
-    // Handle reconnect: only re-join if we were previously joined
-    const onConnect = () => {
-      if (mounted && joinedRoomRef.current === roomId && !joinAcknowledged) {
-        joinRoom();
+  // ─────────────────────────────────────────────────────────────────────
+  // Socket Event Handlers (Centralized Room Management)
+  // ─────────────────────────────────────────────────────────────────────
+  // Per the realtime audit, room joining/leaving is now managed centrally
+  // in SocketContext to prevent double join_battle emissions and ensure
+  // consistent room membership state. This effect only binds/unbinds event
+  // handlers — no direct socket.emit("join_battle") or "leave_room" calls.
+  //
+  // Dependencies: [socket, roomId, navigate, queryClient, isSpectateMode]
+  // socketTick is NOT a dependency — SocketProvider handles socket
+  // recreation internally, so the socket reference remains stable.
+
+  const isHostRef = useRef(isHost);
+  isHostRef.current = isHost;
+
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    let mounted = true;
+
+    const onBattleStarting = (data: { countdownSeconds?: number }) => {
+      if (!mounted) return;
+      setCountDown(data?.countdownSeconds || 3);
+      if (data?.countdownSeconds === 1) {
+        setCommencing(true);
       }
+      playBattleSound("tick");
     };
 
-    socket.on("connect", onConnect);
-
-    socket.on("battle_starting", (data: { countdownSeconds?: number }) => {
-      setCountDown(data?.countdownSeconds || 3);
-      playBattleSound("tick");
-    });
-
-    socket.on("battle_started", (data?: { startedAt?: any; problems?: any[]; commonProblem?: any }) => {
-      setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS", editorLocked: false }));
+    const onBattleStarted = (data?: { startedAt?: any; problems?: any[]; commonProblem?: any; totalDurationMs?: number }) => {
+      if (!mounted) return;
+      setBattleState((prev: any) => ({
+        ...prev,
+        status: "IN_PROGRESS",
+        editorLocked: false,
+        startedAt: data?.startedAt || prev.startedAt,
+        totalDurationMs: data?.totalDurationMs || prev.totalDurationMs,
+      }));
+      setIsStartingOperation(false);
+      setCountDown(0);
+      setCommencing(false);
+      playBattleSound("match-start");
       if (data?.problems && data.problems.length > 0) {
         setProblems(data.problems);
         setCurrentIndex(0);
-        // Seed codes for unlocked problems
         const initialCodes: Record<string, string> = {};
         data.problems.forEach((p: any) => {
           if (!p) return;
@@ -592,23 +621,43 @@ export const Battle = () => {
         setCode(snippet);
         setCodes({ [data.commonProblem.id]: snippet });
       }
-      toast.success("Operation initiated! Workspaces unlocked.");
-    });
+      toast.success("Operation initiated! Workspaces unlocked.", { id: "battle-starting" });
+    };
 
-    socket.on("participant_rejected", (data: { reason?: string }) => {
-      toast.error(data?.reason || "Your entry request was declined by the host.");
+    const onStartFailed = (data: { error?: string }) => {
+      if (!mounted) return;
+      setIsStartingOperation(false);
+      setCountDown(0);
+      setCommencing(false);
+      toast.error(data?.error || "Failed to start the operation. Please try again.", { id: "start-failed" });
+    };
+
+    const onParticipantRejected = (data: { reason?: string }) => {
+      if (!mounted) return;
+      toast.error(data?.reason || "Your entry request was declined by the host.", { id: "participant-rejected" });
       navigate("/lobby");
-    });
+    };
 
-    socket.on("battle_state", (data) => {
-      setBattleState(data);
-    });
+    const onBattleState = (data: any) => {
+      if (!mounted) return;
+      setBattleState((prev: any) => ({ ...prev, ...data }));
+    };
 
-    socket.on("receive_battle_message", (msg) => {
-      setBattleMessages((prev) => [...prev, msg]);
-    });
+    const onReceiveBattleMessage = (msg: any) => {
+      if (!mounted) return;
+      setBattleMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    };
 
-    socket.on("battle_update", (data) => {
+    const onBattleMessageError = (errMsg: string) => {
+      if (!mounted) return;
+      toast.error(errMsg || "Failed to send battle message.", { id: "battle-msg-error" });
+    };
+
+    const onBattleUpdate = (data: any) => {
+      if (!mounted) return;
       setPlayerProgress((prev) => ({
         ...prev,
         [data.userId]: {
@@ -617,66 +666,150 @@ export const Battle = () => {
           linesWritten: data.linesWritten
         }
       }));
-       if (data.result === "OPPONENT_WON") {
+      if (data.result === "OPPONENT_WON") {
         setBattleResult("LOST");
         setDefeatReason("opponent");
         setIsBattleMenuOpen(true);
       }
       if (data.result === "OPPONENT_SURRENDERED") {
-        // Opponent surrendered — but we are NOT declared winner until WE solve
-        // the problem. Keep coding; battle-action.ts claims the finish and
-        // declares us winner only once our submission passes.
-        toast.info("Opponent surrendered — solve the problem to claim victory.");
+        toast.info("Opponent surrendered — solve the problem to claim victory.", { id: "opponent-surrender" });
       }
-    });
+    };
 
-    socket.on("you_were_kicked", () => {
-      toast.error("You have been removed from this match by the host.");
+    const onYouWereKicked = () => {
+      if (!mounted) return;
+      toast.error("You have been removed from this match by the host.", { id: "participant-removed" });
       navigate("/lobby");
-    });
+    };
 
-    socket.on("player_kicked", (data: { userId: string; blocked?: boolean }) => {
+    const onPlayerKicked = (data: { userId: string; blocked?: boolean }) => {
+      if (!mounted) return;
       setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
       if (data.blocked) {
-        void fetchBlockedParticipants();
+        void fetchBlockedParticipantsRef.current();
       }
-    });
+    };
 
-    socket.on("you_are_blocked", (data: { roomId?: string; reason?: string }) => {
-      toast.error(data?.reason || "You have been blocked from this event.");
+    const onYouAreBlocked = (data: { roomId?: string; reason?: string }) => {
+      if (!mounted) return;
+      toast.error(data?.reason || "You have been blocked from this event.", { id: "you-are-blocked" });
       navigate("/lobby");
-    });
+    };
 
-    socket.on("player_blocked", (data: { userId: string; blocked: boolean }) => {
+    const onPlayerBlocked = (data: { userId: string; blocked: boolean }) => {
+      if (!mounted) return;
       setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
-      void fetchBlockedParticipants();
-    });
+      void fetchBlockedParticipantsRef.current();
+    };
 
-    socket.on("player_unblocked", () => {
+    const onPlayerUnblocked = () => {
+      if (!mounted) return;
       void queryClient.invalidateQueries({ queryKey: ["battle-room", roomId, isSpectateMode] });
-    });
+    };
 
-    socket.on("participants_updated", (data: { performances: any[] }) => {
-      if (data?.performances) {
-        setRoomParticipants(data.performances);
-        setBattleState((prev: any) => ({ ...prev, participants: data.performances }));
+    const onParticipantsUpdated = (data: { performances: any[] }) => {
+      if (!mounted || !data?.performances) return;
+      // Update participant roster and merge performance data.
+      // We always accept the payload from the server — the previous dedup
+      // logic based on ID fingerprints could drop legitimate status updates
+      // (e.g., progress changes for existing participants).
+      setRoomParticipants((prev) => {
+        const prevIds = new Set(prev.map((p: any) => p.userId || p.user?.id));
+        const nextPerformances = data.performances;
+        if (prev.length === nextPerformances.length && nextPerformances.every((p: any) => prevIds.has(p.userId || p.user?.id))) {
+          return nextPerformances;
+        }
+        return nextPerformances;
+      });
+      setBattleState((prev: any) => ({ ...prev, participants: data.performances }));
+    };
+
+    // Toast even if data.performance is null — the user info may come
+    // from data.user when the socket join raced the HTTP enroll.
+    const onParticipantJoined = (data: { userId: string; performance: any; user?: any; roomId?: string; roomCode?: string }) => {
+      if (!mounted) return;
+      const newParticipant = data.performance;
+      const joiningUser = data.user ?? newParticipant?.user;
+      const username = joiningUser?.username || "A new operative";
+      const joiningUserId = data.userId || newParticipant?.userId || joiningUser?.id;
+
+      if (newParticipant) {
+        setRoomParticipants((prev) => {
+          const exists = prev.some(
+            (p: any) => p.userId === newParticipant.userId || p.user?.id === newParticipant.user?.id
+          );
+          if (exists) return prev;
+          toast.info(`${username} has joined the operation.`, { id: `participant-joined-${joiningUserId}` });
+          return [...prev, newParticipant];
+        });
+      } else {
+        // No performance row yet (race condition), still show the toast.
+        toast.info(`${username} has joined the operation.`, { id: `participant-joined-${joiningUserId}` });
       }
-    });
+    };
 
-    socket.on("group_terminated", (data: { roomId: string }) => {
-      if (String(data.roomId).replace("room-", "") === String(roomId).replace("room-", "")) {
-        setBattleResult("LOST");
-        setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
-        setIsBattleMenuOpen(true);
-      }
-    });
+    // ─────────────────────────────────────────────────────────────────────
+    // PARTICIPANT_LEFT EVENT HANDLER (Pre-start leave notification)
+    // ─────────────────────────────────────────────────────────────────────
+    // When a participant leaves a room that hasn't started yet (or during
+    // waiting phase), the server emits participant_left to ALL remaining
+    // participants including the moderator. This provides real-time
+    // visibility into roster changes before the battle begins.
+    const onParticipantLeft = (data: { userId: string; username?: string; reason?: string }) => {
+      if (!mounted) return;
+      const username = data.username || "A fellow operative";
 
-    socket.on("battle_finished", (data: { winnerId?: string; performances?: any[] }) => {
+      // Remove from local roster
+      setRoomParticipants((prev) =>
+        prev.filter((p: any) => (p.userId || p.user?.id) !== data.userId)
+      );
+
+      // Notify the moderator and other participants
+      toast.info(`${username} left the operation.`, {
+        id: `participant-left-${data.userId}`,
+        duration: 5000,
+      });
+
+      // Update battle state participants list
+      setBattleState((prev: any) => {
+        if (!prev.participants) return prev;
+        return {
+          ...prev,
+          participants: prev.participants.filter(
+            (p: any) => (p.userId || p.user?.id) !== data.userId
+          ),
+        };
+      });
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    const onGroupTerminated = (data: { roomId?: string; roomCode?: string; reason?: string }) => {
+      if (!mounted) return;
+      const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
+      const serverRoomCode = data?.roomCode;
+      const clientRoomId = String(roomId).replace("room-", "");
+      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      if (!isSameRoom) return;
+      setBattleResult("LOST");
+      setBattleState((prev: any) => ({ ...prev, status: "FINISHED", finishedAt: new Date() }));
+      setIsBattleMenuOpen(true);
+      invalidatePostBattleQueries(queryClient);
+      toast.error("The host terminated this battle.", { id: "group-terminated" });
+      setTimeout(() => navigate("/lobby"), 1500);
+    };
+
+    const onBattleFinished = (data: { winnerId?: string; performances?: any[]; roomId?: string; roomCode?: string }) => {
+      if (!mounted) return;
+      const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
+      const serverRoomCode = data?.roomCode;
+      const clientRoomId = String(roomId).replace("room-", "");
+      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      if (!isSameRoom) return;
       if (data?.performances) {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
       }
-      if (focusPenaltyPercent >= 100 && !isHost) {
+      if (focusPenaltyPercent >= 100 && !isHostRef.current) {
         setBattleResult("CHEATER");
         socket.emit("surrender_battle", { roomId, reason: "cheater" });
       } else {
@@ -692,14 +825,20 @@ export const Battle = () => {
         }
       }
       setIsBattleMenuOpen(true);
-      invalidateProblemQueries(queryClient);
-    });
+      invalidatePostBattleQueries(queryClient);
+    };
 
-    socket.on("match_completed", (data: { status?: string; reason?: string; performances?: any[] }) => {
+    const onMatchCompleted = (data: { status?: string; reason?: string; performances?: any[]; roomId?: string; roomCode?: string }) => {
+      if (!mounted) return;
+      const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
+      const serverRoomCode = data?.roomCode;
+      const clientRoomId = String(roomId).replace("room-", "");
+      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      if (!isSameRoom) return;
       if (data?.performances) {
         setRoomParticipants(data.performances);
         setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
-        if (focusPenaltyPercent >= 100 && !isHost) {
+        if (focusPenaltyPercent >= 100 && !isHostRef.current) {
           setBattleResult("CHEATER");
         } else {
           const myPerf = data.performances.find(
@@ -711,91 +850,174 @@ export const Battle = () => {
           }
         }
       }
-      void fetchBlockedParticipants();
+      void fetchBlockedParticipantsRef.current();
       setIsBattleMenuOpen(true);
-      invalidateProblemQueries(queryClient);
-    });
+      invalidatePostBattleQueries(queryClient);
+    };
 
-    // --- ROOM SCHEDULING EVENTS ---
-    socket.on("room_opening", () => {
+    const onRoomReady = () => {
+      if (!mounted) return;
+      if (isHostRef.current) {
+        setBattleState((prev: any) => ({ ...prev, status: "WAITING" }));
+        toast.success("Operation is ready — click START OPERATION to begin.", { id: "room-ready" });
+      }
+    };
+
+    const onRoomOpening = () => {
+      if (!mounted) return;
       setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS" }));
-      toast.info("Room opened — the operation is live.");
-    });
+      toast.info("Room opened — the operation is live.", { id: "room-opening" });
+    };
 
-    socket.on("room_closing", (data: { closesAt?: string }) => {
+    const onRoomClosing = (data: { closesAt?: string }) => {
+      if (!mounted) return;
       if (data?.closesAt) {
         setClosingWarning({ closesAt: data.closesAt });
         setClosingWarningDismissed(false);
       }
-    });
+    };
 
-    socket.on("room_closed", () => {
+    const onRoomClosed = () => {
+      if (!mounted) return;
       setClosingWarning(null);
       setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
       setIsBattleMenuOpen(true);
-      invalidateProblemQueries(queryClient);
-      toast.info("Room closed by schedule.");
-    });
+      invalidatePostBattleQueries(queryClient);
+      toast.info("Room closed by schedule.", { id: "room-closed" });
+    };
 
-    // Unified force-close: host ended, admin terminated, room deleted, or the
-    // scheduler expired it. The server always sends a human-readable `reason`
-    // so the participant knows WHY the room closed before being routed out.
-    socket.on("room_force_closed", (data: { roomId?: string; reason?: string }) => {
-      const sameRoom =
-        String(data?.roomId ?? "").replace("room-", "") ===
-        String(roomId).replace("room-", "");
-      if (!sameRoom) return;
+    const onRoomForceClosed = (data: { roomId?: string; roomCode?: string; reason?: string }) => {
+      if (!mounted) return;
+      const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
+      const serverRoomCode = data?.roomCode;
+      const clientRoomId = String(roomId).replace("room-", "");
+      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      if (!isSameRoom) return;
       setClosingWarning(null);
       setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
       setIsBattleMenuOpen(true);
-      invalidateProblemQueries(queryClient);
-      toast.error(data?.reason || "This room has been closed.");
+      invalidatePostBattleQueries(queryClient);
+      toast.error(data?.reason || "This room has been closed.", { id: "room-force-closed" });
       setTimeout(() => navigate("/lobby"), 500);
-    });
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Bind all listeners — no "connect" handler here; SocketContext
+    // handles reconnection and auto-rejoin centrally.
+    // ─────────────────────────────────────────────────────────────────────
+    socket.on("battle_starting", onBattleStarting);
+    socket.on("battle_started", onBattleStarted);
+    socket.on("start_failed", onStartFailed);
+    socket.on("participant_rejected", onParticipantRejected);
+    socket.on("battle_state", onBattleState);
+    socket.on("receive_battle_message", onReceiveBattleMessage);
+    socket.on("battle_message_error", onBattleMessageError);
+    socket.on("battle_update", onBattleUpdate);
+    socket.on("you_were_kicked", onYouWereKicked);
+    socket.on("player_kicked", onPlayerKicked);
+    socket.on("you_are_blocked", onYouAreBlocked);
+    socket.on("player_blocked", onPlayerBlocked);
+    socket.on("player_unblocked", onPlayerUnblocked);
+    socket.on("participants_updated", onParticipantsUpdated);
+    socket.on("participant_joined", onParticipantJoined);
+    socket.on("participant_left", onParticipantLeft);
+    socket.on("group_terminated", onGroupTerminated);
+    socket.on("battle_finished", onBattleFinished);
+    socket.on("match_completed", onMatchCompleted);
+    socket.on("room_ready", onRoomReady);
+    socket.on("room_opening", onRoomOpening);
+    socket.on("room_closing", onRoomClosing);
+    socket.on("room_closed", onRoomClosed);
+    socket.on("room_force_closed", onRoomForceClosed);
 
     return () => {
       mounted = false;
-      socket.off("connect", onConnect);
-      socket.off("battle_starting");
-      socket.off("battle_state");
-      socket.off("receive_battle_message");
-      socket.off("battle_update");
-      socket.off("you_were_kicked");
-      socket.off("player_kicked");
-      socket.off("participants_updated");
-      socket.off("group_terminated");
-      socket.off("match_completed");
-      socket.off("battle_finished");
-      socket.off("room_opening");
-      socket.off("room_closing");
-      socket.off("room_closed");
-      socket.off("room_force_closed");
-      socket.off("you_are_blocked");
-      socket.off("player_blocked");
-      socket.off("player_unblocked");
-      if (joinedRoomRef.current === roomId) {
-         socket.emit("leave_room", roomId);
-       }
-     };
-  }, [socket, roomId, navigate, queryClient, isSpectateMode, fetchBlockedParticipants]);
+      socket.off("battle_starting", onBattleStarting);
+      socket.off("battle_started", onBattleStarted);
+      socket.off("start_failed", onStartFailed);
+      socket.off("participant_rejected", onParticipantRejected);
+      socket.off("battle_state", onBattleState);
+      socket.off("receive_battle_message", onReceiveBattleMessage);
+      socket.off("battle_message_error", onBattleMessageError);
+      socket.off("battle_update", onBattleUpdate);
+      socket.off("you_were_kicked", onYouWereKicked);
+      socket.off("player_kicked", onPlayerKicked);
+      socket.off("you_are_blocked", onYouAreBlocked);
+      socket.off("player_blocked", onPlayerBlocked);
+      socket.off("player_unblocked", onPlayerUnblocked);
+      socket.off("participants_updated", onParticipantsUpdated);
+      socket.off("participant_joined", onParticipantJoined);
+      socket.off("participant_left", onParticipantLeft);
+      socket.off("group_terminated", onGroupTerminated);
+      socket.off("battle_finished", onBattleFinished);
+      socket.off("match_completed", onMatchCompleted);
+      socket.off("room_ready", onRoomReady);
+      socket.off("room_opening", onRoomOpening);
+      socket.off("room_closing", onRoomClosing);
+      socket.off("room_closed", onRoomClosed);
+      socket.off("room_force_closed", onRoomForceClosed);
+      // Note: leaveBattleRoom is NOT called here. SocketContext manages
+      // room membership centrally via joinBattleRoom/leaveBattleRoom.
+      // Component unmount does not require leaving the socket room —
+      // the room is tracked centrally and auto-rejoined on reconnect.
+      // Calling leave here would race with StrictMode remount and could
+      // remove the socket from a room it just rejoined.
+    };
+    // Minimal stable deps — socket is stable singleton, roomId changes on navigation.
+    // joinBattleRoom/leaveBattleRoom are now stable useCallback from SocketProvider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, roomId, navigate, queryClient, isSpectateMode]);
 
-  // Handle 3-second Get Ready Countdown before event begins
+  // ─────────────────────────────────────────────────────────────────────
+  // Centralized Leave Handler (Pre-Start Leave Notification)
+  // ─────────────────────────────────────────────────────────────────────
+  // When a participant navigates away from the battle page BEFORE the battle
+  // has started (status is "WAITING" or not yet IN_PROGRESS), we emit
+  // leave_room with notifyParticipants: true so the server broadcasts a
+  // participant_left event to the moderator and remaining participants.
+  //
+  // For Active battles (IN_PROGRESS/FINISHED), we skip the notification
+  // since leaving mid-battle is handled by surrender/timeout mechanics.
+  //
+  // We use a ref to track the battle status to avoid stale closures.
+  // The unmount detection uses a deferred cleanup pattern to distinguish
+  // real unmounts from StrictMode remounts.
+  const battleStartedRef = useRef(false);
+  battleStartedRef.current = battleState.status === "IN_PROGRESS" || battleState.status === "FINISHED";
+
   useEffect(() => {
-    if (countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountDown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setCommencing(true);
-          playBattleSound("tick");
-          return 0;
-        }
-        playBattleSound("tick");
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
+    // Only set up the leave handler if we have a socket and room
+    if (!socket || !roomId) return;
+
+    let isUnmounting = false;
+
+    return () => {
+      isUnmounting = true;
+      // Only notify participants if the battle hasn't started yet
+      if (!battleStartedRef.current && isUnmounting) {
+        // Use setTimeout to allow for StrictMode remount cancellation.
+        // If StrictMode remounts, the new effect will set isUnmounting back
+        // to false via a ref comparison.
+        const leaveTimer = window.setTimeout(() => {
+          if (isUnmounting) {
+            leaveBattleRoom(roomId, { notifyParticipants: true });
+          }
+        }, 500);
+
+        // Cleanup timer if effect re-runs (StrictMode remount)
+        return () => {
+          isUnmounting = false;
+          window.clearTimeout(leaveTimer);
+        };
+      }
+    };
+  }, [socket, roomId, leaveBattleRoom]);
+
+  // ── Countdown is driven entirely by server `battle_starting` events.
+  // No client-side decrement loop: the server sends 3→2→1 at 1s intervals,
+  // then `battle_started`. This prevents the client interval from racing
+  // with server values and resetting `commencing` after battle_started.
+
 
   useEffect(() => {
     if (!commencing) return;
@@ -846,9 +1068,34 @@ export const Battle = () => {
   }, [activeProblem, codes]);
 
   // Handlers
+  const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleStartOperation = () => {
+    if (!socket || isStartingOperation) return;
+    setIsStartingOperation(true);
     setCountDown(3);
-    socket?.emit("start_event", roomId);
+    socket.emit("start_event", roomId, (ack: { success: boolean; error?: string }) => {
+      // Cancel the fallback timeout — the server responded.
+      if (startTimeoutRef.current) {
+        clearTimeout(startTimeoutRef.current);
+        startTimeoutRef.current = null;
+      }
+      if (!ack?.success) {
+        setIsStartingOperation(false);
+        setCountDown(0);
+        toast.error(ack?.error || "Failed to start the operation", { id: "start-failed" });
+      } else {
+        // Don't reset isStartingOperation here — the countdown overlay
+        // will be dismissed by the battle_started event.
+        toast.success("Operation initiated! Workspaces unlocking...", { id: "battle-starting" });
+      }
+    });
+    // Fallback: if the server doesn't respond within 8s, clear the loading state.
+    // Guarded by a ref so a successful ack can cancel it.
+    startTimeoutRef.current = setTimeout(() => {
+      setIsStartingOperation(false);
+      setCountDown(0);
+      startTimeoutRef.current = null;
+    }, 8000);
   };
 
   const handleLanguageChange = (newLang: SupportedLanguage) => {
@@ -877,12 +1124,12 @@ export const Battle = () => {
 
   const handleBattleMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBattleMessage.trim()) return;
-    socket?.emit("send_battle_message", { roomId, content: newBattleMessage });
+    if (!newBattleMessage.trim() || !roomId) return;
+    sendBattleMessage(roomId, newBattleMessage);
     setNewBattleMessage("");
   };
 
-   const handleTimerExpire = () => {
+  const handleTimerExpire = () => {
     if (focusPenaltyPercent >= 100 && !isHost) {
       setBattleResult("CHEATER");
     } else {
@@ -905,7 +1152,7 @@ export const Battle = () => {
           if (attempt < 2) {
             setTimeout(() => expireAttempt(attempt + 1), 1000 * (attempt + 1));
           } else {
-            toast.error("Could not sync the expired room — please reload this page.");
+            toast.error("Could not sync the expired room — please reload this page.", { id: "sync-expired-room" });
           }
         });
       };
@@ -964,9 +1211,9 @@ export const Battle = () => {
     if (!isBattleMenuOpen) return;
     const modal = battleMenuRef.current;
     if (!modal) return;
-    
+
     previousActiveElementRef.current = document.activeElement as HTMLElement;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsBattleMenuOpen(false);
@@ -987,7 +1234,7 @@ export const Battle = () => {
         }
       }
     };
-    
+
     document.addEventListener("keydown", handleKeyDown);
     setTimeout(() => {
       const firstFocusable = modal.querySelector<HTMLElement>(
@@ -995,7 +1242,7 @@ export const Battle = () => {
       );
       firstFocusable?.focus();
     }, 0);
-    
+
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       previousActiveElementRef.current?.focus();
@@ -1007,9 +1254,9 @@ export const Battle = () => {
     if (!isSurrenderModalOpen) return;
     const modal = surrenderModalRef.current;
     if (!modal) return;
-    
+
     previousActiveElementRef.current = document.activeElement as HTMLElement;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsSurrenderModalOpen(false);
@@ -1030,7 +1277,7 @@ export const Battle = () => {
         }
       }
     };
-    
+
     document.addEventListener("keydown", handleKeyDown);
     setTimeout(() => {
       const firstFocusable = modal.querySelector<HTMLElement>(
@@ -1038,7 +1285,7 @@ export const Battle = () => {
       );
       firstFocusable?.focus();
     }, 0);
-    
+
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       previousActiveElementRef.current?.focus();
@@ -1211,13 +1458,12 @@ export const Battle = () => {
             <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5">
               CODE {room?.roomCode}
             </span>
-            <span className={`text-[10px] px-2 py-0.5 border font-bold uppercase tracking-widest ${
-              battleState.status === "IN_PROGRESS"
+            <span className={`text-[10px] px-2 py-0.5 border font-bold uppercase tracking-widest ${battleState.status === "IN_PROGRESS"
                 ? "border-accent-success/40 bg-accent-success/10 text-accent-success"
                 : battleState.status === "WAITING"
-                ? "border-accent-warning/40 bg-accent-warning/10 text-accent-warning"
-                : "border-subtle-line bg-surface-hover text-subtle"
-            }`}>
+                  ? "border-accent-warning/40 bg-accent-warning/10 text-accent-warning"
+                  : "border-subtle-line bg-surface-hover text-subtle"
+              }`}>
               {battleState.status || "WAITING"}
             </span>
           </div>
@@ -1234,9 +1480,15 @@ export const Battle = () => {
             {battleState.status === "WAITING" && (
               <button
                 onClick={handleStartOperation}
-                className="flex items-center gap-1 px-2 py-1 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[9px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
+                disabled={isStartingOperation}
+                className="flex items-center gap-1 px-2 py-1 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[9px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
               >
-                <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> START
+                {isStartingOperation ? (
+                  <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                ) : (
+                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                )}
+                {isStartingOperation ? "STARTING..." : "START"}
               </button>
             )}
             {battleState.status === "IN_PROGRESS" && (
@@ -1399,7 +1651,7 @@ export const Battle = () => {
                   <div className="grid gap-2 md:grid-cols-2">
                     {blockedParticipants.map((b: any) => {
                       const pid = b.blockedUserId;
-                    const uname = b.blockedUser?.username || "Blocked Operative";
+                      const uname = b.blockedUser?.username || "Blocked Operative";
                       return (
                         <div key={pid} className="flex items-center justify-between p-2.5 rounded-lg border border-accent-danger/30 bg-base/50">
                           <div className="flex items-center gap-2.5 min-w-0">
@@ -1438,10 +1690,9 @@ export const Battle = () => {
                   battleMessages.map((msg, i) => (
                     <div
                       key={msg.id || i}
-                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${
-                        msg.socketId === socket?.id
-                          ? "bg-accent-primary/10 border border-accent-primary/30 text-fg self-end"
-                          : "bg-surface-hover/50 border border-subtle-line text-fg self-start"
+                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${msg.senderId === myUserIdRef.current
+                          ? "border-2 border-accent-primary/50 bg-raised/40 text-fg self-end"
+                          : "border-2 border-subtle-line/50 bg-raised/20 text-fg self-start"
                       }`}
                     >
                       {msg.content}
@@ -1456,7 +1707,7 @@ export const Battle = () => {
                   value={newBattleMessage}
                   onChange={(e) => setNewBattleMessage(e.target.value)}
                   placeholder="TRANSMIT..."
-                  className="flex-1 bg-base/50 border border-subtle-line p-2 rounded-lg text-fg font-mono text-xs focus:border-accent-primary focus:outline-none min-w-0"
+                  className="flex-1 border-2 border-subtle-line/50 bg-raised/30 p-2 rounded-lg text-fg font-mono text-xs placeholder:text-muted focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] outline-none transition-all min-w-0"
                 />
                 <button type="submit" className="px-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all">
                   <Send className="w-4 h-4" />
@@ -1498,23 +1749,34 @@ export const Battle = () => {
     );
   }
 
-  // ── NON-HOST STAGING ROOM (WAITING STATE) ─────────────────────────
+  // ── STAGING ROOM (WAITING STATE) ─────────────────────────────────
   // While the room is in WAITING state, participants are kept in the staging
   // area without access to the Monaco editor or problem specifications.
+  // The host sees a START OPERATION button; participants see a waiting message.
   if (battleState.status === "WAITING" && countdown <= 0 && !commencing) {
     return (
       <BattleStagingRoom
         roomName={room.name || "Untitled Operation"}
         roomCode={room.roomCode || ""}
         hostName={room.host?.username || "Commander"}
-        isHost={false}
+        isHost={isHost}
         maxUsers={room.maxUsers || 2}
         participants={roomParticipants}
         myUserId={myUserId}
         totalTimeLimitMs={room.totalTimeLimitMs}
         closesAt={room.closesAt}
-        onStart={() => {}}
+        onStart={isHost ? handleStartOperation : undefined}
+        isStartingOperation={isStartingOperation}
         onLeave={() => navigate("/lobby")}
+        onSendMessage={(content: string) => socket?.emit("send_battle_message", { roomId, content })}
+        messages={battleMessages}
+        socketId={myUserId}
+        onRejectParticipant={isHost ? (targetUserId: string) => {
+          socket?.emit("host_reject_participant", { roomId, targetUserId });
+        } : undefined}
+        onKickParticipant={isHost ? (targetUserId: string) => {
+          socket?.emit("host_kick_user", { roomId, targetUserId });
+        } : undefined}
       />
     );
   }
@@ -1610,7 +1872,7 @@ export const Battle = () => {
               </div>
 
               {/* Participant List */}
-                <div className="p-2 sm:p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
+              <div className="p-2 sm:p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
                 <p className="text-[8px] sm:text-[10px] text-faint font-mono tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
                 {loading && roomParticipants.length === 0 ? (
                   // ── Loader: operative telemetry syncing
@@ -1621,65 +1883,63 @@ export const Battle = () => {
                     </span>
                   </div>
                 ) : (
-                roomParticipants.map((p: any) => {
-                  const participantId = p.user?.id || p.userId;
-                  const uname = p.user?.username || "Operative";
-                  const intel = playerProgress[participantId];
-                  const isMe = participantId === myUserId;
-                  return (
-                    <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-1.5 sm:p-2.5 flex items-center gap-2 sm:gap-3">
-                      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold text-fg">
-                        {uname[0]?.toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono text-fg truncate">{uname}{isMe ? " (you)" : ""}</span>
+                  roomParticipants.map((p: any) => {
+                    const participantId = p.user?.id || p.userId;
+                    const uname = p.user?.username || "Operative";
+                    const intel = playerProgress[participantId];
+                    const isMe = participantId === myUserId;
+                    return (
+                      <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-1.5 sm:p-2.5 flex items-center gap-2 sm:gap-3">
+                        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold text-fg">
+                          {uname[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono text-fg truncate">{uname}{isMe ? " (you)" : ""}</span>
+                            {intel && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${intel.progress >= 100 ? "bg-accent-success/20 text-accent-success" :
+                                  intel.progress > 0 ? "bg-accent-primary/20 text-accent-primary" :
+                                    "bg-surface-hover text-subtle"
+                                }`}>{intel.progress}%</span>
+                            )}
+                          </div>
                           {intel && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                              intel.progress >= 100 ? "bg-accent-success/20 text-accent-success" :
-                              intel.progress > 0 ? "bg-accent-primary/20 text-accent-primary" :
-                              "bg-surface-hover text-subtle"
-                            }`}>{intel.progress}%</span>
+                            <div className="mt-1 w-full h-1 bg-surface-hover rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
+                                  }`}
+                                style={{ width: `${intel.progress}%` }}
+                              />
+                            </div>
+                          )}
+                          {intel?.linesWritten !== undefined && (
+                            <p className="text-[9px] text-faint mt-0.5">{intel.linesWritten} lines written</p>
                           )}
                         </div>
-                        {intel && (
-                          <div className="mt-1 w-full h-1 bg-surface-hover rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
-                              }`}
-                              style={{ width: `${intel.progress}%` }}
-                            />
-                          </div>
-                        )}
-                        {intel?.linesWritten !== undefined && (
-                          <p className="text-[9px] text-faint mt-0.5">{intel.linesWritten} lines written</p>
+                        {!isMe && (
+                          <>
+                            <button
+                              onClick={() => handleKickUser(participantId)}
+                              title={`Kick ${uname}`}
+                              className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Block ${uname} from this event?`)) handleBlockParticipant(participantId);
+                              }}
+                              title={`Block ${uname}`}
+                              className="p-1 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
+                            >
+                              <ShieldAlert className="w-3 h-3" />
+                            </button>
+                          </>
                         )}
                       </div>
-                      {!isMe && (
-                        <>
-                          <button
-                            onClick={() => handleKickUser(participantId)}
-                            title={`Kick ${uname}`}
-                            className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
-                        >
-                            <X className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Block ${uname} from this event?`)) handleBlockParticipant(participantId);
-                            }}
-                            title={`Block ${uname}`}
-                            className="p-1 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
-                          >
-                            <ShieldAlert className="w-3 h-3" />
-                          </button>
-                        </>
-                    )}
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
               </div>
 
               {/* Blocked Users Section */}
@@ -1764,9 +2024,15 @@ export const Battle = () => {
                   {isHost ? (
                     <button
                       onClick={handleStartOperation}
-                      className="w-full bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary text-accent-primary hover:text-ink font-bold tracking-widest py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-xs"
+                      disabled={isStartingOperation}
+                      className="w-full bg-accent-primary/20 hover:bg-accent-primary border border-accent-primary text-accent-primary hover:text-ink font-bold tracking-widest py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs"
                     >
-                      <Play className="w-4 h-4" /> START OPERATION
+                      {isStartingOperation ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                      {isStartingOperation ? "STARTING OPERATION..." : "START OPERATION"}
                     </button>
                   ) : (
                     <p className="text-faint text-xs">
@@ -1934,7 +2200,7 @@ export const Battle = () => {
                       ) : (
                         roomParticipants.map((p: any) => {
                           const participantId = p.user?.id || p.userId;
-                  const uname = p.user?.username || "Operative";
+                          const uname = p.user?.username || "Operative";
                           const intel = playerProgress[participantId];
                           const isMe = participantId === myUserId;
                           return (
@@ -1959,9 +2225,8 @@ export const Battle = () => {
                                 {intel && (
                                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-hover">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 ${
-                                        intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
-                                      }`}
+                                      className={`h-full rounded-full transition-all duration-500 ${intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
+                                        }`}
                                       style={{ width: `${intel.progress}%` }}
                                     />
                                   </div>
@@ -2001,7 +2266,7 @@ export const Battle = () => {
                     {battleMessages.map((msg) => (
                       <div
                         key={msg.id}
-                        className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.socketId === socket?.id ? "bg-accent-primary/10 border border-accent-primary/30 text-fg self-end" : "bg-surface-hover/50 border border-subtle-line text-fg self-start"}`}
+                        className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.senderId === myUserIdRef.current ? "border-2 border-accent-primary/50 bg-raised/40 text-fg self-end" : "border-2 border-subtle-line/50 bg-raised/20 text-fg self-start"}`}
                       >
                         {msg.content}
                       </div>
@@ -2017,7 +2282,7 @@ export const Battle = () => {
                       value={newBattleMessage}
                       onChange={(e) => setNewBattleMessage(e.target.value)}
                       placeholder="TRANSMIT..."
-                      className="flex-1 bg-base/50 border border-subtle-line p-3 rounded-lg text-fg font-mono text-xs focus:border-accent-primary focus:outline-none"
+                      className="flex-1 border-2 border-subtle-line/50 bg-raised/30 p-3 rounded-lg text-fg font-mono text-xs placeholder:text-muted focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] outline-none transition-all"
                     />
                     <button
                       type="submit"
@@ -2082,10 +2347,10 @@ export const Battle = () => {
 
           <div className="flex items-center gap-3">
             <SoundToggle />
-            <GlobalTimer 
-              startedAt={battleState.startedAt || room?.startedAt} 
-              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs} 
-              onExpire={handleTimerExpire} 
+            <GlobalTimer
+              startedAt={battleState.startedAt || room?.startedAt}
+              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs}
+              onExpire={handleTimerExpire}
               label={problems.length > 1 ? "GLOBAL:" : "TIME LEFT:"}
               variant="pill"
             />
@@ -2215,21 +2480,21 @@ export const Battle = () => {
           {/* Cell 2 — output track. Being the 2nd grid child bounds it by
               outputHeight, so the panel can never claim the editor's space. */}
           <OutputPanel
-          isExecuting={isSubmitting}
-          isOutputActive={isOutputActive}
-          isCustomInputRun={isCustomInputRun}
-          output={executionOutput}
-          outputHeight={outputHeight}
-          outputText={terminalOutput}
-          testCases={buildProblemTestCases(activeProblem as any)}
-          customInput={customInput}
-          customInputActive={customInputActive}
-          runningTestCaseIndex={runningTestCaseIndex}
-          onResizeStart={startOutputDragging}
-          setOutputHeight={setOutputHeight}
-          setCustomInput={setCustomInput}
-          setCustomInputActive={setCustomInputActive}
-          setIsOutputActive={setIsOutputActive}
+            isExecuting={isSubmitting}
+            isOutputActive={isOutputActive}
+            isCustomInputRun={isCustomInputRun}
+            output={executionOutput}
+            outputHeight={outputHeight}
+            outputText={terminalOutput}
+            testCases={buildProblemTestCases(activeProblem as any)}
+            customInput={customInput}
+            customInputActive={customInputActive}
+            runningTestCaseIndex={runningTestCaseIndex}
+            onResizeStart={startOutputDragging}
+            setOutputHeight={setOutputHeight}
+            setCustomInput={setCustomInput}
+            setCustomInputActive={setCustomInputActive}
+            setIsOutputActive={setIsOutputActive}
             onRunSingleTestCase={handleRunSingleTestCase}
           />
         </div>
@@ -2250,53 +2515,50 @@ export const Battle = () => {
             ref={battleMenuRef}
             className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll"
           >
-             <div
-               className={`absolute top-0 w-full h-1 bg-gradient-to-r ${
-                 battleResult === "WON" ? "from-accent-primary to-accent-success"
-                 : battleResult === "CHEATER" ? "from-accent-pink to-accent-danger"
-                 : "from-accent-danger to-accent-warning"
-               }`}
-             />
-             <div className="relative mb-6">
-               <div
-                 className={`absolute inset-0 blur-xl ${
-                   battleResult === "WON" ? "bg-accent-primary/30"
-                   : battleResult === "CHEATER" ? "bg-accent-pink/30"
-                   : "bg-accent-danger/30"
-                 }`}
-               />
-               {battleResult === "WON" ? (
-                 <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
-               ) : battleResult === "CHEATER" ? (
-                 <ShieldAlert className="w-16 h-16 text-accent-pink relative z-10 animate-pulse" />
-               ) : (
-                 <Skull className="w-16 h-16 text-accent-danger relative z-10" />
-               )}
-             </div>
-             <h2
-className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
-                  battleResult === "WON" ? "text-accent-primary"
-                  : battleResult === "CHEATER" ? "text-accent-pink"
-                  : "text-accent-danger"
+            <div
+              className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-accent-primary to-accent-success"
+                  : battleResult === "CHEATER" ? "from-accent-pink to-accent-danger"
+                    : "from-accent-danger to-accent-warning"
                 }`}
-             >
-               {battleResult === "WON"
-                 ? "OPERATION SUCCESSFUL"
-                 : battleResult === "CHEATER"
-                 ? "FLAGGED AS CHEATER"
-                 : "SYSTEM FAILURE"}
-             </h2>
-             <p className="text-subtle text-sm mb-4 font-sans">
-               {battleResult === "WON"
-                 ? "You completed the operation."
-                 : battleResult === "CHEATER"
-                 ? "Excessive focus loss detected. Your opponent has been declared the winner."
-                 : defeatReason === "opponent"
-                  ? "Your opponent completed the problem first."
-                  : defeatReason === "surrender"
-                  ? "You surrendered the match."
-                  : "Your time has run out."}
-             </p>
+            />
+            <div className="relative mb-6">
+              <div
+                className={`absolute inset-0 blur-xl ${battleResult === "WON" ? "bg-accent-primary/30"
+                    : battleResult === "CHEATER" ? "bg-accent-pink/30"
+                      : "bg-accent-danger/30"
+                  }`}
+              />
+              {battleResult === "WON" ? (
+                <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
+              ) : battleResult === "CHEATER" ? (
+                <ShieldAlert className="w-16 h-16 text-accent-pink relative z-10 animate-pulse" />
+              ) : (
+                <Skull className="w-16 h-16 text-accent-danger relative z-10" />
+              )}
+            </div>
+            <h2
+              className={`font-mono text-2xl font-bold tracking-widest mb-3 ${battleResult === "WON" ? "text-accent-primary"
+                  : battleResult === "CHEATER" ? "text-accent-pink"
+                    : "text-accent-danger"
+                }`}
+            >
+              {battleResult === "WON"
+                ? "OPERATION SUCCESSFUL"
+                : battleResult === "CHEATER"
+                  ? "FLAGGED AS CHEATER"
+                  : "SYSTEM FAILURE"}
+            </h2>
+            <p className="text-subtle text-sm mb-4 font-sans">
+              {battleResult === "WON"
+                ? "You completed the operation."
+                : battleResult === "CHEATER"
+                  ? "Excessive focus loss detected. Your opponent has been declared the winner."
+                  : defeatReason === "opponent"
+                    ? "Your opponent completed the problem first."
+                    : defeatReason === "surrender"
+                      ? "You surrendered the match."
+                      : "Your time has run out."}
+            </p>
             {/* Per-participant completion verdicts + event analytics */}
             <div className="w-full flex flex-col gap-2 mb-6 text-left max-h-56 overflow-y-auto themed-scroll pr-1">
               {roomParticipants?.map((p: any) => {
@@ -2352,16 +2614,27 @@ className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
                 <EventAnalytics analytics={eventAnalytics} compact />
               </div>
             )}
-            <div className="flex-1 flex justify-between gap-4 w-full">
+            <div className="flex flex-col gap-3 w-full mt-4 p-1">
+            
+              {/* Secondary Action: Return to Mainframe */}
               <button
                 onClick={() => navigate("/")}
-                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-accent-primary/50 bg-accent-primary/10 text-fg hover:bg-accent-primary/80"
+                className="group w-full py-3 px-4 font-mono text-[10px] font-bold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3.5
+               bg-slate-900/80 hover:bg-amber-500/10 text-amber-400 hover:text-amber-300 
+               border border-amber-500/30 hover:border-amber-500/60 shadow-sm 
+               flex items-center justify-center gap-2 sm:gap-2.5 active:scale-[0.98]"
               >
-                RETURN TO MAINFRAME
+                <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                <span>RETURN TO MAINFRAME</span>
               </button>
+
+              {/* Tertiary Action: Close Menu */}
               <button
                 onClick={() => setIsBattleMenuOpen(false)}
-                className="w-full py-4 font-mono font-bold tracking-widest rounded-lg transition-all border border-subtle-line bg-surface-hover/60 text-fg hover:bg-surface-hover"
+                className="w-full py-2.5 px-4 font-mono text-[10px] font-semibold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3
+               bg-slate-900/40 hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 
+               border border-slate-800 hover:border-slate-700 
+               flex items-center justify-center active:scale-[0.98]"
               >
                 CLOSE MENU
               </button>
@@ -2372,32 +2645,43 @@ className={`font-mono text-2xl font-bold tracking-widest mb-3 ${
 
       {/* SURRENDER CONFIRMATION MODAL */}
       {isSurrenderModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm p-3 sm:p-4">
           <div
             ref={surrenderModalRef}
-            className="flex flex-col items-center justify-center p-8 bg-raised border border-accent-danger/30 rounded-2xl shadow-2xl max-w-sm w-full text-center relative overflow-hidden"
+            className="flex flex-col items-center justify-center p-5 sm:p-8 bg-raised border-2 border-accent-danger/50 rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden animate-in zoom-in-95 duration-200 ease-out"
           >
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-accent-danger to-accent-warning" />
-            <Flag className="w-12 h-12 text-accent-danger mb-4" />
-            <h3 className="font-mono text-xl font-bold tracking-widest text-fg mb-2 uppercase">
-              CONFIRM SURRENDER
-            </h3>
-            <p className="text-subtle text-xs font-sans mb-6 leading-relaxed">
-              Are you sure you want to forfeit this battle? Your opponent will be declared the victor.
-            </p>
-            <div className="flex items-center gap-3 w-full font-mono text-xs">
-              <button
-                onClick={handleConfirmSurrender}
-                className="flex-1 py-3 bg-accent-danger/30 hover:bg-accent-danger/20 border border-accent-danger/40 text-accent-danger font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
-              >
-                SURRENDER
-              </button>
-              <button
-                onClick={() => setIsSurrenderModalOpen(false)}
-                className="flex-1 py-3 bg-surface-hover/80 hover:bg-surface-hover border border-subtle-line text-fg font-bold uppercase tracking-wider rounded transition-all cursor-pointer"
-              >
-                CANCEL
-              </button>
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-accent-danger via-accent-warning to-accent-danger animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-radial from-accent-danger/5 to-transparent rounded-2xl" />
+
+            <div className="relative z-10">
+              <div className="w-16 h-16 rounded-full bg-accent-danger/10 border-2 border-accent-danger/30 flex items-center justify-center mb-4 mx-auto">
+                <Flag className="w-8 h-8 text-accent-danger" />
+              </div>
+
+              <h3 className="font-mono text-lg sm:text-xl font-black tracking-widest text-accent-danger mb-2 uppercase">
+                MISSION ABORT CONFIRMATION
+              </h3>
+              <p className="text-subtle text-xs font-sans mb-6 leading-relaxed max-w-sm mx-auto">
+                Forfeiting this operation will mark you as SURRENDERED. Your opponent
+                will be declared the winner. This action cannot be undone.
+              </p>
+
+              <div className="flex items-center gap-2 sm:gap-3 w-full font-mono text-xs">
+                <button
+                  onClick={() => setIsSurrenderModalOpen(false)}
+                  className="flex-1 py-2.5 sm:py-3 bg-surface-hover/80 hover:bg-surface-hover border border-subtle-line text-fg font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={handleConfirmSurrender}
+                  className="flex-1 py-2.5 sm:py-3 bg-accent-danger/30 hover:bg-accent-danger/20 border-2 border-accent-danger/50 text-accent-danger font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer hover:shadow-[0_0_15px_rgba(255,59,92,0.4)]"
+                >
+                  <span className="flex items-center justify-center gap-1">
+                    <Flag className="w-3 h-3 fill-current" /> FORFEIT
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

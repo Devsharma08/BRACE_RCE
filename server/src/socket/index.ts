@@ -111,7 +111,7 @@ export const initSocketServer = async (io: Server) => {
 
         socket.on("disconnect", async () => {
             // False when the user still has another live socket (e.g. second tab).
-            const wentOffline = await markOffline(userId);
+            const wentOffline = await markOffline(userId, socket.id);
 
             // Clear any active matchmaking search interval for this socket
             if (activeSearchIntervals.has(socket.id)) {

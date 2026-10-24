@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { calculateBattlePoints, resolveBattleOutcome } from "../utils/elo.js";
+import { invalidateUserAnalyticsCache } from "../controllers/analytics.js";
 
 /**
  * Shared "finish an event with per-participant verdicts" logic.
@@ -77,13 +78,19 @@ export async function finishEventWithVerdicts(
           score: finalPoints,
         } as any,
       })
-      .catch(() =>
-        prisma.userPersonalPerformance.update({
-          where: { id: perf.id },
-          data: { status: verdict },
-        }),
+       .catch(() =>
+         prisma.userPersonalPerformance.update({
+           where: { id: perf.id },
+           data: { status: verdict },
+         }),
+       );
+
+      // Invalidate the analytics Redis cache so the dashboard/profile
+      // reflects fresh data instead of serving a stale cached snapshot.
+      void invalidateUserAnalyticsCache(perf.userId).catch((e) =>
+        console.error(`Failed to invalidate analytics cache for user ${perf.userId}:`, e),
       );
-  }
+    }
 
   return prisma.event.update({
     where: { id: event.id },

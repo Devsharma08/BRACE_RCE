@@ -1,5 +1,5 @@
 import type { Server } from "socket.io";
-import { getSocketId } from "./stateRedis.js";
+import { getSocketIds } from "./stateRedis.js";
 
 /**
  * Registry exposing the live Socket.IO server to HTTP controllers.
@@ -20,7 +20,7 @@ export function getIO(): Server | null {
 }
 
 /**
- * Emit `event` to every socket belonging to `userId`.
+ * Emit `event` to EVERY socket belonging to `userId` (all tabs/devices).
  * Returns true when the event reached at least one live socket.
  */
 export async function emitToUser(
@@ -30,9 +30,11 @@ export async function emitToUser(
 ): Promise<boolean> {
   if (!ioRef || !userId) return false;
   try {
-    const socketId = await getSocketId(userId);
-    if (!socketId) return false;
-    ioRef.to(socketId).emit(event, payload);
+    const socketIds = await getSocketIds(userId);
+    if (socketIds.length === 0) return false;
+    for (const sid of socketIds) {
+      ioRef.to(sid).emit(event, payload);
+    }
     return true;
   } catch (error) {
     console.error(`emitToUser(${event}) failed:`, error);

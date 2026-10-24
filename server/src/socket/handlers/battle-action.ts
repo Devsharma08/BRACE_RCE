@@ -66,17 +66,21 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
             );
         }
 
-        // Broadcast live progress to the rest of the room. `result` is
-        // deliberately omitted so a peer cannot spoof an outcome banner.
-        socket.to(roomId).emit('battle_update', {
-            userId: currentUserId,
-            status,
-            progress,
-            linesWritten
-        });
-
         const event = await resolveEvent(roomId);
         if (!event) return;
+
+        // Broadcast live progress to the rest of the room — cover all room
+        // variants so clients that joined via a different identifier receive it.
+        const targetRooms = [roomId, `room-${event.id}`, event.roomCode ?? ""].filter(Boolean) as string[];
+        const uniqueRooms = [...new Set(targetRooms)];
+        for (const tr of uniqueRooms) {
+            socket.to(tr).emit('battle_update', {
+                userId: currentUserId,
+                status,
+                progress,
+                linesWritten
+            });
+        }
 
         const passed = await hasPassedSubmission(event.id, currentUserId);
         if (!passed) return;
@@ -100,27 +104,30 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
             }
         });
 
-        io.to(roomId).emit("battle_finished", {
-            status: "FINISHED",
-            winnerId: currentUserId,
-            performances
-        });
+        // Broadcast to ALL socket room variants so every client (joined via
+        // roomCode, room-{id}, or raw roomId) receives the result.
+        const finalTargetRooms = [roomId, `room-${event.id}`, event.roomCode ?? ""].filter(Boolean) as string[];
+        const finalUniqueRooms = [...new Set(finalTargetRooms)];
+        for (const tr of finalUniqueRooms) {
+            io.to(tr).emit("battle_finished", {
+                status: "FINISHED",
+                winnerId: currentUserId,
+                performances,
+                roomId: event.id,
+                roomCode: event.roomCode,
+            });
+            socket.to(tr).emit("battle_update", {
+                userId: currentUserId,
+                status,
+                progress,
+                linesWritten
+            });
+        }
 
         // Every rating on the leaderboard is a fold over match history, so this
-        // battle just invalidated the cached copies. Drop them and tell all
-        // clients to re-fetch — the new ELO can only be derived server-side.
         await deleteCachedByPrefix("leaderboard:");
         await deleteCachedByPrefix("my-rating:");
         io.emit("leaderboard:invalidate");
-
-        // Tell the rest of the room who actually won, derived from the database.
-        socket.to(roomId).emit("battle_update", {
-            userId: currentUserId,
-            status,
-            progress,
-            result: "OPPONENT_WON",
-            linesWritten
-        });
     });
 }
 

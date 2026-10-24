@@ -84,8 +84,8 @@ async function redisDelMany(keys: string[]): Promise<number> {
 
 // In-memory fallbacks for when Redis is unavailable
 const memoryLobbies = new Map<string, CustomLobby>();
-const memoryOnlineUsers = new Map<string, string>();
-const memoryUserSocketCounts = new Map<string, number>();
+// Changed: track a SET of socket ids per user instead of a single one.
+const memoryOnlineUsers = new Map<string, Set<string>>();
 const memorySearchIntervals = new Map<string, NodeJS.Timeout>();
 
 export const MAX_SOCKETS_PER_USER = 5;
@@ -122,49 +122,103 @@ export async function getAllLobbies(): Promise<LobbyWithId[]> {
   return Array.from(memoryLobbies.entries()).map(([id, lobby]) => ({ ...lobby, id }));
 }
 
+/**
+ * Register a new socket for this user. Returns false when the connection
+ * limit has been reached. Stores ALL socket ids (up to MAX_SOCKETS_PER_USER)
+ * so emitToUser can fan out to every live tab.
+ */
 export async function markOnline(userId: string, socketId: string): Promise<boolean> {
-  const currentCount = memoryUserSocketCounts.get(userId) ?? 0;
+  const existing = memoryOnlineUsers.get(userId) ?? new Set<string>();
 
-  if (currentCount >= MAX_SOCKETS_PER_USER) {
+  if (existing.size >= MAX_SOCKETS_PER_USER) {
     return false;
   }
 
-  memoryOnlineUsers.set(userId, socketId);
-  memoryUserSocketCounts.set(userId, currentCount + 1);
+  existing.add(socketId);
+  memoryOnlineUsers.set(userId, existing);
 
-  await redisSet(cacheKey(`user:${userId}:socket`), socketId, 86400);
-  await redisSet(cacheKey(`user:${userId}:sockets`), currentCount + 1, 86400);
+  // Persist the full set to Redis so cross-process workers can read it.
+  const arr = Array.from(existing);
+  await redisSet(cacheKey(`user:${userId}:sockets`), arr, 86400);
 
   return true;
 }
 
-export async function markOffline(userId: string): Promise<boolean> {
-  const remaining = (memoryUserSocketCounts.get(userId) ?? 1) - 1;
+/**
+ * Remove a specific socket for this user. Returns true when the user
+ * has NO remaining live sockets (i.e. they went fully offline).
+ * Unlike the old implementation, a remaining live socket is always
+ * preserved in the set so emitToUser never targets a dead id.
+ */
+export async function markOffline(userId: string, socketId?: string): Promise<boolean> {
+  const existing = memoryOnlineUsers.get(userId);
 
-  if (remaining > 0) {
-    memoryUserSocketCounts.set(userId, remaining);
-    return false;
+  if (!existing || existing.size === 0) {
+    memoryOnlineUsers.delete(userId);
+    await redisDel(cacheKey(`user:${userId}:sockets`));
+    return true;
   }
 
-  memoryUserSocketCounts.delete(userId);
-  memoryOnlineUsers.delete(userId);
+  if (socketId) {
+    existing.delete(socketId);
+  } else {
+    // Legacy callers without a socketId: remove one arbitrary entry.
+    const first = existing.values().next().value;
+    if (first) existing.delete(first);
+  }
 
-  await redisDel(cacheKey(`user:${userId}:socket`));
-  await redisDel(cacheKey(`user:${userId}:sockets`));
+  if (existing.size === 0) {
+    memoryOnlineUsers.delete(userId);
+    await redisDel(cacheKey(`user:${userId}:sockets`));
+    return true;
+  }
 
-  return true;
+  // User still has live sockets — update the stored set.
+  memoryOnlineUsers.set(userId, existing);
+  await redisSet(cacheKey(`user:${userId}:sockets`), Array.from(existing), 86400);
+  return false;
 }
 
+/**
+ * Return a Map of userId → one arbitrary socketId for each online user.
+ * Kept for backward compatibility with presence broadcasts.
+ */
 export async function getOnlineUsers(): Promise<Map<string, string>> {
-  const cached = await redisGet<Map<string, string>>(cacheKey("user:online"));
-  if (cached) return new Map(cached);
-  return new Map(memoryOnlineUsers);
+  const result = new Map<string, string>();
+  for (const [userId, sockets] of memoryOnlineUsers) {
+    const first = sockets.values().next().value;
+    if (first) result.set(userId, first);
+  }
+  return result;
 }
 
+/**
+ * Return ONE socket id for this user (backward compat).
+ * Prefers the in-memory set; falls back to Redis.
+ */
 export async function getSocketId(userId: string): Promise<string | undefined> {
-  const cached = await redisGet<string>(cacheKey(`user:${userId}:socket`));
-  if (cached) return cached;
-  return memoryOnlineUsers.get(userId);
+  const mem = memoryOnlineUsers.get(userId);
+  if (mem && mem.size > 0) {
+    return mem.values().next().value;
+  }
+  // Fall back to Redis (cross-process).
+  const cached = await redisGet<string[]>(cacheKey(`user:${userId}:sockets`));
+  if (cached && cached.length > 0) return cached[0];
+  return undefined;
+}
+
+/**
+ * Return ALL socket ids for this user so emitToUser can fan out to
+ * every live tab. This is the primary method for cross-tab delivery.
+ */
+export async function getSocketIds(userId: string): Promise<string[]> {
+  const mem = memoryOnlineUsers.get(userId);
+  if (mem && mem.size > 0) {
+    return Array.from(mem);
+  }
+  // Fall back to Redis (cross-process).
+  const cached = await redisGet<string[]>(cacheKey(`user:${userId}:sockets`));
+  return cached ?? [];
 }
 
 export const activeSearchIntervals = new Map<string, NodeJS.Timeout>();
@@ -189,5 +243,4 @@ export async function clearAllSocketState(): Promise<void> {
   }
   memoryLobbies.clear();
   memoryOnlineUsers.clear();
-  memoryUserSocketCounts.clear();
 }

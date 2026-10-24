@@ -13,7 +13,6 @@ export default function GlobalModals() {
     acceptChallenge,
     declineChallenge,
   } = useSocket();
-
   // Global `friends:update` invalidation. The Friends workspace registers its
   // own listener, but a request can be ACCEPTED from the bell popover on ANY
   // page (NotificationCenter) — without a global listener the shared
@@ -69,15 +68,18 @@ export default function GlobalModals() {
             <div className="flex gap-4 w-full relative z-10">
               <button
                 disabled={isClicked}
-                onClick={declineMatch}
+                onClick={() => {
+                  declineMatch();}}
                 className="w-1/2 py-4 bg-accent-danger/10 hover:bg-accent-danger/30 border border-accent-danger/50 text-accent-danger font-mono font-bold tracking-widest rounded-lg transition-all"
               >
                 DECLINE
               </button>
               <button
                 disabled={isClicked}
-                onClick={acceptMatch}
-                className="w-1/2 py-4 bg-accent-primary/10 hover:bg-accent-primary border border-accent-primary/80 hover:border-accent-primary text-accent-primary font-mono font-bold tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(0,212,255,0.4)]"
+                onClick={() => {
+                  acceptMatch();
+                  }}
+                className="w-1/2 py-4 bg-accent-primary/10 hover:bg-accent-primary/30 border border-accent-primary/80 hover:border-accent-primary text-accent-primary font-mono font-bold tracking-widest rounded-lg transition-all shadow-[0_0_15px_rgba(0,212,255,0.4)]"
               >
                 ACCEPT
               </button>

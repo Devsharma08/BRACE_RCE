@@ -505,7 +505,7 @@ const CreateRoom = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Graph traversal / night shift"
-                      className="mt-2 h-10 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/50 sm:h-12 sm:px-4 sm:text-sm"
+                      className="mt-2 h-10 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-sm"
                     />
                   </label>
 
@@ -516,7 +516,7 @@ const CreateRoom = () => {
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
                       placeholder="Describe the room…"
-                      className="mt-2 min-h-20 w-full border border-subtle-line bg-void p-3 font-sans text-xs text-fg outline-none placeholder:text-faint focus:border-accent/50 sm:p-4 sm:text-sm"
+                      className="mt-2 min-h-20 w-full border-2 border-subtle-line/50 bg-raised/30 p-3 font-sans text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-sm"
                     />
                   </label>
 
@@ -526,7 +526,7 @@ const CreateRoom = () => {
                       <select
                         value={maxUsers}
                         onChange={(e) => setMaxUsers(Number(e.target.value))}
-                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50"
+                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                       >
                         {[2, 4, 6, 8].map((count) => (
                           <option key={count} value={count}>
@@ -540,7 +540,7 @@ const CreateRoom = () => {
                       <select
                         value={timeLimitOption}
                         onChange={(e) => setTimeLimitOption(e.target.value)}
-                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50"
+                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                       >
                         <option value="AUTO">Auto — {autoMinutes || 0} min from queue</option>
                         {TIME_LIMIT_OPTIONS.map((minutes) => (
@@ -585,7 +585,7 @@ const CreateRoom = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Leave blank for open access"
-                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-4 text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
+                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-4 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
                       />
                     </label>
                   )}
@@ -598,7 +598,7 @@ const CreateRoom = () => {
                         type="datetime-local"
                         value={opensAt}
                         onChange={(e) => setOpensAt(e.target.value)}
-                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50 [color-scheme:dark]"
+                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
                       />
                     </label>
                     <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
@@ -607,7 +607,7 @@ const CreateRoom = () => {
                         type="datetime-local"
                         value={closesAt}
                         onChange={(e) => setClosesAt(e.target.value)}
-                        className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50 [color-scheme:dark]"
+                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
                       />
                     </label>
                   </div>
@@ -744,7 +744,7 @@ const CreateRoom = () => {
                           value={customName}
                           onChange={(e) => setCustomName(e.target.value)}
                           placeholder="e.g. Invert Binary Tree"
-                          className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
+                          className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
                         />
                       </label>
                       <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle">
@@ -752,7 +752,7 @@ const CreateRoom = () => {
                         <select
                           value={customDifficulty}
                           onChange={(e) => setCustomDifficulty(e.target.value)}
-                          className="mt-2 h-11 w-full border border-subtle-line bg-void px-3 text-xs text-fg outline-none focus:border-accent/50"
+                          className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                         >
                           <option value="EASY">EASY (15 min)</option>
                           <option value="MEDIUM">MEDIUM (20 min)</option>
@@ -797,7 +797,7 @@ const CreateRoom = () => {
                                 setCustomHints(h);
                               }}
                               placeholder="Hint text…"
-                              className="h-10 flex-1 border border-subtle-line bg-void px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent-warning/50"
+                              className="h-10 flex-1 border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-warning/50 focus:bg-raised/50 transition-all"
                             />
                             <button
                               type="button"
@@ -999,7 +999,7 @@ const CreateRoom = () => {
                       setProblemPage(1);
                     }}
                     aria-label="Filter by difficulty"
-                    className="h-10 w-28 shrink-0 border border-subtle-line bg-void px-2 text-xs text-fg outline-none focus:border-accent/40"
+                    className="h-10 w-28 shrink-0 border-2 border-subtle-line/50 bg-raised/30 px-2 text-xs text-fg outline-none focus:border-accent/40 focus:bg-raised/50 transition-all"
                   >
                     <option value="">All levels</option>
                     <option value="EASY">EASY</option>
@@ -1067,7 +1067,7 @@ const CreateRoom = () => {
                         setCustomPage(1);
                       }}
                       placeholder="Search or create custom problem"
-                      className="h-10 min-w-0 flex-1 border border-subtle-line bg-void px-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
+                      className="h-10 min-w-0 flex-1 border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/40 focus:bg-raised/50 transition-all"
                     />
                     <button
                       type="button"

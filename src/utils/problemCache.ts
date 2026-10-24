@@ -77,6 +77,29 @@ export function invalidateProblemQueries(queryClient: QueryClient): void {
 }
 
 /**
+ * Invalidate all user-facing stats and metrics after a battle finishes.
+ *
+ * The server emits `leaderboard:invalidate` after battles, but the Dashboard
+ * and Profile pages subscribe to that event via useSocketInvalidation — only
+ * while they are mounted. When the user is ON the Battle page, those
+ * subscribers are not active, so the invalidation is silently dropped.
+ *
+ * Calling this from the Battle page's completion handlers ensures the
+ * Dashboard/Profile queries are invalidated while the user is still on the
+ * battle, so they refetch fresh data when the user navigates back.
+ */
+export function invalidatePostBattleQueries(queryClient: QueryClient): void {
+  invalidateProblemQueries(queryClient);
+  void queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+  void queryClient.invalidateQueries({ queryKey: ["dashboard-profile"] });
+  void queryClient.invalidateQueries({ queryKey: ["dashboard-problems"] });
+  void queryClient.invalidateQueries({ queryKey: ["profile-stats"] });
+  void queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+  void queryClient.invalidateQueries({ queryKey: ["my-rating"] });
+  void queryClient.invalidateQueries({ queryKey: ["user-analytics"] });
+}
+
+/**
  * Invalidate only system problems queries (more targeted)
  */
 export function invalidateSystemProblems(queryClient: QueryClient): void {

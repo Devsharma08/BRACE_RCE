@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Eye, Users, Zap, ShieldAlert, Trophy, X, Bell, BellOff, Volume2, VolumeX, Wifi, WifiOff, Activity } from "lucide-react";
+import { ArrowLeft, Eye, Users, Zap, ShieldAlert, Trophy, X, Bell, BellOff, Volume2, VolumeX } from "lucide-react";
 import { api } from "../../config/api";
 import { participantVerdict, verdictStyle } from "../../utils/participantVerdict";
 import { useSocket } from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
 import { SpectateNotificationCenter, useSpectateNotificationCenter } from "../../components/features/SpectateNotificationCenter";
 
 const formatRelativeTime = (value?: string | null) => {
@@ -54,7 +55,8 @@ interface BattleData {
 const AdminSpectateView = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const { socket, isConnected } = useSocket();
+  const { socket, joinBattleRoom, leaveBattleRoom, battleRoomStatus } = useSocket();
+  const { user } = useAuth();
   const [selectedParticipant, setSelectedParticipant] = useState<string | null>(null);
   const [muted, setMuted] = useState(() => {
     if (typeof window !== "undefined" && roomId) {
@@ -63,7 +65,6 @@ const AdminSpectateView = () => {
     return false;
   });
   const [livePerformances, setLivePerformances] = useState<Map<string, { progress: number; status: string; linesWritten: number }>>(new Map());
-  const [socketJoined, setSocketJoined] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount, addEvent } = useSpectateNotificationCenter();
 
@@ -76,75 +77,123 @@ const AdminSpectateView = () => {
 
   const battle = battleData?.battle as BattleData | undefined;
 
-  // Join socket room for real-time updates
+  // ─────────────────────────────────────────────────────────────────────
+  // Centralized room joining/leaving via SocketContext.
+  // Eliminates the double join_battle race condition with Battle.tsx.
+  // SocketContext manages room membership with deduplication and auto-rejoin.
+  // ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (socket && isConnected && roomId && !socketJoined) {
-      socket.emit("join_battle", roomId);
-      setSocketJoined(true);
+    if (!socket || !roomId) return;
 
-      // Listen for real-time battle updates
-      const handleBattleUpdate = (data: any) => {
-        // Update local performance data — keyed by userId (performances are
-        // keyed by userId in getMergedPerformances, NOT by performance id).
-        setLivePerformances(prev => {
-          const next = new Map(prev);
-          next.set(data.userId, {
-            progress: data.progress ?? 0,
-            status: data.status ?? "IN_PROGRESS",
-            linesWritten: data.linesWritten ?? 0,
-          });
-          return next;
+    // Use centralized joinBattleRoom — handles deduplication internally
+    if (battleRoomStatus !== "JOINED") {
+      joinBattleRoom(roomId, (ack) => {
+        if (!ack?.success) {
+          console.warn("[AdminSpectateView] Failed to join battle room:", ack?.error);
+        }
+      });
+    }
+
+    return () => {
+      // Leave the room when navigating away — notify participants since
+      // spectate view doesn't involve active battle participation.
+      if (battleRoomStatus === "JOINED") {
+        leaveBattleRoom(roomId, { notifyParticipants: false });
+      }
+    };
+  }, [socket, roomId, battleRoomStatus, joinBattleRoom, leaveBattleRoom]);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Socket Event Listeners
+  // ─────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket || !roomId) return;
+
+    // Listen for real-time battle updates
+    const handleBattleUpdate = (data: any) => {
+      // Update local performance data — keyed by userId (performances are
+      // keyed by userId in getMergedPerformances, NOT by performance id).
+      setLivePerformances(prev => {
+        const next = new Map(prev);
+        next.set(data.userId, {
+          progress: data.progress ?? 0,
+          status: data.status ?? "IN_PROGRESS",
+          linesWritten: data.linesWritten ?? 0,
         });
+        return next;
+      });
 
-        // Add to notification center if muted
-        if (muted && data.status && (data.status.includes("PASSED") || data.status.includes("COMPLETED"))) {
-          addEvent({
-            type: "battle_update",
-            roomId: roomId || "",
-            roomName: battle?.name || `Battle ${battle?.roomCode || roomId}`,
-            message: `Player ${data.userId.slice(0, 8)}: ${data.status} (${data.progress}%)`,
-            data,
-          });
-        }
-      };
+      // Add to notification center if muted
+      if (muted && data.status && (data.status.includes("PASSED") || data.status.includes("COMPLETED"))) {
+        addEvent({
+          type: "battle_update",
+          roomId: roomId || "",
+          roomName: battle?.name || `Battle ${battle?.roomCode || roomId}`,
+          message: `Player ${data.userId.slice(0, 8)}: ${data.status} (${data.progress}%)`,
+          data,
+        });
+      }
+    };
 
-      // A new participant joined the room — refetch so the roster + their
-      // submission surface appears immediately instead of waiting for the
-      // 5s poll.
-      const handleParticipantsUpdated = (data: any) => {
-        if (data?.performances) refetch();
-      };
+     // A new participant joined the room — refetch so the roster + their
+     // submission surface appears immediately instead of waiting for the
+     // 5s poll.
+     const handleParticipantsUpdated = (data: any) => {
+       if (data?.performances) refetch();
+     };
 
-      const handleBattleFinished = (data: any) => {
-        if (muted) {
-          addEvent({
-            type: "battle_finished",
-            roomId: roomId || "",
-            roomName: battle?.name || `Battle ${battle?.roomCode || roomId}`,
-            message: `Battle finished - Winner: ${data.winnerId?.slice(0, 8) || "undetermined"}`,
-            data,
-          });
-        }
+      // A participant's presence was announced in real-time.
+      // The server will also send participants_updated immediately,
+      // which triggers handleParticipantsUpdated to refetch.
+      const handleParticipantJoined = (data: { userId: string; username?: string }) => {
         refetch();
       };
 
-      socket.on("battle_update", handleBattleUpdate);
-      socket.on("battle_finished", handleBattleFinished);
-      socket.on("participants_updated", handleParticipantsUpdated);
-      // Room force-closed (host ended / admin terminated / deleted / schedule).
-      socket.on("room_force_closed", handleParticipantsUpdated);
+    const handleBattleFinished = (data: any) => {
+      if (muted) {
+        addEvent({
+          type: "battle_finished",
+          roomId: roomId || "",
+          roomName: battle?.name || `Battle ${battle?.roomCode || roomId}`,
+          message: `Battle finished - Winner: ${data.winnerId?.slice(0, 8) || "undetermined"}`,
+          data,
+        });
+      }
+      refetch();
+    };
 
-      return () => {
-        socket.off("battle_update", handleBattleUpdate);
-        socket.off("battle_finished", handleBattleFinished);
-        socket.off("participants_updated", handleParticipantsUpdated);
-        socket.off("room_force_closed", handleParticipantsUpdated);
-        if (roomId) {
-          socket.emit("leave_room", roomId);
-        }
-      };
-    }
-  }, [socket, isConnected, roomId, socketJoined, muted, battle, addEvent]);
+    const handleParticipantLeft = (data: { userId: string; username?: string; reason?: string }) => {
+      // Remove from live performances map
+      setLivePerformances(prev => {
+        const next = new Map(prev);
+        next.delete(data.userId);
+        return next;
+      });
+
+      // Refetch to update the roster
+      refetch();
+    };
+
+    const handleRoomForceClosed = (data: any) => {
+      refetch();
+    };
+
+    socket.on("battle_update", handleBattleUpdate);
+    socket.on("battle_finished", handleBattleFinished);
+    socket.on("participants_updated", handleParticipantsUpdated);
+    socket.on("participant_joined", handleParticipantJoined);
+    socket.on("participant_left", handleParticipantLeft);
+    socket.on("room_force_closed", handleRoomForceClosed);
+
+    return () => {
+      socket.off("battle_update", handleBattleUpdate);
+      socket.off("battle_finished", handleBattleFinished);
+      socket.off("participants_updated", handleParticipantsUpdated);
+      socket.off("participant_joined", handleParticipantJoined);
+      socket.off("participant_left", handleParticipantLeft);
+      socket.off("room_force_closed", handleRoomForceClosed);
+    };
+  }, [socket, roomId, muted, battle, addEvent, refetch]);
 
   const handleBack = () => {
     navigate("/admin");

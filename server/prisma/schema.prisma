@@ -8,139 +8,363 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String?  @unique
-  password  String?
-  role      String   @default("USER")
-  avatarUrl String?
-  bio String? @default("try beat me")
-  
-  performances UserPersonalPerformance[]
-
-  matchmakingQueue  MatchmakingQueue[]
-
-
-  SentMessage Message[] @relation("SentMessage")
-  receivedMessages Message[] @relation("ReceivedMessages")
-
-  // room-scoped participant ↔ moderator report threads
-  SentReports     ReportMessage[] @relation("ReportSender")
-  ReceivedReports ReportMessage[] @relation("ReportRecipient")
-
-  hostedEvents Event[] @relation("HostedEvents")
-  createdProblems Problem[] @relation("UserProblems")
-
-  sendRequest FriendRequest[] @relation("SentRequest")
-  receivedRequest FriendRequest[] @relation("ReceivedRequest")
-
-  // admin reports authored
-  reportsFiled QuestionReport[] @relation("ReportsFiled")
-
-  // admin feedback authored
-  feedback Feedback[]
-
+  id                   String                    @id @default(uuid())
+  username             String                    @unique
+  email                String?                   @unique
+  password             String?
+  role                 String                    @default("USER")
+  avatarUrl            String?
+  bio                  String?                   @default("try beat me")
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  hostedEvents         Event[]                   @relation("HostedEvents")
+  blockedUsers         EventBlock[]              @relation("BlockedBy")
+  blockedInEvents      EventBlock[]              @relation("BlockedUsers")
+  feedback             Feedback[]
+  receivedRequest      FriendRequest[]           @relation("ReceivedRequest")
+  sendRequest          FriendRequest[]           @relation("SentRequest")
+  matchmakingQueue     MatchmakingQueue[]
+  receivedMessages     Message[]                 @relation("ReceivedMessages")
+  SentMessage          Message[]                 @relation("SentMessage")
+  notifications        Notification[]            @relation("UserNotifications")
+  createdProblems      Problem[]                 @relation("UserProblems")
+  reportsFiled         QuestionReport[]          @relation("ReportsFiled")
+  ReceivedReports      ReportMessage[]           @relation("ReportRecipient")
+  SentReports          ReportMessage[]           @relation("ReportSender")
   TemplateSubscription TemplateSubscription[]
-  
-  // friends system (self-relation)
-  friends User[] @relation("UserFriends")
-  friendOf User[] @relation("UserFriends")
-
-  notifications Notification[] @relation("UserNotifications")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  problemProgress UserProblemProgress[]
-
-  // learning paths (roadmap S4)
-  learningProgress UserLearningProgress[]
-   learningSummary  UserLearningSummary?
-
-  // event-scoped blocks (moderator action)
-  blockedInEvents EventBlock[] @relation("BlockedUsers")
-  blockedUsers     EventBlock[] @relation("BlockedBy")
+  learningProgress     UserLearningProgress[]
+  learningSummary      UserLearningSummary?
+  performances         UserPersonalPerformance[]
+  problemProgress      UserProblemProgress[]
+  User_A               User[]                    @relation("UserFriends")
+  User_B               User[]                    @relation("UserFriends")
 }
 
 model FriendRequest {
-  id String @id @default(uuid())
-  senderId String
-  sender User @relation("SentRequest",fields:[senderId],references:[id])
-  receiverId String  
-  receiver User @relation("ReceivedRequest",fields:[receiverId],references:[id])
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+  receiver   User     @relation("ReceivedRequest", fields: [receiverId], references: [id])
+  sender     User     @relation("SentRequest", fields: [senderId], references: [id])
 
-  status String @default("PENDING") // PENDING,ACCEPTED,DECLINED,BLOCK
-
-  createdAt DateTime @default(now())
-  @@unique([senderId,receiverId]) // prevent duplicate requests
+  @@unique([senderId, receiverId])
 }
 
-// ------------------------------------------------------
-// PROBLEMS & EXECUTION
-// ------------------------------------------------------
+model Problem {
+  id                 String                @id @default(uuid())
+  name               String
+  problem_number     Int?                  @unique
+  github_oid         String?               @unique
+  problem_definition String
+  problem_hints      String[]
+  difficulty_level   Level
+  creatorId          String?
+  isCustom           Boolean               @default(false)
+  timeLimitMs        Int?                  @default(600000)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  data_structure     String?
+  code_snippets      CodeSnippet[]
+  codeSubmissions    CodeSubmission[]
+  commonEvents       Event[]
+  creator            User?                 @relation("UserProblems", fields: [creatorId], references: [id])
+  test_cases         TestCase[]
+  userProgress       UserProblemProgress[]
+  events             Event[]               @relation("EventProblems")
+}
+
+model TestCase {
+  id             String  @id @default(uuid())
+  input          String
+  expectedOutput String
+  is_public      Boolean @default(true)
+  problemId      String
+  problem        Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model CodeSnippet {
+  id          String  @id @default(uuid())
+  language    String
+  code        String
+  wrapperCode String?
+  problemId   String
+  problem     Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id               String                    @id @default(uuid())
+  name             String?
+  type             EventType                 @default(PUBLIC)
+  status           String                    @default("WAITING")
+  version          Int?                      @default(1)
+  isPublic         Boolean?                  @default(true)
+  description      String?
+  hostId           String?
+  isTemplate       Boolean?                  @default(false)
+  commonProblemId  String?
+  roomCode         String?                   @unique
+  password         String?
+  maxUsers         Int                       @default(2)
+  totalTimeLimitMs Int?
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  closesAt         DateTime?
+  opensAt          DateTime?
+  openedNotified   Boolean                   @default(false)
+  commonProblem    Problem?                  @relation(fields: [commonProblemId], references: [id])
+  host             User?                     @relation("HostedEvents", fields: [hostId], references: [id])
+  blockedUsers     EventBlock[]
+  subscribers      TemplateSubscription[]
+  performances     UserPersonalPerformance[]
+  problems         Problem[]                 @relation("EventProblems")
+}
+
+model UserPersonalPerformance {
+  id              String           @id @default(uuid())
+  userId          String
+  eventId         String
+  questionsSolved Int              @default(0)
+  timeTakenMs     Int?
+  status          String           @default("PENDING")
+  score           Int              @default(0)
+  createdAt       DateTime         @default(now())
+  submissions     CodeSubmission[]
+  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+}
+
+model EventBlock {
+  id            String   @id @default(uuid())
+  eventId       String
+  blockedUserId String
+  blockedById   String
+  reason        String?
+  createdAt     DateTime @default(now())
+  blockedBy     User     @relation("BlockedBy", fields: [blockedById], references: [id])
+  blockedUser   User     @relation("BlockedUsers", fields: [blockedUserId], references: [id])
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, blockedUserId])
+}
+
+model CodeSubmission {
+  id                        String                  @id @default(uuid())
+  UserPersonalPerformanceId String
+  problemId                 String
+  submittedCode             String
+  language                  String                  @default("javascript")
+  status                    String                  @default("PENDING")
+  runtimeMs                 Int?
+  memoryKb                  Int?
+  passedCase                Int
+  totalCases                Int
+  isBestSubmission          Boolean                 @default(false)
+  attemptNumber             Int                     @default(1)
+  createdAt                 DateTime                @default(now())
+  userPersonalPerformance   UserPersonalPerformance @relation(fields: [UserPersonalPerformanceId], references: [id], onDelete: Cascade)
+  problem                   Problem                 @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([UserPersonalPerformanceId])
+  @@index([problemId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  senderId   String
+  receiverId String
+  createdAt  DateTime @default(now())
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender     User     @relation("SentMessage", fields: [senderId], references: [id])
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String
+  type      NotificationType   @default(SYSTEM)
+  title     String
+  body      String
+  data      Json?
+  status    NotificationStatus @default(UNREAD)
+  createdAt DateTime           @default(now())
+  readAt    DateTime?
+  user      User               @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([createdAt])
+}
+
+model Feedback {
+  id        String         @id @default(uuid())
+  userId    String
+  content   String
+  status    FeedbackStatus @default(PENDING)
+  adminNote String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model QuestionReport {
+  id         String         @id @default(uuid())
+  questionId String
+  reportedBy String
+  reason     String
+  status     ReportStatus   @default(FLAGGED)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  category   ReportCategory @default(OTHER)
+  detail     String?
+  resolvedAt DateTime?
+  reporter   User           @relation("ReportsFiled", fields: [reportedBy], references: [id])
+
+  @@index([questionId, status])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model MatchmakingQueue {
+  id                  String            @id @default(uuid())
+  userId              String
+  preferredDifficulty Level
+  status              MatchmakingStatus @default(WAITING)
+  joinedAt            DateTime          @default(now())
+  matchedAt           DateTime?
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, preferredDifficulty])
+}
+
+model TemplateSubscription {
+  id                String   @id @default(uuid())
+  userId            String
+  templateEventId   String
+  subscribedVersion Int
+  createdAt         DateTime @default(now())
+  templateEvent     Event    @relation(fields: [templateEventId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateEventId])
+}
+
+model UserProblemProgress {
+  id              String    @id @default(uuid())
+  userId          String
+  problemId       String
+  isSolved        Boolean   @default(false)
+  solvedAt        DateTime?
+  attempts        Int       @default(0)
+  lastCode        String?
+  lastLanguage    String?   @default("javascript")
+  submissionTimes String[]  @default([])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  problem         Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+}
+
+model LearningItem {
+  id             String                 @id @default(uuid())
+  name           String
+  order          Int
+  category       String                 @default("")
+  description    String?
+  problemIds     String[]               @default([])
+  prerequisites  String[]               @default([])
+  nextStructures String[]               @default([])
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  progress       UserLearningProgress[]
+
+  @@index([order])
+  @@index([category])
+}
+
+model UserLearningProgress {
+  id             String       @id @default(uuid())
+  userId         String
+  learningItemId String
+  progressStatus String       @default("NOT_STARTED")
+  lastVisited    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  learningItem   LearningItem @relation(fields: [learningItemId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, learningItemId])
+  @@index([userId])
+  @@index([learningItemId])
+}
+
+model UserLearningSummary {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  completedCount Int      @default(0)
+  lastUpdated    DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ExecutionQuota {
+  keyHash   String
+  date      String
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@id([keyHash, date])
+}
+
+model ExecutionLog {
+  id         String   @id @default(uuid())
+  keyHash    String
+  userId     String?
+  mode       String   @default("RUN")
+  origin     String?
+  status     Int      @default(200)
+  durationMs Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([keyHash, createdAt])
+}
+
+model ReportMessage {
+  id          String   @id @default(uuid())
+  eventId     String
+  category    String
+  content     String
+  status      String   @default("OPEN")
+  senderId    String
+  recipientId String
+  createdAt   DateTime @default(now())
+  recipient   User     @relation("ReportRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender      User     @relation("ReportSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, senderId])
+  @@index([eventId, recipientId])
+}
 
 enum Level {
   EASY
   MEDIUM
   HARD
 }
-
-model Problem {
-  id                 String     @id @default(uuid())
-  name               String
-  problem_number     Int?        @unique
-  github_oid         String?     @unique // Link to your GitHub file structure
-  problem_definition String     @db.Text
-  problem_hints      String[]
-  difficulty_level   Level
-
-  //custom problem fields
-  creatorId String?
-  creator User? @relation("UserProblems",fields:[creatorId],references:[id])
-  isCustom Boolean @default(false)
-  
-  test_cases         TestCase[]
-  code_snippets      CodeSnippet[]
-  
-  commonEvents       Event[]
-  codeSubmissions    CodeSubmission[]
-
-  timeLimitMs Int? @default(600000)
-  data_structure String? @db.Text
-
-  // playlist relation (connects to event)
-  events Event[] @relation("EventProblems")
-
-  // user progress tracking
-  userProgress UserProblemProgress[]
-  
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-}
-
-model TestCase {
-  id             String   @id @default(uuid())
-  input          String   @db.Text // Input to be piped into Docker/Piston
-  expectedOutput String   @db.Text // Output to compare against
-  is_public      Boolean  @default(true) // Public cases show in the UI
-  
-  problemId      String
-  problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-}
-
-model CodeSnippet {
-  id          String  @id @default(uuid())
-  language    String  // "java", "javascript", "python", "c", "cpp"
-  code        String  @db.Text // The boilerplate/starter code
-  wrapperCode String? @db.Text // Hidden wrapper code
-  
-  problemId   String
-  problem     Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-}
-
-// ------------------------------------------------------
-// PVP CODING BATTLES
-// ------------------------------------------------------
 
 enum EventType {
   FRIENDS
@@ -150,131 +374,6 @@ enum EventType {
   CUSTOM
   TOURNAMENT
 }
-
-model Event {
-  id          String    @id @default(uuid())
-  name        String?   // Optional event name
-  type        EventType @default(PUBLIC)
-  status      String    @default("WAITING") // WAITING, IN_PROGRESS, FINISHED
-  version Int? @default(1)
-
-  // Advance rooom fields
-  isPublic Boolean? @default(true) // visible in lobby
-  description String? @db.Text
-  hostId String?
-  host User? @relation("HostedEvents",fields:[hostId],references:[id])
-  isTemplate Boolean? @default(false)
-  
-  // If all users in the event solve the same question
-  commonProblemId String?
-  commonProblem   Problem? @relation(fields: [commonProblemId], references: [id])
-  
-   // Participants and their performances
-  performances UserPersonalPerformance[]
-
-  subscribers TemplateSubscription[]
-
-  // Event-scoped blocks (moderator kicks/bans)
-  blockedUsers EventBlock[]
-
-  // create room support
-  roomCode String? @unique 
-  password String?
-  maxUsers Int @default(2)
-  totalTimeLimitMs Int? 
-
-  // Scheduled opening / auto-close (room scheduling).
-  // `closesAt` is the authoritative end time when set; otherwise
-  // the battle ends at startedAt + totalTimeLimitMs.
-  opensAt   DateTime?
-  closesAt  DateTime?
-
-  // playlist relation (connects to problem)
-  problems Problem[] @relation("EventProblems")
-  
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model UserPersonalPerformance {
-  id           String   @id @default(uuid())
-  
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  eventId      String
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  // Metrics
-  questionsSolved Int     @default(0)
-  timeTakenMs     Int?
-  status          String  @default("PENDING") // PENDING, COMPLETED, PASSED, FAILED, TIMEOUT, SURRENDER
-  score           Int     @default(0)
-  
-  submissions CodeSubmission[]
-  createdAt       DateTime @default(now())
-
-  @@index([userId])
-  @@index([eventId])
-}
-
-model EventBlock {
-  id            String   @id @default(uuid())
-  eventId       String
-  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  blockedUserId String
-  blockedUser   User     @relation("BlockedUsers", fields: [blockedUserId], references: [id])
-  blockedById   String
-  blockedBy     User     @relation("BlockedBy", fields: [blockedById], references: [id])
-  reason        String?  @db.Text
-  createdAt     DateTime @default(now())
-
-  @@unique([eventId, blockedUserId])
-}
-
-model CodeSubmission{
-  id String @id @default(uuid())
-  UserPersonalPerformanceId String
-  userPersonalPerformance UserPersonalPerformance @relation(references:[id],fields:[UserPersonalPerformanceId],onDelete: Cascade)
-  
-  problemId String
-  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  submittedCode String @db.Text
-  language String @default("javascript")
-  status String @default("PENDING") // PENDING, PASSED, FAILED, TIMEOUT , SURRENDER
-
-  runtimeMs Int?
-  memoryKb Int?
-  passedCase Int
-  totalCases Int
-
-  isBestSubmission Boolean @default(false)
-  attemptNumber Int @default(1)
-
-  createdAt DateTime @default(now())
-
-  @@index([UserPersonalPerformanceId])
-  @@index([problemId])
-  
-}
-model Message {
-  id String @id @default(uuid())
-  content String @db.Text
-
-  senderId String
-  sender User @relation("SentMessage",fields:[senderId],references:[id])
-
-  receiverId String
-  receiver User @relation("ReceivedMessages", fields:[receiverId],references:[id])
-
-  createdAt DateTime @default(now())
-
-}
-
-// ── NOTIFICATION CENTER (3-day retained queue) ──
 
 enum NotificationType {
   FRIEND_REQUEST
@@ -295,47 +394,10 @@ enum NotificationStatus {
   ARCHIVED
 }
 
-model Notification {
-  id String @id @default(uuid())
-
-  userId String
-  user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-
-  type NotificationType @default(SYSTEM)
-  title String
-  body String @db.Text
-  data Json?
-
-  status NotificationStatus @default(UNREAD)
-
-  createdAt DateTime @default(now())
-  readAt DateTime?
-
-  @@index([userId, status, createdAt])
-  @@index([createdAt])
-}
-
-// ─────────────────────────────────────────────────────────
-// ADMIN PANEL SUPPORT
-// ─────────────────────────────────────────────────────────
-
 enum FeedbackStatus {
   PENDING
   REVIEWED
   RESOLVED
-}
-
-model Feedback {
-  id        String         @id @default(uuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content   String         @db.Text
-  status    FeedbackStatus @default(PENDING)
-  adminNote String?        @db.Text
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-
-  @@index([status, createdAt])
 }
 
 enum ReportCategory {
@@ -352,206 +414,9 @@ enum ReportStatus {
   APPROVED
 }
 
-model QuestionReport {
-  id         String        @id @default(uuid())
-  questionId String
-  reportedBy String
-  reporter   User          @relation("ReportsFiled", fields: [reportedBy], references: [id])
-  reason     String        @db.Text
-  detail     String?       @db.Text
-  category   ReportCategory @default(OTHER)
-  status     ReportStatus  @default(FLAGGED)
-  resolvedAt DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([questionId, status])
-}
-
-model Setting {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  value     Json
-  updatedAt DateTime @updatedAt
-}
 enum MatchmakingStatus {
   WAITING
   MATCHED
   CANCELLED
   EXPIRED
-}
-
-model MatchmakingQueue {
-  id String @id @default(uuid())
-
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  preferredDifficulty Level
-
-  status MatchmakingStatus @default(WAITING)
-
-  joinedAt DateTime @default(now())
-  matchedAt DateTime?
-
-  @@index([status, preferredDifficulty])
-}
-
-
-model TemplateSubscription {
-  id                String   @id @default(uuid())
-  
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  templateEventId   String
-  templateEvent     Event    @relation(fields: [templateEventId], references: [id], onDelete: Cascade)
-  
-  subscribedVersion Int      // Locks in the version of the template they subscribed to
-
-  createdAt         DateTime @default(now())
-
-  @@unique([userId, templateEventId]) // A user can only subscribe to a template once
-}
-
-// ------------------------------------------------------
-// DSA PRACTICE PROGRESS
-// ------------------------------------------------------
-
-model UserProblemProgress {
-  id           String    @id @default(uuid())
-
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  problemId    String
-  problem      Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
-
-  isSolved     Boolean   @default(false)
-  solvedAt     DateTime?
-
-  attempts     Int       @default(0)
-
-  // Last saved code draft for each user/problem combo (cloud save)
-  lastCode     String?   @db.Text
-  lastLanguage String?   @default("javascript")
-
-  submissionTimes String[] @default([])
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@unique([userId, problemId])
-  @@index([userId])
-  @@index([problemId])
-}
-
-// ------------------------------------------------------
-// LEARNING PATHS (ROADMAP S4)
-// ------------------------------------------------------
-
-model LearningItem {
-  id              String   @id @default(uuid())
-  name            String
-  order           Int
-  category        String   @default("")
-  description     String?  @db.Text
-  problemIds      String[] @default([])
-  prerequisites   String[] @default([]) // IDs of prerequisite learning items
-  nextStructures  String[] @default([]) // IDs of next recommended learning items
-
-  progress        UserLearningProgress[]
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@index([order])
-  @@index([category])
-}
-
-model UserLearningProgress {
-  id             String        @id @default(uuid())
-
-  userId         String
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  learningItemId String
-  learningItem   LearningItem  @relation(fields: [learningItemId], references: [id], onDelete: Cascade)
-
-  progressStatus String        @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | COMPLETED
-  lastVisited    DateTime?
-
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  @@unique([userId, learningItemId])
-  @@index([userId])
-  @@index([learningItemId])
-}
-
-model UserLearningSummary {
-  id             String   @id @default(uuid())
-
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  completedCount Int      @default(0)
-  lastUpdated    DateTime @default(now())
-}
-
-// ── POST /execute abuse control (security remediation) ──────────────────────
-// Two standalone tables — intentionally NO foreign keys, so quota/audit rows
-// can never cascade into (or block deletion of) users, events, or problems.
-// Applied via `prisma db push` (this repo has no migrations directory).
-
-// Per-requester daily counter that survives restarts and multi-instance
-// deploys. `keyHash` is sha256("u:<userId>") or sha256("ip:<address>") —
-// raw IPs/user ids are never stored. One row per key per UTC day.
-model ExecutionQuota {
-  keyHash   String
-  date      String // YYYY-MM-DD (UTC)
-  count     Int      @default(0)
-  updatedAt DateTime @updatedAt
-
-  @@id([keyHash, date])
-}
-
-// Append-only audit trail for execution requests: who (hashed), when, which
-// mode, which Origin the browser claimed, and the HTTP outcome. Written
-// fire-and-forget on response finish and pruned after 7 days (see index.ts).
-model ExecutionLog {
-  id         String   @id @default(uuid())
-  keyHash    String
-  userId     String? // null when keyed by IP (anonymous execution)
-  mode       String   @default("RUN") // RUN | SUBMIT
-  origin     String? // claimant Origin header, truncated
-  status     Int      @default(200) // HTTP status code returned
-  durationMs Int      @default(0)
-  createdAt  DateTime @default(now())
-
-  @@index([keyHash, createdAt])
-}
-
-// ── ROOM-SCOPED REPORT THREADS (participant ↔ room moderator) ──
-// Private 1:1 line between an event's participant and its moderator (the host
-// or a global admin) for reporting bad questions, doubts, or broken test cases.
-// A thread is uniquely (eventId, participantId); both sides read + write it.
-model ReportMessage {
-  id String @id @default(uuid())
-
-  eventId     String
-  category    String // QUESTION | DOUBT | TESTCASE | OTHER
-  content     String @db.Text
-  status      String @default("OPEN") // OPEN | RESOLVED
-
-  senderId String
-  sender   User @relation("ReportSender", fields: [senderId], references: [id], onDelete: Cascade)
-
-  recipientId String
-  recipient   User @relation("ReportRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@index([eventId, senderId])
-  @@index([eventId, recipientId])
 }
