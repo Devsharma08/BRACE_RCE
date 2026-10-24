@@ -492,7 +492,7 @@ const CreateRoom = () => {
               {/* ── LEFT: CONFIGURATION COLUMN (internally scrollable) ─── */}
               <div className="themed-scroll min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
                 {/* IDENTITY & MISSION */}
-                <section className="rounded-[24px] border border-subtle-line bg-surface p-6">
+                <section className="rounded-card border border-subtle-line bg-surface p-6">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary">
                     <ShieldAlert size={14} aria-hidden /> Identity &amp; mission
                   </div>
@@ -505,7 +505,7 @@ const CreateRoom = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Graph traversal / night shift"
-                      className="mt-2 h-10 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-sm"
+                      className="mt-2 h-10 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-sm"
                     />
                   </label>
 
@@ -516,7 +516,7 @@ const CreateRoom = () => {
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
                       placeholder="Describe the room…"
-                      className="mt-2 min-h-20 w-full border-2 border-subtle-line/50 bg-raised/30 p-3 font-sans text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-sm"
+                      className="mt-2 min-h-20 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 p-3 font-sans text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-sm"
                     />
                   </label>
 
@@ -526,7 +526,7 @@ const CreateRoom = () => {
                       <select
                         value={maxUsers}
                         onChange={(e) => setMaxUsers(Number(e.target.value))}
-                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
+                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                       >
                         {[2, 4, 6, 8].map((count) => (
                           <option key={count} value={count}>
@@ -540,7 +540,7 @@ const CreateRoom = () => {
                       <select
                         value={timeLimitOption}
                         onChange={(e) => setTimeLimitOption(e.target.value)}
-                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
+                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                       >
                         <option value="AUTO">Auto — {autoMinutes || 0} min from queue</option>
                         {TIME_LIMIT_OPTIONS.map((minutes) => (
@@ -562,7 +562,7 @@ const CreateRoom = () => {
                         }
                       }}
                       aria-pressed={protectedRoom}
-                      className={`mt-auto flex h-11 items-center justify-center gap-2 border px-3 font-mono text-[9px] uppercase tracking-widest transition ${
+                      className={`mt-auto flex h-11 items-center justify-center gap-2 rounded-btn border px-3 font-mono text-[9px] uppercase tracking-widest transition ${
                         protectedRoom
                           ? "border-accent-warning/40 bg-accent-warning/[0.08] text-accent-warning"
                           : "border-subtle-line text-subtle hover:text-fg"
@@ -585,7 +585,7 @@ const CreateRoom = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Leave blank for open access"
-                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-4 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
+                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-4 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
                       />
                     </label>
                   )}
@@ -598,7 +598,7 @@ const CreateRoom = () => {
                         type="datetime-local"
                         value={opensAt}
                         onChange={(e) => setOpensAt(e.target.value)}
-                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
+                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
                       />
                     </label>
                     <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
@@ -664,7 +664,7 @@ const CreateRoom = () => {
                 </section>
 
                 {/* BATTLE TEMPLATES */}
-                <section className="rounded-[24px] border border-subtle-line bg-surface p-6">
+                <section className="rounded-card border border-subtle-line bg-surface p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-violet">
                       <LayoutTemplate size={14} aria-hidden /> Battle templates
@@ -720,7 +720,7 @@ const CreateRoom = () => {
                 {/* CUSTOM PROBLEM STUDIO — revealed from the queue panel */}
                 {studioOpen && (
                   <section
-                    className="rounded-[24px] border border-subtle-line bg-surface p-6"
+                    className="rounded-card border border-subtle-line bg-surface p-6"
                     aria-label="Custom problem studio"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -962,7 +962,7 @@ const CreateRoom = () => {
               {/* ── RIGHT: PROBLEM QUEUE (search + select + deploy) ─────── */}
               <aside
                 aria-label="Problem queue"
-                className="themed-scroll min-h-0 rounded-[24px] border border-accent-primary/20 bg-accent-primary/[0.04] p-5 lg:overflow-y-auto"
+                className="themed-scroll min-h-0 rounded-card border border-accent-primary/20 bg-accent-primary/[0.04] p-5 lg:overflow-y-auto"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
