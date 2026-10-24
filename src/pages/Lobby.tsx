@@ -222,7 +222,7 @@ const Lobby = () => {
     return (
       <article
         key={room.id}
-        className={`group flex min-h-[220px] flex-col rounded-[22px] border p-5 transition hover:-translate-y-0.5 ${
+        className={`group flex min-h-[180px] sm:min-h-[220px] flex-col rounded-[22px] border p-4 sm:p-5 transition hover:-translate-y-0.5 ${
           locked
             ? "border-accent-warning/25 bg-accent-warning/[0.035] hover:border-accent-warning/40"
             : "border-subtle-line bg-raised hover:border-accent/40"
@@ -258,19 +258,19 @@ const Lobby = () => {
           </p>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-subtle-line pt-4 text-[9px] uppercase tracking-widest text-subtle">
-          <span className="flex min-w-0 items-center gap-2">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-subtle-line pt-3 text-[8px] uppercase tracking-widest text-subtle sm:pt-4 sm:text-[9px]">
+          <span className="flex min-w-0 items-center gap-1.5 sm:gap-2">
             <Users size={13} className="shrink-0" aria-hidden />
             <span className="whitespace-nowrap">
               {isTemplate ? `${room.problems?.length ?? 0} problems` : `${room.maxUsers} max`}
             </span>
             <Clock3 size={13} className="ml-2 shrink-0" aria-hidden />
             <span className="whitespace-nowrap">{minutes !== null ? `${minutes}m` : "—"}</span>
-            <span className="ml-2 truncate font-mono normal-case tracking-normal text-faint">
+            <span className="ml-1 truncate font-mono normal-case tracking-normal text-faint sm:ml-2">
               {room.roomCode}
             </span>
           </span>
-          <span className="shrink-0 truncate" title={room.host?.username}>
+          <span className="shrink-0 truncate max-w-[80px] text-right" title={room.host?.username}>
             {room.host?.username}
           </span>
         </div>
@@ -278,18 +278,18 @@ const Lobby = () => {
           {isArchive ? (
             <button
               onClick={() => handleDeleteEvent(room.id)}
-              className="mt-4 flex items-center justify-between border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
+              className="mt-3 flex w-full items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08] sm:mt-4 sm:w-auto sm:flex-1"
               aria-label={`Delete operation: ${room.name}`}
             >
               Delete operation
               <Trash2 size={14} aria-hidden />
             </button>
           ) : isTemplate ? (
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
               <button
                 onClick={() => handleCloneTemplate(room.id)}
                 disabled={cloningId === room.id}
-                className="flex flex-1 items-center justify-between border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2 border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={`Deploy template: ${room.name}`}
               >
                 {cloningId === room.id ? "Deploying template" : "Deploy template"}
@@ -301,7 +301,7 @@ const Lobby = () => {
               </button>
               <button
                 onClick={() => handleDeleteEvent(room.id, "template")}
-                className="flex items-center justify-between border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
+                className="flex flex-1 items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
                 aria-label={`Delete template: ${room.name}`}
               >
                 Delete
@@ -311,7 +311,7 @@ const Lobby = () => {
           ) : (
             <button
               onClick={() => handleJoinRoom(room)}
-              className="mt-4 flex items-center justify-between border border-accent/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent/[0.08]"
+              className="mt-3 w-full flex items-center justify-center gap-2 border border-accent/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent/[0.08] sm:mt-4 sm:w-auto"
               aria-label={`Join operation: ${room.name}`}
             >
               {queued ? "Queued for entry" : "Join operation"}
@@ -362,12 +362,12 @@ const Lobby = () => {
         </header>
 
         {/* TABS + FILTERS + CONTENT */}
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="mt-5 grid gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
           <section className="min-w-0">
             <nav
               aria-label="Lobby sections"
               role="tablist"
-              className="grid grid-cols-3 gap-2 border-b border-subtle-line pb-3 sm:gap-3"
+              className="grid grid-cols-3 gap-1.5 border-b border-subtle-line pb-3 sm:gap-2"
             >
               {tabDefs.map(({ key, label, Icon }) => (
                 <button
@@ -375,16 +375,15 @@ const Lobby = () => {
                   role="tab"
                   aria-selected={activeTab === key}
                   onClick={() => handleTabChange(key)}
-                  className={`group flex min-h-0 items-center gap-2 rounded-2xl border p-3 text-left transition sm:min-h-[76px] sm:flex-col sm:items-start sm:justify-between ${
+                  className={`flex min-h-0 flex-col items-center justify-center gap-1.5 rounded-2xl border p-2.5 text-center transition ${
                     activeTab === key
                       ? "border-accent/40 bg-accent/[0.08] text-accent-primary"
                       : "border-subtle-line bg-raised text-subtle hover:border-line-mid hover:bg-surface-hover"
                   }`}
                 >
                   <Icon size={16} aria-hidden />
-                  <span className="flex w-full items-center justify-between text-[9px] font-bold uppercase tracking-widest">
+                  <span className="mt-1 text-[8px] font-bold uppercase tracking-widest sm:text-[9px]">
                     {label}
-                    <ArrowUpRight size={12} aria-hidden className="opacity-50" />
                   </span>
                 </button>
               ))}
@@ -392,7 +391,7 @@ const Lobby = () => {
 
             <section
               aria-label="Lobby filters"
-              className="mt-4 flex flex-col gap-3 rounded-2xl border border-subtle-line bg-raised p-3 shadow-[0_18px_50px_rgba(0,0,0,.16)] lg:flex-row lg:items-center"
+              className="mt-4 flex flex-col gap-3 rounded-2xl border border-subtle-line bg-raised p-3 shadow-[0_18px_50px_rgba(0,0,0,.16)] sm:flex-row sm:items-center sm:gap-4"
             >
               <div className="relative min-w-0 flex-1">
                 <Search
@@ -417,7 +416,7 @@ const Lobby = () => {
                   </button>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <span className="flex items-center gap-2 px-1 text-[9px] uppercase tracking-widest text-faint">
                   <SlidersHorizontal size={13} aria-hidden /> Filters
                 </span>
@@ -425,7 +424,7 @@ const Lobby = () => {
                   aria-label="Maximum users"
                   value={maxUsers}
                   onChange={(event) => setMaxUsers(event.target.value)}
-                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
                 >
                   <option value="any">Users: any</option>
                   <option value="2">Users: ≤ 2</option>
@@ -436,7 +435,7 @@ const Lobby = () => {
                   aria-label="Maximum time"
                   value={maxTime}
                   onChange={(event) => setMaxTime(event.target.value)}
-                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
                 >
                   <option value="any">Time: any</option>
                   <option value="20">Time: ≤ 20m</option>
@@ -447,7 +446,7 @@ const Lobby = () => {
                   aria-label="Room access"
                   value={access}
                   onChange={(event) => setAccess(event.target.value)}
-                  className="border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
                 >
                   <option value="any">Access: any</option>
                   <option value="open">Open only</option>
@@ -462,21 +461,21 @@ const Lobby = () => {
                   </button>
                 )}
               </div>
-            </section>
+              </div>
 
-            <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
-              <span>
-                {filteredItems.length} {tabLabel} visible
-              </span>
-              {hasFilters && <span className="text-accent-primary">Filtered view</span>}
-            </div>
+              <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
+                <span>
+                  {filteredItems.length} {tabLabel} visible
+                </span>
+                {hasFilters && <span className="text-accent-primary">Filtered view</span>}
+              </div>
 
-        {loading ? (
+              {loading ? (
           <div className="mt-3">
             <CardSkeletonGrid count={6} />
           </div>
         ) : (
-          <section className="mt-3 grid gap-3 md:grid-cols-2">
+          <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filteredItems.length ? (
               <>
                 {filteredItems.slice(0, MAX_ROOMS).map((room) =>
@@ -489,7 +488,7 @@ const Lobby = () => {
                 )}
               </>
             ) : (
-              <div className="col-span-full border border-dashed border-subtle-line py-16 text-center">
+              <div className="col-span-full border border-dashed border-subtle-line py-12 text-center sm:py-16">
                 <Archive size={30} aria-hidden className="mx-auto text-faint" />
                 <p className="mt-4 text-sm text-subtle">
                   {activeTab === "MY_ARCHIVES"
@@ -524,7 +523,7 @@ const Lobby = () => {
             />
           </section>
 
-          <aside className="rounded-[26px] border border-subtle-line bg-raised p-5 lg:sticky lg:top-5 lg:self-start">
+          <aside className="mt-6 rounded-[22px] border border-subtle-line bg-raised p-4 sm:mt-0 sm:rounded-[26px] sm:p-5 lg:sticky lg:top-5 lg:self-start">
             <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
               <Radar size={14} aria-hidden />
               <span className="sm:hidden">Live stats</span>
@@ -533,7 +532,7 @@ const Lobby = () => {
             {/* Mobile: numeric readout instead of the decorative radar circle —
                 the circle ate a square chunk of a phone viewport for zero
                 information. */}
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:hidden">
+            <div className="mt-4 grid grid-cols-3 gap-1.5 sm:hidden">
               <div className="border border-subtle-line px-2 py-3 text-center">
                 <div className="font-mono text-lg font-bold text-accent-success">{rooms.length}</div>
                 <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">rooms</div>
@@ -547,7 +546,7 @@ const Lobby = () => {
                 <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">archives</div>
               </div>
             </div>
-            <div className="mt-8 hidden aspect-square relative place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
+            <div className="mt-6 hidden aspect-square relative place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
               <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
                 <div className="radar-ring" />
                 <div className="radar-ring radar-ring--delay-1" />
