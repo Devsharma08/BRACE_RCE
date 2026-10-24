@@ -1,5 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
+import { deriveEventDurationMs } from "../../lib/eventTimeLimit.js";
 import { LOBBY_TTL_MS } from "../gc.js";
+import { emitRoomForceClosed, emitToUser } from "../ioRegistry.js";
 import type { HandlerCtx } from "../types.js";
 import { 
   getLobby, 
@@ -50,8 +52,71 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
         console.log(`[LOBBY] Room ${normalized} deleted by host ${userId}`);
     });
     
-    socket.on("leave_room", (roomId: string) => {
-        if (roomId) {
+    socket.on("leave_room", async (roomId: string, options?: { notify?: boolean; notifyParticipants?: boolean }) => {
+        if (!roomId) return;
+        // Leave ALL room aliases so state is consistent on rejoin.
+        // Previously only the single supplied roomId was left, causing
+        // partial leave and inconsistent rejoin state.
+        try {
+            const eventId = roomId.replace("room-", "");
+            const event = await prisma.event.findFirst({
+                where: { OR: [{ id: eventId }, { roomCode: roomId }] },
+                select: { id: true, roomCode: true, hostId: true },
+            });
+            const aliases = event
+                ? [event.roomCode ?? "", `room-${event.id}`, roomId].filter(Boolean)
+                : [roomId];
+            const unique = [...new Set(aliases)];
+            for (const alias of unique) {
+                socket.leave(alias);
+            }
+            console.log(`user ${userId} left rooms [${unique.join(", ")}]`);
+
+            // Emit participant_left to remaining room members if notified.
+            // This alerts the moderator and other participants about
+            // pre-start departures in real-time.
+            const shouldNotify = options?.notifyParticipants === true || options?.notify === true;
+            if (shouldNotify && event) {
+                const user = await prisma.user.findUnique({
+                    where: { id: userId },
+                    select: { username: true, avatarUrl: true },
+                }).catch(() => null);
+
+                const leavePayload = {
+                    userId,
+                    username: user?.username,
+                    reason: "voluntary",
+                };
+
+                // Broadcast to all other participants still in the room
+                const targetRooms = [event.roomCode, `room-${event.id}`, roomId].filter(Boolean) as string[];
+                const uniqueRooms = [...new Set(targetRooms)];
+                for (const tr of uniqueRooms) {
+                    io.to(tr).emit("participant_left", leavePayload);
+                }
+
+                // Targeted delivery to remaining participants on ALL their sockets
+                // so they learn of the departure even if their socket is not
+                // currently joined to any battle alias (reconnect / new tab /
+                // previously left the room). Room-scoped io.to() emits alone
+                // cannot reach those sockets.
+                const remaining = await prisma.userPersonalPerformance.findMany({
+                    where: { eventId: event.id, userId: { not: userId } },
+                    select: { userId: true },
+                });
+                await Promise.all(
+                    remaining.map((p) => emitToUser(p.userId, "participant_left", leavePayload))
+                );
+
+                // Also send targeted notification to host in case they're not in socket room
+                if (event.hostId && event.hostId !== userId) {
+                    await emitToUser(event.hostId, "participant_left", leavePayload);
+                }
+
+                console.log(`[leave_room] notified room members of user ${userId} leaving ${event.id}`);
+            }
+        } catch {
+            // Fallback: leave at least the provided room
             socket.leave(roomId);
             console.log(`user ${userId} left the room ${roomId}`);
         }
@@ -149,8 +214,8 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                 const event = await prisma.event.create({
                     data: {
                         type: "FRIENDS",
-                        status: "IN_PROGRESS",
-                        startedAt: new Date(),
+                        status: "WAITING",
+                        hostId: userId,
                         roomCode: normalizedCode,
                         maxUsers: lobby.maxUsers,
                         password: lobby.password || null,
@@ -169,7 +234,9 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
 
                 const firstProblem = event.problems?.[0];
 
-                // route everyone to the battle arena!
+                // Route everyone to the battle arena. The room starts in WAITING
+                // status — only the host can begin the battle by clicking START,
+                // which emits `start_event` and unlocks problems for everyone.
                 io.to(`lobby-${normalizedCode}`).emit('custom_match_started', {
                     roomId: `room-${event.id}`,
                     problemId: firstProblem?.github_oid || "local-battle",
@@ -184,9 +251,9 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
     })
 
 
-    socket.on('start_event', async (roomCode: string) => {
+    socket.on('start_event', async (roomCode: string, ack?: (response: { success: boolean; error?: string }) => void) => {
+        const rawId = (roomCode || "").replace("room-", "");
         try {
-            const rawId = (roomCode || "").replace("room-", "");
             const event = await prisma.event.findFirst({
                 where: { OR: [{ roomCode }, { id: rawId }] },
                 include: {
@@ -194,7 +261,14 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                     commonProblem: { include: { test_cases: true, code_snippets: true } }
                 }
             });
-            if (!event || event.hostId !== userId) return;
+            if (!event) {
+                ack?.({ success: false, error: 'Event not found' });
+                return;
+            }
+            if (event.hostId !== userId) {
+                ack?.({ success: false, error: 'Only the host can start the event' });
+                return;
+            }
 
             const startedAt = new Date();
             const finishedAt = event.totalTimeLimitMs
@@ -206,31 +280,62 @@ export function registerLobbyHandlers(ctx: HandlerCtx): void {
                 data: { status: 'IN_PROGRESS', startedAt, finishedAt }
             });
 
-            const targetRooms = [event.roomCode, `room-${event.id}`, event.id].filter(Boolean) as string[];
+            // Collect ALL socket room aliases clients may have joined.
+            // Clients joining via a "room-<uuid>" URL join that room name directly;
+            // clients joining via a 6-char roomCode join that code. Including the
+            // raw roomCode param (which is whatever the client put in the URL) ensures
+            // battle_starting and battle_started reach every participant.
+            const targetRooms = [
+              event.roomCode,
+              `room-${event.id}`,
+              roomCode,          // raw param from client — may equal one of the above
+            ].filter(Boolean) as string[];
+
+            // Dedupe in case roomCode equals room-${event.id} or event.roomCode
+            const uniqueRooms = [...new Set(targetRooms)];
+
+            // Acknowledge start immediately so the host gets feedback
+            ack?.({ success: true });
 
             // Emit countdown events: 3, 2, 1
             for (let i = 3; i >= 1; i--) {
-                for (const tr of targetRooms) {
+                for (const tr of uniqueRooms) {
                     io.to(tr).emit('battle_starting', { countdownSeconds: i });
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
 
             // After countdown, emit battle_started to unlock editor with unmasked problem details
-            for (const tr of targetRooms) {
+            const totalDurationMs = deriveEventDurationMs(event);
+            for (const tr of uniqueRooms) {
                 io.to(tr).emit('battle_started', {
                     startedAt,
                     problems: event.problems,
-                    commonProblem: event.commonProblem
+                    commonProblem: event.commonProblem,
+                    totalDurationMs
                 });
                 io.to(tr).emit('battle_state', {
                     startedAt,
                     status: 'IN_PROGRESS',
-                    finishedAt
+                    finishedAt,
+                    totalDurationMs
                 });
             }
         } catch (error) {
             console.log('Error starting event:', error);
+            // Notify all participants that the start failed so the UI doesn't stay
+            // stuck in the countdown overlay forever.
+            try {
+                const errEvent = await prisma.event.findFirst({
+                    where: { OR: [{ id: rawId }, { roomCode }] },
+                    select: { id: true, roomCode: true },
+                });
+                if (errEvent) {
+                    emitRoomForceClosed(errEvent, "Failed to start the operation. Please try again.");
+                }
+            } catch {
+                socket.emit("start_failed", { error: "Failed to start the operation" });
+            }
         }
     });
 }

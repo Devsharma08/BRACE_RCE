@@ -1,7 +1,16 @@
 import { prisma } from "../../lib/prisma.js";
 import type { HandlerCtx } from "../types.js";
-import { getSocketId } from "../stateRedis.js";
-import { emitRoomForceClosed, emitRoomsInvalidate, emitUserBlocked } from "../ioRegistry.js";
+import { getSocketIds } from "../stateRedis.js";
+import { emitRoomForceClosed, emitRoomsInvalidate, emitToUser, emitUserBlocked } from "../ioRegistry.js";
+
+/**
+ * Resolve all Socket.IO room aliases for an event so broadcasts reach
+ * every client regardless of how they joined (roomCode, room-{id}, or raw roomId).
+ */
+function eventRoomAliases(event: { id: string; roomCode: string | null }, rawRoomId: string): string[] {
+    const rooms = [event.roomCode ?? "", `room-${event.id}`, rawRoomId].filter(Boolean);
+    return [...new Set(rooms)];
+}
 
 export function registerHostHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
@@ -38,12 +47,19 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 console.error('[host_kick_user] block record error:', blockErr);
             }
 
-            const kickedSocketId = await getSocketId(targetUserId);
-            if (kickedSocketId) {
-                io.to(kickedSocketId).emit('you_were_kicked', { roomId });
-                await emitUserBlocked(targetUserId, roomId, "You were kicked and blocked from this event by the host.");
+            // Emit to ALL sockets of the kicked user (cross-tab).
+            const kickedSocketIds = await getSocketIds(targetUserId);
+            for (const sid of kickedSocketIds) {
+                io.to(sid).emit('you_were_kicked', { roomId });
             }
-            io.to(roomId).emit('player_kicked', { userId: targetUserId, blocked: true });
+            await emitUserBlocked(targetUserId, roomId, "You were kicked and blocked from this event by the host.");
+
+            // Broadcast to ALL room aliases so every client sees the roster change.
+            const aliases = eventRoomAliases(event, roomId);
+            for (const tr of aliases) {
+                io.to(tr).emit('player_kicked', { userId: targetUserId, blocked: true });
+            }
+
             try {
                 const performances = await prisma.userPersonalPerformance.findMany({
                     where: { eventId: event.id },
@@ -61,7 +77,17 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                         }
                     }
                 });
-                io.to(roomId).emit('participants_updated', { performances });
+                for (const tr of aliases) {
+                    io.to(tr).emit('participants_updated', { performances });
+                }
+                // Guaranteed delivery to remaining participants on ALL their sockets
+                // (kicked user already receives the targeted you_were_kicked emit).
+                const remainingUserIds = performances
+                    .map((p) => p.user?.id)
+                    .filter((id): id is string => Boolean(id) && id !== targetUserId);
+                await Promise.all(
+                    remainingUserIds.map((id) => emitToUser(id, 'participants_updated', { performances }))
+                );
             } catch (e) {
                 console.error('[host_kick_user] participants refresh error:', e);
             }
@@ -106,12 +132,37 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                     }
                 }
             });
-            io.to(roomId).emit('match_completed', {
+
+            // Broadcast to ALL socket room variants so every client
+            // (joined via roomCode, room-{id}, or raw roomId) receives the
+            // termination notice. Broadcasting to only io.to(roomId) silently
+            // misses clients that joined under a different identifier.
+            const aliases = eventRoomAliases(event, roomId);
+            const finishedPayload = {
                 status: 'FINISHED',
                 reason: 'HOST_ENDED',
-                performances: eventWithSubs
-            });
-            io.to(roomId).emit('participants_updated', { performances: eventWithSubs });
+                finishedAt: new Date(),
+                performances: eventWithSubs,
+            };
+            for (const tr of aliases) {
+                io.to(tr).emit('match_completed', { ...finishedPayload, roomId: event.id, roomCode: event.roomCode });
+                io.to(tr).emit('participants_updated', { performances: eventWithSubs });
+                io.to(tr).emit('battle_state', {
+                    status: 'FINISHED',
+                    finishedAt: finishedPayload.finishedAt,
+                });
+            }
+
+            // Guaranteed delivery to every participant on ALL their sockets.
+            const endMatchUserIds = eventWithSubs
+                .map((p) => p.user?.id)
+                .filter((id): id is string => Boolean(id));
+            await Promise.all(
+                endMatchUserIds.map((id) =>
+                    emitToUser(id, 'participants_updated', { performances: eventWithSubs })
+                )
+            );
+
             // Unified force-close with a human-readable reason + lobby refresh.
             emitRoomForceClosed(event, "The host ended this battle.");
             emitRoomsInvalidate();
@@ -148,7 +199,10 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 where: { eventId: event.id, status: "PENDING" },
                 data: { status: "TIMEOUT" }
             });
-            io.to(roomId).emit("group_terminated", { roomId, reason: "ADMIN_TERMINATED" });
+            const aliases = eventRoomAliases(event, roomId);
+            for (const tr of aliases) {
+                io.to(tr).emit("group_terminated", { roomId: event.id, roomCode: event.roomCode, reason: isAdmin ? "ADMIN_TERMINATED" : "HOST_TERMINATED" });
+            }
             // Unified force-close with a human-readable reason + lobby refresh.
             emitRoomForceClosed(event, isAdmin ? "An admin terminated this group." : "The host terminated this group.");
             emitRoomsInvalidate();
@@ -189,11 +243,17 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 },
             });
 
-            const blockedSocketId = await getSocketId(targetUserId);
-            if (blockedSocketId) {
-                io.to(blockedSocketId).emit('you_are_blocked', { roomId, reason });
+            // Emit to ALL sockets of the blocked user (cross-tab).
+            const blockedSocketIds = await getSocketIds(targetUserId);
+            for (const sid of blockedSocketIds) {
+                io.to(sid).emit('you_are_blocked', { roomId, reason });
             }
-            io.to(roomId).emit('player_blocked', { userId: targetUserId, blocked: true });
+
+            // Broadcast to ALL room aliases.
+            const aliases = eventRoomAliases(event, roomId);
+            for (const tr of aliases) {
+                io.to(tr).emit('player_blocked', { userId: targetUserId, blocked: true });
+            }
             console.log(`[HOST] User ${targetUserId} blocked from room ${roomId} by host ${userId}`);
         } catch (e) {
             console.error('[host_block_user] error:', e);
@@ -215,7 +275,12 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
             await prisma.eventBlock.deleteMany({
                 where: { eventId: event.id, blockedUserId: targetUserId }
             });
-            io.to(roomId).emit('player_unblocked', { userId: targetUserId });
+
+            // Broadcast to ALL room aliases.
+            const aliases = eventRoomAliases(event, roomId);
+            for (const tr of aliases) {
+                io.to(tr).emit('player_unblocked', { userId: targetUserId });
+            }
             console.log(`[HOST] User ${targetUserId} unblocked from room ${roomId} by host ${userId}`);
         } catch (e) {
             console.error('[host_unblock_user] error:', e);
@@ -239,9 +304,10 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 where: { eventId: event.id, userId: targetUserId }
             });
 
-            const targetSocketId = await getSocketId(targetUserId);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('participant_rejected', {
+            // Emit to ALL sockets of the rejected user (cross-tab).
+            const targetSocketIds = await getSocketIds(targetUserId);
+            for (const sid of targetSocketIds) {
+                io.to(sid).emit('participant_rejected', {
                     roomId,
                     reason: 'Your request to enter this operation was declined by the host.'
                 });
@@ -253,7 +319,22 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                     user: { select: { id: true, username: true, avatarUrl: true, bio: true } }
                 }
             });
-            io.to(roomId).emit('participants_updated', { performances: updatedPerformances });
+
+            // Broadcast to ALL room aliases.
+            const aliases = eventRoomAliases(event, roomId);
+            for (const tr of aliases) {
+                io.to(tr).emit('participants_updated', { performances: updatedPerformances });
+            }
+            // Guaranteed delivery to remaining participants on ALL their sockets
+            // (the rejected user already receives the targeted participant_rejected emit).
+            const rejectRemainingUserIds = updatedPerformances
+                .map((p) => p.user?.id)
+                .filter((id): id is string => Boolean(id));
+            await Promise.all(
+                rejectRemainingUserIds.map((id) =>
+                    emitToUser(id, 'participants_updated', { performances: updatedPerformances })
+                )
+            );
             emitRoomsInvalidate();
             console.log(`[HOST] User ${targetUserId} rejected from room ${roomId} by host ${userId}`);
         } catch (e) {
