@@ -28,6 +28,7 @@ import DOMPurify from "dompurify";
 import { useEventAnalytics } from "../hooks/useEventAnalytics";
 import { EventAnalytics } from "../components/features/EventAnalytics";
 import { BattleStagingRoom } from "../components/features/BattleStagingRoom";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 
 
 export interface BattleMessage {
@@ -272,6 +273,13 @@ export const Battle = () => {
   const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
   const [isStartingOperation, setIsStartingOperation] = useState<boolean>(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: (() => void) | null;
+  }>({ isOpen: false, title: "", message: "", confirmLabel: "Confirm", onConfirm: null });
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
@@ -1518,9 +1526,13 @@ const myUserIdRef = useRef("");
             {battleState.status === "IN_PROGRESS" && (
               <button
                 onClick={() => {
-                  if (window.confirm("End this battle for everyone? Pending participants will be marked TIMEOUT.")) {
-                    handleHostEndMatch();
-                  }
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: "End this battle?",
+                    message: "End this battle for everyone? Pending participants will be marked TIMEOUT.",
+                    confirmLabel: "End battle",
+                    onConfirm: handleHostEndMatch,
+                  });
                 }}
                 className="flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
               >
@@ -1617,9 +1629,13 @@ const myUserIdRef = useRef("");
                                 )}
                                 <button
                                   onClick={() => {
-                                    if (window.confirm(`Kick & block ${uname} from this event?`)) {
-                                      handleBlockParticipant(participantId, "Moderator kick & block");
-                                    }
+                                    setConfirmDialog({
+                                      isOpen: true,
+                                      title: "Kick & block?",
+                                      message: `Kick & block ${uname} from this event?`,
+                                      confirmLabel: "Kick & block",
+                                      onConfirm: () => handleBlockParticipant(participantId, "Moderator kick & block"),
+                                    });
                                   }}
                                   title={`Kick & block ${uname}`}
                                   className="p-1.5 border border-accent-danger/40 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
@@ -2396,9 +2412,14 @@ const myUserIdRef = useRef("");
             {isHost && problems.length > 1 && battleState.status === "IN_PROGRESS" && (
               <button
                 onClick={() => {
-                  if (window.confirm("Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.")) {
-                    socket?.emit("terminate_group", { roomId });
-                  }
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: "Terminate group battle?",
+                    message: "Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.",
+                    confirmLabel: "Terminate",
+                    danger: true,
+                    onConfirm: () => socket?.emit("terminate_group", { roomId }),
+                  });
                 }}
                 className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[8px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
               >
@@ -2711,6 +2732,18 @@ const myUserIdRef = useRef("");
         </div>
       )}
 
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        danger={confirmDialog.confirmLabel === "Kick & block" || confirmDialog.confirmLabel === "Terminate"}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={() => {
+          confirmDialog.onConfirm?.();
+          setConfirmDialog({ ...confirmDialog, isOpen: false, onConfirm: null });
+        }}
+      />
     </div>
   );
 };

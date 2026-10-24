@@ -19,6 +19,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CardSkeletonGrid } from "../components/ui/Skeleton";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { PasswordModal } from "../components/ui/PasswordModal";
 import { api } from "../config/api";
 import { toast } from "sonner";
@@ -57,6 +58,13 @@ const Lobby = () => {
     roomCode: string;
     roomName: string;
   }>({ isOpen: false, roomCode: "", roomName: "" });
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: (() => void) | null;
+  }>({ isOpen: false, title: "", message: "", confirmLabel: "Confirm", onConfirm: null });
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [maxUsers, setMaxUsers] = useState("any");
@@ -201,7 +209,16 @@ const Lobby = () => {
   };
 
   const handleDeleteEvent = async (eventId: string, noun: "operation" | "template" = "operation") => {
-    if (!window.confirm(`Are you sure you want to permanently delete this ${noun}?`)) return;
+    setConfirmDialog({
+      isOpen: true,
+      title: `Delete ${noun}?`,
+      message: `Are you sure you want to permanently delete this ${noun}? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      onConfirm: () => deleteConfirmed(eventId, noun),
+    });
+  };
+
+  const deleteConfirmed = async (eventId: string, noun: "operation" | "template") => {
     try {
       await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
       queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
@@ -461,7 +478,7 @@ const Lobby = () => {
                   </button>
                 )}
               </div>
-              </div>
+              </section>
 
               <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
                 <span>
@@ -514,13 +531,26 @@ const Lobby = () => {
           </section>
         )}
 
-            <PasswordModal
-              isOpen={pwModal.isOpen}
-              roomCode={pwModal.roomCode}
-              roomName={pwModal.roomName}
-              onClose={() => setPwModal({ isOpen: false, roomCode: "", roomName: "" })}
-              onSubmit={handlePasswordSubmit}
-            />
+          <PasswordModal
+            isOpen={pwModal.isOpen}
+            roomCode={pwModal.roomCode}
+            roomName={pwModal.roomName}
+            onClose={() => setPwModal({ isOpen: false, roomCode: "", roomName: "" })}
+            onSubmit={handlePasswordSubmit}
+          />
+
+          <ConfirmDialog
+            isOpen={confirmDialog.isOpen}
+            title={confirmDialog.title}
+            message={confirmDialog.message}
+            confirmLabel={confirmDialog.confirmLabel}
+            danger={confirmDialog.confirmLabel === "Delete"}
+            onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+            onConfirm={() => {
+              confirmDialog.onConfirm?.();
+              setConfirmDialog({ ...confirmDialog, isOpen: false, onConfirm: null });
+            }}
+          />
           </section>
 
           <aside className="mt-6 rounded-[22px] border border-subtle-line bg-raised p-4 sm:mt-0 sm:rounded-[26px] sm:p-5 lg:sticky lg:top-5 lg:self-start">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAdminQuestions, useCreateQuestion, useUpdateQuestion, useDeleteQuestion, type AdminQuestion } from '../../hooks/useAdmin';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 const difficultyColors: Record<string, string> = {
   EASY: 'text-accent-success border-accent-success/30 bg-accent-success/10',
@@ -67,19 +68,26 @@ const AdminQuestions = () => {
   };
 
   const handleDelete = async (q: AdminQuestion) => {
-    const confirmed = window.confirm(`Delete question "${q.name}"? This cannot be undone.`);
-    if (!confirmed) return;
+    setDeleteConfirm({ open: true, questionName: q.name, questionId: q.id });
+  };
+
+  const confirmDelete = async () => {
     try {
-      await deleteMut.mutateAsync(q.id);
+      await deleteMut.mutateAsync(deleteConfirm.questionId);
       await refetch();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to delete');
+    } finally {
+      setDeleteConfirm({ open: false, questionName: "", questionId: "" });
     }
   };
 
-  // Render cap — the bank holds 1400+ problems, so render pages of 100 with a
-  // "show more" row instead of unbounded-mapping the whole table.
   const [visibleCount, setVisibleCount] = useState(100);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; questionName: string; questionId: string }>({
+    open: false,
+    questionName: "",
+    questionId: "",
+  });
 
   const isFormOpen = isEditing || isCreating;
 
@@ -208,6 +216,16 @@ const AdminQuestions = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        title="Delete question?"
+        message={`Delete question "${deleteConfirm.questionName}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        danger
+        onClose={() => setDeleteConfirm({ open: false, questionName: "", questionId: "" })}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };

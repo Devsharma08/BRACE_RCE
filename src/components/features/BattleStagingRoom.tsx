@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Shield, Users, Clock, Play, Lock, UserCheck, X, AlertTriangle, Loader2, Send } from "lucide-react";
 import type { BattleMessage } from "../../pages/Battle";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 interface StagingParticipant {
   id?: string;
@@ -53,9 +54,15 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
   socketId,
 }) => {
   const timeLimitMinutes = totalTimeLimitMs ? Math.round(totalTimeLimitMs / 60000) : 30;
+  const [kickConfirm, setKickConfirm] = useState<{
+    open: boolean;
+    userName: string;
+    userId: string;
+  }>({ open: false, userName: "", userId: "" });
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-base text-fg font-sans select-none overflow-hidden">
+    <>
+      <div className="flex h-screen w-screen flex-col bg-base text-fg font-sans select-none overflow-hidden">
       {/* ── TOP HEADER ── */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-subtle-line bg-raised px-6 font-mono text-xs">
         <div className="flex items-center gap-3">
@@ -208,9 +215,7 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
                           {onKickParticipant && (
                             <button
                               onClick={() => {
-                                if (window.confirm(`Kick & block ${uname} from this event permanently?`)) {
-                                  onKickParticipant(pid);
-                                }
+                                setKickConfirm({ open: true, userName: uname, userId: pid });
                               }}
                               title={`Kick & block ${uname}`}
                               className="px-2 py-1 rounded border border-accent-danger/40 bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 text-[10px] font-mono font-bold transition-colors"
@@ -296,5 +301,19 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
         </div>
       </main>
     </div>
+
+    <ConfirmDialog
+      isOpen={kickConfirm.open}
+      title="Kick & block?"
+      message={`Kick & block ${kickConfirm.userName} from this event permanently?`}
+      confirmLabel="Kick & block"
+      danger
+      onClose={() => setKickConfirm({ open: false, userName: "", userId: "" })}
+      onConfirm={() => {
+        onKickParticipant?.(kickConfirm.userId);
+        setKickConfirm({ open: false, userName: "", userId: "" });
+      }}
+    />
+    </>
   );
 };

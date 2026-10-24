@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAdminUsers, useUpdateUser, useDeleteUser, type AdminUser } from '../../hooks/useAdmin';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 const roleOptions = ['USER', 'ADMIN'];
 
@@ -12,14 +13,29 @@ const AdminUsers = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // Render cap with a "show more" row so large directories can't unbounded-map.
   const [visibleCount, setVisibleCount] = useState(100);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    danger: boolean;
+    onConfirm: (() => void) | null;
+  }>({ open: false, title: "", message: "", confirmLabel: "Confirm", danger: false, onConfirm: null });
 
   const handleRoleChange = async (user: AdminUser, newRole: string) => {
     if (newRole === user.role) return;
-    const confirmed = window.confirm(
-      `Change role for ${user.username} to ${newRole}? This action affects permissions.`
-    );
-    if (!confirmed) return;
 
+    setConfirmDialog({
+      open: true,
+      title: "Change role?",
+      message: `Change role for ${user.username} to ${newRole}? This action affects permissions.`,
+      confirmLabel: "Change",
+      danger: false,
+      onConfirm: () => performRoleChange(user, newRole),
+    });
+  };
+
+  const performRoleChange = async (user: AdminUser, newRole: string) => {
     setUpdatingId(user.id);
     try {
       await updateUser.mutateAsync({ userId: user.id, role: newRole });
@@ -28,15 +44,22 @@ const AdminUsers = () => {
       toast.error(err?.response?.data?.message || 'Failed to update role');
     } finally {
       setUpdatingId(null);
+      setConfirmDialog({ open: false, title: "", message: "", confirmLabel: "Confirm", danger: false, onConfirm: null });
     }
   };
 
   const handleDelete = async (user: AdminUser) => {
-    const confirmed = window.confirm(
-      `Permanently delete user "${user.username}"?\nThis cannot be undone.`
-    );
-    if (!confirmed) return;
+    setConfirmDialog({
+      open: true,
+      title: "Delete user?",
+      message: `Permanently delete user "${user.username}"?\nThis cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => performDelete(user),
+    });
+  };
 
+  const performDelete = async (user: AdminUser) => {
     setDeletingId(user.id);
     try {
       await deleteUser.mutateAsync(user.id);
@@ -45,6 +68,7 @@ const AdminUsers = () => {
       toast.error(err?.response?.data?.message || 'Failed to delete user');
     } finally {
       setDeletingId(null);
+      setConfirmDialog({ open: false, title: "", message: "", confirmLabel: "Confirm", danger: false, onConfirm: null });
     }
   };
 
@@ -140,6 +164,18 @@ const AdminUsers = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        danger={confirmDialog.danger}
+        onClose={() => setConfirmDialog({ open: false, title: "", message: "", confirmLabel: "Confirm", danger: false, onConfirm: null })}
+        onConfirm={() => {
+          confirmDialog.onConfirm?.();
+        }}
+      />
     </div>
   );
 };

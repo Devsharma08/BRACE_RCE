@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAdminReports, useActOnReport, type AdminReport } from '../../hooks/useAdmin';
 import { toast } from 'sonner';
 import { Check, X } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 
 const AdminReports = () => {
   const { data: reports, isLoading, refetch } = useAdminReports();
@@ -9,15 +10,26 @@ const AdminReports = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   // Render cap with a "show more" row so large queues can't unbounded-map.
   const [visibleCount, setVisibleCount] = useState(100);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: (() => void) | null;
+  }>({ open: false, title: "", message: "", onConfirm: null });
 
   const handleAction = async (report: AdminReport, status: 'DISMISSED' | 'APPROVED') => {
-    const confirmed = window.confirm(
-      status === 'APPROVED'
-        ? `Approve and delete question "${report.questionId}"?`
-        : `Dismiss report "${report.id}"?`
-    );
-    if (!confirmed) return;
+    setConfirmDialog({
+      open: true,
+      title: status === 'APPROVED' ? 'Approve report?' : 'Dismiss report?',
+      message:
+          status === 'APPROVED'
+          ? `Approve and delete question "${report.questionId}"?`
+          : `Dismiss report "${report.id}"?`,
+      onConfirm: () => performAction(report, status),
+    });
+  };
 
+  const performAction = async (report: AdminReport, status: 'DISMISSED' | 'APPROVED') => {
     setProcessingId(report.id);
     try {
       await actOn.mutateAsync({ reportId: report.id, status });
@@ -26,6 +38,7 @@ const AdminReports = () => {
       toast.error(err?.response?.data?.message || 'Failed to process report');
     } finally {
       setProcessingId(null);
+      setConfirmDialog({ open: false, title: "", message: "", onConfirm: null });
     }
   };
 
@@ -134,6 +147,17 @@ const AdminReports = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.open}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel="Confirm"
+        onClose={() => setConfirmDialog({ open: false, title: "", message: "", onConfirm: null })}
+        onConfirm={() => {
+          confirmDialog.onConfirm?.();
+        }}
+      />
     </div>
   );
 };

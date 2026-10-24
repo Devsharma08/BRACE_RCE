@@ -5,6 +5,7 @@ import React,{ useEffect, useMemo, useState, type CSSProperties, type KeyboardEv
 import type { FileEntry } from "../../../context/FileNamesContext";
 import type { FileContentResponse } from "../types";
 import { toast } from "sonner";
+import { ConfirmDialog } from "../../ui/ConfirmDialog";
 
 type FileExplorerProps = {
   activeFile: string | null;
@@ -459,7 +460,7 @@ const SidebarTerminalMode = React.memo(({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (window.confirm(`Delete ${file.name}?`)) onDeleteLocalFile(file.oid);
+                    setDeleteConfirm({ open: true, fileName: file.name, oid: file.oid });
                   }}
                   className="sidebar-details text-accent-danger hover:text-accent-danger cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
                 >
@@ -584,6 +585,11 @@ const FileExplorer = ({
   const [fileName, setFileName] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [languageFilter, setLanguageFilter] = useState<string>("ALL");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; fileName: string; oid: string }>({
+    open: false,
+    fileName: "",
+    oid: "",
+  });
 
   const updateSearchParam = useCallback((key: string, value: string) => {
     setSearchParams((prev) => {
@@ -880,6 +886,19 @@ const FileExplorer = ({
       <div
         onPointerDown={onResizeStart}
         className="hidden h-full w-1 sidebar-details cursor-col-resize border-l border-accent-primary/40 bg-accent-primary/20 transition-all hover:bg-accent-primary hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] active:bg-accent-primary md:block"
+      />
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.open}
+        title="Delete file?"
+        message={`Delete ${deleteConfirm.fileName}?`}
+        confirmLabel="Delete"
+        danger
+        onClose={() => setDeleteConfirm({ open: false, fileName: "", oid: "" })}
+        onConfirm={() => {
+          onDeleteLocalFile(deleteConfirm.oid);
+          setDeleteConfirm({ open: false, fileName: "", oid: "" });
+        }}
       />
     </>
   );
