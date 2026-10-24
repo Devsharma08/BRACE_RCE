@@ -147,7 +147,7 @@ export default function Problems() {
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 relative z-10">
         {/* ── HERO ───────────────────────────────────────────────────── */}
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-4">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-primary shadow-glow-primary" />
             Training command center

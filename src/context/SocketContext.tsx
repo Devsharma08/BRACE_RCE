@@ -214,7 +214,7 @@ function emitJoinBattle(
   socket: Socket | null,
   roomId: string,
   userId: string | null,
-  ack?: (response: { success: boolean; error?: string }) => void,
+   ack?: (response: { success: boolean; error?: string }) => void,
 ): void {
   // Deduplicate: if already joined or joining, don't emit again
   if (battleRoomManager.roomId === roomId && battleRoomManager.status === "JOINED") {

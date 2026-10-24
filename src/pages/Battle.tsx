@@ -580,7 +580,6 @@ const myUserIdRef = useRef("");
     let mounted = true;
 
     const onBattleStarting = (data: { countdownSeconds?: number }) => {
-      if (!mounted) return;
       setCountDown(data?.countdownSeconds || 3);
       if (data?.countdownSeconds === 1) {
         setCommencing(true);
@@ -983,32 +982,30 @@ const myUserIdRef = useRef("");
   // The unmount detection uses a deferred cleanup pattern to distinguish
   // real unmounts from StrictMode remounts.
   const battleStartedRef = useRef(false);
+  const pendingLeaveTimerRef = useRef<number | null>(null);
   battleStartedRef.current = battleState.status === "IN_PROGRESS" || battleState.status === "FINISHED";
 
   useEffect(() => {
     // Only set up the leave handler if we have a socket and room
     if (!socket || !roomId) return;
 
-    let isUnmounting = false;
+    // Cancel any pending leave from a previous StrictMode unmount cycle
+    if (pendingLeaveTimerRef.current) {
+      window.clearTimeout(pendingLeaveTimerRef.current);
+      pendingLeaveTimerRef.current = null;
+    }
 
     return () => {
-      isUnmounting = true;
       // Only notify participants if the battle hasn't started yet
-      if (!battleStartedRef.current && isUnmounting) {
+      if (!battleStartedRef.current) {
         // Use setTimeout to allow for StrictMode remount cancellation.
-        // If StrictMode remounts, the new effect will set isUnmounting back
-        // to false via a ref comparison.
-        const leaveTimer = window.setTimeout(() => {
-          if (isUnmounting) {
+        // The timer is stored in a ref so the re-mount cleanup can cancel it.
+        pendingLeaveTimerRef.current = window.setTimeout(() => {
+          if (!battleStartedRef.current) {
             leaveBattleRoom(roomId, { notifyParticipants: true });
           }
+          pendingLeaveTimerRef.current = null;
         }, 500);
-
-        // Cleanup timer if effect re-runs (StrictMode remount)
-        return () => {
-          isUnmounting = false;
-          window.clearTimeout(leaveTimer);
-        };
       }
     };
   }, [socket, roomId, leaveBattleRoom]);
@@ -1423,6 +1420,33 @@ const myUserIdRef = useRef("");
   };
 
 
+
+  // Countdown overlay must render even during initial loading — the server
+  // may send battle_starting events before the HTTP room fetch has resolved.
+  // Without this, the "GET READY" overlay (and tick audio) would fire but
+  // stay hidden behind <PageSkeleton /> until the API data arrives.
+  if (countdown > 0 || commencing) {
+    return (
+      <div className="fixed inset-0 z-[100] flex select-none flex-col items-center justify-center bg-base">
+        <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
+          <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
+          OPERATIVE ALERT // BATTLE COMMENCING
+        </div>
+        <h2 className="mb-6 font-mono text-2xl font-black uppercase tracking-[0.4em] text-fg">
+          {commencing ? "BATTLE COMMENCING" : "GET READY"}
+        </h2>
+        <div className="relative flex min-h-32 items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
+          <div key={countdown || "commencing"} className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl">
+            {commencing ? "01" : countdown}
+          </div>
+        </div>
+        <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
+          {commencing ? "WORKSPACE UNLOCKING // ENTER THE ARENA" : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
+        </p>
+      </div>
+    );
+  }
 
   if (loading || !room) {
     return <PageSkeleton />;
