@@ -47,11 +47,17 @@ export default function GlobalModals() {
             {/* Opponent Profile */}
             {pendingOpponent && (
               <div className="flex flex-col items-center mb-8 animate-in fade-in zoom-in duration-500">
-                <img
-                  src={pendingOpponent.avatarUrl}
-                  alt="Opponent"
-                  className="w-20 h-20 rounded-full border-2 border-accent-primary mb-3 shadow-[0_0_15px_rgba(0,212,255,0.4)]"
-                />
+                {pendingOpponent.avatarUrl ? (
+                  <img
+                    src={pendingOpponent.avatarUrl}
+                    alt="Opponent"
+                    className="w-20 h-20 rounded-full border-2 border-accent-primary mb-3 shadow-[0_0_15px_rgba(0,212,255,0.4)]"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full border-2 border-accent-primary mb-3 shadow-[0_0_15px_rgba(0,212,255,0.4)] bg-surface-hover flex items-center justify-center text-accent-primary font-bold text-2xl">
+                    {pendingOpponent.username?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
                 <span className="text-xl font-bold text-fg">
                   {pendingOpponent.username}
                 </span>

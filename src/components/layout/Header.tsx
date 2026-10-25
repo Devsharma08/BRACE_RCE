@@ -11,6 +11,7 @@ import {
   Terminal,
   User,
   UserPlus,
+  Home as HomeIcon,
   X,
   CircleHelp,
 } from 'lucide-react'
@@ -24,7 +25,7 @@ import { NotificationCenter } from '../features/NotificationCenter'
  * hide-on-scroll behaviour; only the chrome styling changed.
  */
 const links = [
-  { href: '/', label: 'Home' },
+  { href: '/', label: 'Home',icon:HomeIcon },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
   { href: '/terminal', label: 'Terminal', icon: Terminal },
   { href: '/problems', label: 'Problems', icon: CircleHelp },
