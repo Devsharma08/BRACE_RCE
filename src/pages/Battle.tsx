@@ -11,11 +11,44 @@ import {
   outputGridTemplateRows,
   useTerminalLayout,
 } from "../features/terminal/hooks/useTerminalLayout";
-import type { SupportedLanguage, ExecutionResult } from "../features/terminal/types";
+import type {
+  SupportedLanguage,
+  ExecutionResult,
+} from "../features/terminal/types";
 import { executeCode } from "../features/terminal/api";
 import { buildProblemTestCases } from "../features/terminal/executionOutput";
 import { toast } from "sonner";
-import { Bot, Clock, LayoutTemplate, Loader2, Lock, Minus, AlarmClock, Play, Send, ShieldAlert, ShieldCheck, Skull, StopCircle, Swords, Terminal as TerminalIcon, Trophy, User, Users, X, ChevronLeft, ChevronRight, MessageSquare, Flag, Code, Activity, Radio, Eye, AlignLeft, Home } from "lucide-react";
+import {
+  Bot,
+  Clock,
+  LayoutTemplate,
+  Loader2,
+  Lock,
+  Minus,
+  AlarmClock,
+  Play,
+  Send,
+  ShieldAlert,
+  ShieldCheck,
+  Skull,
+  StopCircle,
+  Swords,
+  Terminal as TerminalIcon,
+  Trophy,
+  User,
+  Users,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  Flag,
+  Code,
+  Activity,
+  Radio,
+  Eye,
+  AlignLeft,
+  Home,
+} from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
@@ -23,13 +56,16 @@ import { participantVerdict, verdictStyle } from "../utils/participantVerdict";
 import { SoundToggle } from "../components/features/SoundToggle";
 import { playBattleSound } from "../utils/battleSounds";
 import { useFocusTelemetry } from "../hooks/useFocusTelemetry";
-import { invalidateProblemQueries, invalidatePostBattleQueries } from "../utils/problemCache";
+import {
+  invalidateProblemQueries,
+  invalidatePostBattleQueries,
+} from "../utils/problemCache";
 import DOMPurify from "dompurify";
 import { useEventAnalytics } from "../hooks/useEventAnalytics";
 import { EventAnalytics } from "../components/features/EventAnalytics";
 import { BattleStagingRoom } from "../components/features/BattleStagingRoom";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
-
+import { ProblemHintsAccordion } from "../components/features/battle/HintsAccordion";
 
 export interface BattleMessage {
   id: string;
@@ -42,56 +78,10 @@ export interface BattleMessage {
   createdAt: string;
 }
 
-
-const ProblemHintsAccordion = ({ hints }: { hints?: any }) => {
-  const [unlockedCount, setUnlockedCount] = useState<number>(0);
-
-  const parsedHints = useMemo(() => {
-    if (Array.isArray(hints) && hints.length > 0) return hints;
-    if (typeof hints === "string" && hints.trim().length > 0) return [hints];
-    return [
-      "Analyze input data constraints and identify potential edge cases (e.g. empty inputs, zero values, or single element arrays).",
-      "Consider using an efficient data structure (such as a Hash Map, Two-Pointers, or Sliding Window) to reduce time complexity.",
-      "Optimal Strategy: Aim for O(N) time complexity and O(1) auxiliary space where feasible."
-    ];
-  }, [hints]);
-
-  return (
-    <div className="rounded border border-accent-warning/20 bg-accent-warning/5 p-3 font-mono text-xs mt-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-widest text-accent-warning font-bold flex items-center gap-1">
-          ⚡ PROBLEM HINTS & BLUEPRINT ({unlockedCount}/{parsedHints.length})
-        </span>
-        {unlockedCount < parsedHints.length && (
-          <button
-            type="button"
-            onClick={() => setUnlockedCount((prev) => Math.min(parsedHints.length, prev + 1))}
-            className="text-[9px] font-bold text-accent-warning border border-accent-warning/30 bg-accent-warning/5 px-2 py-0.5 uppercase tracking-wider hover:bg-accent-warning/10 transition-all cursor-pointer"
-          >
-            {unlockedCount === 0 ? "REVEAL HINT" : `HINT #${unlockedCount + 1}`}
-          </button>
-        )}
-      </div>
-
-      {unlockedCount === 0 ? (
-        <div className="text-[10px] text-faint italic">
-          Hints are locked to encourage independent problem-solving. Click above to unlock hints step-by-step.
-        </div>
-      ) : (
-        <div className="space-y-1.5 mt-2">
-          {parsedHints.slice(0, unlockedCount).map((hintText, idx) => (
-            <div key={`hint-${idx}`} className="border-l-2 border-accent-warning bg-surface-hover p-2 text-[10px] text-accent-warning/90 leading-relaxed">
-              <span className="font-bold text-accent-warning block mb-0.5">// HINT #{idx + 1}</span>
-              {hintText}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const getLanguageStarterCode = (lang: SupportedLanguage, problemName?: string) => {
+const getLanguageStarterCode = (
+  lang: SupportedLanguage,
+  problemName?: string,
+) => {
   switch (lang) {
     case "python":
       return `# Write your Python solution for ${problemName || "problem"}\ndef solution():\n    pass\n`;
@@ -111,7 +101,7 @@ const getProblemSnippet = (problem: any, lang: SupportedLanguage) => {
   if (!problem) return getLanguageStarterCode(lang);
   const normalizedLang = lang === "c++" ? "cpp" : lang.toLowerCase();
   const snippet = problem.code_snippets?.find(
-    (s: any) => s.language?.toLowerCase() === normalizedLang
+    (s: any) => s.language?.toLowerCase() === normalizedLang,
   );
   return snippet?.code || getLanguageStarterCode(lang, problem.name);
 };
@@ -124,7 +114,10 @@ const SpectateView = ({
   onJoin,
 }: {
   room: any;
-  playerProgress: Record<string, { status: string; progress: number; linesWritten?: number }>;
+  playerProgress: Record<
+    string,
+    { status: string; progress: number; linesWritten?: number }
+  >;
   battleState: any;
   onJoin: () => void;
 }) => {
@@ -133,20 +126,30 @@ const SpectateView = ({
   return (
     <div className="min-h-screen bg-void text-fg font-mono flex flex-col items-center justify-center p-8 relative">
       {/* bg grid */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(0,212,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,1) 1px, transparent 1px)`, backgroundSize: "60px 60px" }} />
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: `linear-gradient(rgba(0,212,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,1) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+        }}
+      />
       <div className="relative z-10 w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-accent-danger animate-pulse" />
-              <span className="text-[10px] text-accent-danger/70 tracking-[0.3em] uppercase">LIVE SPECTATE MODE</span>
+              <span className="text-[10px] text-accent-danger/70 tracking-[0.3em] uppercase">
+                LIVE SPECTATE MODE
+              </span>
             </div>
             <h1 className="text-2xl font-black text-fg tracking-widest flex items-center gap-3">
               <Eye className="w-6 h-6 text-accent-danger" />
               {room?.name || "LIVE MATCH"}
             </h1>
-            <p className="text-xs text-faint mt-1 tracking-wider">CODE: {room?.roomCode}</p>
+            <p className="text-xs text-faint mt-1 tracking-wider">
+              CODE: {room?.roomCode}
+            </p>
           </div>
           <div className="flex gap-2">
             <button
@@ -165,24 +168,37 @@ const SpectateView = ({
         </div>
 
         {/* Status banner */}
-        <div className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${battleState?.status === "IN_PROGRESS" ? "bg-accent-success/15 border border-accent-success/30 text-accent-success" :
-            battleState?.status === "WAITING" ? "bg-accent-warning/15 border border-accent-warning/30 text-accent-warning" :
-              "bg-surface-hover/60 border border-subtle-line text-subtle"
-          }`}>
+        <div
+          className={`w-full py-2.5 px-4 rounded-lg mb-6 flex items-center justify-between text-xs font-bold tracking-widest ${
+            battleState?.status === "IN_PROGRESS"
+              ? "bg-accent-success/15 border border-accent-success/30 text-accent-success"
+              : battleState?.status === "WAITING"
+                ? "bg-accent-warning/15 border border-accent-warning/30 text-accent-warning"
+                : "bg-surface-hover/60 border border-subtle-line text-subtle"
+          }`}
+        >
           <span>STATUS: {battleState?.status || "LOADING"}</span>
           {battleState?.startedAt && battleState?.totalDurationMs && (
-            <GlobalTimer startedAt={battleState.startedAt} totalDurationMs={battleState.totalDurationMs} variant="compact" />
+            <GlobalTimer
+              startedAt={battleState.startedAt}
+              totalDurationMs={battleState.totalDurationMs}
+              variant="compact"
+            />
           )}
         </div>
 
         {/* Participants intel */}
         <div className="bg-void border border-subtle-line rounded-2xl overflow-hidden">
           <div className="px-5 py-3 border-b border-subtle-line bg-base/40">
-            <p className="text-[10px] text-faint tracking-widest">LIVE OPERATIVES ({participants.length})</p>
+            <p className="text-[10px] text-faint tracking-widest">
+              LIVE OPERATIVES ({participants.length})
+            </p>
           </div>
           <div className="divide-y divide-subtle-line">
             {participants.length === 0 && (
-              <div className="py-12 text-center text-faint text-xs tracking-widest">NO OPERATIVES REGISTERED</div>
+              <div className="py-12 text-center text-faint text-xs tracking-widest">
+                NO OPERATIVES REGISTERED
+              </div>
             )}
             {participants.map((p: any) => {
               const uid = p.user?.id || p.userId;
@@ -192,26 +208,42 @@ const SpectateView = ({
                 <div key={uid} className="p-5">
                   <div className="flex items-center gap-3 mb-3">
                     <img
-                      src={p.user?.avatarUrl || getInitialsAvatar(p.user?.username)}
+                      src={
+                        p.user?.avatarUrl || getInitialsAvatar(p.user?.username)
+                      }
                       alt=""
                       className="w-9 h-9 rounded-full border border-subtle-line"
                     />
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-fg">{p.user?.username || "Operative"}</p>
+                      <p className="text-sm font-bold text-fg">
+                        {p.user?.username || "Operative"}
+                      </p>
                       <p className="text-[10px] text-faint tracking-widest">
-                        {intel?.status || "STANDBY"}{intel?.linesWritten !== undefined ? ` · ${intel.linesWritten} LINES` : ""}
+                        {intel?.status || "STANDBY"}
+                        {intel?.linesWritten !== undefined
+                          ? ` · ${intel.linesWritten} LINES`
+                          : ""}
                       </p>
                     </div>
-                    <span className={`text-xs font-bold px-2 py-1 rounded ${prog >= 100 ? "bg-accent-success/20 text-accent-success" :
-                        prog > 0 ? "bg-accent-primary/20 text-accent-primary" :
-                          "bg-surface-hover/60 text-faint"
-                      }`}>{prog}%</span>
+                    <span
+                      className={`text-xs font-bold px-2 py-1 rounded ${
+                        prog >= 100
+                          ? "bg-accent-success/20 text-accent-success"
+                          : prog > 0
+                            ? "bg-accent-primary/20 text-accent-primary"
+                            : "bg-surface-hover/60 text-faint"
+                      }`}
+                    >
+                      {prog}%
+                    </span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-hover rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${prog >= 100 ? "bg-gradient-to-r from-accent-success to-accent-success" :
-                          "bg-gradient-to-r from-accent-primary to-accent-primary"
-                        }`}
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        prog >= 100
+                          ? "bg-gradient-to-r from-accent-success to-accent-success"
+                          : "bg-gradient-to-r from-accent-primary to-accent-primary"
+                      }`}
                       style={{ width: `${prog}%` }}
                     />
                   </div>
@@ -221,7 +253,9 @@ const SpectateView = ({
           </div>
         </div>
 
-        <p className="text-center text-[10px] text-faint tracking-widest mt-6">SPECTATE MODE · READ-ONLY · UPDATES IN REAL-TIME</p>
+        <p className="text-center text-[10px] text-faint tracking-widest mt-6">
+          SPECTATE MODE · READ-ONLY · UPDATES IN REAL-TIME
+        </p>
       </div>
     </div>
   );
@@ -232,14 +266,18 @@ export const Battle = () => {
   const { roomId } = useParams<{ roomId: string }>(); // roomId is actually roomCode for custom rooms
   const navigate = useNavigate();
   const location = useLocation();
-  const isSpectateMode = new URLSearchParams(location.search).get("spectate") === "true";
+  const isSpectateMode =
+    new URLSearchParams(location.search).get("spectate") === "true";
   // Password for protected rooms — comes from router state (PasswordModal) or sessionStorage (page reload)
   const routerState = location.state as { password?: string } | null;
-  const sessionPassword = roomId ? sessionStorage.getItem(`room_password_${roomId}`) : null;
+  const sessionPassword = roomId
+    ? sessionStorage.getItem(`room_password_${roomId}`)
+    : null;
   const roomPassword = routerState?.password || sessionPassword || undefined;
   // SocketContext now manages room joining/leaving centrally.
   // We only need to bind event handlers here.
-  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom } = useSocket();
+  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom } =
+    useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   // --- ROOM / EVENT STATE ---
@@ -247,8 +285,12 @@ export const Battle = () => {
   const [loading, setLoading] = useState(true);
   const [battleState, setBattleState] = useState<any>({ status: "WAITING" });
   const [isHost, setIsHost] = useState(false);
-  const [battleResult, setBattleResult] = useState<"WON" | "LOST" | "CHEATER" | null>(null);
-  const [defeatReason, setDefeatReason] = useState<"opponent" | "timeout" | "surrender">("opponent");
+  const [battleResult, setBattleResult] = useState<
+    "WON" | "LOST" | "CHEATER" | null
+  >(null);
+  const [defeatReason, setDefeatReason] = useState<
+    "opponent" | "timeout" | "surrender"
+  >("opponent");
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
   const [myUserId, setMyUserId] = useState<string>("");
@@ -256,7 +298,9 @@ export const Battle = () => {
 
   // Use a ref so this function is never a socket-effect dep (prevents spurious
   // effect teardowns that drop socket room membership).
-  const fetchBlockedParticipantsRef = useRef<() => Promise<void>>(async () => {});
+  const fetchBlockedParticipantsRef = useRef<() => Promise<void>>(
+    async () => {},
+  );
   const fetchBlockedParticipants = useCallback(async () => {
     if (!roomId) return;
     try {
@@ -269,21 +313,52 @@ export const Battle = () => {
   }, [roomId]);
   fetchBlockedParticipantsRef.current = fetchBlockedParticipants;
 
-  const [playerProgress, setPlayerProgress] = useState<Record<string, { status: string; progress: number; linesWritten?: number }>>({});
+  const [playerProgress, setPlayerProgress] = useState<
+    Record<string, { status: string; progress: number; linesWritten?: number }>
+  >({});
   const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
-  const [isStartingOperation, setIsStartingOperation] = useState<boolean>(false);
+  const [isStartingOperation, setIsStartingOperation] =
+    useState<boolean>(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     confirmLabel: string;
     onConfirm: (() => void) | null;
-  }>({ isOpen: false, title: "", message: "", confirmLabel: "Confirm", onConfirm: null });
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmLabel: "Confirm",
+    onConfirm: null,
+  });
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Clear execution output and reset test case statuses when the problem changes
+  // so stale results from a previous problem don't bleed into the new one.
+  useEffect(() => {
+    setExecutionOutput(null);
+    setTerminalOutput("");
+    setProblems((prev) => {
+      const newProblems = [...prev];
+      const currentProb = newProblems[currentIndex];
+      if (currentProb) {
+        const updated = { ...currentProb };
+        updated.test_cases = (updated.test_cases || []).map((tc: any) => ({
+          ...tc,
+          status: undefined,
+          output: undefined,
+          runtimeError: undefined,
+        }));
+        newProblems[currentIndex] = updated;
+      }
+      return newProblems;
+    });
+  }, [currentIndex]);
   const activeProblem = problems[currentIndex];
 
   const [code, setCode] = useState<string>("// Initialization...");
@@ -304,20 +379,23 @@ export const Battle = () => {
   const [focusPenaltyPercent, setFocusPenaltyPercent] = useState(0);
 
   // --- SCHEDULED CLOSE WARNING (minimizable banner) ---
-  const [closingWarning, setClosingWarning] = useState<{ closesAt: string } | null>(null);
+  const [closingWarning, setClosingWarning] = useState<{
+    closesAt: string;
+  } | null>(null);
   const [closingWarningDismissed, setClosingWarningDismissed] = useState(false);
   const [closingSeconds, setClosingSeconds] = useState<number | null>(null);
 
   // --- CHAT STATE ---
   const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
   const [newBattleMessage, setNewBattleMessage] = useState("");
-  const [activePanelTab, setActivePanelTab] = useState<"PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY" | "MODERATOR">(
-    "PROBLEM",
-  );
+  const [activePanelTab, setActivePanelTab] = useState<
+    "PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY" | "MODERATOR"
+  >("PROBLEM");
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const battleActiveRef = useRef(false);
-  battleActiveRef.current = battleState.status === "IN_PROGRESS" && !isSpectateMode && !isHost;
+  battleActiveRef.current =
+    battleState.status === "IN_PROGRESS" && !isSpectateMode && !isHost;
 
   const handleFocusLoss = useCallback(() => {
     if (!battleActiveRef.current) return;
@@ -331,8 +409,14 @@ export const Battle = () => {
     });
     setFocusFlash(true);
     window.setTimeout(() => setFocusFlash(false), 650);
-    const displayPenalty = Math.min(100, Math.round(5 * Math.pow(2, focusLossCount)));
-    toast.warning(`⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${displayPenalty}%`, { id: "focus-loss" });
+    const displayPenalty = Math.min(
+      100,
+      Math.round(5 * Math.pow(2, focusLossCount)),
+    );
+    toast.warning(
+      `⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${displayPenalty}%`,
+      { id: "focus-loss" },
+    );
   }, [focusLossCount]);
 
   const handleFocusRestore = useCallback(() => {
@@ -345,22 +429,41 @@ export const Battle = () => {
   // label/colour climbs with the penalty so repeat offenders read as worse.
   const penaltySeverity = (() => {
     if (focusPenaltyPercent >= 100) {
-      return { label: "CHEATER", tone: "border-accent-danger/50 bg-accent-danger/15 text-accent-danger" };
+      return {
+        label: "CHEATER",
+        tone: "border-accent-danger/50 bg-accent-danger/15 text-accent-danger",
+      };
     }
     if (focusPenaltyPercent >= 80) {
-      return { label: "SEVERE", tone: "border-accent-danger/40 bg-accent-danger/10 text-accent-danger" };
+      return {
+        label: "SEVERE",
+        tone: "border-accent-danger/40 bg-accent-danger/10 text-accent-danger",
+      };
     }
     if (focusPenaltyPercent >= 40) {
-      return { label: "HIGH RISK", tone: "border-accent-warning/50 bg-accent-warning/15 text-accent-warning" };
+      return {
+        label: "HIGH RISK",
+        tone: "border-accent-warning/50 bg-accent-warning/15 text-accent-warning",
+      };
     }
     if (focusPenaltyPercent >= 20) {
-      return { label: "MODERATE", tone: "border-accent-warning/40 bg-accent-warning/10 text-accent-warning" };
+      return {
+        label: "MODERATE",
+        tone: "border-accent-warning/40 bg-accent-warning/10 text-accent-warning",
+      };
     }
-    return { label: "SUSPICIOUS", tone: "border-accent-warning/30 bg-accent-warning/5 text-accent-warning" };
+    return {
+      label: "SUSPICIOUS",
+      tone: "border-accent-warning/30 bg-accent-warning/5 text-accent-warning",
+    };
   })();
 
   // Focus-loss telemetry (ROADMAP §3) + battle sounds (ROADMAP §6)
-  const focusTelemetry = useFocusTelemetry(!isSpectateMode && !loading, handleFocusLoss, handleFocusRestore);
+  const focusTelemetry = useFocusTelemetry(
+    !isSpectateMode && !loading,
+    handleFocusLoss,
+    handleFocusRestore,
+  );
 
   // Used to invalidate the cached problem payloads after a SUBMIT writes progress.
   const queryClient = useQueryClient();
@@ -370,12 +473,15 @@ export const Battle = () => {
   const [terminalOutput, setTerminalOutput] = useState(
     "// COMPILATION LOGS WILL BE DISPLAYED HERE",
   );
-  const [executionOutput, setExecutionOutput] = useState<ExecutionResult | null>(null);
+  const [executionOutput, setExecutionOutput] =
+    useState<ExecutionResult | null>(null);
   const [isOutputActive, setIsOutputActive] = useState<boolean>(true);
   const [customInput, setCustomInput] = useState<string>("");
   const [customInputActive, setCustomInputActive] = useState<boolean>(false);
   const [isCustomInputRun, setIsCustomInputRun] = useState<boolean>(false);
-  const [runningTestCaseIndex, setRunningTestCaseIndex] = useState<number | null>(null);
+  const [runningTestCaseIndex, setRunningTestCaseIndex] = useState<
+    number | null
+  >(null);
 
   const formatEditorRef = useRef<(() => void) | null>(null);
 
@@ -390,56 +496,126 @@ export const Battle = () => {
     startSidebarDragging,
   } = useTerminalLayout({ autoCloseBelowPx: 220 });
 
-  const handleRunSingleTestCase = useCallback(async (index: number) => {
-    if (!activeProblem?.test_cases?.[index]) return;
-    const targetCase = activeProblem.test_cases[index];
-    const inputString = targetCase.input || "";
-    setRunningTestCaseIndex(index);
+  const handleRunCode = async () => {
+    if (!activeProblem) return;
     setIsSubmitting(true);
-    setIsCustomInputRun(true); // Mark as single-test run so panel hides pass/fail counts
+    setIsTerminal(true);
+    setIsCustomInputRun(false);
+    setTerminalOutput("Executing code and running first test case...");
+
     try {
       const res = await executeCode({
         code,
         language,
-        oid: activeProblem.github_oid || "local-battle",
-        fileName: activeProblem.name,
+        oid: activeProblem.github_oid || activeProblem.id,
         mode: "RUN",
-        customInput: inputString,
+        roomId,
+        testCaseIndex: 0,
       });
 
-      // Normalize detail: set testCaseIndex to the card the user clicked
-      const singleDetail = res?.details?.[0];
-      const normalizedDetail = singleDetail ? { ...singleDetail, testCaseIndex: index } : null;
+      setExecutionOutput(res);
 
-      setExecutionOutput((prev) => {
-        const existingDetails = (prev?.details || []).filter((d) => d.testCaseIndex !== index);
-        return {
-          ...prev,
-          ...res,
-          details: normalizedDetail ? [...existingDetails, normalizedDetail] : existingDetails,
-        };
-      });
+      if (res.details) {
+        setProblems((prev) => {
+          const newProblems = [...prev];
+          const currentProb = { ...newProblems[currentIndex] };
+          const newTestCases = [...(currentProb.test_cases || [])];
 
-      // Set terminal output: show error OR output — never both
-      if (singleDetail?.runtimeError) {
-        setTerminalOutput(singleDetail.runtimeError);
+          res.details?.forEach((detail) => {
+            const tcIndex = detail.testCaseIndex ?? 0;
+            if (newTestCases[tcIndex]) {
+              newTestCases[tcIndex] = {
+                ...newTestCases[tcIndex],
+                status: detail.passed ? "PASSED" : "FAILED",
+                output: detail.output || "",
+                runtimeError: detail.runtimeError || "",
+              };
+            }
+          });
+
+          currentProb.test_cases = newTestCases;
+          newProblems[currentIndex] = currentProb;
+          return newProblems;
+        });
+      }
+
+      if (res.status === "PASSED") {
+        setTerminalOutput("SUCCESS: First test case passed!");
       } else {
-        setTerminalOutput(singleDetail?.output?.trim() || "// No output produced.");
+        setTerminalOutput(
+          `Execution Finished: ${res.passedCases || 0} / ${res.totalCases || 1} cases passed.`,
+        );
       }
     } catch (err: any) {
-      setTerminalOutput(`ERROR: ${err.message || String(err)}`);
+      console.error(err);
+      setTerminalOutput(
+        `COMPILATION/RUNTIME ERROR:\n${err.message || String(err)}`,
+      );
     } finally {
       setIsSubmitting(false);
-      setRunningTestCaseIndex(null);
-      // Keep isCustomInputRun=true so the panel knows it's a single-test run
     }
-  }, [activeProblem, code, language]);
+  };
 
+  const handleRunSingleTestCase = useCallback(
+    async (index: number) => {
+      if (!activeProblem?.test_cases?.[index]) return;
+      const targetCase = activeProblem.test_cases[index];
+      const inputString = targetCase.input || "";
+      setRunningTestCaseIndex(index);
+      setIsSubmitting(true);
+      setIsCustomInputRun(true); // Mark as single-test run so panel hides pass/fail counts
+      try {
+        const res = await executeCode({
+          code,
+          language,
+          oid: activeProblem.github_oid || "local-battle",
+          fileName: activeProblem.name,
+          mode: "RUN",
+          customInput: inputString,
+        });
+
+        // Normalize detail: set testCaseIndex to the card the user clicked
+        const singleDetail = res?.details?.[0];
+        const normalizedDetail = singleDetail
+          ? { ...singleDetail, testCaseIndex: index }
+          : null;
+
+        setExecutionOutput((prev) => {
+          const existingDetails = (prev?.details || []).filter(
+            (d) => d.testCaseIndex !== index,
+          );
+          return {
+            ...prev,
+            ...res,
+            details: normalizedDetail
+              ? [...existingDetails, normalizedDetail]
+              : existingDetails,
+          };
+        });
+
+        // Set terminal output: show error OR output — never both
+        if (singleDetail?.runtimeError) {
+          setTerminalOutput(singleDetail.runtimeError);
+        } else {
+          setTerminalOutput(
+            singleDetail?.output?.trim() || "// No output produced.",
+          );
+        }
+      } catch (err: any) {
+        setTerminalOutput(`ERROR: ${err.message || String(err)}`);
+      } finally {
+        setIsSubmitting(false);
+        setRunningTestCaseIndex(null);
+        // Keep isCustomInputRun=true so the panel knows it's a single-test run
+      }
+    },
+    [activeProblem, code, language],
+  );
 
   // Centralized room state comes from SocketContext — no need for local refs.
-// joinBattleRoom/leaveBattleRoom are stable (useCallback in SocketProvider).
-// battleRoomStatus/currentBattleRoomId are tracked centrally.
-const myUserIdRef = useRef("");
+  // joinBattleRoom/leaveBattleRoom are stable (useCallback in SocketProvider).
+  // battleRoomStatus/currentBattleRoomId are tracked centrally.
+  const myUserIdRef = useRef("");
 
   // Point 35: the room fetch goes through the query cache so navigating away
   // and back within gcTime re-seeds instantly instead of refetching.
@@ -452,18 +628,26 @@ const myUserIdRef = useRef("");
     queryFn: async () => {
       // Pass spectate flag so server won't auto-create a performance for spectators
       const spectateParam = isSpectateMode ? "?spectate=true" : "";
-      const passwordParam = roomPassword ? `&password=${encodeURIComponent(roomPassword)}` : "";
+      const passwordParam = roomPassword
+        ? `&password=${encodeURIComponent(roomPassword)}`
+        : "";
       const [roomRes, profileRes] = await Promise.all([
         api.get(`/rooms/live/${roomId}${spectateParam}${passwordParam}`),
         api.get("/profile"),
       ]);
-      return { room: roomRes.data.room, myId: profileRes.data.data.id as string };
+      return {
+        room: roomRes.data.room,
+        myId: profileRes.data.data.id as string,
+      };
     },
   });
 
   // Event analytics — loaded when event is FINISHED or when host opens the analytics view
   const eventId = roomId ? roomId.replace("room-", "") : undefined;
-  const { data: eventAnalytics } = useEventAnalytics(eventId, battleState.status === "FINISHED" || isHost);
+  const { data: eventAnalytics } = useEventAnalytics(
+    eventId,
+    battleState.status === "FINISHED" || isHost,
+  );
 
   const [showAnalyticsView, setShowAnalyticsView] = useState(false);
 
@@ -498,20 +682,20 @@ const myUserIdRef = useRef("");
     // battle to IN_PROGRESS/FINISHED (otherwise a stale fetchedRoom snapshot
     // would overwrite real-time socket updates and revert the UI to WAITING).
     if (roomData.status) {
-        const currentStatus = battleState.status;
-        const isSocketAdvanced =
-            currentStatus === "IN_PROGRESS" ||
-            currentStatus === "FINISHED" ||
-            currentStatus === "COUNTDOWN";
-        if (!isSocketAdvanced) {
-            setBattleState((prev: any) => ({
-                ...prev,
-                status: roomData.status,
-                startedAt: roomData.startedAt,
-                finishedAt: roomData.finishedAt,
-                totalDurationMs: roomData.totalTimeLimitMs,
-            }));
-        }
+      const currentStatus = battleState.status;
+      const isSocketAdvanced =
+        currentStatus === "IN_PROGRESS" ||
+        currentStatus === "FINISHED" ||
+        currentStatus === "COUNTDOWN";
+      if (!isSocketAdvanced) {
+        setBattleState((prev: any) => ({
+          ...prev,
+          status: roomData.status,
+          startedAt: roomData.startedAt,
+          finishedAt: roomData.finishedAt,
+          totalDurationMs: roomData.totalTimeLimitMs,
+        }));
+      }
     }
 
     if (isUserHost) {
@@ -523,9 +707,16 @@ const myUserIdRef = useRef("");
 
     // Seed live telemetry so a mid-battle joiner/reconnector sees the last
     // known status instead of blank bars until the next battle_update.
-    const initialProgress: Record<string, { status: any; progress: number; linesWritten: number }> = {};
+    const initialProgress: Record<
+      string,
+      { status: any; progress: number; linesWritten: number }
+    > = {};
     (roomData.performances || []).forEach((p: any) => {
-      initialProgress[p.userId] = { status: p.status, progress: 0, linesWritten: 0 };
+      initialProgress[p.userId] = {
+        status: p.status,
+        progress: 0,
+        linesWritten: 0,
+      };
     });
     setPlayerProgress(initialProgress);
 
@@ -595,7 +786,12 @@ const myUserIdRef = useRef("");
       playBattleSound("tick");
     };
 
-    const onBattleStarted = (data?: { startedAt?: any; problems?: any[]; commonProblem?: any; totalDurationMs?: number }) => {
+    const onBattleStarted = (data?: {
+      startedAt?: any;
+      problems?: any[];
+      commonProblem?: any;
+      totalDurationMs?: number;
+    }) => {
       if (!mounted) return;
       setBattleState((prev: any) => ({
         ...prev,
@@ -628,7 +824,9 @@ const myUserIdRef = useRef("");
         setCode(snippet);
         setCodes({ [data.commonProblem.id]: snippet });
       }
-      toast.success("Operation initiated! Workspaces unlocked.", { id: "battle-starting" });
+      toast.success("Operation initiated! Workspaces unlocked.", {
+        id: "battle-starting",
+      });
     };
 
     const onStartFailed = (data: { error?: string }) => {
@@ -636,12 +834,18 @@ const myUserIdRef = useRef("");
       setIsStartingOperation(false);
       setCountDown(0);
       setCommencing(false);
-      toast.error(data?.error || "Failed to start the operation. Please try again.", { id: "start-failed" });
+      toast.error(
+        data?.error || "Failed to start the operation. Please try again.",
+        { id: "start-failed" },
+      );
     };
 
     const onParticipantRejected = (data: { reason?: string }) => {
       if (!mounted) return;
-      toast.error(data?.reason || "Your entry request was declined by the host.", { id: "participant-rejected" });
+      toast.error(
+        data?.reason || "Your entry request was declined by the host.",
+        { id: "participant-rejected" },
+      );
       navigate("/lobby");
     };
 
@@ -660,7 +864,9 @@ const myUserIdRef = useRef("");
 
     const onBattleMessageError = (errMsg: string) => {
       if (!mounted) return;
-      toast.error(errMsg || "Failed to send battle message.", { id: "battle-msg-error" });
+      toast.error(errMsg || "Failed to send battle message.", {
+        id: "battle-msg-error",
+      });
     };
 
     const onBattleUpdate = (data: any) => {
@@ -670,8 +876,8 @@ const myUserIdRef = useRef("");
         [data.userId]: {
           status: data.status,
           progress: data.progress,
-          linesWritten: data.linesWritten
-        }
+          linesWritten: data.linesWritten,
+        },
       }));
       if (data.result === "OPPONENT_WON") {
         setBattleResult("LOST");
@@ -679,19 +885,28 @@ const myUserIdRef = useRef("");
         setIsBattleMenuOpen(true);
       }
       if (data.result === "OPPONENT_SURRENDERED") {
-        toast.info("Opponent surrendered — solve the problem to claim victory.", { id: "opponent-surrender" });
+        toast.info(
+          "Opponent surrendered — solve the problem to claim victory.",
+          { id: "opponent-surrender" },
+        );
       }
     };
 
     const onYouWereKicked = () => {
       if (!mounted) return;
-      toast.error("You have been removed from this match by the host.", { id: "participant-removed" });
+      toast.error("You have been removed from this match by the host.", {
+        id: "participant-removed",
+      });
       navigate("/lobby");
     };
 
     const onPlayerKicked = (data: { userId: string; blocked?: boolean }) => {
       if (!mounted) return;
-      setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
+      setRoomParticipants((prev) =>
+        prev.filter(
+          (p) => p.userId !== data.userId && p.user?.id !== data.userId,
+        ),
+      );
       if (data.blocked) {
         void fetchBlockedParticipantsRef.current();
       }
@@ -699,19 +914,27 @@ const myUserIdRef = useRef("");
 
     const onYouAreBlocked = (data: { roomId?: string; reason?: string }) => {
       if (!mounted) return;
-      toast.error(data?.reason || "You have been blocked from this event.", { id: "you-are-blocked" });
+      toast.error(data?.reason || "You have been blocked from this event.", {
+        id: "you-are-blocked",
+      });
       navigate("/lobby");
     };
 
     const onPlayerBlocked = (data: { userId: string; blocked: boolean }) => {
       if (!mounted) return;
-      setRoomParticipants((prev) => prev.filter((p) => p.userId !== data.userId && p.user?.id !== data.userId));
+      setRoomParticipants((prev) =>
+        prev.filter(
+          (p) => p.userId !== data.userId && p.user?.id !== data.userId,
+        ),
+      );
       void fetchBlockedParticipantsRef.current();
     };
 
     const onPlayerUnblocked = () => {
       if (!mounted) return;
-      void queryClient.invalidateQueries({ queryKey: ["battle-room", roomId, isSpectateMode] });
+      void queryClient.invalidateQueries({
+        queryKey: ["battle-room", roomId, isSpectateMode],
+      });
     };
 
     const onParticipantsUpdated = (data: { performances: any[] }) => {
@@ -723,35 +946,56 @@ const myUserIdRef = useRef("");
       setRoomParticipants((prev) => {
         const prevIds = new Set(prev.map((p: any) => p.userId || p.user?.id));
         const nextPerformances = data.performances;
-        if (prev.length === nextPerformances.length && nextPerformances.every((p: any) => prevIds.has(p.userId || p.user?.id))) {
+        if (
+          prev.length === nextPerformances.length &&
+          nextPerformances.every((p: any) =>
+            prevIds.has(p.userId || p.user?.id),
+          )
+        ) {
           return nextPerformances;
         }
         return nextPerformances;
       });
-      setBattleState((prev: any) => ({ ...prev, participants: data.performances }));
+      setBattleState((prev: any) => ({
+        ...prev,
+        participants: data.performances,
+      }));
     };
 
     // Toast even if data.performance is null — the user info may come
     // from data.user when the socket join raced the HTTP enroll.
-    const onParticipantJoined = (data: { userId: string; performance: any; user?: any; roomId?: string; roomCode?: string }) => {
+    const onParticipantJoined = (data: {
+      userId: string;
+      performance: any;
+      user?: any;
+      roomId?: string;
+      roomCode?: string;
+    }) => {
       if (!mounted) return;
       const newParticipant = data.performance;
       const joiningUser = data.user ?? newParticipant?.user;
       const username = joiningUser?.username || "A new operative";
-      const joiningUserId = data.userId || newParticipant?.userId || joiningUser?.id;
+      const joiningUserId =
+        data.userId || newParticipant?.userId || joiningUser?.id;
 
       if (newParticipant) {
         setRoomParticipants((prev) => {
           const exists = prev.some(
-            (p: any) => p.userId === newParticipant.userId || p.user?.id === newParticipant.user?.id
+            (p: any) =>
+              p.userId === newParticipant.userId ||
+              p.user?.id === newParticipant.user?.id,
           );
           if (exists) return prev;
-          toast.info(`${username} has joined the operation.`, { id: `participant-joined-${joiningUserId}` });
+          toast.info(`${username} has joined the operation.`, {
+            id: `participant-joined-${joiningUserId}`,
+          });
           return [...prev, newParticipant];
         });
       } else {
         // No performance row yet (race condition), still show the toast.
-        toast.info(`${username} has joined the operation.`, { id: `participant-joined-${joiningUserId}` });
+        toast.info(`${username} has joined the operation.`, {
+          id: `participant-joined-${joiningUserId}`,
+        });
       }
     };
 
@@ -762,13 +1006,17 @@ const myUserIdRef = useRef("");
     // waiting phase), the server emits participant_left to ALL remaining
     // participants including the moderator. This provides real-time
     // visibility into roster changes before the battle begins.
-    const onParticipantLeft = (data: { userId: string; username?: string; reason?: string }) => {
+    const onParticipantLeft = (data: {
+      userId: string;
+      username?: string;
+      reason?: string;
+    }) => {
       if (!mounted) return;
       const username = data.username || "A fellow operative";
 
       // Remove from local roster
       setRoomParticipants((prev) =>
-        prev.filter((p: any) => (p.userId || p.user?.id) !== data.userId)
+        prev.filter((p: any) => (p.userId || p.user?.id) !== data.userId),
       );
 
       // Notify the moderator and other participants
@@ -783,76 +1031,123 @@ const myUserIdRef = useRef("");
         return {
           ...prev,
           participants: prev.participants.filter(
-            (p: any) => (p.userId || p.user?.id) !== data.userId
+            (p: any) => (p.userId || p.user?.id) !== data.userId,
           ),
         };
       });
     };
 
     // ─────────────────────────────────────────────────────────────────────
-    const onGroupTerminated = (data: { roomId?: string; roomCode?: string; reason?: string }) => {
+    const onGroupTerminated = (data: {
+      roomId?: string;
+      roomCode?: string;
+      reason?: string;
+    }) => {
       if (!mounted) return;
       const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
       const serverRoomCode = data?.roomCode;
       const clientRoomId = String(roomId).replace("room-", "");
-      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      const isSameRoom =
+        serverRoomId === clientRoomId ||
+        (serverRoomCode && serverRoomCode === clientRoomId);
       if (!isSameRoom) return;
       setBattleResult("LOST");
-      setBattleState((prev: any) => ({ ...prev, status: "FINISHED", finishedAt: new Date() }));
+      setBattleState((prev: any) => ({
+        ...prev,
+        status: "FINISHED",
+        finishedAt: new Date(),
+      }));
       setIsBattleMenuOpen(true);
       invalidatePostBattleQueries(queryClient);
-      toast.error("The host terminated this battle.", { id: "group-terminated" });
+      toast.error("The host terminated this battle.", {
+        id: "group-terminated",
+      });
       setTimeout(() => navigate("/lobby"), 1500);
     };
 
-    const onBattleFinished = (data: { winnerId?: string; performances?: any[]; roomId?: string; roomCode?: string }) => {
+    const onBattleFinished = (data: {
+      winnerId?: string;
+      performances?: any[];
+      roomId?: string;
+      roomCode?: string;
+    }) => {
       if (!mounted) return;
       const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
       const serverRoomCode = data?.roomCode;
       const clientRoomId = String(roomId).replace("room-", "");
-      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      const isSameRoom =
+        serverRoomId === clientRoomId ||
+        (serverRoomCode && serverRoomCode === clientRoomId);
       if (!isSameRoom) return;
       if (data?.performances) {
         setRoomParticipants(data.performances);
-        setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
+        setBattleState((prev: any) => ({
+          ...prev,
+          participants: data.performances,
+          status: "FINISHED",
+        }));
       }
       if (focusPenaltyPercent >= 100 && !isHostRef.current) {
         setBattleResult("CHEATER");
         socket.emit("surrender_battle", { roomId, reason: "cheater" });
       } else {
         const myPerf = data?.performances?.find(
-          (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+          (p: any) =>
+            p.userId === myUserIdRef.current ||
+            p.user?.id === myUserIdRef.current,
         );
-        const won = myPerf && ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+        const won =
+          myPerf &&
+          ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
         if (won) {
           setBattleResult("WON");
         } else {
           setBattleResult("LOST");
-          setDefeatReason(data?.winnerId && data?.winnerId !== myUserIdRef.current ? "opponent" : "timeout");
+          setDefeatReason(
+            data?.winnerId && data?.winnerId !== myUserIdRef.current
+              ? "opponent"
+              : "timeout",
+          );
         }
       }
       setIsBattleMenuOpen(true);
       invalidatePostBattleQueries(queryClient);
     };
 
-    const onMatchCompleted = (data: { status?: string; reason?: string; performances?: any[]; roomId?: string; roomCode?: string }) => {
+    const onMatchCompleted = (data: {
+      status?: string;
+      reason?: string;
+      performances?: any[];
+      roomId?: string;
+      roomCode?: string;
+    }) => {
       if (!mounted) return;
       const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
       const serverRoomCode = data?.roomCode;
       const clientRoomId = String(roomId).replace("room-", "");
-      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      const isSameRoom =
+        serverRoomId === clientRoomId ||
+        (serverRoomCode && serverRoomCode === clientRoomId);
       if (!isSameRoom) return;
       if (data?.performances) {
         setRoomParticipants(data.performances);
-        setBattleState((prev: any) => ({ ...prev, participants: data.performances, status: "FINISHED" }));
+        setBattleState((prev: any) => ({
+          ...prev,
+          participants: data.performances,
+          status: "FINISHED",
+        }));
         if (focusPenaltyPercent >= 100 && !isHostRef.current) {
           setBattleResult("CHEATER");
         } else {
           const myPerf = data.performances.find(
-            (p: any) => p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current,
+            (p: any) =>
+              p.userId === myUserIdRef.current ||
+              p.user?.id === myUserIdRef.current,
           );
           if (myPerf) {
-            const won = ["PASSED", "COMPLETED", "WON"].includes(String(myPerf.status));
+            const won = ["PASSED", "COMPLETED", "WON"].includes(
+              String(myPerf.status),
+            );
             setBattleResult(won ? "WON" : "LOST");
           }
         }
@@ -866,14 +1161,18 @@ const myUserIdRef = useRef("");
       if (!mounted) return;
       if (isHostRef.current) {
         setBattleState((prev: any) => ({ ...prev, status: "WAITING" }));
-        toast.success("Operation is ready — click START OPERATION to begin.", { id: "room-ready" });
+        toast.success("Operation is ready — click START OPERATION to begin.", {
+          id: "room-ready",
+        });
       }
     };
 
     const onRoomOpening = () => {
       if (!mounted) return;
       setBattleState((prev: any) => ({ ...prev, status: "IN_PROGRESS" }));
-      toast.info("Room opened — the operation is live.", { id: "room-opening" });
+      toast.info("Room opened — the operation is live.", {
+        id: "room-opening",
+      });
     };
 
     const onRoomClosing = (data: { closesAt?: string }) => {
@@ -893,18 +1192,26 @@ const myUserIdRef = useRef("");
       toast.info("Room closed by schedule.", { id: "room-closed" });
     };
 
-    const onRoomForceClosed = (data: { roomId?: string; roomCode?: string; reason?: string }) => {
+    const onRoomForceClosed = (data: {
+      roomId?: string;
+      roomCode?: string;
+      reason?: string;
+    }) => {
       if (!mounted) return;
       const serverRoomId = String(data?.roomId ?? "").replace("room-", "");
       const serverRoomCode = data?.roomCode;
       const clientRoomId = String(roomId).replace("room-", "");
-      const isSameRoom = serverRoomId === clientRoomId || (serverRoomCode && serverRoomCode === clientRoomId);
+      const isSameRoom =
+        serverRoomId === clientRoomId ||
+        (serverRoomCode && serverRoomCode === clientRoomId);
       if (!isSameRoom) return;
       setClosingWarning(null);
       setBattleState((prev: any) => ({ ...prev, status: "FINISHED" }));
       setIsBattleMenuOpen(true);
       invalidatePostBattleQueries(queryClient);
-      toast.error(data?.reason || "This room has been closed.", { id: "room-force-closed" });
+      toast.error(data?.reason || "This room has been closed.", {
+        id: "room-force-closed",
+      });
       setTimeout(() => navigate("/lobby"), 500);
     };
 
@@ -991,7 +1298,8 @@ const myUserIdRef = useRef("");
   // real unmounts from StrictMode remounts.
   const battleStartedRef = useRef(false);
   const pendingLeaveTimerRef = useRef<number | null>(null);
-  battleStartedRef.current = battleState.status === "IN_PROGRESS" || battleState.status === "FINISHED";
+  battleStartedRef.current =
+    battleState.status === "IN_PROGRESS" || battleState.status === "FINISHED";
 
   useEffect(() => {
     // Only set up the leave handler if we have a socket and room
@@ -1023,7 +1331,6 @@ const myUserIdRef = useRef("");
   // then `battle_started`. This prevents the client interval from racing
   // with server values and resetting `commencing` after battle_started.
 
-
   useEffect(() => {
     if (!commencing) return;
     const timer = window.setTimeout(() => setCommencing(false), 900);
@@ -1039,7 +1346,9 @@ const myUserIdRef = useRef("");
     const tick = () => {
       const remaining = Math.max(
         0,
-        Math.floor((new Date(closingWarning.closesAt).getTime() - Date.now()) / 1000),
+        Math.floor(
+          (new Date(closingWarning.closesAt).getTime() - Date.now()) / 1000,
+        ),
       );
       setClosingSeconds(remaining);
     };
@@ -1057,7 +1366,7 @@ const myUserIdRef = useRef("");
     // Extract Java class name from code_snippets
     if (activeProblem) {
       const javaSnippet = activeProblem.code_snippets?.find(
-        (s: any) => s.language?.toLowerCase() === "java"
+        (s: any) => s.language?.toLowerCase() === "java",
       );
       if (javaSnippet?.code) {
         const classMatch = javaSnippet.code.match(/class\s+(\w+)/);
@@ -1078,22 +1387,30 @@ const myUserIdRef = useRef("");
     if (!socket || isStartingOperation) return;
     setIsStartingOperation(true);
     setCountDown(3);
-    socket.emit("start_event", roomId, (ack: { success: boolean; error?: string }) => {
-      // Cancel the fallback timeout — the server responded.
-      if (startTimeoutRef.current) {
-        clearTimeout(startTimeoutRef.current);
-        startTimeoutRef.current = null;
-      }
-      if (!ack?.success) {
-        setIsStartingOperation(false);
-        setCountDown(0);
-        toast.error(ack?.error || "Failed to start the operation", { id: "start-failed" });
-      } else {
-        // Don't reset isStartingOperation here — the countdown overlay
-        // will be dismissed by the battle_started event.
-        toast.success("Operation initiated! Workspaces unlocking...", { id: "battle-starting" });
-      }
-    });
+    socket.emit(
+      "start_event",
+      roomId,
+      (ack: { success: boolean; error?: string }) => {
+        // Cancel the fallback timeout — the server responded.
+        if (startTimeoutRef.current) {
+          clearTimeout(startTimeoutRef.current);
+          startTimeoutRef.current = null;
+        }
+        if (!ack?.success) {
+          setIsStartingOperation(false);
+          setCountDown(0);
+          toast.error(ack?.error || "Failed to start the operation", {
+            id: "start-failed",
+          });
+        } else {
+          // Don't reset isStartingOperation here — the countdown overlay
+          // will be dismissed by the battle_started event.
+          toast.success("Operation initiated! Workspaces unlocking...", {
+            id: "battle-starting",
+          });
+        }
+      },
+    );
     // Fallback: if the server doesn't respond within 8s, clear the loading state.
     // Guarded by a ref so a successful ack can cancel it.
     startTimeoutRef.current = setTimeout(() => {
@@ -1145,8 +1462,13 @@ const myUserIdRef = useRef("");
     playBattleSound("surrender");
     try {
       // Persist focus telemetry for anti-cheat review (ROADMAP §3)
-      localStorage.setItem("brace-focus-events", JSON.stringify(focusTelemetry.snapshot()));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        "brace-focus-events",
+        JSON.stringify(focusTelemetry.snapshot()),
+      );
+    } catch {
+      /* ignore */
+    }
     // Custom group battles: stamp FINISHED + COMPLETED/TIMEOUT verdicts server-side.
     if (roomId && problems.length > 1) {
       // The room MUST be stamped finished server-side, otherwise the next
@@ -1157,7 +1479,10 @@ const myUserIdRef = useRef("");
           if (attempt < 2) {
             setTimeout(() => expireAttempt(attempt + 1), 1000 * (attempt + 1));
           } else {
-            toast.error("Could not sync the expired room — please reload this page.", { id: "sync-expired-room" });
+            toast.error(
+              "Could not sync the expired room — please reload this page.",
+              { id: "sync-expired-room" },
+            );
           }
         });
       };
@@ -1195,16 +1520,17 @@ const myUserIdRef = useRef("");
   };
 
   const isBattleActive =
-    battleState.status === "IN_PROGRESS" &&
-    battleResult === null;
+    battleState.status === "IN_PROGRESS" && battleResult === null;
   const opponentParticipant = roomParticipants.find(
-    (participant: any) => (participant.user?.id || participant.userId) !== myUserId,
+    (participant: any) =>
+      (participant.user?.id || participant.userId) !== myUserId,
   );
   const opponentTelemetry = opponentParticipant
     ? playerProgress[opponentParticipant.user?.id || opponentParticipant.userId]
     : undefined;
 
-  const [isSurrenderModalOpen, setIsSurrenderModalOpen] = useState<boolean>(false);
+  const [isSurrenderModalOpen, setIsSurrenderModalOpen] =
+    useState<boolean>(false);
   const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
   // Focus trap refs for modals
   const battleMenuRef = useRef<HTMLDivElement>(null);
@@ -1226,7 +1552,7 @@ const myUserIdRef = useRef("");
       }
       if (e.key === "Tab") {
         const focusable = modal.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -1243,7 +1569,7 @@ const myUserIdRef = useRef("");
     document.addEventListener("keydown", handleKeyDown);
     setTimeout(() => {
       const firstFocusable = modal.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       firstFocusable?.focus();
     }, 0);
@@ -1269,7 +1595,7 @@ const myUserIdRef = useRef("");
       }
       if (e.key === "Tab") {
         const focusable = modal.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -1286,7 +1612,7 @@ const myUserIdRef = useRef("");
     document.addEventListener("keydown", handleKeyDown);
     setTimeout(() => {
       const firstFocusable = modal.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
       );
       firstFocusable?.focus();
     }, 0);
@@ -1308,8 +1634,13 @@ const myUserIdRef = useRef("");
     socket.emit("surrender_battle", roomId);
     playBattleSound("surrender");
     try {
-      localStorage.setItem("brace-focus-events", JSON.stringify(focusTelemetry.snapshot()));
-    } catch { /* ignore */ }
+      localStorage.setItem(
+        "brace-focus-events",
+        JSON.stringify(focusTelemetry.snapshot()),
+      );
+    } catch {
+      /* ignore */
+    }
     setBattleResult("LOST");
     setDefeatReason("surrender");
     setIsSurrenderModalOpen(false);
@@ -1320,7 +1651,7 @@ const myUserIdRef = useRef("");
     }
   };
 
-  const handleRunCode = async () => {
+  const handleSubmitCode = async () => {
     if (!activeProblem) return;
     setIsSubmitting(true);
     setIsTerminal(true);
@@ -1379,17 +1710,23 @@ const myUserIdRef = useRef("");
       }
 
       const isBattleActive =
-        battleState.status === "IN_PROGRESS" &&
-        battleResult === null;
+        battleState.status === "IN_PROGRESS" && battleResult === null;
 
       if (res.status === "PASSED") {
         setTerminalOutput("SUCCESS: All test cases passed!");
         playBattleSound("submit-success");
         if (isBattleActive) {
+          // Calculate progress based on solved problems vs total problems
+          // to avoid marking the entire event as 100% after solving one problem.
+          const solvedCount = problems.filter((p: any) =>
+            (p.test_cases || []).some((tc: any) => tc.status === "PASSED"),
+          ).length + 1; // +1 for the current problem just solved
+          const totalCount = problems.length || 1;
+          const progress = Math.round((solvedCount / totalCount) * 100);
           socket?.emit("battle_action", {
             roomId,
             status: "Passed tests!",
-            progress: 100,
+            progress: Math.min(progress, 100),
             // NOTE: no `result` field — the server derives the outcome from the
             // persisted submission and ignores any client-claimed result.
             linesWritten: code.split("\n").length,
@@ -1398,7 +1735,10 @@ const myUserIdRef = useRef("");
           // (performances + winnerId) — it is never set from the client's own
           // submission assumption.
           if (room?.id) {
-            clearEventNotes(room.id, problems.map((p: any) => p?.id).filter(Boolean));
+            clearEventNotes(
+              room.id,
+              problems.map((p: any) => p?.id).filter(Boolean),
+            );
           }
         }
       } else {
@@ -1409,7 +1749,9 @@ const myUserIdRef = useRef("");
           socket?.emit("battle_action", {
             roomId,
             status: "Failed tests...",
-            progress: Math.round(((res.passedCases || 0) / (res.totalCases || 1)) * 100),
+            progress: Math.round(
+              ((res.passedCases || 0) / (res.totalCases || 1)) * 100,
+            ),
             linesWritten: code.split("\n").length,
           });
         }
@@ -1427,8 +1769,6 @@ const myUserIdRef = useRef("");
     }
   };
 
-
-
   // Countdown overlay must render even during initial loading — the server
   // may send battle_starting events before the HTTP room fetch has resolved.
   // Without this, the "GET READY" overlay (and tick audio) would fire but
@@ -1445,12 +1785,17 @@ const myUserIdRef = useRef("");
         </h2>
         <div className="relative flex min-h-32 items-center justify-center">
           <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
-          <div key={countdown || "commencing"} className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl">
+          <div
+            key={countdown || "commencing"}
+            className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl"
+          >
             {commencing ? "01" : countdown}
           </div>
         </div>
         <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
-          {commencing ? "WORKSPACE UNLOCKING // ENTER THE ARENA" : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
+          {commencing
+            ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
+            : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
         </p>
       </div>
     );
@@ -1481,31 +1826,40 @@ const myUserIdRef = useRef("");
     return (
       <div className="viewport-shell relative flex h-full w-full flex-col overflow-hidden bg-base">
         {/* ── TOP HEADER ── */}
-        <div className="flex items-center justify-between border-b border-subtle-line bg-raised px-2 py-1.5 font-mono text-[9px] z-30 shrink-0 w-full sm:px-6 sm:py-2.5 sm:text-xs">
-          <div className="flex items-center gap-3">
-            <span className="text-accent-warning font-bold uppercase tracking-wider flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-accent-warning" />
-              MODERATOR // {room?.name || "OPERATION"}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-subtle-line bg-raised px-2 py-1.5 font-mono text-[9px] z-30 shrink-0 w-full sm:px-6 sm:py-2.5 sm:text-xs">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <span className="text-accent-warning font-bold uppercase tracking-wider flex items-center gap-2 min-w-0">
+              <ShieldAlert className="w-4 h-4 text-accent-warning shrink-0" />
+              <span className="truncate">
+                MODERATOR // {room?.name || "OPERATION"}
+              </span>
             </span>
-            <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5">
+            <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5 shrink-0">
               CODE {room?.roomCode}
             </span>
-            <span className={`text-[10px] px-2 py-0.5 border font-bold uppercase tracking-widest ${battleState.status === "IN_PROGRESS"
-                ? "border-accent-success/40 bg-accent-success/10 text-accent-success"
-                : battleState.status === "WAITING"
-                  ? "border-accent-warning/40 bg-accent-warning/10 text-accent-warning"
-                  : "border-subtle-line bg-surface-hover text-subtle"
-              }`}>
+            <span
+              className={`text-[10px] px-2 py-0.5 border font-bold uppercase tracking-widest shrink-0 ${
+                battleState.status === "IN_PROGRESS"
+                  ? "border-accent-success/40 bg-accent-success/10 text-accent-success"
+                  : battleState.status === "WAITING"
+                    ? "border-accent-warning/40 bg-accent-warning/10 text-accent-warning"
+                    : "border-subtle-line bg-surface-hover text-subtle"
+              }`}
+            >
               {battleState.status || "WAITING"}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <SoundToggle />
             <GlobalTimer
               startedAt={battleState.startedAt || room?.startedAt}
-              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs}
-              onExpire={() => { /* host does not compete; timer is informational */ }}
+              totalDurationMs={
+                battleState.totalDurationMs || room?.totalTimeLimitMs
+              }
+              onExpire={() => {
+                /* host does not compete; timer is informational */
+              }}
               label={room?.closesAt ? "CLOSES IN:" : "TIME LEFT:"}
               variant="pill"
             />
@@ -1523,22 +1877,24 @@ const myUserIdRef = useRef("");
                 {isStartingOperation ? "STARTING..." : "START"}
               </button>
             )}
-            {battleState.status === "IN_PROGRESS" && (
-              <button
-                onClick={() => {
-                  setConfirmDialog({
-                    isOpen: true,
-                    title: "End this battle?",
-                    message: "End this battle for everyone? Pending participants will be marked TIMEOUT.",
-                    confirmLabel: "End battle",
-                    onConfirm: handleHostEndMatch,
-                  });
-                }}
-                className="flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
-              >
-                <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setConfirmDialog({
+                  isOpen: true,
+                  title: "End this battle?",
+                  message:
+                    "End this battle for everyone? Pending participants will be marked TIMEOUT.",
+                  confirmLabel: "End battle",
+                  onConfirm: handleHostEndMatch,
+                });
+              }}
+              disabled={battleState.status !== "IN_PROGRESS"}
+              className={`flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] ${
+                battleState.status !== "IN_PROGRESS" ? "opacity-40 cursor-not-allowed" : ""
+              }`}
+            >
+              <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
+            </button>
             <button
               onClick={() => navigate("/lobby")}
               className="flex items-center gap-1 px-2 py-1 border border-subtle-line bg-surface-hover/60 text-subtle text-[9px] font-mono font-bold rounded hover:bg-surface-hover transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
@@ -1559,25 +1915,42 @@ const myUserIdRef = useRef("");
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="border border-subtle-line bg-raised/60 p-3">
-                    <div className="text-[9px] text-faint uppercase tracking-widest">Operatives</div>
-                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{roomParticipants.length}</div>
+                    <div className="text-[9px] text-faint uppercase tracking-widest">
+                      Operatives
+                    </div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">
+                      {roomParticipants.length}
+                    </div>
                   </div>
                   <div className="border border-subtle-line bg-raised/60 p-3">
-                    <div className="text-[9px] text-faint uppercase tracking-widest">Max slots</div>
-                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{room?.maxUsers ?? "—"}</div>
+                    <div className="text-[9px] text-faint uppercase tracking-widest">
+                      Max slots
+                    </div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">
+                      {room?.maxUsers ?? "—"}
+                    </div>
                   </div>
                   <div className="border border-subtle-line bg-raised/60 p-3">
-                    <div className="text-[9px] text-faint uppercase tracking-widest">Problems</div>
-                    <div className="mt-1 text-2xl font-mono font-bold text-fg">{problems.length}</div>
+                    <div className="text-[9px] text-faint uppercase tracking-widest">
+                      Problems
+                    </div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-fg">
+                      {problems.length}
+                    </div>
                   </div>
                   <div className="border border-subtle-line bg-raised/60 p-3">
-                    <div className="text-[9px] text-faint uppercase tracking-widest">Focus alerts</div>
-                    <div className="mt-1 text-2xl font-mono font-bold text-accent-warning">{focusLossCount}</div>
+                    <div className="text-[9px] text-faint uppercase tracking-widest">
+                      Focus alerts
+                    </div>
+                    <div className="mt-1 text-2xl font-mono font-bold text-accent-warning">
+                      {focusLossCount}
+                    </div>
                   </div>
                 </div>
                 {room?.closesAt && (
                   <p className="mt-4 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-accent-warning">
-                    <Clock className="w-3.5 h-3.5" /> Scheduled close: {new Date(room.closesAt).toLocaleString()}
+                    <Clock className="w-3.5 h-3.5" /> Scheduled close:{" "}
+                    {new Date(room.closesAt).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -1585,7 +1958,8 @@ const myUserIdRef = useRef("");
               {/* MEMBER ROSTER + LIVE TELEMETRY */}
               <div className="border border-line rounded-xl bg-base/40 p-5">
                 <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-4">
-                  <Users className="w-4 h-4 inline mr-1" /> OPERATIVES ({roomParticipants.length})
+                  <Users className="w-4 h-4 inline mr-1" /> OPERATIVES (
+                  {roomParticipants.length})
                 </p>
                 {roomParticipants.length === 0 ? (
                   <p className="text-faint text-xs font-mono py-8 text-center">
@@ -1603,24 +1977,40 @@ const myUserIdRef = useRef("");
                         (s: any) => (s.status || "").toUpperCase() === "PASSED",
                       ).length;
                       return (
-                        <div key={participantId} className="bg-raised border border-subtle-line rounded-xl p-4">
+                        <div
+                          key={participantId}
+                          className="bg-raised border border-subtle-line rounded-xl p-4"
+                        >
                           <div className="flex items-center gap-3 mb-3">
                             <img
-                              src={p.user?.avatarUrl || getInitialsAvatar(uname)}
+                              src={
+                                p.user?.avatarUrl || getInitialsAvatar(uname)
+                              }
                               alt=""
                               className="w-10 h-10 rounded-full border border-subtle-line"
                             />
                             <div className="flex-1 min-w-0">
-                              <p className="font-mono text-sm font-bold text-fg truncate">{uname}{isMe ? " (you)" : ""}</p>
-                              <p className={`text-[9px] px-1.5 py-0.5 rounded border font-bold w-fit ${verdictStyle(verdict)}`}>
-                                {verdict === "COMPLETED" ? "✓ COMPLETED" : verdict === "TIMEOUT" ? "✗ TIMEOUT" : "● IN PROGRESS"}
+                              <p className="font-mono text-sm font-bold text-fg truncate">
+                                {uname}
+                                {isMe ? " (you)" : ""}
+                              </p>
+                              <p
+                                className={`text-[9px] px-1.5 py-0.5 rounded border font-bold w-fit ${verdictStyle(verdict)}`}
+                              >
+                                {verdict === "COMPLETED"
+                                  ? "✓ COMPLETED"
+                                  : verdict === "TIMEOUT"
+                                    ? "✗ TIMEOUT"
+                                    : "● IN PROGRESS"}
                               </p>
                             </div>
                             {!isMe && (
                               <div className="flex items-center gap-1">
                                 {battleState.status === "WAITING" && (
                                   <button
-                                    onClick={() => handleRejectParticipant(participantId)}
+                                    onClick={() =>
+                                      handleRejectParticipant(participantId)
+                                    }
                                     title={`Reject ${uname} (returns to lobby)`}
                                     className="px-2 py-1 border border-subtle-line bg-surface-hover/40 text-subtle hover:text-accent-danger hover:border-accent-danger/40 text-[9px] font-mono rounded transition-colors"
                                   >
@@ -1634,7 +2024,11 @@ const myUserIdRef = useRef("");
                                       title: "Kick & block?",
                                       message: `Kick & block ${uname} from this event?`,
                                       confirmLabel: "Kick & block",
-                                      onConfirm: () => handleBlockParticipant(participantId, "Moderator kick & block"),
+                                      onConfirm: () =>
+                                        handleBlockParticipant(
+                                          participantId,
+                                          "Moderator kick & block",
+                                        ),
                                     });
                                   }}
                                   title={`Kick & block ${uname}`}
@@ -1648,8 +2042,12 @@ const myUserIdRef = useRef("");
                           {/* live telemetry bar */}
                           <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] text-faint">
-                              <span>{intel?.status || p.status || "STANDBY"}</span>
-                              <span className="font-mono font-bold text-accent-primary">{intel?.progress ?? 0}%</span>
+                              <span>
+                                {intel?.status || p.status || "STANDBY"}
+                              </span>
+                              <span className="font-mono font-bold text-accent-primary">
+                                {intel?.progress ?? 0}%
+                              </span>
                             </div>
                             <div className="h-1.5 bg-surface-hover rounded-full overflow-hidden">
                               <div
@@ -1658,7 +2056,9 @@ const myUserIdRef = useRef("");
                               />
                             </div>
                             <div className="flex justify-between text-[9px] text-faint">
-                              <span>{intel?.linesWritten ?? 0} lines written</span>
+                              <span>
+                                {intel?.linesWritten ?? 0} lines written
+                              </span>
                               <span>{passed} passed</span>
                             </div>
                           </div>
@@ -1674,7 +2074,8 @@ const myUserIdRef = useRef("");
                 <div className="border border-accent-danger/40 rounded-xl bg-accent-danger/5 p-5">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-mono font-bold text-accent-danger uppercase tracking-widest flex items-center gap-1.5">
-                      <ShieldAlert className="w-4 h-4 text-accent-danger" /> BLOCKED OPERATIVES ({blockedParticipants.length})
+                      <ShieldAlert className="w-4 h-4 text-accent-danger" />{" "}
+                      BLOCKED OPERATIVES ({blockedParticipants.length})
                     </p>
                     <button
                       onClick={async () => {
@@ -1691,16 +2092,24 @@ const myUserIdRef = useRef("");
                   <div className="grid gap-2 md:grid-cols-2">
                     {blockedParticipants.map((b: any) => {
                       const pid = b.blockedUserId;
-                      const uname = b.blockedUser?.username || "Blocked Operative";
+                      const uname =
+                        b.blockedUser?.username || "Blocked Operative";
                       return (
-                        <div key={pid} className="flex items-center justify-between p-2.5 rounded-lg border border-accent-danger/30 bg-base/50">
+                        <div
+                          key={pid}
+                          className="flex items-center justify-between p-2.5 rounded-lg border border-accent-danger/30 bg-base/50"
+                        >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-7 h-7 rounded-full bg-accent-danger/20 border border-accent-danger/40 flex items-center justify-center text-xs font-mono font-bold text-accent-danger">
                               {uname[0]?.toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-mono font-bold text-fg truncate">{uname}</p>
-                              <p className="text-[9px] font-mono text-accent-danger truncate">{b.reason || "Blocked by moderator"}</p>
+                              <p className="text-xs font-mono font-bold text-fg truncate">
+                                {uname}
+                              </p>
+                              <p className="text-[9px] font-mono text-accent-danger truncate">
+                                {b.reason || "Blocked by moderator"}
+                              </p>
                             </div>
                           </div>
                           <button
@@ -1725,12 +2134,15 @@ const myUserIdRef = useRef("");
               </p>
               <div className="flex-1 overflow-y-auto themed-scroll p-4 flex flex-col gap-2 min-h-0">
                 {battleMessages.length === 0 ? (
-                  <p className="text-faint text-[10px] font-mono">No transmissions yet.</p>
+                  <p className="text-faint text-[10px] font-mono">
+                    No transmissions yet.
+                  </p>
                 ) : (
                   battleMessages.map((msg, i) => (
                     <div
                       key={msg.id || i}
-                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${msg.senderId === myUserIdRef.current
+                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${
+                        msg.senderId === myUserIdRef.current
                           ? "border-2 border-accent-primary/50 bg-raised/40 text-fg self-end"
                           : "border-2 border-subtle-line/50 bg-raised/20 text-fg self-start"
                       }`}
@@ -1741,7 +2153,10 @@ const myUserIdRef = useRef("");
                 )}
                 <div ref={chatEndRef} />
               </div>
-              <form onSubmit={handleBattleMessage} className="flex gap-2 p-3 border-t border-subtle-line">
+              <form
+                onSubmit={handleBattleMessage}
+                className="flex gap-2 p-3 border-t border-subtle-line"
+              >
                 <input
                   type="text"
                   value={newBattleMessage}
@@ -1749,7 +2164,10 @@ const myUserIdRef = useRef("");
                   placeholder="TRANSMIT..."
                   className="flex-1 border-2 border-subtle-line/50 bg-raised/30 p-2 rounded-lg text-fg font-mono text-xs placeholder:text-muted focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] outline-none transition-all min-w-0"
                 />
-                <button type="submit" className="px-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all">
+                <button
+                  type="submit"
+                  className="px-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all"
+                >
                   <Send className="w-4 h-4" />
                 </button>
               </form>
@@ -1760,7 +2178,10 @@ const myUserIdRef = useRef("");
         {/* ── SCHEDULED-CLOSE BANNER (minimizable) ── */}
         {closingWarning && !closingWarningDismissed && (
           <div className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-accent-warning/50 bg-accent-warning/10 px-4 py-2.5 shadow-[0_0_20px_rgba(255,184,0,0.25)] backdrop-blur">
-            <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" aria-hidden />
+            <span
+              className="h-2 w-2 rounded-full bg-accent-warning animate-ping"
+              aria-hidden
+            />
             <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-warning">
               Room closing
               {closingSeconds !== null &&
@@ -1808,21 +2229,36 @@ const myUserIdRef = useRef("");
         onStart={isHost ? handleStartOperation : undefined}
         isStartingOperation={isStartingOperation}
         onLeave={() => navigate("/lobby")}
-        onSendMessage={(content: string) => socket?.emit("send_battle_message", { roomId, content })}
+        onSendMessage={(content: string) =>
+          socket?.emit("send_battle_message", { roomId, content })
+        }
         messages={battleMessages}
         socketId={myUserId}
-        onRejectParticipant={isHost ? (targetUserId: string) => {
-          socket?.emit("host_reject_participant", { roomId, targetUserId });
-        } : undefined}
-        onKickParticipant={isHost ? (targetUserId: string) => {
-          socket?.emit("host_kick_user", { roomId, targetUserId });
-        } : undefined}
+        onRejectParticipant={
+          isHost
+            ? (targetUserId: string) => {
+                socket?.emit("host_reject_participant", {
+                  roomId,
+                  targetUserId,
+                });
+              }
+            : undefined
+        }
+        onKickParticipant={
+          isHost
+            ? (targetUserId: string) => {
+                socket?.emit("host_kick_user", { roomId, targetUserId });
+              }
+            : undefined
+        }
       />
     );
   }
 
   return (
-    <div className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}>
+    <div
+      className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}
+    >
       {(countdown > 0 || commencing) && (
         <div className="ds-overlay fixed inset-0 z-[100] flex select-none flex-col items-center justify-center px-4 text-center">
           <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
@@ -1834,20 +2270,27 @@ const myUserIdRef = useRef("");
           </h2>
           <div className="relative flex min-h-32 items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
-            <div key={countdown || "commencing"} className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl">
+            <div
+              key={countdown || "commencing"}
+              className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl"
+            >
               {commencing ? "01" : countdown}
             </div>
           </div>
           <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
-            {commencing ? "WORKSPACE UNLOCKING // ENTER THE ARENA" : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
+            {commencing
+              ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
+              : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
           </p>
         </div>
       )}
-
       {/* SCHEDULED CLOSE WARNING — minimizable banner */}
       {closingWarning && !closingWarningDismissed && (
         <div className="fixed left-1/2 top-4 z-[90] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-accent-warning/50 bg-accent-warning/10 px-4 py-2.5 shadow-[0_0_20px_rgba(255,184,0,0.25)] backdrop-blur">
-          <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" aria-hidden />
+          <span
+            className="h-2 w-2 rounded-full bg-accent-warning animate-ping"
+            aria-hidden
+          />
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent-warning">
             Room closing
             {closingSeconds !== null &&
@@ -1862,7 +2305,6 @@ const myUserIdRef = useRef("");
           </button>
         </div>
       )}
-
       {/* Minimized pill — click to restore the warning */}
       {closingWarning && closingWarningDismissed && (
         <button
@@ -1874,186 +2316,232 @@ const myUserIdRef = useRef("");
           closing soon
         </button>
       )}
-
       {/* ─── HOST COMMAND PANEL (fixed overlay, host only) ─── */}
-      {isHost && (battleState.status === "IN_PROGRESS" || battleState.status === "WAITING") && (
-        <div className="fixed bottom-6 right-6 z-[80] flex flex-col items-end gap-2">
-          {/* Toggle button */}
-          <button
-            onClick={() => setIsHostPanelOpen((v) => !v)}
-            title="Host Command Center"
-            className="flex items-center gap-2 px-3 py-2 bg-accent-warning/20 border border-accent-warning/60 text-accent-warning font-mono text-xs font-bold rounded-lg shadow-[0_0_20px_rgba(255,184,0,0.3)] hover:bg-accent-warning/30 transition-all backdrop-blur"
-          >
-            <ShieldAlert className="w-4 h-4" />
-            HOST CMD
-          </button>
+      {isHost &&
+        (battleState.status === "IN_PROGRESS" ||
+          battleState.status === "WAITING") && (
+          <div className="fixed bottom-6 right-6 z-[80] flex flex-col items-end gap-2">
+            {/* Toggle button */}
+            <button
+              onClick={() => setIsHostPanelOpen((v) => !v)}
+              title="Host Command Center"
+              className="flex items-center gap-2 px-3 py-2 bg-accent-warning/20 border border-accent-warning/60 text-accent-warning font-mono text-xs font-bold rounded-lg shadow-[0_0_20px_rgba(255,184,0,0.3)] hover:bg-accent-warning/30 transition-all backdrop-blur"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              HOST CMD
+            </button>
 
-          {isHostPanelOpen && (
-            <div className="bg-raised/95 border border-accent-warning/40 rounded-xl shadow-2xl backdrop-blur-md w-72 sm:w-80 overflow-hidden animate-fade-in max-w-[90vw]">
-              {/* Panel Header */}
-              <div className="px-3 py-2 border-b border-accent-warning/20 bg-accent-warning/10 flex items-center justify-between sm:px-4 sm:py-3">
-                <span className="font-mono text-[9px] font-bold text-accent-warning tracking-widest flex items-center gap-1 sm:gap-2 sm:text-xs">
-                  <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> HOST COMMAND CENTER
-                </span>
-                <div className="flex items-center gap-1">
-                  {battleState.status === "FINISHED" && (
+            {isHostPanelOpen && (
+              <div className="bg-raised/95 border border-accent-warning/40 rounded-xl shadow-2xl backdrop-blur-md w-72 sm:w-80 overflow-hidden animate-fade-in max-w-[90vw]">
+                {/* Panel Header */}
+                <div className="px-3 py-2 border-b border-accent-warning/20 bg-accent-warning/10 flex items-center justify-between sm:px-4 sm:py-3">
+                  <span className="font-mono text-[9px] font-bold text-accent-warning tracking-widest flex items-center gap-1 sm:gap-2 sm:text-xs">
+                    <ShieldAlert className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> HOST
+                    COMMAND CENTER
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {battleState.status === "FINISHED" && (
+                      <button
+                        onClick={() => setShowAnalyticsView(!showAnalyticsView)}
+                        title="View event analytics"
+                        className={`p-1 rounded transition-all ${showAnalyticsView ? "bg-accent-primary/20 text-accent-primary" : "text-faint hover:text-fg"}`}
+                      >
+                        <Activity className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
-                      onClick={() => setShowAnalyticsView(!showAnalyticsView)}
-                      title="View event analytics"
-                      className={`p-1 rounded transition-all ${showAnalyticsView ? "bg-accent-primary/20 text-accent-primary" : "text-faint hover:text-fg"}`}
+                      onClick={() => setIsHostPanelOpen(false)}
+                      className="text-faint hover:text-fg"
                     >
-                      <Activity className="w-3.5 h-3.5" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+                </div>
+
+                {/* Participant List */}
+                <div
+                  className="p-2 sm:p-3 flex flex-col gap-2"
+                  aria-busy={loading && roomParticipants.length === 0}
+                >
+                  <p className="text-[8px] sm:text-[10px] text-faint font-mono tracking-widest mb-1">
+                    OPERATIVES ({roomParticipants.length})
+                  </p>
+                  {loading && roomParticipants.length === 0 ? (
+                    // ── Loader: operative telemetry syncing
+                    <div className="flex items-center justify-center gap-2 py-6 border border-line bg-base/40 rounded-none">
+                      <Loader2 className="w-3.5 h-3.5 text-accent-primary animate-spin" />
+                      <span className="text-[10px] text-accent-primary font-mono font-bold tracking-[0.2em] uppercase animate-pulse">
+                        SYNCING OPERATIVES…
+                      </span>
+                    </div>
+                  ) : (
+                    roomParticipants.map((p: any) => {
+                      const participantId = p.user?.id || p.userId;
+                      const uname = p.user?.username || "Operative";
+                      const intel = playerProgress[participantId];
+                      const isMe = participantId === myUserId;
+                      return (
+                        <div
+                          key={participantId}
+                          className="bg-base/40 border border-line-low rounded-lg p-1.5 sm:p-2.5 flex items-center gap-2 sm:gap-3"
+                        >
+                          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold text-fg">
+                            {uname[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-mono text-fg truncate">
+                                {uname}
+                                {isMe ? " (you)" : ""}
+                              </span>
+                              {intel && (
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                    intel.progress >= 100
+                                      ? "bg-accent-success/20 text-accent-success"
+                                      : intel.progress > 0
+                                        ? "bg-accent-primary/20 text-accent-primary"
+                                        : "bg-surface-hover text-subtle"
+                                  }`}
+                                >
+                                  {intel.progress}%
+                                </span>
+                              )}
+                            </div>
+                            {intel && (
+                              <div className="mt-1 w-full h-1 bg-surface-hover rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    intel.progress >= 100
+                                      ? "bg-accent-success"
+                                      : "bg-accent-primary"
+                                  }`}
+                                  style={{ width: `${intel.progress}%` }}
+                                />
+                              </div>
+                            )}
+                            {intel?.linesWritten !== undefined && (
+                              <p className="text-[9px] text-faint mt-0.5">
+                                {intel.linesWritten} lines written
+                              </p>
+                            )}
+                          </div>
+                          {!isMe && (
+                            <>
+                              <button
+                                onClick={() => handleKickUser(participantId)}
+                                title={`Kick ${uname}`}
+                                className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (
+                                    confirm(`Block ${uname} from this event?`)
+                                  )
+                                    handleBlockParticipant(participantId);
+                                }}
+                                title={`Block ${uname}`}
+                                className="p-1 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
+                              >
+                                <ShieldAlert className="w-3 h-3" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
-                  <button onClick={() => setIsHostPanelOpen(false)} className="text-faint hover:text-fg">
-                    <X className="w-3.5 h-3.5" />
+                </div>
+
+                {/* Blocked Users Section */}
+                {blockedParticipants.length > 0 && (
+                  <div className="px-3 pb-2 border-t border-subtle-line">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[9px] text-faint font-mono tracking-widest">
+                        BLOCKED ({blockedParticipants.length})
+                      </p>
+                      <button
+                        onClick={async () => {
+                          for (const b of blockedParticipants) {
+                            await handleUnblockParticipant(b.blockedUserId);
+                          }
+                          setBlockedParticipants([]);
+                        }}
+                        title="Unblock all"
+                        className="text-[9px] text-accent-primary hover:underline font-mono"
+                      >
+                        UNBLOCK ALL
+                      </button>
+                    </div>
+                    {blockedParticipants.map((b: any) => {
+                      const pid = b.blockedUserId;
+                      const uname = b.blockedUser?.username || "Operative";
+                      return (
+                        <div
+                          key={pid}
+                          className="bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-2 mb-1 flex items-center gap-2"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] font-mono font-bold text-fg">
+                            {uname[0]?.toUpperCase()}
+                          </div>
+                          <span className="text-xs font-mono text-fg flex-1 truncate">
+                            {uname}
+                          </span>
+                          {b.reason && (
+                            <span
+                              className="text-[8px] font-mono text-accent-danger truncate max-w-[120px]"
+                              title={b.reason}
+                            >
+                              {b.reason}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleUnblockParticipant(pid)}
+                            title="Unblock"
+                            className="p-1 border border-accent-success/30 bg-accent-success/15 hover:bg-accent-success/20 text-accent-success rounded transition-all"
+                          >
+                            <ShieldCheck className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Analytics view (when event is FINISHED) */}
+                {battleState.status === "FINISHED" && eventAnalytics && (
+                  <div className="px-3 pb-2 border-t border-subtle-line">
+                    <EventAnalytics analytics={eventAnalytics} />
+                  </div>
+                )}
+
+                <div className="px-3 pb-3">
+                  <button
+                    onClick={handleHostEndMatch}
+                    className="w-full py-2 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger font-mono text-xs font-bold tracking-widest rounded-lg transition-all flex items-center justify-center gap-2"
+                  >
+                    <StopCircle className="w-3.5 h-3.5" /> TERMINATE MATCH
                   </button>
                 </div>
               </div>
-
-              {/* Participant List */}
-              <div className="p-2 sm:p-3 flex flex-col gap-2" aria-busy={loading && roomParticipants.length === 0}>
-                <p className="text-[8px] sm:text-[10px] text-faint font-mono tracking-widest mb-1">OPERATIVES ({roomParticipants.length})</p>
-                {loading && roomParticipants.length === 0 ? (
-                  // ── Loader: operative telemetry syncing
-                  <div className="flex items-center justify-center gap-2 py-6 border border-line bg-base/40 rounded-none">
-                    <Loader2 className="w-3.5 h-3.5 text-accent-primary animate-spin" />
-                    <span className="text-[10px] text-accent-primary font-mono font-bold tracking-[0.2em] uppercase animate-pulse">
-                      SYNCING OPERATIVES…
-                    </span>
-                  </div>
-                ) : (
-                  roomParticipants.map((p: any) => {
-                    const participantId = p.user?.id || p.userId;
-                    const uname = p.user?.username || "Operative";
-                    const intel = playerProgress[participantId];
-                    const isMe = participantId === myUserId;
-                    return (
-                      <div key={participantId} className="bg-base/40 border border-line-low rounded-lg p-1.5 sm:p-2.5 flex items-center gap-2 sm:gap-3">
-                        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] sm:text-[10px] font-mono font-bold text-fg">
-                          {uname[0]?.toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-mono text-fg truncate">{uname}{isMe ? " (you)" : ""}</span>
-                            {intel && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${intel.progress >= 100 ? "bg-accent-success/20 text-accent-success" :
-                                  intel.progress > 0 ? "bg-accent-primary/20 text-accent-primary" :
-                                    "bg-surface-hover text-subtle"
-                                }`}>{intel.progress}%</span>
-                            )}
-                          </div>
-                          {intel && (
-                            <div className="mt-1 w-full h-1 bg-surface-hover rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
-                                  }`}
-                                style={{ width: `${intel.progress}%` }}
-                              />
-                            </div>
-                          )}
-                          {intel?.linesWritten !== undefined && (
-                            <p className="text-[9px] text-faint mt-0.5">{intel.linesWritten} lines written</p>
-                          )}
-                        </div>
-                        {!isMe && (
-                          <>
-                            <button
-                              onClick={() => handleKickUser(participantId)}
-                              title={`Kick ${uname}`}
-                              className="p-1 border border-accent-danger/30 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger rounded transition-all"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Block ${uname} from this event?`)) handleBlockParticipant(participantId);
-                              }}
-                              title={`Block ${uname}`}
-                              className="p-1 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/25 text-accent-danger rounded transition-all"
-                            >
-                              <ShieldAlert className="w-3 h-3" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Blocked Users Section */}
-              {blockedParticipants.length > 0 && (
-                <div className="px-3 pb-2 border-t border-subtle-line">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[9px] text-faint font-mono tracking-widest">
-                      BLOCKED ({blockedParticipants.length})
-                    </p>
-                    <button
-                      onClick={async () => {
-                        for (const b of blockedParticipants) {
-                          await handleUnblockParticipant(b.blockedUserId);
-                        }
-                        setBlockedParticipants([]);
-                      }}
-                      title="Unblock all"
-                      className="text-[9px] text-accent-primary hover:underline font-mono"
-                    >
-                      UNBLOCK ALL
-                    </button>
-                  </div>
-                  {blockedParticipants.map((b: any) => {
-                    const pid = b.blockedUserId;
-                    const uname = b.blockedUser?.username || "Operative";
-                    return (
-                      <div key={pid} className="bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-2 mb-1 flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] font-mono font-bold text-fg">
-                          {uname[0]?.toUpperCase()}
-                        </div>
-                        <span className="text-xs font-mono text-fg flex-1 truncate">{uname}</span>
-                        {b.reason && (
-                          <span className="text-[8px] font-mono text-accent-danger truncate max-w-[120px]" title={b.reason}>{b.reason}</span>
-                        )}
-                        <button
-                          onClick={() => handleUnblockParticipant(pid)}
-                          title="Unblock"
-                          className="p-1 border border-accent-success/30 bg-accent-success/15 hover:bg-accent-success/20 text-accent-success rounded transition-all"
-                        >
-                          <ShieldCheck className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Analytics view (when event is FINISHED) */}
-              {battleState.status === "FINISHED" && eventAnalytics && (
-                <div className="px-3 pb-2 border-t border-subtle-line">
-                  <EventAnalytics analytics={eventAnalytics} />
-                </div>
-              )}
-
-              <div className="px-3 pb-3">
-                <button
-                  onClick={handleHostEndMatch}
-                  className="w-full py-2 border border-accent-danger/50 bg-accent-danger/15 hover:bg-accent-danger/20 text-accent-danger font-mono text-xs font-bold tracking-widest rounded-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <StopCircle className="w-3.5 h-3.5" /> TERMINATE MATCH
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
+            )}
+          </div>
+        )}
       {/* LEFT PANEL — auto-closes when dragged below ~220px */}
       <div
-        style={{ width: isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px" }}
+        style={{
+          width:
+            isPanelOpen && !isSidebarCollapsed ? `${sidebarWidth}px` : "0px",
+        }}
         className="relative z-20 h-full transition-[width] duration-300 ease-in-out shrink-0"
       >
         <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
-          <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
+          <div
+            className="flex flex-col h-full"
+            style={{ width: `${sidebarWidth}px` }}
+          >
             {/* HOST HEADER */}
             <div className="px-3 py-3 border-b border-subtle-line bg-base/40">
               {battleState.status === "WAITING" && (
@@ -2072,7 +2560,9 @@ const myUserIdRef = useRef("");
                       ) : (
                         <Play className="w-4 h-4" />
                       )}
-                      {isStartingOperation ? "STARTING OPERATION..." : "START OPERATION"}
+                      {isStartingOperation
+                        ? "STARTING OPERATION..."
+                        : "START OPERATION"}
                     </button>
                   ) : (
                     <p className="text-faint text-xs">
@@ -2086,11 +2576,17 @@ const myUserIdRef = useRef("");
             {/* PROBLEM NAV GRID OR OPPONENT PROFILE */}
             {room?.type === "ONE_VS_ONE" && opponent ? (
               <div className="px-3 py-3 border-b border-accent-danger/20 bg-accent-danger/5 flex items-center gap-3">
-                <img
-                  src={opponent.avatarUrl}
-                  alt="Opponent"
-                  className="w-10 h-10 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
-                />
+                {opponent.avatarUrl ? (
+                  <img
+                    src={opponent.avatarUrl}
+                    alt="Opponent"
+                    className="w-10 h-10 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full border border-accent-danger bg-surface-hover flex items-center justify-center text-accent-danger font-bold text-sm shrink-0 shadow-[0_0_15px_rgba(255,59,92,0.3)]">
+                    {opponent.username?.[0]?.toUpperCase() || "?"}
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="text-[10px] text-accent-danger tracking-widest font-bold">
                     VS OPPONENT
@@ -2187,8 +2683,9 @@ const myUserIdRef = useRef("");
                     <div
                       className="problem-contain min-w-0 max-w-full break-words overflow-hidden text-sm leading-relaxed text-subtle font-sans [overflow-wrap:anywhere] [&>p]:mb-3 [&>ul]:ml-4 [&>ul]:list-disc [&>pre]:max-w-full [&>pre]:overflow-x-auto [&>pre]:whitespace-pre-wrap [&>pre]:break-words [&>pre]:rounded [&>pre]:bg-surface-hover [&>pre]:p-2 [&>code]:text-accent-primary [&>code]:break-words [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_img]:max-w-full"
                       dangerouslySetInnerHTML={{
-                        __html:
-                          DOMPurify.sanitize(activeProblem?.problem_definition || "No definition."),
+                        __html: DOMPurify.sanitize(
+                          activeProblem?.problem_definition || "No definition.",
+                        ),
                       }}
                     />
                   </div>
@@ -2197,35 +2694,48 @@ const myUserIdRef = useRef("");
                   <ProblemHintsAccordion hints={activeProblem?.problem_hints} />
 
                   {/* Examples already ship inside the problem statement — no separate render. */}
-                  {activeProblem?.test_cases && activeProblem.test_cases.length > 0 && (
-                    <div className="p-3 bg-accent-warning/10 border border-accent-warning/20 rounded text-center min-w-0">
-                      <p className="text-accent-warning/80 font-mono text-xs tracking-widest font-bold break-words">
-                        TOTAL TEST CASES TO PASS:{" "}
-                        {activeProblem.test_cases.length}
-                      </p>
-                    </div>
-                  )}
+                  {activeProblem?.test_cases &&
+                    activeProblem.test_cases.length > 0 && (
+                      <div className="p-3 bg-accent-warning/10 border border-accent-warning/20 rounded text-center min-w-0">
+                        <p className="text-accent-warning/80 font-mono text-xs tracking-widest font-bold break-words">
+                          TOTAL TEST CASES TO PASS:{" "}
+                          {activeProblem.test_cases.length}
+                        </p>
+                      </div>
+                    )}
                 </div>
               ) : activePanelTab === "OPPONENT_TELEMETRY" ? (
                 <div className="flex flex-col gap-4">
                   <div className="border border-line bg-base/40 p-4">
-                    <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-3">Opponent Status</p>
+                    <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-3">
+                      Opponent Status
+                    </p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="border border-subtle-line bg-raised/60 p-3">
-                        <div className="text-[9px] text-faint uppercase tracking-widest">Tests Passed</div>
+                        <div className="text-[9px] text-faint uppercase tracking-widest">
+                          Tests Passed
+                        </div>
                         <div className="mt-1 text-lg font-mono font-bold text-fg">
                           {opponentTelemetry?.progress ?? 0}%
                         </div>
                       </div>
                       <div className="border border-subtle-line bg-raised/60 p-3">
-                        <div className="text-[9px] text-faint uppercase tracking-widest">Focus Alerts</div>
-                        <div className="mt-1 text-lg font-mono font-bold text-accent-warning">—</div>
+                        <div className="text-[9px] text-faint uppercase tracking-widest">
+                          Focus Alerts
+                        </div>
+                        <div className="mt-1 text-lg font-mono font-bold text-accent-warning">
+                          —
+                        </div>
                       </div>
                     </div>
                   </div>
                   <div className="border border-accent-warning/20 bg-accent-warning/5 p-3">
-                    <p className="text-[9px] font-mono text-accent-warning uppercase tracking-widest">Telemetry Notice</p>
-                    <p className="mt-1 text-[10px] text-subtle">Focus-loss details are reported after the match.</p>
+                    <p className="text-[9px] font-mono text-accent-warning uppercase tracking-widest">
+                      Telemetry Notice
+                    </p>
+                    <p className="mt-1 text-[10px] text-subtle">
+                      Focus-loss details are reported after the match.
+                    </p>
                   </div>
                 </div>
               ) : activePanelTab === "MODERATOR" ? (
@@ -2236,7 +2746,9 @@ const myUserIdRef = useRef("");
                     </p>
                     <div className="flex flex-col gap-2">
                       {roomParticipants.length === 0 ? (
-                        <p className="text-xs text-faint">Waiting for operatives…</p>
+                        <p className="text-xs text-faint">
+                          Waiting for operatives…
+                        </p>
                       ) : (
                         roomParticipants.map((p: any) => {
                           const participantId = p.user?.id || p.userId;
@@ -2254,7 +2766,8 @@ const myUserIdRef = useRef("");
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between">
                                   <span className="truncate font-mono text-xs text-fg">
-                                    {uname}{isMe ? " (you)" : ""}
+                                    {uname}
+                                    {isMe ? " (you)" : ""}
                                   </span>
                                   {intel && (
                                     <span className="shrink-0 font-mono text-[9px] font-bold text-accent-primary">
@@ -2265,8 +2778,11 @@ const myUserIdRef = useRef("");
                                 {intel && (
                                   <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-hover">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 ${intel.progress >= 100 ? "bg-accent-success" : "bg-accent-primary"
-                                        }`}
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        intel.progress >= 100
+                                          ? "bg-accent-success"
+                                          : "bg-accent-primary"
+                                      }`}
                                       style={{ width: `${intel.progress}%` }}
                                     />
                                   </div>
@@ -2290,7 +2806,8 @@ const myUserIdRef = useRef("");
                   {room?.closesAt && (
                     <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-faint">
                       <Clock className="h-3.5 w-3.5" />
-                      Scheduled close: {new Date(room.closesAt).toLocaleString()}
+                      Scheduled close:{" "}
+                      {new Date(room.closesAt).toLocaleString()}
                     </p>
                   )}
                   <button
@@ -2359,7 +2876,11 @@ const myUserIdRef = useRef("");
             setIsSidebarCollapsed(!next);
             if (next && sidebarWidth < 220) setSidebarWidth(360);
           }}
-          title={isPanelOpen && !isSidebarCollapsed ? "Collapse panel" : "Expand panel"}
+          title={
+            isPanelOpen && !isSidebarCollapsed
+              ? "Collapse panel"
+              : "Expand panel"
+          }
           className={`absolute top-1/2 -translate-y-1/2 z-30 bg-raised border border-accent-primary/30 text-accent-primary p-2 rounded-r-lg hover:bg-accent-primary/20 hover:text-accent-primary transition-all shadow-[4px_0_15px_rgba(0,0,0,0.5)] left-full max-w-none`}
         >
           {isPanelOpen && !isSidebarCollapsed ? (
@@ -2369,14 +2890,15 @@ const myUserIdRef = useRef("");
           )}
         </button>
       </div>
-
       <div className="flex-1 flex flex-col h-full relative z-10 transition-all duration-300 min-w-0">
         {/* ── TOP HEADER BAR WITH TIMERS & WORKSPACE METRICS ── */}
         <div className="flex items-center justify-between gap-3 border-b-2 border-subtle-line bg-raised px-2 py-1.5 font-mono text-[9px] z-30 shrink-0 sm:px-4 sm:text-xs sm:py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-accent-primary font-bold uppercase tracking-wider flex items-center gap-2 min-w-0">
               <Code className="w-4 h-4 text-accent-primary shrink-0" />
-              <span className="truncate">{activeProblem?.name || "BATTLE ARENA"}</span>
+              <span className="truncate">
+                {activeProblem?.name || "BATTLE ARENA"}
+              </span>
             </span>
             {problems.length > 1 && (
               <span className="text-[10px] text-faint border border-line bg-base/40 px-2 py-0.5 shrink-0">
@@ -2389,7 +2911,9 @@ const myUserIdRef = useRef("");
             <SoundToggle />
             <GlobalTimer
               startedAt={battleState.startedAt || room?.startedAt}
-              totalDurationMs={battleState.totalDurationMs || room?.totalTimeLimitMs}
+              totalDurationMs={
+                battleState.totalDurationMs || room?.totalTimeLimitMs
+              }
               onExpire={handleTimerExpire}
               label={problems.length > 1 ? "GLOBAL:" : "TIME LEFT:"}
               variant="pill"
@@ -2409,23 +2933,27 @@ const myUserIdRef = useRef("");
               </button>
             )}
             {/* Terminate group (host/admin) — ends the event for everyone */}
-            {isHost && problems.length > 1 && battleState.status === "IN_PROGRESS" && (
-              <button
-                onClick={() => {
-                  setConfirmDialog({
-                    isOpen: true,
-                    title: "Terminate group battle?",
-                    message: "Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.",
-                    confirmLabel: "Terminate",
-                    danger: true,
-                    onConfirm: () => socket?.emit("terminate_group", { roomId }),
-                  });
-                }}
-                className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[8px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
-              >
-                <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END GROUP
-              </button>
-            )}
+            {isHost &&
+              problems.length > 1 &&
+              battleState.status === "IN_PROGRESS" && (
+                <button
+                  onClick={() => {
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: "Terminate group battle?",
+                      message:
+                        "Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.",
+                      confirmLabel: "Terminate",
+                      danger: true,
+                      onConfirm: () =>
+                        socket?.emit("terminate_group", { roomId }),
+                    });
+                  }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[8px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
+                >
+                  <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END GROUP
+                </button>
+              )}
           </div>
         </div>
 
@@ -2480,7 +3008,7 @@ const myUserIdRef = useRef("");
           setSidebarWidth={setSidebarWidth}
           setCode={setCode}
           onRun={handleRunCode}
-          onSubmit={handleRunCode}
+          onSubmit={handleSubmitCode}
           onFormat={() => formatEditorRef.current?.()}
           onReset={handleResetCode}
           onToggleNotes={() => setIsNotesOpen((prev) => !prev)}
@@ -2510,7 +3038,7 @@ const myUserIdRef = useRef("");
               oid="battle-file"
               fileKey="battle"
               onCodeChange={handleCodeChange}
-              handleRunCode={handleRunCode as any}
+              handleRunCode={handleSubmitCode as any}
               onFormatMount={(formatAction) => {
                 formatEditorRef.current = formatAction;
               }}
@@ -2544,151 +3072,229 @@ const myUserIdRef = useRef("");
           />
         </div>
       </div>
-
       {/* NOTES PANEL — per-problem tabs for multi-problem events, single scratchpad for 1v1 */}
       <NotesPanel
         isOpen={isNotesOpen}
         onClose={() => setIsNotesOpen(false)}
-        problems={problems.length > 1 ? problems.map((p: any) => ({ id: p.id, name: p.name })) : undefined}
+        problems={
+          problems.length > 1
+            ? problems.map((p: any) => ({ id: p.id, name: p.name }))
+            : undefined
+        }
         activeProblemId={activeProblem?.id}
         eventId={room?.id}
       />
-
       {isBattleMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/60 backdrop-blur-[2px] pointer-events-none p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/70 backdrop-blur-sm p-4">
           <div
             ref={battleMenuRef}
-            className="flex flex-col items-center justify-center p-8 bg-raised border border-line rounded-2xl shadow-2xl max-w-md w-full text-center relative overflow-hidden pointer-events-auto max-h-[90vh] overflow-y-auto themed-scroll"
+            className="flex flex-col w-full max-w-lg max-h-[90vh] overflow-y-auto themed-scroll bg-raised border border-line rounded-2xl shadow-2xl relative"
           >
+            {/* Accent bar */}
             <div
-              className={`absolute top-0 w-full h-1 bg-gradient-to-r ${battleResult === "WON" ? "from-accent-primary to-accent-success"
-                  : battleResult === "CHEATER" ? "from-accent-pink to-accent-danger"
+              className={`h-1.5 w-full bg-gradient-to-r ${
+                battleResult === "WON"
+                  ? "from-accent-primary to-accent-success"
+                  : battleResult === "CHEATER"
+                    ? "from-accent-pink to-accent-danger"
                     : "from-accent-danger to-accent-warning"
-                }`}
+              }`}
             />
-            <div className="relative mb-6">
-              <div
-                className={`absolute inset-0 blur-xl ${battleResult === "WON" ? "bg-accent-primary/30"
-                    : battleResult === "CHEATER" ? "bg-accent-pink/30"
-                      : "bg-accent-danger/30"
-                  }`}
-              />
-              {battleResult === "WON" ? (
-                <Trophy className="w-16 h-16 text-accent-primary relative z-10" />
-              ) : battleResult === "CHEATER" ? (
-                <ShieldAlert className="w-16 h-16 text-accent-pink relative z-10 animate-pulse" />
-              ) : (
-                <Skull className="w-16 h-16 text-accent-danger relative z-10" />
-              )}
-            </div>
-            <h2
-              className={`font-mono text-2xl font-bold tracking-widest mb-3 ${battleResult === "WON" ? "text-accent-primary"
-                  : battleResult === "CHEATER" ? "text-accent-pink"
-                    : "text-accent-danger"
-                }`}
-            >
-              {battleResult === "WON"
-                ? "OPERATION SUCCESSFUL"
-                : battleResult === "CHEATER"
-                  ? "FLAGGED AS CHEATER"
-                  : "SYSTEM FAILURE"}
-            </h2>
-            <p className="text-subtle text-sm mb-4 font-sans">
-              {battleResult === "WON"
-                ? "You completed the operation."
-                : battleResult === "CHEATER"
-                  ? "Excessive focus loss detected. Your opponent has been declared the winner."
-                  : defeatReason === "opponent"
-                    ? "Your opponent completed the problem first."
-                    : defeatReason === "surrender"
-                      ? "You surrendered the match."
-                      : "Your time has run out."}
-            </p>
-            {/* Per-participant completion verdicts + event analytics */}
-            <div className="w-full flex flex-col gap-2 mb-6 text-left max-h-56 overflow-y-auto themed-scroll pr-1">
-              {roomParticipants?.map((p: any) => {
-                const verdict = participantVerdict(p, battleState?.status || room?.status);
-                const subs = p.submissions ?? [];
-                const passedCount = subs.filter((s: any) => (s.status || "").toUpperCase() === "PASSED").length;
-                const bestRuntime = subs.reduce((m: number | null, s: any) => s.runtimeMs != null ? Math.min(m ?? s.runtimeMs, s.runtimeMs) : m, null as number | null);
-                const isMe = p.userId === myUserIdRef.current || p.user?.id === myUserIdRef.current;
-                const originalScore = p.score ?? 0;
-                const adjustedScore = isMe && focusLossCount > 0
-                  ? Math.floor(originalScore * (1 - focusPenaltyPercent / 100))
-                  : originalScore;
-                return (
-                  <div key={p.userId || p.user?.id || p.id} className="flex items-center gap-2 p-2 border border-line bg-base/50 min-w-0">
-                    <span className="text-xs font-bold text-fg truncate flex-1 min-w-0">{p.user?.username || "Player"}</span>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold shrink-0 ${verdictStyle(verdict)}`}>
-                      {verdict === "COMPLETED" ? "✓ COMPLETED" : verdict === "TIMEOUT" ? "✗ TIMEOUT" : "● IN PROGRESS"}
-                    </span>
-                    <span className="text-[9px] text-subtle font-mono shrink-0">
-                      {passedCount}/{subs.length}{bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
-                    </span>
-                    <span className={`text-[9px] font-mono shrink-0 ${isMe ? "text-accent-primary" : "text-subtle"}`}>
-                      {isMe && focusLossCount > 0
-                        ? `${originalScore} → ${adjustedScore} (-${focusPenaltyPercent}%)`
-                        : originalScore}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Focus Penalty Display */}
-            {focusLossCount > 0 && (
-              <div className="mb-4 p-3 rounded border border-accent-warning/30 bg-accent-warning/10 text-left">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-xs text-accent-warning">FOCUS PENALTY APPLIED</span>
-                  <span className="flex items-center gap-2">
-                    {/* Escalating severity: 100% is CHEATER; below that the label
-                        grows harsher as the penalty climbs. */}
-                    <span className={`font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border ${penaltySeverity.tone}`}>
-                      {penaltySeverity.label}
-                    </span>
-                    <span className="font-mono text-lg font-bold text-accent-danger">-{focusPenaltyPercent}%</span>
-                  </span>
-                </div>
-                <div className="text-[9px] text-subtle font-mono">
-                  {focusLossCount} focus loss{focusLossCount > 1 ? "es" : ""} × {focusPenaltyPercent}% penalty on final score
-                </div>
-              </div>
-            )}
-            {/* Event Analytics (compact view for participants) */}
-            {eventAnalytics && (
-              <div className="w-full mb-4 p-3 border border-line bg-base/40 rounded-lg">
-                <EventAnalytics analytics={eventAnalytics} compact />
-              </div>
-            )}
-            <div className="flex flex-col gap-3 w-full mt-4 p-1">
-            
-              {/* Secondary Action: Return to Mainframe */}
-              <button
-                onClick={() => navigate("/")}
-                className="group w-full py-3 px-4 font-mono text-[10px] font-bold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3.5
-               bg-slate-900/80 hover:bg-amber-500/10 text-amber-400 hover:text-amber-300 
-               border border-amber-500/30 hover:border-amber-500/60 shadow-sm 
-               flex items-center justify-center gap-2 sm:gap-2.5 active:scale-[0.98]"
-              >
-                <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
-                <span>RETURN TO MAINFRAME</span>
-              </button>
 
-              {/* Tertiary Action: Close Menu */}
-              <button
-                onClick={() => setIsBattleMenuOpen(false)}
-                className="w-full py-2.5 px-4 font-mono text-[10px] font-semibold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3
-               bg-slate-900/40 hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 
-               border border-slate-800 hover:border-slate-700 
-               flex items-center justify-center active:scale-[0.98]"
-              >
-                CLOSE MENU
-              </button>
+            <div className="p-6 sm:p-8">
+              {/* Icon + Title */}
+              <div className="flex flex-col items-center text-center mb-6">
+                <div
+                  className={`relative mb-4 flex h-20 w-20 items-center justify-center rounded-full ${
+                    battleResult === "WON"
+                      ? "bg-accent-primary/10 border-2 border-accent-primary/30"
+                      : battleResult === "CHEATER"
+                        ? "bg-accent-pink/10 border-2 border-accent-pink/30 animate-pulse"
+                        : "bg-accent-danger/10 border-2 border-accent-danger/30"
+                  }`}
+                >
+                  <div
+                    className={`absolute inset-0 rounded-full blur-xl ${
+                      battleResult === "WON"
+                        ? "bg-accent-primary/20"
+                        : battleResult === "CHEATER"
+                          ? "bg-accent-pink/20"
+                          : "bg-accent-danger/20"
+                    }`}
+                  />
+                  {battleResult === "WON" ? (
+                    <Trophy className="w-10 h-10 text-accent-primary relative z-10" />
+                  ) : battleResult === "CHEATER" ? (
+                    <ShieldAlert className="w-10 h-10 text-accent-pink relative z-10" />
+                  ) : (
+                    <Skull className="w-10 h-10 text-accent-danger relative z-10" />
+                  )}
+                </div>
+
+                <h2
+                  className={`font-mono text-xl sm:text-2xl font-bold tracking-widest mb-2 ${
+                    battleResult === "WON"
+                      ? "text-accent-primary"
+                      : battleResult === "CHEATER"
+                        ? "text-accent-pink"
+                        : "text-accent-danger"
+                  }`}
+                >
+                  {battleResult === "WON"
+                    ? "OPERATION SUCCESSFUL"
+                    : battleResult === "CHEATER"
+                      ? "FLAGGED AS CHEATER"
+                      : "SYSTEM FAILURE"}
+                </h2>
+
+                <p className="text-subtle text-sm font-sans max-w-sm">
+                  {battleResult === "WON"
+                    ? "You completed the operation."
+                    : battleResult === "CHEATER"
+                      ? "Excessive focus loss detected. Your opponent has been declared the winner."
+                      : defeatReason === "opponent"
+                        ? "Your opponent completed the problem first."
+                        : defeatReason === "surrender"
+                          ? "You surrendered the match."
+                          : "Your time has run out."}
+                </p>
+              </div>
+
+              {/* Per-participant verdicts */}
+              <div className="w-full flex flex-col gap-2 mb-6">
+                {roomParticipants?.map((p: any) => {
+                  const verdict = participantVerdict(
+                    p,
+                    battleState?.status || room?.status,
+                  );
+                  const subs = p.submissions ?? [];
+                  const passedCount = subs.filter(
+                    (s: any) => (s.status || "").toUpperCase() === "PASSED",
+                  ).length;
+                  const bestRuntime = subs.reduce(
+                    (m: number | null, s: any) =>
+                      s.runtimeMs != null
+                        ? Math.min(m ?? s.runtimeMs, s.runtimeMs)
+                        : m,
+                    null as number | null,
+                  );
+                  const isMe =
+                    p.userId === myUserIdRef.current ||
+                    p.user?.id === myUserIdRef.current;
+                  const originalScore = p.score ?? 0;
+                  const adjustedScore =
+                    isMe && focusLossCount > 0
+                      ? Math.floor(
+                          originalScore * (1 - focusPenaltyPercent / 100),
+                        )
+                      : originalScore;
+                  return (
+                    <div
+                      key={p.userId || p.user?.id || p.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border min-w-0 ${
+                        isMe
+                          ? "border-accent-primary/30 bg-accent-primary/5"
+                          : "border-line bg-base/50"
+                      }`}
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-subtle-line bg-surface-hover font-mono text-xs font-bold text-fg">
+                        {p.user?.username?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-bold truncate ${isMe ? "text-accent-primary" : "text-fg"}`}
+                          >
+                            {p.user?.username || "Player"}
+                            {isMe && (
+                              <span className="ml-1 text-[8px] text-faint">
+                                (you)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${verdictStyle(verdict)}`}
+                          >
+                            {verdict === "COMPLETED"
+                              ? "✓ COMPLETED"
+                              : verdict === "TIMEOUT"
+                                ? "✗ TIMEOUT"
+                                : "● IN PROGRESS"}
+                          </span>
+                          <span className="text-[9px] text-subtle font-mono">
+                            {passedCount > 0 ? `${passedCount}/${subs.length}` : "0"} passed
+                            {bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`text-[9px] font-mono shrink-0 ${isMe ? "text-accent-primary" : "text-subtle"}`}
+                      >
+                        {isMe && focusLossCount > 0
+                          ? `${originalScore} → ${adjustedScore} (-${focusPenaltyPercent}%)`
+                          : originalScore}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Focus Penalty Display */}
+              {focusLossCount > 0 && (
+                <div className="mb-4 p-4 rounded-lg border border-accent-warning/30 bg-accent-warning/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-xs font-bold text-accent-warning">
+                      FOCUS PENALTY APPLIED
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-mono text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 border rounded ${penaltySeverity.tone}`}
+                      >
+                        {penaltySeverity.label}
+                      </span>
+                      <span className="font-mono text-lg font-bold text-accent-danger">
+                        -{focusPenaltyPercent}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[9px] text-subtle font-mono">
+                    {focusLossCount} focus loss{focusLossCount > 1 ? "es" : ""}{" "}
+                    × {focusPenaltyPercent}% penalty on final score
+                  </div>
+                </div>
+              )}
+
+              {/* Event Analytics (compact view for participants) */}
+              {eventAnalytics && (
+                <div className="w-full mb-4 p-3 border border-line bg-base/40 rounded-lg">
+                  <EventAnalytics analytics={eventAnalytics} compact />
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3 mt-2">
+                <button
+                  onClick={() => navigate("/")}
+                  className="group w-full py-3 px-4 font-mono text-[10px] font-bold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3.5 bg-slate-900/80 hover:bg-amber-500/10 text-amber-400 hover:text-amber-300 border border-amber-500/30 hover:border-amber-500/60 shadow-sm flex items-center justify-center gap-2 sm:gap-2.5 active:scale-[0.98]"
+                >
+                  <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+                  <span>RETURN TO MAINFRAME</span>
+                </button>
+
+                <button
+                  onClick={() => setIsBattleMenuOpen(false)}
+                  className="w-full py-2.5 px-4 font-mono text-[10px] font-semibold tracking-widest rounded-xl transition-all duration-200 sm:text-xs sm:py-3 bg-slate-900/40 hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800 hover:border-slate-700 flex items-center justify-center active:scale-[0.98]"
+                >
+                  CLOSE MENU
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* SURRENDER CONFIRMATION MODAL */}
+      {/* SURRENDER CONFIRMATION MODAL */} {/* SURRENDER CONFIRMATION MODAL */}
       {isSurrenderModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-base/80 backdrop-blur-sm p-3 sm:p-4">
           <div
@@ -2707,8 +3313,9 @@ const myUserIdRef = useRef("");
                 MISSION ABORT CONFIRMATION
               </h3>
               <p className="text-subtle text-xs font-sans mb-6 leading-relaxed max-w-sm mx-auto">
-                Forfeiting this operation will mark you as SURRENDERED. Your opponent
-                will be declared the winner. This action cannot be undone.
+                Forfeiting this operation will mark you as SURRENDERED. Your
+                opponent will be declared the winner. This action cannot be
+                undone.
               </p>
 
               <div className="flex items-center gap-2 sm:gap-3 w-full font-mono text-xs">
@@ -2731,17 +3338,24 @@ const myUserIdRef = useRef("");
           </div>
         </div>
       )}
-
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
         message={confirmDialog.message}
         confirmLabel={confirmDialog.confirmLabel}
-        danger={confirmDialog.confirmLabel === "Kick & block" || confirmDialog.confirmLabel === "Terminate"}
+        danger={
+          confirmDialog.confirmLabel === "Kick & block" ||
+          confirmDialog.confirmLabel === "Terminate" ||
+          confirmDialog.confirmLabel === "End battle"
+        }
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
         onConfirm={() => {
           confirmDialog.onConfirm?.();
-          setConfirmDialog({ ...confirmDialog, isOpen: false, onConfirm: null });
+          setConfirmDialog({
+            ...confirmDialog,
+            isOpen: false,
+            onConfirm: null,
+          });
         }}
       />
     </div>
