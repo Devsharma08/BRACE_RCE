@@ -13,6 +13,8 @@ import {
   SlidersHorizontal,
   Clock3,
   Users,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +46,12 @@ type LobbyTab = "ROOMS" | "TEMPLATES" | "MY_ARCHIVES";
 
 /** Safety cap on rendered room/template/archive cards in the lobby grid. */
 const MAX_ROOMS = 100;
+const PAGE_SIZE = 10;
+
+const roomTimeMinutes = (room: Room) =>
+  room.totalTimeLimitMs ? Math.round(room.totalTimeLimitMs / 60000) : null;
+const isProtected = (room: Room) =>
+  Boolean(room.password) || room.isPublic === false;
 
 const Lobby = () => {
   const navigate = useNavigate();
@@ -74,65 +82,88 @@ const Lobby = () => {
   const [maxUsers, setMaxUsers] = useState("any");
   const [maxTime, setMaxTime] = useState("any");
   const [access, setAccess] = useState("any");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { data, isLoading: loading } = useQuery({
-    queryKey: ["lobby-data"],
+  // ── Lazy-loaded data queries (one per tab) ──
+  // Each query passes page/limit and filter params to the server for
+  // server-side pagination. The enabled flag ensures data is only fetched
+  // when that tab is active.
+  const roomsQuery = useQuery({
+    queryKey: ["lobby-rooms", currentPage, debouncedQuery, maxUsers, maxTime],
     queryFn: async () => {
-      const [roomsRes, templatesRes, myEventsRes] = await Promise.all([
-        api.get("/rooms/lobby"),
-        api.get("/rooms/templates"),
-        api.get("/rooms/my-events"),
-      ]);
-      return {
-        rooms: roomsRes.data.rooms,
-        templates: templatesRes.data.templates,
-        myEvents: myEventsRes.data.events,
-      };
+      const res = await api.get("/rooms/lobby", {
+        params: {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search: debouncedQuery,
+          maxUsers,
+          maxTime,
+        },
+      });
+      return res.data;
     },
-    // Refetch on window focus to catch missed events
+    enabled: activeTab === "ROOMS",
     refetchOnWindowFocus: true,
-    staleTime: 30000, // 30s freshness
-    // Safety net: a battle that ends early (timer expiry, surrender, admin
-    // termination) must dissolve its active card without a manual refresh,
-    // even if the socket invalidation was missed while this tab was hidden.
+    staleTime: 30000,
     refetchInterval: 15000,
   });
 
-  // Replace polling with socket-driven invalidation
-  const { socket } = useSocket();
-  useEffect(() => {
-    if (!socket || !isFeatureEnabled("socketEvents")) return;
+  const templatesQuery = useQuery({
+    queryKey: ["lobby-templates", currentPage, debouncedQuery, maxTime, access],
+    queryFn: async () => {
+      const res = await api.get("/rooms/templates", {
+        params: {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search: debouncedQuery,
+          maxTime,
+          access,
+        },
+      });
+      return res.data;
+    },
+    enabled: activeTab === "TEMPLATES",
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
+  });
 
-    const handleLobbyUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
-    };
+  const archivesQuery = useQuery({
+    queryKey: ["lobby-archives", currentPage, debouncedQuery, maxTime, access],
+    queryFn: async () => {
+      const res = await api.get("/rooms/my-events", {
+        params: {
+          page: currentPage,
+          limit: PAGE_SIZE,
+          search: debouncedQuery,
+          maxTime,
+          access,
+        },
+      });
+      return res.data;
+    },
+    enabled: activeTab === "MY_ARCHIVES",
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
+  });
 
-    // Server emits `rooms:invalidate` on create / delete / expire / lock /
-    // visibility-change / terminate. The legacy per-event names are kept as
-    // fallbacks in case any older emitter still fires them.
-    socket.on("rooms:invalidate", handleLobbyUpdate);
-    socket.on("lobbies:invalidate", handleLobbyUpdate);
-    socket.on("room:created", handleLobbyUpdate);
-    socket.on("room:deleted", handleLobbyUpdate);
-    socket.on("room:updated", handleLobbyUpdate);
+  const rooms: Room[] = roomsQuery.data?.rooms || [];
+  const templates: Room[] = templatesQuery.data?.templates || [];
+  const myEvents: Room[] = archivesQuery.data?.events || [];
 
-    return () => {
-      socket.off("rooms:invalidate", handleLobbyUpdate);
-      socket.off("lobbies:invalidate", handleLobbyUpdate);
-      socket.off("room:created", handleLobbyUpdate);
-      socket.off("room:deleted", handleLobbyUpdate);
-      socket.off("room:updated", handleLobbyUpdate);
-    };
-  }, [socket, queryClient]);
+  // Server-provided pagination metadata
+  const serverMeta =
+    roomsQuery.data?.totalPages ??
+    templatesQuery.data?.totalPages ??
+    archivesQuery.data?.totalPages ??
+    1;
+  const serverTotal =
+    roomsQuery.data?.total ??
+    templatesQuery.data?.total ??
+    archivesQuery.data?.total ??
+    0;
 
-  const rooms: Room[] = data?.rooms || [];
-  const templates: Room[] = data?.templates || [];
-  const myEvents: Room[] = data?.myEvents || [];
-
-  const roomTimeMinutes = (room: Room) =>
-    room.totalTimeLimitMs ? Math.round(room.totalTimeLimitMs / 60000) : null;
-  const isProtected = (room: Room) =>
-    Boolean(room.password) || room.isPublic === false;
+  const loading =
+    roomsQuery.isLoading || templatesQuery.isLoading || archivesQuery.isLoading;
 
   const activeItems: Room[] =
     activeTab === "ROOMS"
@@ -141,12 +172,12 @@ const Lobby = () => {
         ? templates
         : myEvents;
 
+  // Client-side post-filter for maxUsers on rooms (server already filters
+  // but maxUsers needs a count-based check that's simpler client-side for now)
   const filteredItems = useMemo(() => {
     const needle = debouncedQuery.trim().toLowerCase();
     return activeItems.filter((room) => {
-      const searchable =
-        `${room.name ?? ""} ${room.description ?? ""} ${room.host?.username ?? ""} ${room.roomCode ?? ""}`.toLowerCase();
-      if (needle && !searchable.includes(needle)) return false;
+      if (needle && !room.name?.toLowerCase().includes(needle)) return false;
       if (maxUsers !== "any" && room.maxUsers > Number(maxUsers)) return false;
       if (maxTime !== "any") {
         const minutes = roomTimeMinutes(room);
@@ -159,7 +190,11 @@ const Lobby = () => {
       }
       return true;
     });
-  }, [access, activeItems, maxTime, maxUsers, query]);
+  }, [access, activeItems, maxTime, maxUsers, debouncedQuery]);
+
+  const totalPages = serverMeta;
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedItems = activeItems;
 
   const hasFilters = Boolean(
     query.trim() || maxUsers !== "any" || maxTime !== "any" || access !== "any",
@@ -170,11 +205,19 @@ const Lobby = () => {
     setMaxUsers("any");
     setMaxTime("any");
     setAccess("any");
+    setCurrentPage(1);
   };
 
   const handleTabChange = (tab: LobbyTab) => {
     setActiveTab(tab);
-    resetFilters();
+    setCurrentPage(1);
+    if (tab === "ROOMS") {
+      setMaxUsers("any");
+      setMaxTime("any");
+    } else {
+      setMaxTime("any");
+      setAccess("any");
+    }
   };
 
   const tabDefs = [
@@ -205,7 +248,6 @@ const Lobby = () => {
 
   const handlePasswordSubmit = (password: string) => {
     const roomCode = pwModal.roomCode;
-    // Persist password in sessionStorage so Battle can re-fetch if the page reloads
     sessionStorage.setItem(`room_password_${roomCode}`, password);
     navigate(`/battle/${roomCode}`, { state: { password } });
     setPwModal({ isOpen: false, roomCode: "", roomName: "" });
@@ -215,7 +257,8 @@ const Lobby = () => {
     setCloningId(templateId);
     try {
       const res = await api.post("/rooms/clone", { templateId });
-      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby-templates"] });
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (error) {
       console.error(error);
@@ -244,7 +287,9 @@ const Lobby = () => {
   ) => {
     try {
       await api.delete(`/rooms/${encodeURIComponent(eventId)}`);
-      queryClient.invalidateQueries({ queryKey: ["lobby-data"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby-archives"] });
       toast.success(`${noun[0].toUpperCase()}${noun.slice(1)} deleted`);
     } catch (error) {
       console.error(error);
@@ -373,10 +418,7 @@ const Lobby = () => {
     <div className="flex w-full text-fg font-mono">
       {/* ── MAIN CONTENT ─────────────────────────────────────────────────── */}
       <main className="relative z-10 mx-auto w-full max-w-7xl min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8 pb-20 md:pb-8">
-        {/* Dot-grid texture. Paired with `relative z-10` on this <main>:
-            the grid is position:fixed inset-0, so at z-0 it would paint over
-            the heading, and at -z-10 it falls behind the shell's own
-            background and disappears. Content above, grid just behind it. */}
+        {/* Dot-grid texture */}
         <div className="fixed inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.04)_1px,transparent_1px)] [background-size:48px_48px] z-0" />
         <div className="mx-auto max-w-[1500px]">
           {/* PAGE HEADER */}
@@ -562,64 +604,100 @@ const Lobby = () => {
                 </div>
               </section>
 
-              <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
-                <span>
-                  {filteredItems.length} {tabLabel} visible
-                </span>
-                {hasFilters && (
-                  <span className="text-accent-primary">Filtered view</span>
-                )}
-              </div>
-
+              {/* Unified skeleton loading state — triggers consistently
+                  across all tabs when any query is fetching. */}
               {loading ? (
                 <div className="mt-3">
                   <CardSkeletonGrid count={6} />
                 </div>
               ) : (
-                <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredItems.length ? (
-                    <>
-                      {filteredItems
-                        .slice(0, MAX_ROOMS)
-                        .map((room) =>
+                <>
+                  <div className="mt-4 flex items-center justify-between text-[9px] uppercase tracking-widest text-faint">
+                    <span>
+                      {paginatedItems.length} of {serverTotal} {tabLabel}{" "}
+                      visible
+                    </span>
+                    {hasFilters && (
+                      <span className="text-accent-primary">Filtered view</span>
+                    )}
+                  </div>
+
+                  <section className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {paginatedItems.length ? (
+                      <>
+                        {paginatedItems.map((room) =>
                           renderCard(room, activeTab === "MY_ARCHIVES"),
                         )}
-                      {filteredItems.length > MAX_ROOMS && (
-                        <div className="col-span-full border border-dashed border-subtle-line py-4 text-center text-[10px] uppercase tracking-widest text-faint">
-                          Showing {MAX_ROOMS} of {filteredItems.length} — refine
-                          filters to narrow the list
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="col-span-full border border-dashed border-subtle-line py-12 text-center sm:py-16">
-                      <Archive
-                        size={30}
-                        aria-hidden
-                        className="mx-auto text-faint"
-                      />
-                      <p className="mt-4 text-sm text-subtle">
-                        {activeTab === "MY_ARCHIVES"
-                          ? hasFilters
-                            ? "No archived operations match these filters."
-                            : "No archived operations in this preview."
-                          : hasFilters
-                            ? "No matching operations found."
-                            : activeTab === "TEMPLATES"
-                              ? "No public templates"
-                              : "No active rooms"}
-                      </p>
-                      {!hasFilters && activeTab === "ROOMS" && (
-                        <Link
-                          to="/rooms/create"
-                          className="mt-4 inline-block text-xs font-medium text-accent-primary border border-subtle-line px-4 py-2 hover:bg-accent/[0.08] transition-all"
+                        {serverTotal > MAX_ROOMS && (
+                          <div className="col-span-full border border-dashed border-subtle-line py-4 text-center text-[10px] uppercase tracking-widest text-faint">
+                            Showing {MAX_ROOMS} of {serverTotal} — refine
+                            filters to narrow the list
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="col-span-full border border-dashed border-subtle-line py-12 text-center sm:py-16">
+                        <Archive
+                          size={30}
+                          aria-hidden
+                          className="mx-auto text-faint"
+                        />
+                        <p className="mt-4 text-sm text-subtle">
+                          {activeTab === "MY_ARCHIVES"
+                            ? hasFilters
+                              ? "No archived operations match these filters."
+                              : "No archived operations in this preview."
+                            : hasFilters
+                              ? "No matching operations found."
+                              : activeTab === "TEMPLATES"
+                                ? "No public templates"
+                                : "No active rooms"}
+                        </p>
+                        {!hasFilters && activeTab === "ROOMS" && (
+                          <Link
+                            to="/rooms/create"
+                            className="mt-4 inline-block text-xs font-medium text-accent-primary border border-subtle-line px-4 py-2 hover:bg-accent/[0.08] transition-all"
+                          >
+                            Host a room
+                          </Link>
+                        )}
+                      </div>
+                    )}
+                  </section>
+
+                  {totalPages > 1 && (
+                    <div className="mt-4 flex items-center justify-between border-t border-subtle-line pt-3 font-mono text-[9px] uppercase tracking-widest text-faint">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={safePage <= 1}
+                          onClick={() => setCurrentPage(safePage - 1)}
+                          aria-label="Previous page"
+                          className="grid h-7 w-7 place-items-center border border-subtle-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30 disabled:cursor-not-allowed"
                         >
-                          Host a room
-                        </Link>
+                          <ChevronLeft size={13} aria-hidden />
+                        </button>
+                        <span>
+                          Page {safePage} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safePage >= totalPages}
+                          onClick={() => setCurrentPage(safePage + 1)}
+                          aria-label="Next page"
+                          className="grid h-7 w-7 place-items-center border border-subtle-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ChevronRight size={13} aria-hidden />
+                        </button>
+                      </div>
+                      {hasFilters && (
+                        <span className="text-accent-primary">
+                          Filtered view
+                        </span>
                       )}
                     </div>
                   )}
-                </section>
+                </>
               )}
             </section>
 
