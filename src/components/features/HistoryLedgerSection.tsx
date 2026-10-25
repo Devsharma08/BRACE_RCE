@@ -59,7 +59,7 @@ export const HistoryLedgerSection: React.FC<HistoryLedgerSectionProps> = ({ hist
               {history.slice(0, 5).map((record, idx) => {
                 const isWin = isWinnerStatus(record.status);
                 const isLoss = LOSS_STATUSES.includes((record.status || "").toUpperCase() as any);
-                const name = record.event?.commonProblem?.name || record.problem?.name || "CLASSIFIED MATCH";
+                const name = record.event?.name || record.event?.commonProblem?.name || record.problem?.name || "CLASSIFIED MATCH";
                 const diff = record.event?.commonProblem?.difficulty_level || record.problem?.difficulty_level || "MEDIUM";
                 const bestSub = record.submissions?.find((s: any) => s.isBestSubmission) || record.submissions?.[0];
 

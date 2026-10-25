@@ -358,7 +358,7 @@ export const Dashboard: React.FC = () => {
          <section className="relative isolate overflow-hidden border-y border-subtle-line py-5">
            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h1 className="font-mono text-2xl font-black tracking-[-0.05em] text-fg sm:text-4xl md:text-6xl">
+              <h1 className="font-mono sm:text-4xl text-2xl font-black tracking-[-0.05em] text-fg ">
                 Good {timeOfDay.toLowerCase()},<br />
                 <span className="text-accent">{username}</span>
               </h1>
@@ -666,7 +666,7 @@ export const Dashboard: React.FC = () => {
                 <div className="divide-y divide-subtle-line">
                   {recentBattles.slice(0, 5).map((perf: DashboardMatch, i: number) => {
                     const isWin = isWinnerStatus(perf.status);
-                    const problemName = perf.event?.commonProblem?.name || "Untitled Problem";
+                    const problemName = perf.event?.name || perf.event?.commonProblem?.name || "Untitled Problem";
                     return (
                       <div
                         key={perf.id || i}

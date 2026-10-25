@@ -248,7 +248,8 @@ const Profile = () => {
                           />
                           <div>
                             <div className="text-sm text-fg">
-                               {record.event?.commonProblem?.name ||
+                               {record.event?.name ||
+                                 record.event?.commonProblem?.name ||
                                  record.problem?.name ||
                                  "Untitled Problem"}
                             </div>
