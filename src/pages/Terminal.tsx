@@ -792,11 +792,11 @@ const exitScratchMode = useCallback(() => {
             )} */}
             <button
               onClick={toggleMode}
-              className="px-1.5 py-0.5 text-[8px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition sm:px-2 sm:text-[9px]"
+              className="px-2 py-0.5 text-[13px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition sm:px-2 sm:text-[13px]"
               title={mode === 'problems' ? "Hide Problems" : "Show Problems"}
               aria-label={mode === 'problems' ? "Hide Problems" : "Show Problems"}
             >
-              {mode === 'problems' ? (isMobile ? "✕" : "Hide Problems") : (isMobile ? "≡" : "Show Problems")}
+              {mode === 'problems' ? (isMobile ? "X" : "Hide Problems") : (isMobile ? "≡" : "Show Problems")}
             </button>
             {activeProblem && (
               <ProblemReport
