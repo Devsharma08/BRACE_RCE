@@ -488,7 +488,7 @@ const CreateRoom = () => {
               </div>
             </section>
           ) : (
-            <div className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden">
+            <div className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden">
               {/* ── LEFT: CONFIGURATION COLUMN (internally scrollable) ─── */}
               <div className="themed-scroll min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
                 {/* IDENTITY & MISSION */}
@@ -607,7 +607,7 @@ const CreateRoom = () => {
                         type="datetime-local"
                         value={closesAt}
                         onChange={(e) => setClosesAt(e.target.value)}
-                        className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
+                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
                       />
                     </label>
                   </div>
@@ -989,7 +989,7 @@ const CreateRoom = () => {
                         setProblemPage(1);
                       }}
                       placeholder="Search problem or topic"
-                      className="h-10 w-full border border-subtle-line bg-void pl-9 pr-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
+                      className="h-10 w-full rounded-btn border border-subtle-line bg-void pl-9 pr-3 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
                     />
                   </div>
                   <select
@@ -999,7 +999,7 @@ const CreateRoom = () => {
                       setProblemPage(1);
                     }}
                     aria-label="Filter by difficulty"
-                    className="h-10 w-28 shrink-0 border-2 border-subtle-line/50 bg-raised/30 px-2 text-xs text-fg outline-none focus:border-accent/40 focus:bg-raised/50 transition-all"
+                    className="h-10 w-28 shrink-0 rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-2 text-xs text-fg outline-none focus:border-accent/40 focus:bg-raised/50 transition-all"
                   >
                     <option value="">All levels</option>
                     <option value="EASY">EASY</option>
@@ -1067,7 +1067,7 @@ const CreateRoom = () => {
                         setCustomPage(1);
                       }}
                       placeholder="Search or create custom problem"
-                      className="h-10 min-w-0 flex-1 border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/40 focus:bg-raised/50 transition-all"
+                      className="h-10 min-w-0 flex-1 rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/40 focus:bg-raised/50 transition-all"
                     />
                     <button
                       type="button"
