@@ -133,6 +133,325 @@ const Pager = ({
   </div>
 );
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIG CARD SUB-COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type IdentityMissionCardProps = {
+  name: string;
+  setName: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+};
+
+const IdentityMissionCard = ({
+  name,
+  setName,
+  description,
+  setDescription,
+}: IdentityMissionCardProps) => (
+  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+      <ShieldAlert size={14} aria-hidden /> Identity &amp; mission
+    </div>
+    <h2 className="mt-0 mb-4 text-lg font-bold tracking-tight text-fg sm:text-xl">
+      Name the operation.
+    </h2>
+
+    <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+      Operation title
+    </label>
+    <input
+      required
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      placeholder="e.g. Graph traversal / night shift"
+      className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 text:sm"
+    />
+
+    <label className="mt-5 block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+      Mission briefing
+    </label>
+    <textarea
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      rows={3}
+      placeholder="Describe the room…"
+      className="w-full min-h-[100px] rounded-btn border border-subtle-line/50 bg-raised/30 p-3 font-sans text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4"
+    />
+  </section>
+);
+
+type AccessCapacityCardProps = {
+  maxUsers: number;
+  setMaxUsers: (v: number) => void;
+  isPublic: boolean;
+  setIsPublic: (v: boolean) => void;
+  password: string;
+  setPassword: (v: string) => void;
+  timeLimitOption: string;
+  setTimeLimitOption: (v: string) => void;
+  effectiveMinutes: number;
+  timeLabel: string;
+  protectedRoom: boolean;
+};
+
+const AccessCapacityCard = ({
+  maxUsers,
+  setMaxUsers,
+  isPublic,
+  setIsPublic,
+  password,
+  setPassword,
+  timeLimitOption,
+  setTimeLimitOption,
+  effectiveMinutes,
+  timeLabel,
+  protectedRoom,
+}: AccessCapacityCardProps) => (
+  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+      <LockKeyhole size={14} aria-hidden /> Access &amp; capacity
+    </div>
+
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {/* Max Users — Stepper */}
+      <div className="space-y-2">
+        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+          Maximum users
+        </label>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMaxUsers(Math.max(2, maxUsers - 2))}
+            disabled={maxUsers <= 2}
+            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            −
+          </button>
+          <span className="flex-1 text-center font-mono text-sm font-bold text-fg ">
+            {maxUsers}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMaxUsers(Math.min(8, maxUsers + 2))}
+            disabled={maxUsers >= 8}
+            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            +
+          </button>
+        </div>
+        <p className="text-[8px] uppercase tracking-widest text-faint">
+          {maxUsers} operative{maxUsers !== 1 ? "s" : ""} max
+        </p>
+      </div>
+
+      {/* Time Limit — Slider */}
+      <div className="space-y-2">
+        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+          Time limit
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min={0}
+            max={120}
+            step={5}
+            value={effectiveMinutes > 0 ? effectiveMinutes : 20}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setTimeLimitOption(val > 0 ? String(val) : "AUTO");
+            }}
+            className="w-full h-1 bg-accent/20 rounded-full appearance-none cursor-pointer"
+          />
+          <span className="shrink-0 font-mono text-xs font-bold text-accent-primary sm:text-sm">
+            {timeLabel}
+          </span>
+        </div>
+        <p className="text-[8px] uppercase tracking-widest text-faint">
+          {effectiveMinutes > 0
+            ? `${effectiveMinutes} minutes`
+            : "Auto from queue"}
+        </p>
+      </div>
+    </div>
+
+    <div className="mt-5 flex items-center gap-3 rounded-btn border border-subtle-line bg-raised/30 p-2 sm:p-3">
+      <span className="flex items-center gap-1">
+        <LockKeyhole
+          size={13}
+          aria-hidden
+          className={protectedRoom ? "text-accent-warning" : "text-subtle"}
+        />
+        <span
+          className={`font-mono text-[9px] uppercase tracking-widest ${protectedRoom ? "text-accent-warning" : "text-subtle"} sm:text-xs`}
+        >
+          Pass protected
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          if (protectedRoom) {
+            setIsPublic(true);
+            setPassword("");
+          } else {
+            setIsPublic(false);
+            setPassword("");
+          }
+        }}
+        aria-pressed={protectedRoom}
+        className={`ml-auto shrink-0 h-8 w-20 rounded-btn border px-2 py-1.5 font-mono text-[8px] uppercase tracking-widest transition sm:text-xs sm:px-3 sm:py-2 ${
+          protectedRoom
+            ? "border-accent-warning/40 bg-accent-warning/[0.08] text-accent-warning"
+            : "border-subtle-line text-subtle hover:text-fg"
+        }`}
+      >
+        {protectedRoom ? "ON" : "OFF"}
+      </button>
+    </div>
+
+    {protectedRoom && (
+      <div className="mt-4">
+        <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+          Access password (optional)
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Leave blank for open access"
+          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
+        />
+      </div>
+    )}
+  </section>
+);
+
+type SchedulingCardProps = {
+  opensAt: string;
+  setOpensAt: (v: string) => void;
+  closesAt: string;
+  setClosesAt: (v: string) => void;
+};
+
+const SchedulingCard = ({
+  opensAt,
+  setOpensAt,
+  closesAt,
+  setClosesAt,
+}: SchedulingCardProps) => (
+  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+      <Clock size={14} aria-hidden /> Scheduling
+    </div>
+
+    <div className="grid gap-4 grid-cols-1 ">
+      <div className="space-y-2">
+        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+          Opens at (optional)
+        </label>
+        <input
+          type="datetime-local"
+          value={opensAt}
+          onChange={(e) => setOpensAt(e.target.value)}
+          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 "
+        />
+       
+      </div>
+
+      <div className="space-y-2">
+        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+          Closes at (optional)
+        </label>
+        <input
+          type="datetime-local"
+          value={closesAt}
+          onChange={(e) => setClosesAt(e.target.value)}
+          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 "
+        />
+        
+      </div>
+    </div>
+
+    {(opensAt || closesAt) && (
+      <div className="mt-4 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
+        <Clock size={11} aria-hidden />
+        {opensAt
+          ? `opens ${new Date(opensAt).toLocaleString()}`
+          : "opens on deploy"}
+        {closesAt ? ` · closes ${new Date(closesAt).toLocaleString()}` : ""}
+      </div>
+    )}
+  </section>
+);
+
+type MissionQueueCardProps = {
+  selectedProblemIds: string[];
+  MAX_SELECTABLE_PROBLEMS: number;
+  queueProblems: { id: string; name: string }[];
+  toggleProblemSelection: (id: string) => void;
+  selectedOverflowCount: number;
+};
+
+const MissionQueueCard = ({
+  selectedProblemIds,
+  MAX_SELECTABLE_PROBLEMS,
+  queueProblems,
+  toggleProblemSelection,
+  selectedOverflowCount,
+}: MissionQueueCardProps) => {
+  return (
+    <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+      <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-faint mb-3">
+        <span>Queued problems</span>
+        <span className="text-accent-primary">
+          {selectedProblemIds.length} / {MAX_SELECTABLE_PROBLEMS}
+        </span>
+      </div>
+      {queueProblems.length === 0 ? (
+        <p className="text-xs text-faint text-center py-4">
+          No problems queued yet — pick them from the problem queue panel.
+        </p>
+      ) : (
+        <ul className="space-y-2" aria-label="Selected problems">
+          {queueProblems.map((prob) => (
+            <li
+              key={prob.id}
+              className="flex items-center justify-between gap-2 border border-subtle-line bg-void px-3 py-2 text-xs sm:text-sm"
+            >
+              <span className="min-w-0 truncate text-fg">{prob.name}</span>
+              <button
+                type="button"
+                onClick={() => toggleProblemSelection(prob.id)}
+                className="shrink-0 text-faint transition hover:text-accent-danger"
+                aria-label={`Remove ${prob.name} from queue`}
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+          {selectedOverflowCount > 0 && (
+            <div className="mt-3 flex items-center gap-2 border border-subtle-line bg-void px-3 py-2 text-xs">
+              <Gauge
+                size={12}
+                className="shrink-0 text-accent-warning"
+                aria-hidden
+              />
+              <span className="text-subtle">
+                <span className="font-bold text-fg">
+                  +{selectedOverflowCount}
+                </span>{" "}
+                more selected — remove a problem to add another
+              </span>
+            </div>
+          )}
+        </ul>
+      )}
+    </section>
+  );
+};
+
 const CreateRoom = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -581,278 +900,38 @@ const CreateRoom = () => {
               <div className="themed-scroll min-w-0 min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
                 {/* CONFIG GRID — card-based, responsive */}
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
-                  {/* CARD: IDENTITY & MISSION */}
-                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
-                      <ShieldAlert size={14} aria-hidden /> Identity &amp;
-                      mission
-                    </div>
-                    <h2 className="mt-0 mb-4 text-lg font-bold tracking-tight text-fg sm:text-xl">
-                      Name the operation.
-                    </h2>
-
-                    <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
-                      Operation title
-                    </label>
-                    <input
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Graph traversal / night shift"
-                      className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
-                    />
-
-                    <label className="mt-5 block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
-                      Mission briefing
-                    </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows={3}
-                      placeholder="Describe the room…"
-                      className="w-full min-h-[100px] rounded-btn border border-subtle-line/50 bg-raised/30 p-3 font-sans text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-base"
-                    />
-                  </section>
-
-                  {/* CARD: ACCESS & CAPACITY */}
-                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
-                      <LockKeyhole size={14} aria-hidden /> Access &amp;
-                      capacity
-                    </div>
-
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                      {/* Max Users — Stepper */}
-                      <div className="space-y-2">
-                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                          Maximum users
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMaxUsers(Math.max(2, maxUsers - 2))
-                            }
-                            disabled={maxUsers <= 2}
-                            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                          >
-                            −
-                          </button>
-                          <span className="flex-1 text-center font-mono text-sm font-bold text-fg sm:text-base">
-                            {maxUsers}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMaxUsers(Math.min(8, maxUsers + 2))
-                            }
-                            disabled={maxUsers >= 8}
-                            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <p className="text-[8px] uppercase tracking-widest text-faint">
-                          {maxUsers} operative{maxUsers !== 1 ? "s" : ""} max
-                        </p>
-                      </div>
-
-                      {/* Time Limit — Slider */}
-                      <div className="space-y-2">
-                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                          Time limit
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="range"
-                            min={0}
-                            max={120}
-                            step={5}
-                            value={effectiveMinutes > 0 ? effectiveMinutes : 20}
-                            onChange={(e) => {
-                              const val = Number(e.target.value);
-                              setTimeLimitOption(
-                                val > 0 ? String(val) : "AUTO",
-                              );
-                            }}
-                            className="w-full h-1 bg-accent/20 rounded-full appearance-none cursor-pointer"
-                          />
-                          <span className="shrink-0 font-mono text-xs font-bold text-accent-primary sm:text-sm">
-                            {timeLabel}
-                          </span>
-                        </div>
-                        <p className="text-[8px] uppercase tracking-widest text-faint">
-                          {effectiveMinutes > 0
-                            ? `${effectiveMinutes} minutes`
-                            : "Auto from queue"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 flex items-center gap-3 rounded-btn border border-subtle-line bg-raised/30 p-2 sm:p-3">
-                      <span className="flex items-center gap-1">
-                        <LockKeyhole
-                          size={13}
-                          aria-hidden
-                          className={
-                            protectedRoom
-                              ? "text-accent-warning"
-                              : "text-subtle"
-                          }
-                        />
-                        <span
-                          className={`font-mono text-[9px] uppercase tracking-widest ${protectedRoom ? "text-accent-warning" : "text-subtle"} sm:text-xs`}
-                        >
-                          Pass protected
-                        </span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (protectedRoom) {
-                            setIsPublic(true);
-                            setPassword("");
-                          } else {
-                            setIsPublic(false);
-                            setPassword("");
-                          }
-                        }}
-                        aria-pressed={protectedRoom}
-                        className={`ml-auto shrink-0 h-8 w-20 rounded-btn border px-2 py-1.5 font-mono text-[8px] uppercase tracking-widest transition sm:text-xs sm:px-3 sm:py-2 ${
-                          protectedRoom
-                            ? "border-accent-warning/40 bg-accent-warning/[0.08] text-accent-warning"
-                            : "border-subtle-line text-subtle hover:text-fg"
-                        }`}
-                      >
-                        {protectedRoom ? "ON" : "OFF"}
-                      </button>
-                    </div>
-
-                    {protectedRoom && (
-                      <div className="mt-4">
-                        <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
-                          Access password (optional)
-                        </label>
-                        <input
-                          type="password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Leave blank for open access"
-                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
-                        />
-                      </div>
-                    )}
-                  </section>
-
-                  {/* CARD: SCHEDULING */}
-                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
-                      <Clock size={14} aria-hidden /> Scheduling
-                    </div>
-
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                          Opens at (optional)
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={opensAt}
-                          onChange={(e) => setOpensAt(e.target.value)}
-                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 sm:text-base"
-                        />
-                        {opensAt && (
-                          <p className="text-[8px] uppercase tracking-widest text-accent-success">
-                            {new Date(opensAt).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                          Closes at (optional)
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={closesAt}
-                          onChange={(e) => setClosesAt(e.target.value)}
-                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 sm:text-base"
-                        />
-                        {closesAt && (
-                          <p className="text-[8px] uppercase tracking-widest text-accent-success">
-                            {new Date(closesAt).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {(opensAt || closesAt) && (
-                      <div className="mt-4 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
-                        <Clock size={11} aria-hidden />
-                        {opensAt
-                          ? `opens ${new Date(opensAt).toLocaleString()}`
-                          : "opens on deploy"}
-                        {closesAt
-                          ? ` · closes ${new Date(closesAt).toLocaleString()}`
-                          : ""}
-                      </div>
-                    )}
-                  </section>
-
-                  {/* CARD: MISSION QUEUE */}
-                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
-                      <Swords size={14} aria-hidden /> Mission queue
-                    </div>
-                    <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-faint mb-3">
-                      <span>Queued problems</span>
-                      <span className="text-accent-primary">
-                        {selectedProblemIds.length} / {MAX_SELECTABLE_PROBLEMS}
-                      </span>
-                    </div>
-                    {queueProblems.length === 0 ? (
-                      <p className="text-xs text-faint text-center py-4">
-                        No problems queued yet — pick them from the problem
-                        queue panel.
-                      </p>
-                    ) : (
-                      <ul className="space-y-2" aria-label="Selected problems">
-                        {queueProblems.map((prob) => (
-                          <li
-                            key={prob.id}
-                            className="flex items-center justify-between gap-2 border border-subtle-line bg-void px-3 py-2 text-xs sm:text-sm"
-                          >
-                            <span className="min-w-0 truncate text-fg">
-                              {prob.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleProblemSelection(prob.id)}
-                              className="shrink-0 text-faint transition hover:text-accent-danger"
-                              aria-label={`Remove ${prob.name} from queue`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                            </button>
-                          </li>
-                        ))}
-                        {selectedOverflowCount > 0 && (
-                          <div className="mt-3 flex items-center gap-2 border border-subtle-line bg-void px-3 py-2 text-xs">
-                            <Gauge
-                              size={12}
-                              className="shrink-0 text-accent-warning"
-                              aria-hidden
-                            />
-                            <span className="text-subtle">
-                              <span className="font-bold text-fg">
-                                +{selectedOverflowCount}
-                              </span>{" "}
-                              more selected — remove a problem to add another
-                            </span>
-                          </div>
-                        )}
-                      </ul>
-                    )}
-                  </section>
+                  <IdentityMissionCard
+                    name={name}
+                    setName={setName}
+                    description={description}
+                    setDescription={setDescription}
+                  />
+                  <AccessCapacityCard
+                    maxUsers={maxUsers}
+                    setMaxUsers={setMaxUsers}
+                    isPublic={isPublic}
+                    setIsPublic={setIsPublic}
+                    password={password}
+                    setPassword={setPassword}
+                    timeLimitOption={timeLimitOption}
+                    setTimeLimitOption={setTimeLimitOption}
+                    effectiveMinutes={effectiveMinutes}
+                    timeLabel={timeLabel}
+                    protectedRoom={protectedRoom}
+                  />
+                  <SchedulingCard
+                    opensAt={opensAt}
+                    setOpensAt={setOpensAt}
+                    closesAt={closesAt}
+                    setClosesAt={setClosesAt}
+                  />
+                  <MissionQueueCard
+                    selectedProblemIds={selectedProblemIds}
+                    MAX_SELECTABLE_PROBLEMS={MAX_SELECTABLE_PROBLEMS}
+                    queueProblems={queueProblems}
+                    toggleProblemSelection={toggleProblemSelection}
+                    selectedOverflowCount={selectedOverflowCount}
+                  />
                 </div>
               </div>
 
