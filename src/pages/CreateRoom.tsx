@@ -24,7 +24,10 @@ import {
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { invalidateProblemQueries, fetchAllProblems } from "../utils/problemCache";
+import {
+  invalidateProblemQueries,
+  fetchAllProblems,
+} from "../utils/problemCache";
 import { toast } from "sonner";
 import { api, fetchCsrfToken } from "../config/api";
 
@@ -34,12 +37,12 @@ import { api, fetchCsrfToken } from "../config/api";
 const getErrorMessage = (err: unknown): string => {
   const data = (err as any)?.response?.data;
   if (!data) return (err as Error)?.message || "Unknown error";
-  
+
   // Handle validation errors with field details
   if (data.errors && Array.isArray(data.errors)) {
     return data.errors.map((e: any) => `${e.field}: ${e.message}`).join("; ");
   }
-  
+
   return data.message || data.error || "Request failed";
 };
 
@@ -64,7 +67,11 @@ interface RoomTemplate {
   problems: { id: string }[];
 }
 
-type CustomTestCase = { input: string; expectedOutput: string; is_public: boolean };
+type CustomTestCase = {
+  input: string;
+  expectedOutput: string;
+  is_public: boolean;
+};
 type CustomSnippet = { language: string; code: string; wrapperCode: string };
 
 const PAGE_SIZE = 4;
@@ -90,7 +97,15 @@ const templateMeta = (template: RoomTemplate) => {
   return parts.join(" · ");
 };
 
-const Pager = ({ page, total, setPage }: { page: number; total: number; setPage: (page: number) => void }) => (
+const Pager = ({
+  page,
+  total,
+  setPage,
+}: {
+  page: number;
+  total: number;
+  setPage: (page: number) => void;
+}) => (
   <div className="mt-3 flex items-center justify-between border-t border-subtle-line pt-3 font-mono text-[9px] uppercase tracking-widest text-faint">
     <span>
       Page {page} / {total}
@@ -127,7 +142,9 @@ const CreateRoom = () => {
   const [stagedSignature, setStagedSignature] = useState<string | null>(null);
 
   // --- ROOM STATE ---
-  const [name, setName] = useState(() => searchParams.get("templateName") ?? "");
+  const [name, setName] = useState(
+    () => searchParams.get("templateName") ?? "",
+  );
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
   const [maxUsers, setMaxUsers] = useState<number>(2);
@@ -167,7 +184,11 @@ const CreateRoom = () => {
     { input: "", expectedOutput: "", is_public: true },
   ]);
   const [customSnippets, setCustomSnippets] = useState<CustomSnippet[]>([
-    { language: "javascript", code: "// Write your code here", wrapperCode: "" },
+    {
+      language: "javascript",
+      code: "// Write your code here",
+      wrapperCode: "",
+    },
   ]);
 
   const { data: availableProblems = [] } = useQuery({
@@ -189,33 +210,58 @@ const CreateRoom = () => {
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ["room-templates"],
-    queryFn: async () => (await api.get("/rooms/templates")).data.templates as RoomTemplate[],
+    queryFn: async () =>
+      (await api.get("/rooms/templates")).data.templates as RoomTemplate[],
   });
 
-  const systemProblems = useMemo(() => availableProblems.filter((p) => !p.isCustom), [availableProblems]);
-  const customProblems = useMemo(() => availableProblems.filter((p) => p.isCustom), [availableProblems]);
+  const systemProblems = useMemo(
+    () => availableProblems.filter((p) => !p.isCustom),
+    [availableProblems],
+  );
+  const customProblems = useMemo(
+    () => availableProblems.filter((p) => p.isCustom),
+    [availableProblems],
+  );
 
   const filteredProblems = useMemo(
     () =>
       systemProblems.filter((problem) => {
-        const matchesSearch = !searchQuery || problem.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesDifficulty = !difficultyFilter || problem.difficulty_level === difficultyFilter;
+        const matchesSearch =
+          !searchQuery ||
+          problem.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesDifficulty =
+          !difficultyFilter || problem.difficulty_level === difficultyFilter;
         return matchesSearch && matchesDifficulty;
       }),
     [systemProblems, searchQuery, difficultyFilter],
   );
 
   const filteredCustom = useMemo(
-    () => customProblems.filter((problem) => problem.name.toLowerCase().includes(customQuery.toLowerCase())),
+    () =>
+      customProblems.filter((problem) =>
+        problem.name.toLowerCase().includes(customQuery.toLowerCase()),
+      ),
     [customProblems, customQuery],
   );
 
-  const problemPageCount = Math.max(1, Math.ceil(filteredProblems.length / PAGE_SIZE));
-  const customPageCount = Math.max(1, Math.ceil(filteredCustom.length / PAGE_SIZE));
+  const problemPageCount = Math.max(
+    1,
+    Math.ceil(filteredProblems.length / PAGE_SIZE),
+  );
+  const customPageCount = Math.max(
+    1,
+    Math.ceil(filteredCustom.length / PAGE_SIZE),
+  );
   const safeProblemPage = Math.min(problemPage, problemPageCount);
   const safeCustomPage = Math.min(customPage, customPageCount);
-  const visibleProblems = filteredProblems.slice((safeProblemPage - 1) * PAGE_SIZE, safeProblemPage * PAGE_SIZE);
-  const visibleCustom = filteredCustom.slice((safeCustomPage - 1) * PAGE_SIZE, safeCustomPage * PAGE_SIZE);
+  const visibleProblems = filteredProblems.slice(
+    (safeProblemPage - 1) * PAGE_SIZE,
+    safeProblemPage * PAGE_SIZE,
+  );
+  const visibleCustom = filteredCustom.slice(
+    (safeCustomPage - 1) * PAGE_SIZE,
+    safeCustomPage * PAGE_SIZE,
+  );
 
   // Auto-calculate the Global Time Limit whenever problems are selected
   const autoMinutes = useMemo(() => {
@@ -230,8 +276,10 @@ const CreateRoom = () => {
     return calculatedMinutes > 0 ? calculatedMinutes + 5 : 0;
   }, [selectedProblemIds, availableProblems]);
 
-  const effectiveMinutes = timeLimitOption === "AUTO" ? autoMinutes : Number(timeLimitOption);
-  const timeLabel = effectiveMinutes > 0 ? `${effectiveMinutes} minutes` : "Auto";
+  const effectiveMinutes =
+    timeLimitOption === "AUTO" ? autoMinutes : Number(timeLimitOption);
+  const timeLabel =
+    effectiveMinutes > 0 ? `${effectiveMinutes} minutes` : "Auto";
   const protectedRoom = !isPublic || password.trim().length > 0;
 
   // Staging is a snapshot check: editing any tracked field automatically drops
@@ -247,12 +295,16 @@ const CreateRoom = () => {
     opensAt,
     closesAt,
   ]);
-  const staged = stagedSignature !== null && stagedSignature === configSignature;
+  const staged =
+    stagedSignature !== null && stagedSignature === configSignature;
 
   const queueProblems = selectedProblemIds
     .map((id) => availableProblems.find((prob) => prob.id === id))
     .filter((prob): prob is Problem => Boolean(prob));
-  const selectedOverflowCount = Math.max(0, selectedProblemIds.length - MAX_SELECTABLE_PROBLEMS);
+  const selectedOverflowCount = Math.max(
+    0,
+    selectedProblemIds.length - MAX_SELECTABLE_PROBLEMS,
+  );
 
   const toggleProblemSelection = (id: string) => {
     setSelectedProblemIds((prev) => {
@@ -271,7 +323,9 @@ const CreateRoom = () => {
   const chooseTemplate = (template: RoomTemplate) => {
     const ids = template.problems.map((p) => p.id);
     if (ids.length > MAX_SELECTABLE_PROBLEMS) {
-      toast.info(`"${template.name}" trimmed to the ${MAX_SELECTABLE_PROBLEMS}-problem queue cap.`);
+      toast.info(
+        `"${template.name}" trimmed to the ${MAX_SELECTABLE_PROBLEMS}-problem queue cap.`,
+      );
     }
     setSelectedProblemIds(ids.slice(0, MAX_SELECTABLE_PROBLEMS));
     setActiveTemplateId(template.id);
@@ -280,13 +334,17 @@ const CreateRoom = () => {
 
   const handleSaveTemplate = async () => {
     if (selectedProblemIds.length === 0) {
-      return toast.error("Select at least one problem before saving a template.");
+      return toast.error(
+        "Select at least one problem before saving a template.",
+      );
     }
     setSaveTemplateLoading(true);
     try {
       await fetchCsrfToken();
       await api.post("/rooms/create", {
-        name: name.trim() ? `${name.trim()} template` : `Custom template ${templates.length + 1}`,
+        name: name.trim()
+          ? `${name.trim()} template`
+          : `Custom template ${templates.length + 1}`,
         description,
         password: protectedRoom && password.trim() ? password.trim() : null,
         maxUsers,
@@ -307,16 +365,26 @@ const CreateRoom = () => {
 
   const handleCreateRoom = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (selectedProblemIds.length === 0) return toast.error("You must select at least one problem!");
+    if (selectedProblemIds.length === 0)
+      return toast.error("You must select at least one problem!");
     if (!name.trim()) return toast.error("Give your operation a title first.");
 
     // Client-side password validation
-    if (protectedRoom && password && password.trim().length > 0 && password.trim().length < 4) {
+    if (
+      protectedRoom &&
+      password &&
+      password.trim().length > 0 &&
+      password.trim().length < 4
+    ) {
       return toast.error("Password must be at least 4 characters");
     }
 
     // Schedule validation: the room must open before it closes
-    if (opensAt && closesAt && new Date(opensAt).getTime() >= new Date(closesAt).getTime()) {
+    if (
+      opensAt &&
+      closesAt &&
+      new Date(opensAt).getTime() >= new Date(closesAt).getTime()
+    ) {
       return toast.error("Scheduled open time must be before the close time.");
     }
 
@@ -333,7 +401,8 @@ const CreateRoom = () => {
       const res = await api.post("/rooms/create", {
         name,
         description,
-        password: protectedRoom && password.trim() ? password.trim() : undefined,
+        password:
+          protectedRoom && password.trim() ? password.trim() : undefined,
         maxUsers,
         isPublic,
         isTemplate: false,
@@ -373,14 +442,22 @@ const CreateRoom = () => {
       invalidateProblemQueries(queryClient);
 
       // Auto-select it in the queue
-      setSelectedProblemIds((prev) => [...prev, newProb.id].slice(0, MAX_SELECTABLE_PROBLEMS));
+      setSelectedProblemIds((prev) =>
+        [...prev, newProb.id].slice(0, MAX_SELECTABLE_PROBLEMS),
+      );
 
       // Reset form + close the studio
       setCustomName("");
       setCustomDefinition("");
       setCustomHints([""]);
       setCustomTestCases([{ input: "", expectedOutput: "", is_public: true }]);
-      setCustomSnippets([{ language: "javascript", code: "// Write your code here", wrapperCode: "" }]);
+      setCustomSnippets([
+        {
+          language: "javascript",
+          code: "// Write your code here",
+          wrapperCode: "",
+        },
+      ]);
       setCustomQuery("");
       setCustomPage(1);
       setStudioOpen(false);
@@ -397,8 +474,6 @@ const CreateRoom = () => {
     <div className="relative flex w-full bg-base font-mono text-fg selection:bg-accent-primary/30 selection:text-accent-primary">
       {/* Dot-grid texture */}
       <div className="pointer-events-none fixed inset-0 z-0 opacity-[0.03] bg-[radial-gradient(rgba(0,212,255,0.05)_1px,transparent_1px)] [background-size:48px_48px]" />
-
-
 
       {/* MAIN CONTENT — min-h budget accounts for the sticky header that
           Layout.tsx renders in document flow. A hard `lg:h-screen` here
@@ -421,14 +496,20 @@ const CreateRoom = () => {
                 <Swords size={14} aria-hidden /> Room deployment / configuration
               </div>
               <h1 className="mt-3 font-mono text-3xl font-black tracking-[-0.04em] text-fg md:text-4xl">
-                Configure the <span className="text-accent-primary">operation.</span>
+                Configure the{" "}
+                <span className="text-accent-primary">operation.</span>
               </h1>
             </div>
             <div className="flex flex-col gap-2 font-mono text-[9px] uppercase tracking-widest text-faint lg:items-end lg:text-right">
               <span>Draft / not published</span>
               <span className="flex items-center gap-2 text-accent-success">
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success" aria-hidden />
-                {staged ? "configuration staged" : `${selectedProblemIds.length} selected — ${timeLabel}`}
+                <span
+                  className="h-1.5 w-1.5 rounded-full bg-accent-success shadow-glow-success"
+                  aria-hidden
+                />
+                {staged
+                  ? "configuration staged"
+                  : `${selectedProblemIds.length} selected — ${timeLabel}`}
               </span>
             </div>
           </header>
@@ -445,10 +526,11 @@ const CreateRoom = () => {
                 Your operation is staged.
               </h2>
               <p className="mt-3 max-w-2xl font-sans text-sm leading-6 text-subtle">
-                {name.trim() || "Untitled operation"} · {selectedProblemIds.length} problem
+                {name.trim() || "Untitled operation"} ·{" "}
+                {selectedProblemIds.length} problem
                 {selectedProblemIds.length === 1 ? "" : "s"} · {timeLabel} ·{" "}
-                {protectedRoom ? "pass protected" : "open access"}. Deploy to publish this
-                configuration and invite participants.
+                {protectedRoom ? "pass protected" : "open access"}. Deploy to
+                publish this configuration and invite participants.
               </p>
               {(opensAt || closesAt) && (
                 <p className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-accent-primary">
@@ -456,7 +538,9 @@ const CreateRoom = () => {
                   {opensAt
                     ? `opens ${new Date(opensAt).toLocaleString()}`
                     : "opens on deploy"}
-                  {closesAt ? ` · closes ${new Date(closesAt).toLocaleString()}` : ""}
+                  {closesAt
+                    ? ` · closes ${new Date(closesAt).toLocaleString()}`
+                    : ""}
                 </p>
               )}
               <div className="mt-7 flex flex-col gap-3 border-t border-accent-success/20 pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -464,21 +548,25 @@ const CreateRoom = () => {
                   staged / awaiting deploy
                 </span>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                   <button
-                     type="button"
-                     onClick={() => setStagedSignature(null)}
-                     className="border border-subtle-line px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-subtle transition hover:text-fg sm:px-5 sm:py-3 sm:text-[10px]"
-                   >
-                     Edit configuration
-                   </button>
-                   <button
-                     type="button"
-                     onClick={() => handleCreateRoom()}
-                     disabled={loading}
-                     className="flex items-center justify-center gap-1.5 bg-accent-primary px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-5 sm:py-3 sm:text-[10px]"
-                   >
+                  <button
+                    type="button"
+                    onClick={() => setStagedSignature(null)}
+                    className="border border-subtle-line px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-subtle transition hover:text-fg sm:px-5 sm:py-3 sm:text-[10px]"
+                  >
+                    Edit configuration
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCreateRoom()}
+                    disabled={loading}
+                    className="flex items-center justify-center gap-1.5 bg-accent-primary px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-5 sm:py-3 sm:text-[10px]"
+                  >
                     {loading ? (
-                      <Activity size={14} className="animate-pulse" aria-hidden />
+                      <Activity
+                        size={14}
+                        className="animate-pulse"
+                        aria-hidden
+                      />
                     ) : (
                       <Swords size={14} aria-hidden />
                     )}
@@ -489,157 +577,254 @@ const CreateRoom = () => {
             </section>
           ) : (
             <div className="mt-4 grid min-h-0 flex-1 gap-4 overflow-x-hidden grid-cols-1 lg:grid-cols-[minmax(0,1fr)_460px]">
-              {/* ── LEFT: CONFIGURATION COLUMN (internally scrollable) ─── */}
+              {/* ── LEFT: CONFIGURATION COLUMN ── */}
               <div className="themed-scroll min-w-0 min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
-                {/* IDENTITY & MISSION */}
-                <section className="rounded-card border border-subtle-line bg-surface p-2">
-                  <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary">
-                    <ShieldAlert size={14} aria-hidden /> Identity &amp; mission
-                  </div>
-                  <h2 className="mt-4 text-lg font-bold tracking-tight text-fg">Name the operation.</h2>
+                {/* CONFIG GRID — card-based, responsive */}
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
+                  {/* CARD: IDENTITY & MISSION */}
+                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+                      <ShieldAlert size={14} aria-hidden /> Identity &amp;
+                      mission
+                    </div>
+                    <h2 className="mt-0 mb-4 text-lg font-bold tracking-tight text-fg sm:text-xl">
+                      Name the operation.
+                    </h2>
 
-                  <label className="mt-5 block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                    Operation title
+                    <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+                      Operation title
+                    </label>
                     <input
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Graph traversal / night shift"
-                      className="mt-2 h-10 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-sm"
+                      className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
                     />
-                  </label>
 
-                  <label className="mt-4 block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                    Mission briefing
+                    <label className="mt-5 block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+                      Mission briefing
+                    </label>
                     <textarea
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
                       placeholder="Describe the room…"
-                      className="mt-2 min-h-20 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 p-3 font-sans text-xs text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-sm"
+                      className="w-full min-h-[100px] rounded-btn border border-subtle-line/50 bg-raised/30 p-3 font-sans text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:p-4 sm:text-base"
                     />
-                  </label>
+                  </section>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Max users
-                      <select
-                        value={maxUsers}
-                        onChange={(e) => setMaxUsers(Number(e.target.value))}
-                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
+                  {/* CARD: ACCESS & CAPACITY */}
+                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+                      <LockKeyhole size={14} aria-hidden /> Access &amp;
+                      capacity
+                    </div>
+
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                      {/* Max Users — Stepper */}
+                      <div className="space-y-2">
+                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                          Maximum users
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMaxUsers(Math.max(2, maxUsers - 2))
+                            }
+                            disabled={maxUsers <= 2}
+                            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            −
+                          </button>
+                          <span className="flex-1 text-center font-mono text-sm font-bold text-fg sm:text-base">
+                            {maxUsers}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMaxUsers(Math.min(8, maxUsers + 2))
+                            }
+                            disabled={maxUsers >= 8}
+                            className="shrink-0 h-9 w-9 rounded-btn border border-subtle-line bg-raised/30 flex items-center justify-center text-[9px] font-bold text-fg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <p className="text-[8px] uppercase tracking-widest text-faint">
+                          {maxUsers} operative{maxUsers !== 1 ? "s" : ""} max
+                        </p>
+                      </div>
+
+                      {/* Time Limit — Slider */}
+                      <div className="space-y-2">
+                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                          Time limit
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={0}
+                            max={120}
+                            step={5}
+                            value={effectiveMinutes > 0 ? effectiveMinutes : 20}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setTimeLimitOption(
+                                val > 0 ? String(val) : "AUTO",
+                              );
+                            }}
+                            className="w-full h-1 bg-accent/20 rounded-full appearance-none cursor-pointer"
+                          />
+                          <span className="shrink-0 font-mono text-xs font-bold text-accent-primary sm:text-sm">
+                            {timeLabel}
+                          </span>
+                        </div>
+                        <p className="text-[8px] uppercase tracking-widest text-faint">
+                          {effectiveMinutes > 0
+                            ? `${effectiveMinutes} minutes`
+                            : "Auto from queue"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex items-center gap-3 rounded-btn border border-subtle-line bg-raised/30 p-2 sm:p-3">
+                      <span className="flex items-center gap-1">
+                        <LockKeyhole
+                          size={13}
+                          aria-hidden
+                          className={
+                            protectedRoom
+                              ? "text-accent-warning"
+                              : "text-subtle"
+                          }
+                        />
+                        <span
+                          className={`font-mono text-[9px] uppercase tracking-widest ${protectedRoom ? "text-accent-warning" : "text-subtle"} sm:text-xs`}
+                        >
+                          Pass protected
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (protectedRoom) {
+                            setIsPublic(true);
+                            setPassword("");
+                          } else {
+                            setIsPublic(false);
+                            setPassword("");
+                          }
+                        }}
+                        aria-pressed={protectedRoom}
+                        className={`ml-auto shrink-0 h-8 w-20 rounded-btn border px-2 py-1.5 font-mono text-[8px] uppercase tracking-widest transition sm:text-xs sm:px-3 sm:py-2 ${
+                          protectedRoom
+                            ? "border-accent-warning/40 bg-accent-warning/[0.08] text-accent-warning"
+                            : "border-subtle-line text-subtle hover:text-fg"
+                        }`}
                       >
-                        {[2, 4, 6, 8].map((count) => (
-                          <option key={count} value={count}>
-                            {count} operatives
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Time limit
-                      <select
-                        value={timeLimitOption}
-                        onChange={(e) => setTimeLimitOption(e.target.value)}
-                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
-                      >
-                        <option value="AUTO">Auto — {autoMinutes || 0} min from queue</option>
-                        {TIME_LIMIT_OPTIONS.map((minutes) => (
-                          <option key={minutes} value={minutes}>
-                            {minutes} minutes
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (protectedRoom) {
-                          setIsPublic(true);
-                          setPassword("");
-                        } else {
-                          setIsPublic(false);
-                          setPassword("");
-                        }
-                      }}
-                      aria-pressed={protectedRoom}
-                      className={`mt-auto flex h-11 items-center justify-center gap-2 rounded-btn border px-3 font-mono text-[9px] uppercase tracking-widest transition ${
-                        protectedRoom
-                          ? "border-accent-warning/40 bg-accent-warning/[0.08] text-accent-warning"
-                          : "border-subtle-line text-subtle hover:text-fg"
-                      }`}
-                    >
-                      {protectedRoom ? (
-                        <LockKeyhole size={14} aria-hidden />
-                      ) : (
-                        <Check size={14} aria-hidden />
-                      )}
-                      {protectedRoom ? "Pass protected" : "Open access"}
-                    </button>
-                  </div>
+                        {protectedRoom ? "ON" : "OFF"}
+                      </button>
+                    </div>
 
-                  {protectedRoom && (
-                    <label className="mt-4 block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Access password (optional)
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Leave blank for open access"
-                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-4 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
-                      />
-                    </label>
-                  )}
+                    {protectedRoom && (
+                      <div className="mt-4">
+                        <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle mb-1">
+                          Access password (optional)
+                        </label>
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Leave blank for open access"
+                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
+                        />
+                      </div>
+                    )}
+                  </section>
 
-                  {/* SCHEDULE — optional opening / auto-close window */}
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Opens at (optional)
-                      <input
-                        type="datetime-local"
-                        value={opensAt}
-                        onChange={(e) => setOpensAt(e.target.value)}
-                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
-                      />
-                    </label>
-                    <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Closes at (optional)
-                      <input
-                        type="datetime-local"
-                        value={closesAt}
-                        onChange={(e) => setClosesAt(e.target.value)}
-                        className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark]"
-                      />
-                    </label>
-                  </div>
-                  {(opensAt || closesAt) && (
-                    <p className="mt-2 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
-                      <Clock size={11} aria-hidden />
-                      {opensAt
-                        ? `opens ${new Date(opensAt).toLocaleString()}`
-                        : "opens on deploy"}
-                      {closesAt ? ` · closes ${new Date(closesAt).toLocaleString()}` : ""}
-                    </p>
-                  )}
+                  {/* CARD: SCHEDULING */}
+                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+                      <Clock size={14} aria-hidden /> Scheduling
+                    </div>
 
-                  <div className="mt-5 border-t border-subtle-line pt-4">
-                    <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-faint">
-                      <span>Mission queue</span>
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                          Opens at (optional)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={opensAt}
+                          onChange={(e) => setOpensAt(e.target.value)}
+                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 sm:text-base"
+                        />
+                        {opensAt && (
+                          <p className="text-[8px] uppercase tracking-widest text-accent-success">
+                            {new Date(opensAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="font-mono text-[9px] uppercase tracking-widest text-subtle">
+                          Closes at (optional)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={closesAt}
+                          onChange={(e) => setClosesAt(e.target.value)}
+                          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all [color-scheme:dark] sm:h-12 sm:px-4 sm:text-base"
+                        />
+                        {closesAt && (
+                          <p className="text-[8px] uppercase tracking-widest text-accent-success">
+                            {new Date(closesAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {(opensAt || closesAt) && (
+                      <div className="mt-4 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
+                        <Clock size={11} aria-hidden />
+                        {opensAt
+                          ? `opens ${new Date(opensAt).toLocaleString()}`
+                          : "opens on deploy"}
+                        {closesAt
+                          ? ` · closes ${new Date(closesAt).toLocaleString()}`
+                          : ""}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* CARD: MISSION QUEUE */}
+                  <section className="rounded-card border border-subtle-line bg-surface p-4 sm:p-6">
+                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary mb-4">
+                      <Swords size={14} aria-hidden /> Mission queue
+                    </div>
+                    <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-faint mb-3">
+                      <span>Queued problems</span>
                       <span className="text-accent-primary">
-                        {selectedProblemIds.length} / {MAX_SELECTABLE_PROBLEMS} selected
+                        {selectedProblemIds.length} / {MAX_SELECTABLE_PROBLEMS}
                       </span>
                     </div>
                     {queueProblems.length === 0 ? (
-                      <p className="mt-3 text-xs text-faint">
-                        No problems queued yet — pick them from the problem queue panel.
+                      <p className="text-xs text-faint text-center py-4">
+                        No problems queued yet — pick them from the problem
+                        queue panel.
                       </p>
                     ) : (
-                      <ul className="mt-3 space-y-2" aria-label="Selected problems">
+                      <ul className="space-y-2" aria-label="Selected problems">
                         {queueProblems.map((prob) => (
                           <li
                             key={prob.id}
-                            className="flex items-center justify-between gap-2 border border-subtle-line bg-void px-3 py-2 text-xs"
+                            className="flex items-center justify-between gap-2 border border-subtle-line bg-void px-3 py-2 text-xs sm:text-sm"
                           >
-                            <span className="min-w-0 truncate text-fg">{prob.name}</span>
+                            <span className="min-w-0 truncate text-fg">
+                              {prob.name}
+                            </span>
                             <button
                               type="button"
                               onClick={() => toggleProblemSelection(prob.id)}
@@ -650,313 +835,25 @@ const CreateRoom = () => {
                             </button>
                           </li>
                         ))}
+                        {selectedOverflowCount > 0 && (
+                          <div className="mt-3 flex items-center gap-2 border border-subtle-line bg-void px-3 py-2 text-xs">
+                            <Gauge
+                              size={12}
+                              className="shrink-0 text-accent-warning"
+                              aria-hidden
+                            />
+                            <span className="text-subtle">
+                              <span className="font-bold text-fg">
+                                +{selectedOverflowCount}
+                              </span>{" "}
+                              more selected — remove a problem to add another
+                            </span>
+                          </div>
+                        )}
                       </ul>
                     )}
-                    {selectedOverflowCount > 0 && (
-                      <div className="mt-3 flex items-center gap-2 border border-subtle-line bg-void px-3 py-2 text-xs">
-                        <Gauge size={12} className="shrink-0 text-accent-warning" aria-hidden />
-                        <span className="text-subtle">
-                          <span className="font-bold text-fg">+{selectedOverflowCount}</span> more selected — remove a problem to add another
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* BATTLE TEMPLATES */}
-                <section className="rounded-card border border-subtle-line bg-surface p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-violet">
-                      <LayoutTemplate size={14} aria-hidden /> Battle templates
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleSaveTemplate}
-                      disabled={saveTemplateLoading}
-                      className="flex items-center gap-1 border border-accent-violet/30 px-3 py-2 font-mono text-[9px] uppercase tracking-widest text-accent-violet transition hover:border-accent-violet disabled:opacity-50"
-                    >
-                      {saveTemplateLoading ? (
-                        <Activity size={13} className="animate-pulse" aria-hidden />
-                      ) : (
-                        <Save size={13} aria-hidden />
-                      )}
-                      Save current
-                    </button>
-                  </div>
-                  {templatesLoading ? (
-                    <p className="mt-5 text-xs text-faint">Loading templates…</p>
-                  ) : templates.length === 0 ? (
-                    <p className="mt-5 text-xs text-faint">
-                      No saved templates yet — build a queue and save it for reuse.
-                    </p>
-                  ) : (
-                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                      {templates.map((template) => (
-                        <button
-                          type="button"
-                          key={template.id}
-                          onClick={() => chooseTemplate(template)}
-                          className={`border p-4 text-left transition ${
-                            activeTemplateId === template.id
-                              ? "border-accent-violet/50 bg-accent-violet/[0.08]"
-                              : "border-subtle-line bg-void hover:border-accent-violet/40"
-                          }`}
-                        >
-                          <span className="block min-w-0 truncate text-xs font-bold text-fg">
-                            {template.name}
-                          </span>
-                          <span className="mt-2 block font-mono text-[9px] uppercase tracking-widest text-faint">
-                            {templateMeta(template)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <p className="mt-3 text-[11px] text-faint">
-                    Selecting a template loads its problems into the mission queue.
-                  </p>
-                </section>
-
-                {/* CUSTOM PROBLEM STUDIO — revealed from the queue panel */}
-                {studioOpen && (
-                  <section
-                    className="rounded-card border border-subtle-line bg-surface p-6"
-                    aria-label="Custom problem studio"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary">
-                        <Code2 size={14} aria-hidden /> Custom problem studio
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setStudioOpen(false)}
-                        aria-label="Close custom problem studio"
-                        className="text-faint transition hover:text-fg"
-                      >
-                        <X size={15} aria-hidden />
-                      </button>
-                    </div>
-
-                    <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                      <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                        Scenario name
-                        <input
-                          value={customName}
-                          onChange={(e) => setCustomName(e.target.value)}
-                          placeholder="e.g. Invert Binary Tree"
-                          className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
-                        />
-                      </label>
-                      <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                        Threat level
-                        <select
-                          value={customDifficulty}
-                          onChange={(e) => setCustomDifficulty(e.target.value)}
-                          className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
-                        >
-                          <option value="EASY">EASY (15 min)</option>
-                          <option value="MEDIUM">MEDIUM (20 min)</option>
-                          <option value="HARD">HARD (30 min)</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <label className="mt-4 block font-mono text-[9px] uppercase tracking-widest text-subtle">
-                      Problem definition (markdown)
-                      <textarea
-                        rows={4}
-                        value={customDefinition}
-                        onChange={(e) => setCustomDefinition(e.target.value)}
-                        placeholder="Write your problem description here…"
-                        className="mt-2 w-full rounded-btn border border-subtle-line bg-void p-4 font-sans text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
-                      />
-                    </label>
-
-                    {/* HINTS */}
-                    <div className="mt-4 border border-subtle-line p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-accent-warning">
-                          <Lightbulb size={13} aria-hidden /> Hints
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCustomHints([...customHints, ""])}
-                          className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-accent-warning"
-                        >
-                          <Plus size={12} aria-hidden /> Add
-                        </button>
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        {customHints.map((hint, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <input
-                              value={hint}
-                              onChange={(e) => {
-                                const h = [...customHints];
-                                h[i] = e.target.value;
-                                setCustomHints(h);
-                              }}
-                              placeholder="Hint text…"
-                              className="mt-2 h-10 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-warning/50 focus:bg-raised/50 transition-all"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setCustomHints(customHints.filter((_, idx) => idx !== i))}
-                              aria-label={`Remove hint ${i + 1}`}
-                              className="text-faint transition hover:text-accent-danger"
-                            >
-                              <Trash2 size={14} aria-hidden />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <TestCaseGeneratorPanel
-                        signature={creatorSignature}
-                        setSignature={setCreatorSignature}
-                        onGenerated={(generated) => setCustomTestCases(generated)}
-                      />
-                    </div>
-
-                    {/* TEST CASES */}
-                    <div className="mt-4 border border-subtle-line p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-accent-danger">
-                          <Terminal size={13} aria-hidden /> Test cases
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCustomTestCases([...customTestCases, { input: "", expectedOutput: "", is_public: true }])}
-                          className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-accent-danger"
-                        >
-                          <Plus size={12} aria-hidden /> Add
-                        </button>
-                      </div>
-                      <div className="mt-3 space-y-3">
-                        {customTestCases.map((tc, i) => (
-                          <div key={i} className="relative border border-subtle-line bg-void p-3">
-                            <button
-                              type="button"
-                              onClick={() => setCustomTestCases(customTestCases.filter((_, idx) => idx !== i))}
-                              aria-label={`Remove test case ${i + 1}`}
-                              className="absolute right-3 top-3 text-faint transition hover:text-accent-danger"
-                            >
-                              <Trash2 size={14} aria-hidden />
-                            </button>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={!tc.is_public}
-                                onChange={(e) => {
-                                  const t = [...customTestCases];
-                                  t[i].is_public = !e.target.checked;
-                                  setCustomTestCases(t);
-                                }}
-                                className="accent-[var(--accent-danger)]"
-                              />
-                              <span className="font-mono text-[9px] uppercase tracking-widest text-accent-danger">
-                                Hidden edge case
-                              </span>
-                            </label>
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <input
-                                value={tc.input}
-                                onChange={(e) => {
-                                  const t = [...customTestCases];
-                                  t[i].input = e.target.value;
-                                  setCustomTestCases(t);
-                                }}
-                                placeholder="Input"
-                                className="mt-2 h-10 w-full rounded-btn border border-subtle-line bg-raised px-3 text-xs text-accent-primary outline-none placeholder:text-faint"
-                              />
-                              <input
-                                value={tc.expectedOutput}
-                                onChange={(e) => {
-                                  const t = [...customTestCases];
-                                  t[i].expectedOutput = e.target.value;
-                                  setCustomTestCases(t);
-                                }}
-                                placeholder="Expected output"
-                                className="mt-2 h-10 w-full rounded-btn border border-subtle-line bg-raised px-3 text-xs text-accent-success outline-none placeholder:text-faint"
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* SNIPPETS */}
-                    <div className="mt-4 border border-subtle-line p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-accent-primary">
-                          <Code2 size={13} aria-hidden /> Snippets
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCustomSnippets([...customSnippets, { language: "python", code: "", wrapperCode: "" }])}
-                          className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest text-accent-primary"
-                        >
-                          <Plus size={12} aria-hidden /> Add
-                        </button>
-                      </div>
-                      <div className="mt-3 space-y-3">
-                        {customSnippets.map((snip, i) => (
-                          <div key={i} className="relative border border-subtle-line bg-void p-3">
-                            <button
-                              type="button"
-                              onClick={() => setCustomSnippets(customSnippets.filter((_, idx) => idx !== i))}
-                              aria-label={`Remove snippet ${i + 1}`}
-                              className="absolute right-3 top-3 text-faint transition hover:text-accent-danger"
-                            >
-                              <Trash2 size={14} aria-hidden />
-                            </button>
-                            <select
-                              value={snip.language}
-                              onChange={(e) => {
-                                const s = [...customSnippets];
-                                s[i].language = e.target.value;
-                                setCustomSnippets(s);
-                              }}
-                              className="h-9 w-full rounded-btn border border-subtle-line bg-raised px-2 font-mono text-[10px] uppercase tracking-widest text-accent-primary outline-none"
-                            >
-                              <option value="javascript">JavaScript</option>
-                              <option value="python">Python</option>
-                              <option value="java">Java</option>
-                              <option value="cpp">C++</option>
-                            </select>
-                            <textarea
-                              rows={3}
-                              value={snip.code}
-                              onChange={(e) => {
-                                const s = [...customSnippets];
-                                s[i].code = e.target.value;
-                                setCustomSnippets(s);
-                              }}
-                              placeholder="Starter code…"
-                              className="mt-2 w-full rounded-btn border border-subtle-line bg-void p-2 font-mono text-sm text-fg outline-none placeholder:text-faint focus:border-accent-primary"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleCreateCustomProblem}
-                      disabled={customLoading}
-                      className="mt-5 flex w-full items-center justify-center gap-2 border border-accent-primary/50 bg-accent-primary/10 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary hover:text-ink disabled:opacity-50"
-                    >
-                      {customLoading ? (
-                        <Activity size={15} className="animate-pulse" aria-hidden />
-                      ) : (
-                        <Target size={15} aria-hidden />
-                      )}
-                      Create &amp; add to queue
-                    </button>
                   </section>
-                )}
+                </div>
               </div>
 
               {/* ── RIGHT: PROBLEM QUEUE (search + select + deploy) ─────── */}
@@ -981,7 +878,11 @@ const CreateRoom = () => {
                 {/* SYSTEM PROBLEMS */}
                 <div className="mt-5 flex gap-2">
                   <div className="relative min-w-0 flex-1">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" aria-hidden />
+                    <Search
+                      size={14}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"
+                      aria-hidden
+                    />
                     <input
                       value={searchQuery}
                       onChange={(e) => {
@@ -1008,7 +909,8 @@ const CreateRoom = () => {
                   </select>
                 </div>
                 <p className="mt-2 font-mono text-[9px] uppercase tracking-widest text-faint">
-                  {filteredProblems.length} problem{filteredProblems.length === 1 ? "" : "s"} found
+                  {filteredProblems.length} problem
+                  {filteredProblems.length === 1 ? "" : "s"} found
                 </p>
 
                 <div className="mt-3 space-y-2">
@@ -1018,7 +920,9 @@ const CreateRoom = () => {
                     </p>
                   ) : (
                     visibleProblems.map((problem) => {
-                      const isSelected = selectedProblemIds.includes(problem.id);
+                      const isSelected = selectedProblemIds.includes(
+                        problem.id,
+                      );
                       return (
                         <button
                           type="button"
@@ -1041,9 +945,13 @@ const CreateRoom = () => {
                             >
                               <Check size={12} aria-hidden />
                             </span>
-                            <span className="min-w-0 truncate text-xs text-fg">{problem.name}</span>
+                            <span className="min-w-0 truncate text-xs text-fg">
+                              {problem.name}
+                            </span>
                           </span>
-                          <span className={`shrink-0 font-mono text-[9px] font-bold tracking-widest ${difficultyTone(problem.difficulty_level)}`}>
+                          <span
+                            className={`shrink-0 font-mono text-[9px] font-bold tracking-widest ${difficultyTone(problem.difficulty_level)}`}
+                          >
                             {problem.difficulty_level}
                           </span>
                         </button>
@@ -1051,7 +959,11 @@ const CreateRoom = () => {
                     })
                   )}
                 </div>
-                <Pager page={safeProblemPage} total={problemPageCount} setPage={setProblemPage} />
+                <Pager
+                  page={safeProblemPage}
+                  total={problemPageCount}
+                  setPage={setProblemPage}
+                />
 
                 {/* CUSTOM PROBLEMS */}
                 <div className="mt-5 border-t border-accent-primary/15 pt-5">
@@ -1083,7 +995,9 @@ const CreateRoom = () => {
                   {visibleCustom.length > 0 ? (
                     <div className="mt-3 space-y-2">
                       {visibleCustom.map((problem) => {
-                        const isSelected = selectedProblemIds.includes(problem.id);
+                        const isSelected = selectedProblemIds.includes(
+                          problem.id,
+                        );
                         return (
                           <div
                             key={problem.id}
@@ -1104,7 +1018,8 @@ const CreateRoom = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                if (isSelected) toggleProblemSelection(problem.id);
+                                if (isSelected)
+                                  toggleProblemSelection(problem.id);
                               }}
                               aria-label={`Remove ${problem.name} from queue`}
                               className={`shrink-0 transition ${
@@ -1124,7 +1039,11 @@ const CreateRoom = () => {
                         : "No custom problems match this search."}
                     </p>
                   )}
-                  <Pager page={safeCustomPage} total={customPageCount} setPage={setCustomPage} />
+                  <Pager
+                    page={safeCustomPage}
+                    total={customPageCount}
+                    setPage={setCustomPage}
+                  />
                 </div>
 
                 <button
