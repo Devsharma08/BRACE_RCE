@@ -1,167 +1,225 @@
-import { prisma } from '../lib/prisma.js'
+import { prisma } from "../lib/prisma.js";
 
 interface SaveSubmisssionParams {
-    performanceId: string;
-    problemId: string;
-    
-    submittedCode: string;
-    language: string;
-    status: "PASSED" | "FAILED" | "TIMEOUT" | "ERROR" | "PENDING";
-    
-    runtimeMs?: number;
-    memoryKb?: number;
-    passedCase: number;
-    totalCases: number;
-    timeTakenMs?: number;
-    /** Solo-practice owner so battle solves also feed streak/monthly heatmaps. */
-    userId?: string;
+  performanceId: string;
+  problemId: string;
+
+  submittedCode: string;
+  language: string;
+  status: "PASSED" | "FAILED" | "TIMEOUT" | "ERROR" | "PENDING";
+
+  runtimeMs?: number;
+  memoryKb?: number;
+  passedCase: number;
+  totalCases: number;
+  timeTakenMs?: number;
+  /** Solo-practice owner so battle solves also feed streak/monthly heatmaps. */
+  userId?: string;
 }
 
 export async function saveSubmisssion(params: SaveSubmisssionParams) {
-    // FETCH EXISTING SUBMISSION FOR THIS USER AND PROBLEM
-    const existingSubmission = await prisma.codeSubmission.findMany({
-        where: {
-            UserPersonalPerformanceId: params.performanceId,
-            problemId: params.problemId
+  // FETCH EXISTING SUBMISSION FOR THIS USER AND PROBLEM
+  const existingSubmission = await prisma.codeSubmission.findMany({
+    where: {
+      UserPersonalPerformanceId: params.performanceId,
+      problemId: params.problemId,
+    },
+    orderBy: { attemptNumber: "desc" },
+  });
+
+  const attemptNumber = existingSubmission.length + 1;
+
+  // CREATE NEW SUBMISSION RECORD
+  const newSubmisssion = await prisma.codeSubmission.create({
+    data: {
+      UserPersonalPerformanceId: params.performanceId,
+      problemId: params.problemId,
+      submittedCode: params.submittedCode,
+      language: params.language,
+      status: params.status,
+      runtimeMs: params.runtimeMs ?? null,
+      memoryKb: params.memoryKb ?? null,
+      passedCase: params.passedCase,
+      totalCases: params.totalCases,
+
+      attemptNumber: attemptNumber,
+      isBestSubmission: false,
+    },
+  });
+
+  const allSubmission = [...existingSubmission, newSubmisssion];
+
+  // DETERMINE BEST SUBMISSION
+  // PRIORITY: PASSED > PASSRATE > LOWEST RUNTIME > LOWEST MEMORYKB
+  const bestSubmission = allSubmission.reduce((best, curr) => {
+    if (!best) return curr;
+
+    // priority 1: PASSED
+    if (curr.status == "PASSED" && best.status != "PASSED") return curr;
+    if (curr.status != "PASSED" && best.status == "PASSED") return best;
+
+    // PASSRATE
+    const currPassrate = curr.passedCase / (curr.totalCases || 1);
+    const bestPassrate = best.passedCase / (best.totalCases || 1);
+
+    if (currPassrate > bestPassrate) return curr;
+    if (currPassrate < bestPassrate) return best;
+
+    // LOWEST RUNTIME (MUST BE VALID)
+    const currRuntime = curr.runtimeMs ?? Infinity;
+    const bestRuntime = best.runtimeMs ?? Infinity;
+
+    if (currRuntime < bestRuntime) return curr;
+    if (currRuntime > bestRuntime) return best;
+
+    // LOWEST MEMORYKB (MUST BE VALID)
+    const currMem = curr.memoryKb ?? Infinity;
+    const bestMem = best.memoryKb ?? Infinity;
+
+    if (currMem < bestMem) return curr;
+    if (currMem > bestMem) return best;
+
+    // If everything is equal , keep the older one
+    return best;
+  });
+
+  // UPDATE BEST SUBMISSION FLAGS IN DB
+  await prisma.$transaction(
+    allSubmission.map((sub) => {
+      return prisma.codeSubmission.update({
+        where: { id: sub.id },
+        data: {
+          isBestSubmission: sub.id == bestSubmission.id,
         },
-        orderBy: { attemptNumber: "desc" },
-    })
+      });
+    }),
+  );
 
-    const attemptNumber = existingSubmission.length + 1;
+  // UPDATE SCORE FIELD IN USERPERSONALPERFORMANCE
+  const computedScore =
+    bestSubmission.status === "PASSED"
+      ? 1000
+      : Math.floor(
+          (bestSubmission.passedCase / (bestSubmission.totalCases || 1)) * 500,
+        );
 
-    // CREATE NEW SUBMISSION RECORD
-    const newSubmisssion = await prisma.codeSubmission.create({
-        data: {
-            UserPersonalPerformanceId: params.performanceId,
-            problemId: params.problemId,
-            submittedCode: params.submittedCode,
-            language: params.language,
-            status: params.status,
-            runtimeMs: params.runtimeMs ?? null,
-            memoryKb: params.memoryKb ?? null,
-            passedCase: params.passedCase,
-            totalCases: params.totalCases,
-            
-            attemptNumber: attemptNumber,
-            isBestSubmission: false
-        }
+  // Only record timeTakenMs when it is a passing submission AND it is faster
+  // than the previously stored value (the fastest pass determines the speed bonus).
+  let timeTakenMsWrite: number | null | undefined = undefined;
+  if (params.timeTakenMs !== undefined && params.timeTakenMs !== null) {
+    const currentPerf = await prisma.userPersonalPerformance.findUnique({
+      where: { id: params.performanceId },
+      select: { timeTakenMs: true },
     });
-
-    const allSubmission = [...existingSubmission, newSubmisssion];
-
-    // DETERMINE BEST SUBMISSION
-    // PRIORITY: PASSED > PASSRATE > LOWEST RUNTIME > LOWEST MEMORYKB
-    const bestSubmission = allSubmission.reduce((best, curr) => {
-        if (!best) return curr;
-
-        // priority 1: PASSED 
-        if (curr.status == "PASSED" && best.status != "PASSED") return curr;
-        if (curr.status != "PASSED" && best.status == "PASSED") return best;
-
-        // PASSRATE 
-        const currPassrate = curr.passedCase / (curr.totalCases || 1);
-        const bestPassrate = best.passedCase / (best.totalCases || 1);
-
-        if (currPassrate > bestPassrate) return curr;
-        if (currPassrate < bestPassrate) return best;
-
-        // LOWEST RUNTIME (MUST BE VALID) 
-        const currRuntime = curr.runtimeMs ?? Infinity;
-        const bestRuntime = best.runtimeMs ?? Infinity;
-
-        if (currRuntime < bestRuntime) return curr;
-        if (currRuntime > bestRuntime) return best;
-
-        // LOWEST MEMORYKB (MUST BE VALID)
-        const currMem = curr.memoryKb ?? Infinity;
-        const bestMem = best.memoryKb ?? Infinity;
-
-        if (currMem < bestMem) return curr;
-        if (currMem > bestMem) return best;
-
-        // If everything is equal , keep the older one
-        return best;
-    });
-
-    // UPDATE BEST SUBMISSION FLAGS IN DB
-    await prisma.$transaction(allSubmission.map((sub) => {
-        return prisma.codeSubmission.update({
-            where: { id: sub.id },
-            data: {
-                isBestSubmission: sub.id == bestSubmission.id
-            }
-        });
-    }));
-
-    // UPDATE SCORE FIELD IN USERPERSONALPERFORMANCE
-    const computedScore = bestSubmission.status === "PASSED"
-        ? 1000
-        : Math.floor((bestSubmission.passedCase / (bestSubmission.totalCases || 1)) * 500);
-
-    // Only record timeTakenMs when it is a passing submission AND it is faster
-    // than the previously stored value (the fastest pass determines the speed bonus).
-    let timeTakenMsWrite: number | null | undefined = undefined;
-    if (params.timeTakenMs !== undefined && params.timeTakenMs !== null) {
-        const currentPerf = await prisma.userPersonalPerformance.findUnique({
-            where: { id: params.performanceId },
-            select: { timeTakenMs: true }
-        });
-        const existing = currentPerf?.timeTakenMs;
-        if (existing === null || existing === undefined || params.timeTakenMs < existing) {
-            timeTakenMsWrite = params.timeTakenMs;
-        }
+    const existing = currentPerf?.timeTakenMs;
+    if (
+      existing === null ||
+      existing === undefined ||
+      params.timeTakenMs < existing
+    ) {
+      timeTakenMsWrite = params.timeTakenMs;
     }
+  }
 
-    await prisma.userPersonalPerformance.update({
-        where: { id: params.performanceId },
-        data: {
-            score: computedScore,
-            status: bestSubmission.status === "PASSED" ? "PASSED" : "PENDING",
-            // Record how long the user took when they pass (fastest/only pass wins).
-            ...(timeTakenMsWrite !== undefined ? { timeTakenMs: timeTakenMsWrite } : {})
-        }
-    });
+  // For multi-problem events, the performance status should only be "PASSED"
+  // when ALL problems in the event have at least one PASSED submission.
+  // Fetch the performance's event and its problems to determine the full set.
+  const perfWithEvent = await prisma.userPersonalPerformance.findUnique({
+    where: { id: params.performanceId },
+    select: {
+      eventId: true,
+      event: {
+        select: {
+          problems: { select: { id: true } },
+        },
+      },
+    },
+  });
 
-    // Mirror battle activity into solo-practice progress so streak + monthly
-    // heatmaps count battle solves. Never unsets isSolved.
-    try {
-        const ownerId =
-            params.userId ??
-            (await prisma.userPersonalPerformance.findUnique({
-                where: { id: params.performanceId },
-                select: { userId: true },
-            }))?.userId;
-        if (ownerId) {
-            const solved = bestSubmission.status === "PASSED";
-            const { invalidateUserAnalyticsCache } = await import("../controllers/analytics.js");
-            await prisma.userProblemProgress.upsert({
-                where: { userId_problemId: { userId: ownerId, problemId: params.problemId } },
-                create: {
-                    userId: ownerId,
-                    problemId: params.problemId,
-                    isSolved: solved,
-                    solvedAt: solved ? new Date() : null,
-                    attempts: 1,
-                    lastCode: params.submittedCode,
-                    lastLanguage: params.language,
-                    submissionTimes: [new Date().toISOString()],
-                },
-                update: {
-                    isSolved: solved ? true : undefined,
-                    solvedAt: solved ? new Date() : undefined,
-                    attempts: { increment: 1 },
-                    lastCode: params.submittedCode,
-                    lastLanguage: params.language,
-                    submissionTimes: { push: new Date().toISOString() },
-                },
-            });
-           invalidateUserAnalyticsCache(ownerId);
-           const { invalidateUserProblemsCache } = await import("../controllers/problems.js");
-           await invalidateUserProblemsCache(ownerId);
-        }
-    } catch (e) {
-        console.error("Failed to mirror battle submission to progress:", e);
+  const eventProblemIds = (perfWithEvent?.event?.problems ?? []).map(
+    (p: any) => p.id,
+  );
+  const allSubmissions = await prisma.codeSubmission.findMany({
+    where: { UserPersonalPerformanceId: params.performanceId },
+    select: { problemId: true, status: true },
+  });
+
+  // Determine which problems have at least one PASSED submission
+  const solvedProblemIds = new Set(
+    allSubmissions
+      .filter((s: any) => s.status === "PASSED")
+      .map((s: any) => s.problemId),
+  );
+
+  // For single-problem events (or events with no problems list), fall back to
+  // the per-problem check. For multi-problem events, require ALL problems solved.
+  const allProblemsSolved =
+    eventProblemIds.length <= 1
+      ? bestSubmission.status === "PASSED"
+      : eventProblemIds.length > 0 &&
+        eventProblemIds.every((pid: string) => solvedProblemIds.has(pid));
+
+  const newStatus = allProblemsSolved ? "PASSED" : "PENDING";
+
+  await prisma.userPersonalPerformance.update({
+    where: { id: params.performanceId },
+    data: {
+      score: computedScore,
+      status: newStatus,
+      questionsSolved: solvedProblemIds.size,
+      // Record how long the user took when they pass (fastest/only pass wins).
+      ...(timeTakenMsWrite !== undefined
+        ? { timeTakenMs: timeTakenMsWrite }
+        : {}),
+    },
+  });
+
+  // Mirror battle activity into solo-practice progress so streak + monthly
+  // heatmaps count battle solves. Never unsets isSolved.
+  try {
+    const ownerId =
+      params.userId ??
+      (
+        await prisma.userPersonalPerformance.findUnique({
+          where: { id: params.performanceId },
+          select: { userId: true },
+        })
+      )?.userId;
+    if (ownerId) {
+      const solved = bestSubmission.status === "PASSED";
+      const { invalidateUserAnalyticsCache } =
+        await import("../controllers/analytics.js");
+      await prisma.userProblemProgress.upsert({
+        where: {
+          userId_problemId: { userId: ownerId, problemId: params.problemId },
+        },
+        create: {
+          userId: ownerId,
+          problemId: params.problemId,
+          isSolved: solved,
+          solvedAt: solved ? new Date() : null,
+          attempts: 1,
+          lastCode: params.submittedCode,
+          lastLanguage: params.language,
+          submissionTimes: [new Date().toISOString()],
+        },
+        update: {
+          isSolved: solved ? true : undefined,
+          solvedAt: solved ? new Date() : undefined,
+          attempts: { increment: 1 },
+          lastCode: params.submittedCode,
+          lastLanguage: params.language,
+          submissionTimes: { push: new Date().toISOString() },
+        },
+      });
+      invalidateUserAnalyticsCache(ownerId);
+      const { invalidateUserProblemsCache } =
+        await import("../controllers/problems.js");
+      await invalidateUserProblemsCache(ownerId);
     }
+  } catch (e) {
+    console.error("Failed to mirror battle submission to progress:", e);
+  }
 
-    return newSubmisssion;
+  return newSubmisssion;
 }

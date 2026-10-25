@@ -21,10 +21,15 @@ import { invalidateUserAnalyticsCache } from "../controllers/analytics.js";
  */
 export async function finishEventWithVerdicts(
   eventRef: string,
-  opts: { difficulty?: string | null; focusPenaltyByUser?: Record<string, number> } = {},
+  opts: {
+    difficulty?: string | null;
+    focusPenaltyByUser?: Record<string, number>;
+  } = {},
 ) {
   const event = await prisma.event.findFirst({
-    where: { OR: [{ id: eventRef.replace("room-", "") }, { roomCode: eventRef }] },
+    where: {
+      OR: [{ id: eventRef.replace("room-", "") }, { roomCode: eventRef }],
+    },
     include: {
       performances: { include: { submissions: true } },
       commonProblem: { select: { difficulty_level: true } },
@@ -35,13 +40,26 @@ export async function finishEventWithVerdicts(
 
   const performances = (event as any).performances ?? [];
   const difficulty = (event as any).commonProblem?.difficulty_level ?? "MEDIUM";
+  const eventProblemIds = ((event as any).problems ?? []).map((p: any) => p.id);
+
   // Pass flags first so win / tie / loss is resolved against the opponent's
   // actual result (not each player in isolation).
+  // For multi-problem events, a participant is only "passed" if ALL problems
+  // in the event have at least one PASSED submission.
   const passedById = new Map<string, boolean>(
-    performances.map((perf: any) => [
-      perf.userId as string,
-      (perf.submissions ?? []).some((s: any) => s.status === "PASSED"),
-    ]),
+    performances.map((perf: any) => {
+      const solvedProblemIds = new Set(
+        (perf.submissions ?? [])
+          .filter((s: any) => s.status === "PASSED")
+          .map((s: any) => s.problemId),
+      );
+      const allPassed =
+        eventProblemIds.length <= 1
+          ? (perf.submissions ?? []).some((s: any) => s.status === "PASSED")
+          : eventProblemIds.length > 0 &&
+            eventProblemIds.every((pid: string) => solvedProblemIds.has(pid));
+      return [perf.userId as string, allPassed];
+    }),
   );
   /**
    * Group-aware outcome: all-pass / all-fail is a tie (DRAW); a pass with
@@ -51,11 +69,18 @@ export async function finishEventWithVerdicts(
   const outcomeFor = (userId: string, passed: boolean) => {
     const opponentIds = [...passedById.keys()].filter((id) => id !== userId);
     if (opponentIds.length <= 1) {
-      return resolveBattleOutcome(passed, opponentIds.length === 0 ? null : (passedById.get(opponentIds[0]) ?? false));
+      return resolveBattleOutcome(
+        passed,
+        opponentIds.length === 0
+          ? null
+          : (passedById.get(opponentIds[0]) ?? false),
+      );
     }
     const results = opponentIds.map((id) => passedById.get(id) ?? false);
     if (results.every((r) => r === passed)) return "DRAW" as const;
-    return passed && results.some((r) => !r) ? ("WIN" as const) : ("LOSS" as const);
+    return passed && results.some((r) => !r)
+      ? ("WIN" as const)
+      : ("LOSS" as const);
   };
   for (const perf of performances) {
     const passed = passedById.get(perf.userId) ?? false;
@@ -78,19 +103,22 @@ export async function finishEventWithVerdicts(
           score: finalPoints,
         } as any,
       })
-       .catch(() =>
-         prisma.userPersonalPerformance.update({
-           where: { id: perf.id },
-           data: { status: verdict },
-         }),
-       );
-
-      // Invalidate the analytics Redis cache so the dashboard/profile
-      // reflects fresh data instead of serving a stale cached snapshot.
-      void invalidateUserAnalyticsCache(perf.userId).catch((e) =>
-        console.error(`Failed to invalidate analytics cache for user ${perf.userId}:`, e),
+      .catch(() =>
+        prisma.userPersonalPerformance.update({
+          where: { id: perf.id },
+          data: { status: verdict },
+        }),
       );
-    }
+
+    // Invalidate the analytics Redis cache so the dashboard/profile
+    // reflects fresh data instead of serving a stale cached snapshot.
+    void invalidateUserAnalyticsCache(perf.userId).catch((e) =>
+      console.error(
+        `Failed to invalidate analytics cache for user ${perf.userId}:`,
+        e,
+      ),
+    );
+  }
 
   return prisma.event.update({
     where: { id: event.id },

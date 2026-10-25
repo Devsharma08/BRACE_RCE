@@ -21,10 +21,14 @@ interface BattleActionPayload {
  * `room-<eventId>` (matchmaking) or directly by their roomCode (custom rooms).
  */
 async function resolveEvent(roomId: string) {
+    const include = {
+        problems: { select: { id: true } },
+        commonProblem: { select: { id: true } },
+    };
     if (roomId.startsWith("room-")) {
-        return prisma.event.findUnique({ where: { id: roomId.replace("room-", "") } }).catch(() => null);
+        return prisma.event.findUnique({ where: { id: roomId.replace("room-", "") }, include }).catch(() => null);
     }
-    return prisma.event.findFirst({ where: { roomCode: roomId } }).catch(() => null);
+    return prisma.event.findFirst({ where: { roomCode: roomId }, include }).catch(() => null);
 }
 
 /**
@@ -33,18 +37,41 @@ async function resolveEvent(roomId: string) {
  * Client-claimed results are never consulted.
  */
 async function hasPassedSubmission(eventId: string, userId: string): Promise<boolean> {
+    const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+            problems: { select: { id: true } },
+            commonProblem: { select: { id: true } },
+        },
+    }).catch(() => null);
+
+    const problemIds = [
+        ...(event?.problems ?? []).map((p: any) => p.id),
+        ...(event?.commonProblem ? [event.commonProblem.id] : []),
+    ];
+
     const performance = await prisma.userPersonalPerformance.findFirst({
         where: { eventId, userId },
         select: {
             id: true,
             status: true,
-            submissions: { where: { status: "PASSED" }, select: { id: true }, take: 1 },
+            submissions: { where: { status: "PASSED" }, select: { problemId: true } },
         },
     }).catch(() => null);
 
     if (!performance) return false;
-    if (performance.status === "PASSED") return true;
-    return performance.submissions.length > 0;
+    if (performance.status === "PASSED" && problemIds.length <= 1) return true;
+
+    // For multi-problem events, require ALL problems to have a PASSED submission
+    if (problemIds.length > 1) {
+        const solvedProblemIds = new Set(
+            (performance.submissions ?? []).map((s: any) => s.problemId),
+        );
+        return problemIds.every((pid: string) => solvedProblemIds.has(pid));
+    }
+
+    // Single-problem event: any PASSED submission suffices
+    return (performance.submissions ?? []).length > 0;
 }
 
 export function registerBattleActionHandlers(ctx: HandlerCtx): void {
