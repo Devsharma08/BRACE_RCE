@@ -91,9 +91,19 @@ export const paginationSchema = z.object({
 
 // Auth schemas
 export const signupSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(64, "Username must be 64 characters or fewer").regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(64, "Username must be 64 characters or fewer")
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      "Username can only contain letters, numbers, underscores, and hyphens",
+    ),
   email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be 128 characters or fewer"),
   avatarUrl: z.string().url("Invalid avatar URL").optional(),
 });
 
@@ -110,7 +120,10 @@ export const googleAuthSchema = z.object({
 // received plus the verifier and the exact redirect URI used to start the flow.
 export const googleCallbackSchema = z.object({
   code: z.string().min(1, "Authorization code is required"),
-  code_verifier: z.string().min(43, "Invalid PKCE code verifier").max(128, "Invalid PKCE code verifier"),
+  code_verifier: z
+    .string()
+    .min(43, "Invalid PKCE code verifier")
+    .max(128, "Invalid PKCE code verifier"),
   redirect_uri: z.string().url("Invalid redirect URI"),
 });
 
@@ -131,13 +144,25 @@ export const passwordResetRequestSchema = z.object({
 
 export const passwordResetConfirmSchema = z.object({
   oobCode: z.string().min(1, "Reset code is required"),
-  newPassword: z.string().min(8, "Password must be at least 8 characters").max(128, "Password must be 128 characters or fewer"),
+  newPassword: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be 128 characters or fewer"),
 });
 
 // Profile schemas
 export const updateProfileSchema = z.object({
-  username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_-]+$/).optional(),
-  bio: z.string().max(500, "Bio must be 500 characters or fewer").nullable().optional(),
+  username: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-zA-Z0-9_-]+$/)
+    .optional(),
+  bio: z
+    .string()
+    .max(500, "Bio must be 500 characters or fewer")
+    .nullable()
+    .optional(),
   avatarUrl: z.string().url("Invalid avatar URL").nullable().optional(),
 });
 
@@ -165,54 +190,82 @@ export const createCustomProblemSchema = z.object({
   problem_definition: z.string().min(1, "Problem definition is required"),
   problem_hints: z.array(z.string()).optional(),
   difficulty_level: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
-  test_cases: z.array(z.object({
-    input: z.string().min(1, "Test case input is required"),
-    expectedOutput: z.string().min(1, "Expected output is required"),
-    is_public: z.boolean().optional().default(true),
-  })).min(1, "At least one test case is required"),
-  code_snippets: z.array(z.object({
-    language: z.string().min(1, "Language is required"),
-    code: z.string().min(1, "Code is required"),
-    wrapperCode: z.string().optional(),
-  })).optional(),
-  signature: z.object({
-    funcName: z.string().min(1),
-    returnType: z.string().min(1),
-    args: z.array(z.object({
-      name: z.string().min(1),
-      type: z.string().min(1),
-    })),
-  }).optional(),
+  test_cases: z
+    .array(
+      z.object({
+        input: z.string().min(1, "Test case input is required"),
+        expectedOutput: z.string().min(1, "Expected output is required"),
+        is_public: z.boolean().optional().default(true),
+      }),
+    )
+    .min(1, "At least one test case is required"),
+  code_snippets: z
+    .array(
+      z.object({
+        language: z.string().min(1, "Language is required"),
+        code: z.string().min(1, "Code is required"),
+        wrapperCode: z.string().optional(),
+      }),
+    )
+    .optional(),
+  signature: z
+    .object({
+      funcName: z.string().min(1),
+      returnType: z.string().min(1),
+      args: z.array(
+        z.object({
+          name: z.string().min(1),
+          type: z.string().min(1),
+        }),
+      ),
+    })
+    .optional(),
 });
 
 export const seedSystemProblemsSchema = z.object({
-  problems: z.array(z.object({
-    name: z.string().min(1),
-    problem_number: z.number().int().positive().optional(),
-    github_oid: z.string().optional(),
-    problem_definition: z.string().min(1),
-    problem_hints: z.array(z.string()).optional(),
-    difficulty_level: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
-    timeLimitMs: z.number().int().positive().optional(),
-    test_cases: z.array(z.object({
-      input: z.string(),
-      expectedOutput: z.string(),
-      is_public: z.boolean().optional(),
-    })).optional(),
-    code_snippets: z.array(z.object({
-      language: z.string(),
-      code: z.string(),
-      wrapperCode: z.string().optional(),
-    })).optional(),
-    signature: z.object({
-      funcName: z.string().min(1),
-      returnType: z.string().min(1),
-      args: z.array(z.object({
+  problems: z
+    .array(
+      z.object({
         name: z.string().min(1),
-        type: z.string().min(1),
-      })),
-    }).optional(),
-  })).min(1, "Problems array cannot be empty"),
+        problem_number: z.number().int().positive().optional(),
+        github_oid: z.string().optional(),
+        problem_definition: z.string().min(1),
+        problem_hints: z.array(z.string()).optional(),
+        difficulty_level: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
+        timeLimitMs: z.number().int().positive().optional(),
+        test_cases: z
+          .array(
+            z.object({
+              input: z.string(),
+              expectedOutput: z.string(),
+              is_public: z.boolean().optional(),
+            }),
+          )
+          .optional(),
+        code_snippets: z
+          .array(
+            z.object({
+              language: z.string(),
+              code: z.string(),
+              wrapperCode: z.string().optional(),
+            }),
+          )
+          .optional(),
+        signature: z
+          .object({
+            funcName: z.string().min(1),
+            returnType: z.string().min(1),
+            args: z.array(
+              z.object({
+                name: z.string().min(1),
+                type: z.string().min(1),
+              }),
+            ),
+          })
+          .optional(),
+      }),
+    )
+    .min(1, "Problems array cannot be empty"),
 });
 
 // Code execution schemas
@@ -225,7 +278,10 @@ const executionLanguageSchema = z.preprocess(
 );
 
 export const executeCodeSchema = z.object({
-  code: z.string().min(1, "Code is required").max(100_000, "Code exceeds 100KB limit"),
+  code: z
+    .string()
+    .min(1, "Code is required")
+    .max(100_000, "Code exceeds 100KB limit"),
   language: executionLanguageSchema,
   oid: z.string().optional(),
   mode: z.enum(["RUN", "SUBMIT"]).default("RUN"),
@@ -240,7 +296,9 @@ export const executeCodeSchema = z.object({
 export const createRoomSchema = z
   .object({
     name: z.string().min(1, "Room name is required").max(100).optional(),
-    type: z.enum(["FRIENDS", "BOT", "PUBLIC", "ONE_VS_ONE", "CUSTOM", "TOURNAMENT"]).default("CUSTOM"),
+    type: z
+      .enum(["FRIENDS", "BOT", "PUBLIC", "ONE_VS_ONE", "CUSTOM", "TOURNAMENT"])
+      .default("CUSTOM"),
     isPublic: z.boolean().optional().default(true),
     description: z.string().max(500).optional(),
     commonProblemId: uuidSchema.optional(),
@@ -258,7 +316,9 @@ export const createRoomSchema = z
   .refine(
     (data) => {
       if (data.opensAt && data.closesAt) {
-        return new Date(data.opensAt).getTime() < new Date(data.closesAt).getTime();
+        return (
+          new Date(data.opensAt).getTime() < new Date(data.closesAt).getTime()
+        );
       }
       return true;
     },
@@ -269,15 +329,17 @@ export const lockRoomSchema = z.object({
   roomId: z.string().min(1, "Room ID is required"),
 });
 
-export const cloneTemplateSchema = z.object({
-  templateId: uuidSchema.optional(),
-  templateEventId: uuidSchema.optional(),
-  name: z.string().min(1).max(100).optional(),
-  password: z.string().optional(),
-}).refine(data => Boolean(data.templateId || data.templateEventId), {
-  message: "Either templateId or templateEventId is required",
-  path: ["templateId"],
-});
+export const cloneTemplateSchema = z
+  .object({
+    templateId: uuidSchema.optional(),
+    templateEventId: uuidSchema.optional(),
+    name: z.string().min(1).max(100).optional(),
+    password: z.string().optional(),
+  })
+  .refine((data) => Boolean(data.templateId || data.templateEventId), {
+    message: "Either templateId or templateEventId is required",
+    path: ["templateId"],
+  });
 
 export const toggleVisibilitySchema = z.object({
   eventId: uuidSchema,
@@ -304,7 +366,10 @@ export const unblockParticipantSchema = z.object({
 
 // Feedback schema
 export const feedbackSchema = z.object({
-  content: z.string().min(1, "Feedback content is required").max(5000, "Feedback too long"),
+  content: z
+    .string()
+    .min(1, "Feedback content is required")
+    .max(5000, "Feedback too long"),
 });
 
 // Notifications schemas
@@ -317,10 +382,14 @@ export const generateTestsSchema = z.object({
   signature: z.object({
     funcName: z.string().min(1, "Function name is required"),
     returnType: z.string().min(1, "Return type is required"),
-    args: z.array(z.object({
-      name: z.string().min(1, "Argument name is required"),
-      type: z.string().min(1, "Argument type is required"),
-    })).min(1, "At least one argument is required"),
+    args: z
+      .array(
+        z.object({
+          name: z.string().min(1, "Argument name is required"),
+          type: z.string().min(1, "Argument type is required"),
+        }),
+      )
+      .min(1, "At least one argument is required"),
   }),
   count: z.number().int().min(1).max(20).default(5),
   seed: z.number().int().optional(),
@@ -330,10 +399,14 @@ export const generateWrappersSchema = z.object({
   signature: z.object({
     funcName: z.string().min(1),
     returnType: z.string().min(1),
-    args: z.array(z.object({
-      name: z.string().min(1),
-      type: z.string().min(1),
-    })).min(1),
+    args: z
+      .array(
+        z.object({
+          name: z.string().min(1),
+          type: z.string().min(1),
+        }),
+      )
+      .min(1),
   }),
 });
 
@@ -344,10 +417,12 @@ export const plagiarismCheckSchema = z.object({
 });
 
 export const focusReportSchema = z.object({
-  events: z.array(z.object({
-    type: z.enum(["blur", "tab_hidden", "focus", "context_switch"]),
-    atMs: z.number().int().min(0),
-  })),
+  events: z.array(
+    z.object({
+      type: z.enum(["blur", "tab_hidden", "focus", "context_switch"]),
+      atMs: z.number().int().min(0),
+    }),
+  ),
   startMs: z.number().int().min(0),
   endMs: z.number().int().min(0),
   maxEvents: z.number().int().min(0).max(100).optional(),
@@ -355,15 +430,52 @@ export const focusReportSchema = z.object({
 });
 
 export const ratingPreviewSchema = z.object({
-  history: z.array(z.object({
-    status: z.enum(["WON", "LOST", "SURRENDER", "TIMEOUT", "PASSED", "FAILED", "COMPLETED"]),
-    timeTakenMs: z.number().int().positive().optional(),
-  })).min(1, "At least one match required"),
+  history: z
+    .array(
+      z.object({
+        status: z.enum([
+          "WON",
+          "LOST",
+          "SURRENDER",
+          "TIMEOUT",
+          "PASSED",
+          "FAILED",
+          "COMPLETED",
+        ]),
+        timeTakenMs: z.number().int().positive().optional(),
+      }),
+    )
+    .min(1, "At least one match required"),
 });
 
 // Analytics schemas
 export const analyticsQuerySchema = z.object({
   userId: uuidSchema.optional(),
+});
+
+// Moderator events listing schema
+export const moderatorEventsSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sortBy: z
+    .enum(["createdAt", "startedAt", "finishedAt", "participants", "status"])
+    .optional()
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  status: z.enum(["WAITING", "IN_PROGRESS", "FINISHED", "EXPIRED"]).optional(),
+  type: z
+    .enum([
+      "PUBLIC",
+      "PRIVATE",
+      "FRIENDS",
+      "ONE_VS_ONE",
+      "CUSTOM",
+      "TOURNAMENT",
+    ])
+    .optional(),
+  isPublic: z.coerce.boolean().optional(),
+  hostId: uuidSchema.optional(),
+  search: z.string().min(1).max(100).optional(),
 });
 
 // Admin schemas
