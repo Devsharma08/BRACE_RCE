@@ -11,8 +11,6 @@ import {
   Search,
   X,
   SlidersHorizontal,
-  Radar,
-  Wifi,
   Clock3,
   Users,
 } from "lucide-react";
@@ -353,7 +351,6 @@ const Lobby = () => {
 
         {/* PAGE HEADER */}
         <header className="relative overflow-hidden border-b border-subtle-line pb-6">
-          <div aria-hidden className="absolute -right-10 -top-20 h-56 w-56 rounded-full border border-accent/10" />
           <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
             <div>
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-accent-primary">
@@ -369,6 +366,31 @@ const Lobby = () => {
                 Scan open rooms, configure a battle template, or review your own operation history.
               </p>
             </div>
+
+            {/* Live Stats — directly to the right of the heading */}
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-success shadow-glow-success" />
+                Live stats
+              </div>
+              <div className="flex items-center gap-2.5 sm:gap-3 font-mono text-[9px] uppercase tracking-widest">
+                <span className="flex items-center gap-1">
+                  <span className="text-accent-success">{rooms.length}</span>
+                  <span className="text-subtle">rooms</span>
+                </span>
+                <span className="h-3 w-px bg-subtle-line" />
+                <span className="flex items-center gap-1">
+                  <span className="text-accent-primary">{templates.length}</span>
+                  <span className="text-subtle">templates</span>
+                </span>
+                <span className="h-3 w-px bg-subtle-line" />
+                <span className="flex items-center gap-1">
+                  <span className="text-accent-primary">{myEvents.length}</span>
+                  <span className="text-subtle">archives</span>
+                </span>
+              </div>
+            </div>
+
             <Link
               to="/rooms/create"
               className="relative inline-flex items-center justify-center gap-2 rounded-full bg-accent-primary px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-ink transition hover:opacity-90"
@@ -379,7 +401,7 @@ const Lobby = () => {
         </header>
 
         {/* TABS + FILTERS + CONTENT */}
-        <div className="mt-5 grid gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="mt-6 grid gap-6 lg:gap-8">
           <section className="min-w-0">
             <nav
               aria-label="Lobby sections"
@@ -528,8 +550,9 @@ const Lobby = () => {
                 )}
               </div>
             )}
+            </section>
+          )}
           </section>
-        )}
 
           <PasswordModal
             isOpen={pwModal.isOpen}
@@ -551,61 +574,9 @@ const Lobby = () => {
               setConfirmDialog({ ...confirmDialog, isOpen: false, onConfirm: null });
             }}
           />
-          </section>
-
-          <aside className="mt-6 rounded-[22px] border border-subtle-line bg-raised p-4 sm:mt-0 sm:rounded-[26px] sm:p-5 lg:sticky lg:top-5 lg:self-start">
-            <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.2em] text-accent-success">
-              <Radar size={14} aria-hidden />
-              <span className="sm:hidden">Live stats</span>
-              <span className="hidden sm:inline">Live radar</span>
-            </div>
-            {/* Mobile: numeric readout instead of the decorative radar circle —
-                the circle ate a square chunk of a phone viewport for zero
-                information. */}
-            <div className="mt-4 grid grid-cols-3 gap-1.5 sm:hidden">
-              <div className="border border-subtle-line px-2 py-3 text-center">
-                <div className="font-mono text-lg font-bold text-accent-success">{rooms.length}</div>
-                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">rooms</div>
-              </div>
-              <div className="border border-subtle-line px-2 py-3 text-center">
-                <div className="font-mono text-lg font-bold text-accent-primary">{templates.length}</div>
-                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">templates</div>
-              </div>
-              <div className="border border-subtle-line px-2 py-3 text-center">
-                <div className="font-mono text-lg font-bold text-accent-primary">{myEvents.length}</div>
-                <div className="mt-1 text-[8px] uppercase tracking-widest text-subtle">archives</div>
-              </div>
-            </div>
-            <div className="mt-6 hidden aspect-square relative place-items-center rounded-full border border-accent/20 bg-accent/[0.03] sm:grid">
-              <div className="absolute inset-0 overflow-hidden flex items-center justify-center">
-                <div className="radar-ring" />
-                <div className="radar-ring radar-ring--delay-1" />
-                <div className="radar-ring radar-ring--delay-2" />
-                <div className="radar-ring radar-ring--delay-3" />
-                <div className="relative z-10 grid h-2/3 w-2/3 place-items-center rounded-full border border-accent/20">
-                  <Wifi size={22} aria-hidden className="text-accent-primary" />
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 hidden space-y-3 border-t border-subtle-line pt-5 text-[9px] uppercase tracking-widest text-subtle sm:block">
-              <p className="flex justify-between">
-                rooms online <span className="text-accent-success">{rooms.length}</span>
-              </p>
-              <p className="flex justify-between">
-                templates <span className="text-accent-primary">{templates.length}</span>
-              </p>
-              <p className="flex justify-between">
-                my archives <span className="text-accent-primary">{myEvents.length}</span>
-              </p>
-              <p className="flex justify-between">
-                system state <span className="text-accent-success">ready</span>
-              </p>
-            </div>
-          </aside>
         </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 };
 
