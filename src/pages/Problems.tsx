@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useDsTopicProgress } from "../hooks/useDsTopicProgress";
 import { useDebounce } from "../hooks/useDebounce";
-import { fetchAllProblems } from "../utils/problemCache";
+import { api } from "../config/api";
 import { DS_TOPIC_LABELS } from "../data/dsTopics";
 import { SkeletonBox } from "../components/ui/Skeleton";
 
@@ -40,7 +40,17 @@ type SystemProblem = {
   lastLanguage?: string;
 };
 
-const PAGE_SIZE = 8;
+type ProblemsResponse = {
+  problems: SystemProblem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
+const PAGE_SIZE = 10;
 
 const DIFFICULTIES = ["All difficulties", "Easy", "Medium", "Hard"];
 
@@ -56,24 +66,33 @@ export default function Problems() {
   const { bySlug } = useDsTopicProgress();
 
   const {
-    data: rawProblems = [],
+    data: response,
     isLoading,
     isPlaceholderData,
     isError,
-  } = useQuery({
-    queryKey: ["problems", "system", user?.id],
-    queryFn: () => fetchAllProblems<SystemProblem>("/problems/system"),
+  } = useQuery<ProblemsResponse>({
+    queryKey: ["problems", "system", user?.id, page, PAGE_SIZE],
+    queryFn: async () => {
+      const res = await api.get<ProblemsResponse>("/problems/system", {
+        params: { page, limit: PAGE_SIZE },
+      });
+      return res.data;
+    },
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
-    placeholderData: [],
+    placeholderData: {} as ProblemsResponse,
   });
 
-  // Skeleton gate for the table/cards. `placeholderData: []` puts the query
+  const problems: SystemProblem[] = response?.problems ?? [];
+  const serverTotal = response?.pagination?.total ?? 0;
+  const serverTotalPages = response?.pagination?.totalPages ?? 1;
+
+  // Skeleton gate for the table/cards. `placeholderData` puts the query
   // into `success` status before the first response lands (React Query v5), so
   // `isLoading` stays FALSE for the entire first fetch — keying the skeleton
-  // off `isLoading` alone means it never renders and the empty-state message
-  // flashes instead. `isPlaceholderData` covers exactly that in-flight window;
-  // once real data arrives (or the query errors) it flips back off.
+  // off `isLoading` alone means it never renders. `isPlaceholderData` covers
+  // that in-flight window; once real data arrives (or the query errors) it
+  // flips back off.
   const showTableSkeleton = !isError && (isLoading || isPlaceholderData);
 
   // Reverse index: problem id -> topic label, reusing the learning-path graph so
@@ -89,16 +108,20 @@ export default function Problems() {
     return map;
   }, [bySlug]);
 
-
-  const problems: Problem[] = useMemo(
+  // Map raw problems to the UI Problem type.
+  const mappedProblems: Problem[] = useMemo(
     () =>
-      rawProblems.map((p) => {
-        const topic = topicByProblemId[String(p.id ?? p.github_oid ?? "")] ?? "Uncategorized";
+      problems.map((p) => {
+        const topic =
+          topicByProblemId[String(p.id ?? p.github_oid ?? "")] ??
+          "Uncategorized";
         return {
           id: p.id ?? p.github_oid ?? String(p.problem_number ?? 0),
           name: p.name,
           problem_number: p.problem_number ?? 0,
-          difficulty_level: (p.difficulty_level || "MEDIUM").toUpperCase() as Problem["difficulty_level"],
+          difficulty_level: (
+            p.difficulty_level || "MEDIUM"
+          ).toUpperCase() as Problem["difficulty_level"],
           isSolved: !!p.isSolved,
           attempts: p.attempts ?? 0,
           lastLanguage: p.lastLanguage ?? "javascript",
@@ -106,21 +129,24 @@ export default function Problems() {
           pattern: topic,
         };
       }),
-    [rawProblems, topicByProblemId],
+    [problems, topicByProblemId],
   );
 
+  // Client-side filter on the current page's results.
   const filtered = useMemo(
     () =>
-      problems.filter(
+      mappedProblems.filter(
         (p) =>
-          `${p.name} ${p.topic} ${p.pattern}`.toLowerCase().includes(debouncedQuery.toLowerCase()) &&
-          (difficulty === "All difficulties" || p.difficulty_level === difficulty.toUpperCase()),
+          `${p.name} ${p.topic} ${p.pattern}`
+            .toLowerCase()
+            .includes(debouncedQuery.toLowerCase()) &&
+          (difficulty === "All difficulties" ||
+            p.difficulty_level === difficulty.toUpperCase()),
       ),
-    [problems, debouncedQuery, difficulty],
+    [mappedProblems, debouncedQuery, difficulty],
   );
 
-  // Pagination — reset to the first page whenever the filter changes so the
-  // user never lands on a now-empty page two clicks away from their term.
+  // Pagination controls — reset to page 1 whenever a filter changes.
   const setQueryAndPage = (value: string) => {
     setQuery(value);
     setPage(1);
@@ -130,15 +156,8 @@ export default function Problems() {
     setPage(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = useMemo(
-    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filtered, page],
-  );
-
   const startIndex = (page - 1) * PAGE_SIZE + 1;
   const endIndex = Math.min(page * PAGE_SIZE, filtered.length);
-
 
   return (
     <main className="flex-1 min-w-0 w-full bg-base text-fg font-mono px-4 py-5 md:px-6 md:py-6 pb-20 md:pb-8 selection:bg-accent/30 selection:text-accent-primary">
@@ -172,7 +191,6 @@ export default function Problems() {
           </div>
         </section>
 
-
         {/* ── PROBLEM INDEX ───────────────────────────────────────── */}
         <section
           aria-label="Problem index"
@@ -186,7 +204,10 @@ export default function Problems() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="relative">
-                <Search className="absolute left-3 top-2 text-faint" size={13} />
+                <Search
+                  className="absolute left-3 top-2 text-faint"
+                  size={13}
+                />
                 <input
                   aria-label="Search problems"
                   value={query}
@@ -196,7 +217,10 @@ export default function Problems() {
                 />
               </label>
               <label className="relative">
-                <Filter className="pointer-events-none absolute left-3 top-2.5 text-faint" size={14} />
+                <Filter
+                  className="pointer-events-none absolute left-3 top-2.5 text-faint"
+                  size={14}
+                />
                 <select
                   aria-label="Filter by difficulty"
                   value={difficulty}
@@ -209,7 +233,10 @@ export default function Problems() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-2.5 text-faint" size={12} />
+                <ChevronDown
+                  className="pointer-events-none absolute right-2 top-2.5 text-faint"
+                  size={12}
+                />
               </label>
             </div>
           </div>
@@ -228,49 +255,65 @@ export default function Problems() {
                 </tr>
               </thead>
               <tbody>
-                {showTableSkeleton ? (
-                  // One skeleton row per page slot (PAGE_SIZE) so the table
-                  // height matches the real first page — no jump on resolve.
-                  Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                    <tr key={i} className="border-b border-line">
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <SkeletonBox className="h-3 w-10" />
-                          <SkeletonBox className="h-4 w-48" />
-                        </div>
-                      </td>
-                      <td className="px-3 py-3"><SkeletonBox className="h-5 w-20 rounded-full" /></td>
-                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-24" /></td>
-                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-12" /></td>
-                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-16" /></td>
-                      <td className="px-3 py-3"><SkeletonBox className="h-3 w-16" /></td>
-                    </tr>
-                  ))
-                ) : (
-                  paged.map((problem) => (
-                    <ProblemRow key={problem.id} problem={problem} navigate={navigate} />
-                  ))
-                )}
+                {showTableSkeleton
+                  ? // One skeleton row per page slot (PAGE_SIZE) so the table
+                    // height matches the real first page — no jump on resolve.
+                    Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                      <tr key={i} className="border-b border-line">
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <SkeletonBox className="h-3 w-10" />
+                            <SkeletonBox className="h-4 w-48" />
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <SkeletonBox className="h-5 w-20 rounded-full" />
+                        </td>
+                        <td className="px-3 py-3">
+                          <SkeletonBox className="h-3 w-24" />
+                        </td>
+                        <td className="px-3 py-3">
+                          <SkeletonBox className="h-3 w-12" />
+                        </td>
+                        <td className="px-3 py-3">
+                          <SkeletonBox className="h-3 w-16" />
+                        </td>
+                        <td className="px-3 py-3">
+                          <SkeletonBox className="h-3 w-16" />
+                        </td>
+                      </tr>
+                    ))
+                  : filtered.map((problem) => (
+                      <ProblemRow
+                        key={problem.id}
+                        problem={problem}
+                        navigate={navigate}
+                      />
+                    ))}
               </tbody>
             </table>
           </div>
 
           {/* Mobile stacked cards — shown below md, hidden at md+ */}
           <div className="md:hidden space-y-2">
-            {showTableSkeleton ? (
-              Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <SkeletonBox key={i} className="h-28 w-full" />
-              ))
-            ) : (
-              paged.map((problem) => (
-                <ProblemCard key={problem.id} problem={problem} navigate={navigate} />
-              ))
-            )}
+            {showTableSkeleton
+              ? Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <SkeletonBox key={i} className="h-28 w-full" />
+                ))
+              : filtered.map((problem) => (
+                  <ProblemCard
+                    key={problem.id}
+                    problem={problem}
+                    navigate={navigate}
+                  />
+                ))}
           </div>
 
           {filtered.length === 0 && !showTableSkeleton && (
             <p className="px-4 py-8 text-center text-xs text-subtle">
-              {isError ? "Failed to load the problem catalog. Retry?" : "No problems match this filter."}
+              {isError
+                ? "Failed to load the problem catalog. Retry?"
+                : "No problems match this filter."}
             </p>
           )}
 
@@ -290,13 +333,15 @@ export default function Problems() {
                   <ChevronLeft size={13} />
                 </button>
                 <span className="text-[8px] uppercase tracking-widest text-accent-primary">
-                  Page {page} / {totalPages}
+                  Page {page} / {serverTotalPages}
                 </span>
                 <button
                   type="button"
                   aria-label="Next page"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
+                  onClick={() =>
+                    setPage((p) => Math.min(serverTotalPages, p + 1))
+                  }
+                  disabled={page >= serverTotalPages}
                   className="grid h-7 w-7 place-items-center rounded-lg border border-line text-subtle transition hover:border-accent/40 hover:text-fg disabled:opacity-30"
                 >
                   <ChevronRight size={13} />
@@ -315,16 +360,24 @@ function Badge({ value }: { value: Problem["difficulty_level"] }) {
     value === "EASY"
       ? "border-accent-success/20 bg-accent-success/10 text-accent-success"
       : value === "MEDIUM"
-      ? "border-accent-warning/20 bg-accent-warning/10 text-accent-warning"
-      : "border-accent-danger/20 bg-accent-danger/10 text-accent-danger";
+        ? "border-accent-warning/20 bg-accent-warning/10 text-accent-warning"
+        : "border-accent-danger/20 bg-accent-danger/10 text-accent-danger";
   return (
-    <span className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold ${tone}`}>
+    <span
+      className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold ${tone}`}
+    >
       {value}
     </span>
   );
 }
 
-function ProblemRow({ problem, navigate }: { problem: Problem; navigate: ReturnType<typeof useNavigate> }) {
+function ProblemRow({
+  problem,
+  navigate,
+}: {
+  problem: Problem;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
   return (
     <tr
       className="group border-b border-line transition hover:bg-accent/5"
@@ -332,9 +385,13 @@ function ProblemRow({ problem, navigate }: { problem: Problem; navigate: ReturnT
     >
       <td className="px-3 py-3 cursor-pointer">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[8px] text-faint">#{problem.problem_number}</span>
+          <span className="font-mono text-[8px] text-faint">
+            #{problem.problem_number}
+          </span>
           <div>
-            <span className="font-semibold text-fg group-hover:text-accent-primary">{problem.name}</span>
+            <span className="font-semibold text-fg group-hover:text-accent-primary">
+              {problem.name}
+            </span>
             <p className="mt-0.5 text-[9px] text-faint">{problem.pattern}</p>
           </div>
         </div>
@@ -343,10 +400,16 @@ function ProblemRow({ problem, navigate }: { problem: Problem; navigate: ReturnT
         <Badge value={problem.difficulty_level} />
       </td>
       <td className="px-3 py-3 text-[11px] text-subtle">{problem.topic}</td>
-      <td className="px-3 py-3 font-mono text-[11px] text-subtle">{problem.attempts}</td>
-      <td className="px-3 py-3 font-mono text-[9px] text-faint">{problem.lastLanguage}</td>
+      <td className="px-3 py-3 font-mono text-[11px] text-subtle">
+        {problem.attempts}
+      </td>
+      <td className="px-3 py-3 font-mono text-[9px] text-faint">
+        {problem.lastLanguage}
+      </td>
       <td className="px-3 py-3 text-right text-[11px]">
-        <span className={problem.isSolved ? "text-accent-success" : "text-faint"}>
+        <span
+          className={problem.isSolved ? "text-accent-success" : "text-faint"}
+        >
           {problem.isSolved ? "Solved" : "Open"}
         </span>
       </td>
@@ -354,7 +417,13 @@ function ProblemRow({ problem, navigate }: { problem: Problem; navigate: ReturnT
   );
 }
 
-function ProblemCard({ problem, navigate }: { problem: Problem; navigate: ReturnType<typeof useNavigate> }) {
+function ProblemCard({
+  problem,
+  navigate,
+}: {
+  problem: Problem;
+  navigate: ReturnType<typeof useNavigate>;
+}) {
   return (
     <div
       role="button"
@@ -370,18 +439,30 @@ function ProblemCard({ problem, navigate }: { problem: Problem; navigate: Return
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-faint shrink-0">#{problem.problem_number}</span>
+          <span className="font-mono text-[10px] text-faint shrink-0">
+            #{problem.problem_number}
+          </span>
           <span className="font-semibold text-fg">{problem.name}</span>
         </div>
         <Badge value={problem.difficulty_level} />
       </div>
       <p className="text-[10px] text-faint">{problem.pattern}</p>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-        <span className="text-subtle">Topic: <span className="text-fg">{problem.topic}</span></span>
-        <span className="text-subtle">Attempts: <span className="font-mono text-fg">{problem.attempts}</span></span>
-        <span className="text-subtle">Lang: <span className="font-mono text-fg">{problem.lastLanguage}</span></span>
+        <span className="text-subtle">
+          Topic: <span className="text-fg">{problem.topic}</span>
+        </span>
+        <span className="text-subtle">
+          Attempts:{" "}
+          <span className="font-mono text-fg">{problem.attempts}</span>
+        </span>
+        <span className="text-subtle">
+          Lang:{" "}
+          <span className="font-mono text-fg">{problem.lastLanguage}</span>
+        </span>
       </div>
-      <span className={`self-start text-xs ${problem.isSolved ? "text-accent-success" : "text-faint"}`}>
+      <span
+        className={`self-start text-xs ${problem.isSolved ? "text-accent-success" : "text-faint"}`}
+      >
         {problem.isSolved ? "Solved" : "Open"}
       </span>
     </div>
