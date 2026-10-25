@@ -51,7 +51,9 @@ type Participant = {
 // ── formatting helpers ──────────────────────────────────────────────────
 const fmtMs = (ms: number | null | undefined): string => {
   if (ms == null) return "—";
-  return ms >= 1000 ? `${(ms / 1000).toFixed(ms >= 10000 ? 0 : 1)}s` : `${ms} ms`;
+  return ms >= 1000
+    ? `${(ms / 1000).toFixed(ms >= 10000 ? 0 : 1)}s`
+    : `${ms} ms`;
 };
 const fmtMem = (kb: number | null | undefined): string =>
   kb == null ? "—" : `${(kb / 1024).toFixed(1)} MB`;
@@ -135,25 +137,29 @@ const truncateCode = (code: string, max = 4000): string =>
 /**
  * Match analysis — client component (react-router stack).
  *
- * Layout (large screens):
+ * Layout:
  *   header + stat tiles
- *   -> performance chart sits SIDE-BY-SIDE with the head-to-head table
- *   -> code review panel sits at the BOTTOM (last)
+ *   -> Performance map + Head-to-Head table side-by-side on lg+, stacked below
+ *   -> Code review panel at the bottom
  */
 const MatchAnalysis: FC = () => {
-  const { matchId } = useParams<{ matchId: string }>()
-  const navigate = useNavigate()
-  const { user } = useAuth()
+  const { matchId } = useParams<{ matchId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const { data: match, isLoading, isError } = useQuery<any>({
+  const {
+    data: match,
+    isLoading,
+    isError,
+  } = useQuery<any>({
     queryKey: ["match-analysis", matchId],
     queryFn: async () => {
-      const res = await api.get(`/profile/matches/${matchId}`)
-      return res.data.match as any
+      const res = await api.get(`/profile/matches/${matchId}`);
+      return res.data.match as any;
     },
     enabled: Boolean(matchId),
     retry: 1,
-  })
+  });
 
   if (isLoading) {
     return (
@@ -163,7 +169,7 @@ const MatchAnalysis: FC = () => {
           Loading match telemetry…
         </p>
       </div>
-    )
+    );
   }
 
   if (isError || !match) {
@@ -186,7 +192,7 @@ const MatchAnalysis: FC = () => {
           Back to profile
         </Link>
       </div>
-    )
+    );
   }
 
   // ── derive participants (me first, then opponents) ────────────────────
@@ -283,7 +289,12 @@ const MatchAnalysis: FC = () => {
   return (
     <main className="min-h-screen bg-void px-4 py-6 font-mono text-fg sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <Link to="/profile" className="mb-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-faint transition hover:text-accent-primary"><ArrowLeft size={14} /> Back to profile</Link>
+        <Link
+          to="/profile"
+          className="mb-6 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-faint transition hover:text-accent-primary"
+        >
+          <ArrowLeft size={14} /> Back to profile
+        </Link>
         <section className="overflow-hidden rounded-panel border border-line-mid bg-surface shadow-panel">
           <div className="border-b border-line bg-gradient-to-br from-surface-hover via-transparent to-accent-primary/[0.035] p-5 sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-6">
@@ -299,7 +310,8 @@ const MatchAnalysis: FC = () => {
                     <verdict.icon size={12} /> {verdict.label}
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[9px] uppercase tracking-widest text-faint">
-                    {mode === "multiplayer" ? <Users size={11} /> : null} {modeLabel}
+                    {mode === "multiplayer" ? <Users size={11} /> : null}{" "}
+                    {modeLabel}
                   </span>
                   {match.event?.roomCode ? (
                     <span className="rounded-full border border-line px-3 py-1.5 text-[9px] uppercase tracking-widest text-faint">
@@ -320,10 +332,14 @@ const MatchAnalysis: FC = () => {
                     </span>
                   ) : null}
                   {difficulty ? (
-                    <span className={`rounded-btn px-2 py-1 ${difficultyTone}`}>{difficulty}</span>
+                    <span className={`rounded-btn px-2 py-1 ${difficultyTone}`}>
+                      {difficulty}
+                    </span>
                   ) : null}
                   {match.createdAt ? (
-                    <span className="px-1 text-faint">{fmtDate(match.createdAt)}</span>
+                    <span className="px-1 text-faint">
+                      {fmtDate(match.createdAt)}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -337,15 +353,25 @@ const MatchAnalysis: FC = () => {
                   </p>
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-faint">
                     {primaryOpponent.score ?? 0} pts ·{" "}
-                    <span className={isPassed(primaryOpponent.status) ? "text-accent-success" : "text-accent-danger"}>
+                    <span
+                      className={
+                        isPassed(primaryOpponent.status)
+                          ? "text-accent-success"
+                          : "text-accent-danger"
+                      }
+                    >
                       {isPassed(primaryOpponent.status) ? "solved" : "unsolved"}
                     </span>
                   </p>
                 </div>
               ) : (
                 <div className="text-left sm:text-right">
-                  <p className="text-[9px] uppercase tracking-widest text-faint">Your result</p>
-                  <p className={`mt-2 text-lg font-bold ${iWon ? "text-accent-success" : "text-accent-danger"}`}>
+                  <p className="text-[9px] uppercase tracking-widest text-faint">
+                    Your result
+                  </p>
+                  <p
+                    className={`mt-2 text-lg font-bold ${iWon ? "text-accent-success" : "text-accent-danger"}`}
+                  >
                     {me.status ?? "PENDING"}
                   </p>
                   <p className="mt-1 text-[10px] uppercase tracking-widest text-faint">
@@ -355,9 +381,18 @@ const MatchAnalysis: FC = () => {
               )}
             </div>
             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Stat icon={Target} label="Score" value={`${me.score ?? 0}`} tone="text-accent-primary" />
+              <Stat
+                icon={Target}
+                label="Score"
+                value={`${me.score ?? 0}`}
+                tone="text-accent-primary"
+              />
               <Stat icon={Clock3} label="Time" value={fmtMs(me.timeTakenMs)} />
-              <Stat icon={Code2} label="Attempts" value={`${(me.submissions ?? []).length}`} />
+              <Stat
+                icon={Code2}
+                label="Attempts"
+                value={`${(me.submissions ?? []).length}`}
+              />
               <Stat
                 icon={Check}
                 label="Solved"
@@ -367,12 +402,16 @@ const MatchAnalysis: FC = () => {
             </div>
           </div>
         </section>
-        {/* Chart sits beside the head-to-head table on large screens. */}
-        <section className="mt-4 grid gap-4 lg:grid-cols-[1.12fr_1.12fr] lg:gap-5">
-          <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
+
+        {/* Chart + Head-to-Head table side-by-side on lg+, stacked below. */}
+        <section className="mt-4 grid gap-4 sm:gap-6 lg:grid-cols-2 lg:gap-6">
+          {/* Performance map */}
+          <div className="min-w-0 rounded-panel border border-line bg-surface p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Performance map</p>
+              <div className="min-w-0">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+                  Performance map
+                </p>
                 <h2 className="mt-1 text-base font-bold">Player comparison</h2>
                 <p className="mt-1 text-[10px] text-faint">
                   Test-case pass ratio across each participant's attempts.
@@ -382,7 +421,10 @@ const MatchAnalysis: FC = () => {
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[9px] uppercase tracking-widest text-faint">
                   {series.map((s) => (
                     <span key={s.name} className="flex items-center gap-1.5">
-                      <i className="inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />
+                      <i
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ background: s.color }}
+                      />
                       {s.name}
                     </span>
                   ))}
@@ -397,17 +439,21 @@ const MatchAnalysis: FC = () => {
               </div>
             )}
           </div>
-          <div className="rounded-panel border border-line bg-surface p-5 sm:p-6">
+
+          {/* Head to head table */}
+          <div className="min-w-0 rounded-panel border border-line bg-surface p-5 sm:p-6">
             <div className="flex items-center gap-2 pb-3">
-              <div>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Head to head</p>
+              <div className="min-w-0">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">
+                  Head to head
+                </p>
                 <h2 className="mt-1 text-base font-bold">
                   {mode === "solo" ? "Your metrics" : "Metric comparison"}
                 </h2>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-left">
+            <div className="overflow-x-auto min-w-0">
+              <table className="w-full min-w-[560px] text-left">
                 <thead className="border-b border-line bg-surface-hover text-[9px] uppercase tracking-widest text-faint">
                   <tr>
                     <th className="px-3 py-3 font-normal">Player</th>
@@ -420,11 +466,18 @@ const MatchAnalysis: FC = () => {
                 </thead>
                 <tbody className="divide-y divide-surface-hover text-xs">
                   {rows.map((r) => (
-                    <tr key={r.p.id} className={r.me ? "bg-accent-primary/[0.03]" : undefined}>
-                      <td className={`px-3 py-3 font-bold ${r.me ? "text-accent-primary" : "text-fg"}`}>
+                    <tr
+                      key={r.p.id}
+                      className={r.me ? "bg-accent-primary/[0.03]" : undefined}
+                    >
+                      <td
+                        className={`px-3 py-3 font-bold ${r.me ? "text-accent-primary" : "text-fg"}`}
+                      >
                         {r.name}
                         {r.me ? (
-                          <span className="ml-1 text-[8px] font-normal text-faint">(you)</span>
+                          <span className="ml-1 text-[8px] font-normal text-faint">
+                            (you)
+                          </span>
                         ) : null}
                       </td>
                       <td className="px-3 py-3">
@@ -437,7 +490,9 @@ const MatchAnalysis: FC = () => {
                       <td className="px-3 py-3 text-fg">
                         {fmtMs(r.runtime)}
                         {r.runtime != null && r.runtime === fastest ? (
-                          <span className="ml-1 text-[8px] text-accent-success">fastest</span>
+                          <span className="ml-1 text-[8px] text-accent-success">
+                            fastest
+                          </span>
                         ) : null}
                       </td>
                       <td className="px-3 py-3 text-fg">{fmtMem(r.memory)}</td>
@@ -450,14 +505,17 @@ const MatchAnalysis: FC = () => {
             </div>
           </div>
         </section>
+
         {/* Code review is the final section on every screen. */}
         <section className="mt-4 overflow-hidden rounded-panel border border-line-mid bg-surface p-5 shadow-panel sm:p-6">
           <div className="flex flex-wrap items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-card border border-accent-violet/25 bg-accent-violet/[0.06] text-accent-violet">
               <Code2 size={18} />
             </div>
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-accent-violet">Code review</p>
+            <div className="min-w-0">
+              <p className="text-[9px] uppercase tracking-[0.2em] text-accent-violet">
+                Code review
+              </p>
               <h2 className="mt-1 text-base font-bold">
                 {mode === "solo" ? "Your solution" : "Side-by-side compare"}
               </h2>
@@ -466,12 +524,30 @@ const MatchAnalysis: FC = () => {
           {myBest ? (
             <>
               <div className="mt-6 flex flex-wrap gap-3">
-                <MiniMetric icon={Cpu} label="Your runtime" value={fmtMs(bestRuntimeMs(me))} />
-                <MiniMetric icon={Gauge} label="Test coverage" value={coverage(me)} />
-                <MiniMetric icon={Code2} label="Language" value={myBest.language ?? "—"} />
-                <MiniMetric icon={Target} label="Memory" value={fmtMem(bestMemoryKb(me))} />
+                <MiniMetric
+                  icon={Cpu}
+                  label="Your runtime"
+                  value={fmtMs(bestRuntimeMs(me))}
+                />
+                <MiniMetric
+                  icon={Gauge}
+                  label="Test coverage"
+                  value={coverage(me)}
+                />
+                <MiniMetric
+                  icon={Code2}
+                  label="Language"
+                  value={myBest.language ?? "—"}
+                />
+                <MiniMetric
+                  icon={Target}
+                  label="Memory"
+                  value={fmtMem(bestMemoryKb(me))}
+                />
               </div>
-              <div className={`mt-6 grid gap-4 ${oppBest ? "lg:grid-cols-2" : ""}`}>
+              <div
+                className={`mt-6 grid gap-4 ${oppBest ? "lg:grid-cols-2" : "grid-cols-1"}`}
+              >
                 <CodePane
                   title="Your accepted attempt"
                   subtitle={`${myBest.language ?? "code"} · ${fmtClock(myBest.createdAt)}`}
@@ -504,11 +580,52 @@ const MatchAnalysis: FC = () => {
         </section>
       </div>
     </main>
-  )
-}
+  );
+};
 
-function Stat({ icon: Icon, label, value, tone = "text-fg" }: { icon: typeof Target; label: string; value: string; tone?: string }) { return <div className="group flex items-center gap-3 rounded-card border border-line bg-void/80 p-3.5 transition-colors hover:border-line-mid hover:bg-surface-hover"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-btn border border-line bg-surface-hover text-faint transition-colors group-hover:border-accent-primary/25 group-hover:text-accent-primary"><Icon size={14} /></div><div className="min-w-0"><p className="text-[9px] uppercase tracking-widest text-faint">{label}</p><p className={`mt-1 text-xl font-bold leading-none ${tone}`}>{value}</p></div></div> }
-function MiniMetric({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) { return <div className="flex items-center justify-between border-b border-line pb-3 text-[10px]"><span className="flex items-center gap-2 text-faint"><Icon size={13} /> {label}</span><b className="text-fg">{value}</b></div> }
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  tone = "text-fg",
+}: {
+  icon: typeof Target;
+  label: string;
+  value: string;
+  tone?: string;
+}) {
+  return (
+    <div className="group flex items-center gap-3 rounded-card border border-line bg-void/80 p-3.5 transition-colors hover:border-line-mid hover:bg-surface-hover">
+      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-btn border border-line bg-surface-hover text-faint transition-colors group-hover:border-accent-primary/25 group-hover:text-accent-primary">
+        <Icon size={14} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-widest text-faint">
+          {label}
+        </p>
+        <p className={`mt-1 text-xl font-bold leading-none ${tone}`}>{value}</p>
+      </div>
+    </div>
+  );
+}
+function MiniMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Cpu;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between border-b border-line pb-3 text-[10px]">
+      <span className="flex items-center p-2 text-faint">
+        <Icon size={13} /> {label}
+      </span>
+      <b className="text-fg">{value}</b>
+    </div>
+  );
+}
 function CodePane({
   title,
   subtitle,
@@ -527,11 +644,19 @@ function CodePane({
         ? "border-accent-violet/20"
         : "border-accent-danger/20";
   const toneText =
-    tone === "cyan" ? "text-accent-primary" : tone === "violet" ? "text-accent-violet" : "text-accent-danger";
+    tone === "cyan"
+      ? "text-accent-primary"
+      : tone === "violet"
+        ? "text-accent-violet"
+        : "text-accent-danger";
   return (
     <div className={`overflow-hidden rounded-card border ${toneRing} bg-void`}>
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${toneText}`}>{title}</p>
+        <p
+          className={`text-[10px] font-bold uppercase tracking-widest ${toneText}`}
+        >
+          {title}
+        </p>
         <p className="text-[9px] text-faint">{subtitle}</p>
       </div>
       <pre className="max-h-72 overflow-auto p-4 text-[11px] leading-5 text-fg">
@@ -594,7 +719,13 @@ function PerformanceChart({
         ))}
         {series.map((s) =>
           s.points.map((v, i) => (
-            <circle key={`${s.name}-${i}`} cx={x(i)} cy={y(v)} r={s.me ? 3 : 2.2} fill={s.color} />
+            <circle
+              key={`${s.name}-${i}`}
+              cx={x(i)}
+              cy={y(v)}
+              r={s.me ? 3 : 2.2}
+              fill={s.color}
+            />
           )),
         )}
       </svg>
@@ -607,4 +738,4 @@ function PerformanceChart({
   );
 }
 
-export default MatchAnalysis
+export default MatchAnalysis;
