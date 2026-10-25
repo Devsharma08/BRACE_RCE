@@ -744,7 +744,7 @@ const CreateRoom = () => {
                           value={customName}
                           onChange={(e) => setCustomName(e.target.value)}
                           placeholder="e.g. Invert Binary Tree"
-                          className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
+                          className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all"
                         />
                       </label>
                       <label className="block font-mono text-[9px] uppercase tracking-widest text-subtle">
@@ -752,7 +752,7 @@ const CreateRoom = () => {
                         <select
                           value={customDifficulty}
                           onChange={(e) => setCustomDifficulty(e.target.value)}
-                          className="mt-2 h-11 w-full border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
+                          className="mt-2 h-11 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none focus:border-accent/50 focus:bg-raised/50 transition-all"
                         >
                           <option value="EASY">EASY (15 min)</option>
                           <option value="MEDIUM">MEDIUM (20 min)</option>
@@ -768,7 +768,7 @@ const CreateRoom = () => {
                         value={customDefinition}
                         onChange={(e) => setCustomDefinition(e.target.value)}
                         placeholder="Write your problem description here…"
-                        className="mt-2 w-full border border-subtle-line bg-void p-4 font-sans text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
+                        className="mt-2 w-full rounded-btn border border-subtle-line bg-void p-4 font-sans text-sm text-fg outline-none placeholder:text-faint focus:border-accent/50"
                       />
                     </label>
 
@@ -797,7 +797,7 @@ const CreateRoom = () => {
                                 setCustomHints(h);
                               }}
                               placeholder="Hint text…"
-                              className="h-10 flex-1 border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-warning/50 focus:bg-raised/50 transition-all"
+                              className="mt-2 h-10 w-full rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent-warning/50 focus:bg-raised/50 transition-all"
                             />
                             <button
                               type="button"
@@ -869,7 +869,7 @@ const CreateRoom = () => {
                                   setCustomTestCases(t);
                                 }}
                                 placeholder="Input"
-                                className="h-10 border border-subtle-line bg-raised px-3 text-xs text-accent-primary outline-none placeholder:text-faint"
+                                className="mt-2 h-10 w-full rounded-btn border border-subtle-line bg-raised px-3 text-xs text-accent-primary outline-none placeholder:text-faint"
                               />
                               <input
                                 value={tc.expectedOutput}
@@ -879,7 +879,7 @@ const CreateRoom = () => {
                                   setCustomTestCases(t);
                                 }}
                                 placeholder="Expected output"
-                                className="h-10 border border-subtle-line bg-raised px-3 text-xs text-accent-success outline-none placeholder:text-faint"
+                                className="mt-2 h-10 w-full rounded-btn border border-subtle-line bg-raised px-3 text-xs text-accent-success outline-none placeholder:text-faint"
                               />
                             </div>
                           </div>
@@ -919,7 +919,7 @@ const CreateRoom = () => {
                                 s[i].language = e.target.value;
                                 setCustomSnippets(s);
                               }}
-                              className="h-9 border border-subtle-line bg-raised px-2 font-mono text-[10px] uppercase tracking-widest text-accent-primary outline-none"
+                              className="h-9 w-full rounded-btn border border-subtle-line bg-raised px-2 font-mono text-[10px] uppercase tracking-widest text-accent-primary outline-none"
                             >
                               <option value="javascript">JavaScript</option>
                               <option value="python">Python</option>
@@ -935,7 +935,7 @@ const CreateRoom = () => {
                                 setCustomSnippets(s);
                               }}
                               placeholder="Starter code…"
-                              className="mt-2 w-full border border-subtle-line bg-void p-2 font-mono text-sm text-fg outline-none placeholder:text-faint focus:border-accent-primary"
+                              className="mt-2 w-full rounded-btn border border-subtle-line bg-void p-2 font-mono text-sm text-fg outline-none placeholder:text-faint focus:border-accent-primary"
                             />
                           </div>
                         ))}
