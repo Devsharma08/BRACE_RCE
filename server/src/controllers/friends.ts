@@ -9,11 +9,26 @@ class Friends {
     async getFriends(req: AuthRequest, res: Response) {
         try {
             const userId = (req as AuthRequest).userId;
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                include: { friends: { select: { id: true, username: true } } }
+            // Friendships are tracked via FriendRequest records with status ACCEPTED
+            const friendRequests = await prisma.friendRequest.findMany({
+                where: {
+                    status: "ACCEPTED",
+                    OR: [
+                        { senderId: userId },
+                        { receiverId: userId }
+                    ]
+                },
+                include: {
+                    sender: { select: { id: true, username: true, avatarUrl: true } },
+                    receiver: { select: { id: true, username: true, avatarUrl: true } }
+                }
             });
-            return res.json({ friends: user?.friends || [] });
+
+            const friends = friendRequests.map((fr: any) =>
+                fr.senderId === userId ? fr.receiver : fr.sender
+            );
+
+            return res.json({ friends });
         } catch (error) {
             return res.status(500).json({ message: "Server error" });
         }
@@ -62,12 +77,22 @@ class Friends {
             // Anyone already connected is not a discovery target — returning them
             // just filled the panel with rows the client can only label "Friend".
             const existingFriends = candidateIds.length
-                ? await prisma.user.findUnique({
-                    where: { id: userId as string },
-                    select: { friends: { select: { id: true } } },
+                ? await prisma.friendRequest.findMany({
+                    where: {
+                        status: "ACCEPTED",
+                        OR: [
+                            { senderId: userId as string, receiverId: { in: candidateIds } },
+                            { receiverId: userId as string, senderId: { in: candidateIds } }
+                        ]
+                    },
+                    select: { senderId: true, receiverId: true }
                 })
                 : null;
-            const friendIds = new Set((existingFriends?.friends ?? []).map((f: any) => f.id));
+            const friendIds = new Set(
+                existingFriends?.flatMap((fr: any) =>
+                    fr.senderId === userId ? [fr.receiverId] : [fr.senderId]
+                ) ?? []
+            );
 
             // Same for blocked accounts: sending them a request would only 403.
             const blocks = candidateIds.length
@@ -147,14 +172,16 @@ class Friends {
             const { targetUserId } = req.body;
 
             // check if already friends
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                include: {
-                    friends: true
+            const existingFriendship = await prisma.friendRequest.findFirst({
+                where: {
+                    status: "ACCEPTED",
+                    OR: [
+                        { senderId: userId as string, receiverId: targetUserId },
+                        { receiverId: userId as string, senderId: targetUserId }
+                    ]
                 }
             });
-
-            if (user?.friends.some((f: any) => f.id === targetUserId)) return res.json({ message: "Already Friends" });
+            if (existingFriendship) return res.json({ message: "Already Friends" });
 
             // Check if request already sent
             const existingReq = await prisma.friendRequest.findFirst({
@@ -172,14 +199,6 @@ class Friends {
                 await prisma.friendRequest.update({
                     where: { id: reverseReq.id },
                     data: { status: "ACCEPTED" }
-                });
-                await prisma.user.update({
-                    where: { id: userId as string },
-                    data: { friends: { connect: { id: targetUserId } } }
-                });
-                await prisma.user.update({
-                    where: { id: targetUserId },
-                    data: { friends: { connect: { id: userId as string } } }
                 });
 
                 // Real-time: the original requester gets the accept notification
@@ -285,15 +304,6 @@ class Friends {
             const otherId = request.senderId;
 
             await prisma.friendRequest.update({ where: { id: requestId }, data: { status: "ACCEPTED" } });
-            // Connect both users in the friends array
-            await prisma.user.update({
-                where: { id: userId },
-                data: { friends: { connect: { id: otherId } } }
-            });
-            await prisma.user.update({
-                where: { id: otherId },
-                data: { friends: { connect: { id: userId as string } } }
-            });
             try {
                 const accepter = await prisma.user.findUnique({
                     where: { id: userId as string },
@@ -328,9 +338,16 @@ class Friends {
                 }
             });
 
-            // Disconnect both ways
-            await prisma.user.update({ where: { id: userId }, data: { friends: { disconnect: { id: targetId } } } });
-            await prisma.user.update({ where: { id: targetId }, data: { friends: { disconnect: { id: userId as string } } } });
+            // Remove the accepted friend request (friendship)
+            await prisma.friendRequest.deleteMany({
+                where: {
+                    status: "ACCEPTED",
+                    OR: [
+                        { senderId: userId as string, receiverId: targetId },
+                        { receiverId: userId as string, senderId: targetId }
+                    ]
+                }
+            });
 
             await emitFriendsUpdate([userId, targetId]);
 

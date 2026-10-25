@@ -9,11 +9,19 @@ import { prisma } from "../lib/prisma.js";
  */
 export async function getFriendIds(userId: string): Promise<string[]> {
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { friends: { select: { id: true } } },
+        const friendRequests = await prisma.friendRequest.findMany({
+            where: {
+                status: "ACCEPTED",
+                OR: [
+                    { senderId: userId },
+                    { receiverId: userId }
+                ]
+            },
+            select: { senderId: true, receiverId: true }
         });
-        return (user?.friends ?? []).map((friend) => friend.id);
+        return friendRequests.map((fr) =>
+            fr.senderId === userId ? fr.receiverId : fr.senderId
+        );
     } catch {
         return [];
     }
