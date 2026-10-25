@@ -443,7 +443,7 @@ const Lobby = () => {
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search by title, host, or room code"
                   aria-label="Search by title, host, or room code"
-                  className="h-10 w-full border border-subtle-line bg-void pl-9 pr-9 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
+                  className="h-10 w-full rounded-btn border border-subtle-line bg-void pl-9 pr-9 text-xs text-fg outline-none placeholder:text-faint focus:border-accent/40"
                 />
                 {query && (
                   <button
@@ -459,42 +459,62 @@ const Lobby = () => {
                 <span className="flex items-center gap-2 px-1 text-[9px] uppercase tracking-widest text-faint">
                   <SlidersHorizontal size={13} aria-hidden /> Filters
                 </span>
-                <select
-                  aria-label="Maximum users"
-                  value={maxUsers}
-                  onChange={(event) => setMaxUsers(event.target.value)}
-                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
-                >
-                  <option value="any">Users: any</option>
-                  <option value="2">Users: ≤ 2</option>
-                  <option value="4">Users: ≤ 4</option>
-                  <option value="6">Users: ≤ 6</option>
-                </select>
-                <select
-                  aria-label="Maximum time"
-                  value={maxTime}
-                  onChange={(event) => setMaxTime(event.target.value)}
-                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
-                >
-                  <option value="any">Time: any</option>
-                  <option value="20">Time: ≤ 20m</option>
-                  <option value="30">Time: ≤ 30m</option>
-                  <option value="45">Time: ≤ 45m</option>
-                </select>
-                <select
-                  aria-label="Room access"
-                  value={access}
-                  onChange={(event) => setAccess(event.target.value)}
-                  className="min-w-[110px] border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
-                >
-                  <option value="any">Access: any</option>
-                  <option value="open">Open only</option>
-                  <option value="protected">Pass protected</option>
-                </select>
+                {activeTab === "ROOMS" && (
+                  <>
+                    <select
+                      aria-label="Maximum users"
+                      value={maxUsers}
+                      onChange={(event) => setMaxUsers(event.target.value)}
+                      className="min-w-[110px] rounded-btn border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                    >
+                      <option value="any">Users: any</option>
+                      <option value="2">Users: ≤ 2</option>
+                      <option value="4">Users: ≤ 4</option>
+                      <option value="6">Users: ≤ 6</option>
+                    </select>
+                    <select
+                      aria-label="Maximum time"
+                      value={maxTime}
+                      onChange={(event) => setMaxTime(event.target.value)}
+                      className="min-w-[110px] rounded-btn border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                    >
+                      <option value="any">Time: any</option>
+                      <option value="20">Time: ≤ 20m</option>
+                      <option value="30">Time: ≤ 30m</option>
+                      <option value="45">Time: ≤ 45m</option>
+                    </select>
+                  </>
+                )}
+
+                {(activeTab === "TEMPLATES" || activeTab === "MY_ARCHIVES") && (
+                  <>
+                    <select
+                      aria-label="Maximum time"
+                      value={maxTime}
+                      onChange={(event) => setMaxTime(event.target.value)}
+                      className="min-w-[110px] rounded-btn border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                    >
+                      <option value="any">Time: any</option>
+                      <option value="20">Time: ≤ 20m</option>
+                      <option value="30">Time: ≤ 30m</option>
+                      <option value="45">Time: ≤ 45m</option>
+                    </select>
+                    <select
+                      aria-label="Room access"
+                      value={access}
+                      onChange={(event) => setAccess(event.target.value)}
+                      className="min-w-[110px] rounded-btn border border-subtle-line bg-raised px-3 py-2 text-[9px] uppercase tracking-widest text-accent-primary outline-none"
+                    >
+                      <option value="any">Access: any</option>
+                      <option value="open">Open only</option>
+                      <option value="protected">Pass protected</option>
+                    </select>
+                  </>
+                )}
                 {hasFilters && (
                   <button
                     onClick={resetFilters}
-                    className="px-2 text-[9px] uppercase tracking-widest text-faint hover:text-fg"
+                    className="rounded-btn px-2 text-[9px] uppercase tracking-widest text-faint hover:text-fg"
                   >
                     Reset
                   </button>
@@ -577,6 +597,7 @@ const Lobby = () => {
         </div>
       </div>
     </main>
+    </div>
   );
 };
 
