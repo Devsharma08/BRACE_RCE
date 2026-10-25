@@ -488,11 +488,11 @@ const CreateRoom = () => {
               </div>
             </section>
           ) : (
-            <div className="mt-4 grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden">
+            <div className="mt-4 grid min-h-0 flex-1 gap-4 overflow-x-hidden grid-cols-1 lg:grid-cols-[minmax(0,1fr)_460px]">
               {/* ── LEFT: CONFIGURATION COLUMN (internally scrollable) ─── */}
-              <div className="themed-scroll min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
+              <div className="themed-scroll min-w-0 min-h-0 space-y-4 lg:overflow-y-auto lg:pr-2">
                 {/* IDENTITY & MISSION */}
-                <section className="rounded-card border border-subtle-line bg-surface p-6">
+                <section className="rounded-card border border-subtle-line bg-surface p-2">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-accent-primary">
                     <ShieldAlert size={14} aria-hidden /> Identity &amp; mission
                   </div>
@@ -962,7 +962,7 @@ const CreateRoom = () => {
               {/* ── RIGHT: PROBLEM QUEUE (search + select + deploy) ─────── */}
               <aside
                 aria-label="Problem queue"
-                className="themed-scroll min-h-0 rounded-card border border-accent-primary/20 bg-accent-primary/[0.04] p-5 lg:overflow-y-auto"
+                className="themed-scroll min-w-0 min-h-0 rounded-card border border-accent-primary/20 bg-accent-primary/[0.04] p-5 lg:overflow-y-auto"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
