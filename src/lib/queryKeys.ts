@@ -18,10 +18,11 @@ function createKey(...parts: (string | object | null | undefined)[]): readonly (
  * Kept in sync with PROBLEM_PAYLOAD_VERSION in utils/problemCache.ts — that one
  * documents the reason, this one owns the key.
  *
- * v2: test cases now ship with their real input and expected output instead of
- * arriving blanked.
+ * v3: list endpoints now ship summary-only payloads (no test_cases,
+ * code_snippets, or problem_definition) — full detail lives in the
+ * `GET /problems/:id` response.
  */
-const PROBLEMS_PAYLOAD_V = 2;
+const PROBLEMS_PAYLOAD_V = 3;
 
 export const queryKeys = {
   // Auth

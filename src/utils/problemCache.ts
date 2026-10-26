@@ -44,10 +44,11 @@ export async function fetchAllProblems<T = any>(
  * query key makes each such change produce a different cache entry, so a new
  * payload is fetched instead of replaying a stale one.
  *
- * v2: test cases are shipped in full, including the ones that used to arrive
- * with an empty input/expectedOutput.
+ * v3: list endpoints now ship summary-only payloads (no test_cases,
+ * code_snippets, or problem_definition) — full detail lives in the
+ * `GET /problems/:id` response.
  */
-export const PROBLEM_PAYLOAD_VERSION = 2;
+export const PROBLEM_PAYLOAD_VERSION = 3;
 
 export const PROBLEM_QUERY_ROOTS = [
   "system-problems",

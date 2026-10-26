@@ -150,6 +150,21 @@ export const fetchSystemProblems = async (
   return all;
 };
 
+// Fetch a single page of system problems (summary only — no test_cases,
+// code_snippets, or problem_definition). Used by the Terminal sidebar's
+// paginated PROBLEMS list tab.
+export const fetchSystemProblemsPage = async (
+  page: number,
+  limit: number,
+  signal?: AbortSignal,
+) => {
+  const res = await api.get("/problems/system", {
+    params: { page, limit },
+    signal,
+  });
+  return res.data?.problems ?? [];
+};
+
 // Fetch a single problem by ID or github_oid
 export const fetchProblemById = async (id: string, signal?: AbortSignal) => {
   const res = await api.get(`/problems/${encodeURIComponent(id)}`, { signal });
