@@ -51,11 +51,7 @@ sudo -u ec2-user git clone https://github.com/Devsharma08/BRACE_RCE.git .
   #   - Your GitHub PAT (for problem import feature)
   #   - Neon Dashboard (DATABASE_URL, DIRECT_URL)
   cat > /opt/brace/.env << 'ENVEOF'
-# Frontend Environment Variables (Vite — inlined at build time)
-VITE_BACKEND_URL="/api"
-VITE_BASE_URL="/api"
-VITE_API_URL="/api"
-VITE_GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID"
+# Frontend is hosted on Vercel — no VITE_* build-time variables needed here.
 
 # Backend Environment Variables
   # Neon Serverless PostgreSQL — replace with your Neon connection strings

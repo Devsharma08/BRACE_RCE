@@ -31,16 +31,14 @@ services:
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - JWT_SECRET=${JWT_SECRET:-production_super_secret_jwt_key_brace_2026}
       - PISTON_URL=${PISTON_URL:-http://piston:2000}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5000}
+      - FRONTEND_URL=${FRONTEND_URL:-https://bracerce.devsharma.dev}
       - REDIS_URL=redis://redis:6379
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://bracerce.devsharma.dev,https://bracerce.server.devsharma.dev}
-    volumes:
-      - app_static_assets:/app/frontend
     depends_on:
       - piston
       - redis
 
-  # Nginx reverse proxy — TLS termination, static assets, WebSocket passthrough, rate limiting
+  # Nginx reverse proxy — TLS termination, API/WebSocket proxy, rate limiting
   # In production behind a load balancer (ALB/Cloudflare), this can be removed
   # and TLS handled at the edge. For self-hosted deployments, use this service.
   nginx:
@@ -53,7 +51,6 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl-common.conf:/etc/nginx/ssl-common.conf:ro
       - ./locations.conf:/etc/nginx/locations.conf:ro
-      - app_static_assets:/app/frontend
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     depends_on:
@@ -94,6 +91,3 @@ services:
     command: ["sh", "-c", "mkdir -p /piston && cd /sys/fs/cgroup && mkdir -p isolate/init && echo 1 > isolate/cgroup.procs && echo '+cpuset +cpu +io +memory +pids' > cgroup.subtree_control && cd isolate && echo 1 > init/cgroup.procs && echo '+cpuset +memory' > cgroup.subtree_control && echo 'Initialized cgroup' && chown -R piston:piston /piston_api /piston && exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'"]
     volumes:
       - ./piston/data/piston/packages:/piston/packages
-
-volumes:
-  app_static_assets:

@@ -226,7 +226,7 @@ NOTIFICATION_CONCURRENCY=5   # Notification DB workers
 ### 4.5 Nginx Reverse Proxy (Self-Hosted Deployments)
 The `nginx.conf` in the repository root provides:
 - TLS termination (with certbot/Let's Encrypt)
-- Static asset serving (frontend build from `/app/frontend`)
+- API reverse proxy (frontend served separately from Vercel)
 - WebSocket Upgrade passthrough for Socket.io
 - Rate limiting: `api` zone (10 req/s), `login` zone (1 req/s)
 - Prometheus `/metrics` endpoint restricted to private networks

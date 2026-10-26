@@ -70,7 +70,6 @@ export function initiateGoogleOAuthPKCE(clientId: string, redirectUri: string): 
       code_challenge_method: "S256",
       state: state,
       access_type: "offline",
-      prompt: "consent",
     });
     
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;

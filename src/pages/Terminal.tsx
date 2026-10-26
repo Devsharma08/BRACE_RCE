@@ -91,35 +91,12 @@ const getBoilerplate = (problem: PracticeProblem | null, lang: SupportedLanguage
 };
 
 /**
- * Standalone, immediately-runnable scratch programs — one per language.
- *
- * These are NOT the same as `getLanguageStarterCode`, which stays a bare
- * library snippet on purpose. The distinction is load-bearing:
- *
- * `getLanguageStarterCode` is the cross-language fallback for a PROBLEM that
- * has no stored snippet for the selected language. It is handed to the
- * server's `prepareFinalCode`, which prepends its own generated driver — a
- * `public class Main` for Java (codeExecution.ts) and an `int main()` for C and
- * C++ — and then invokes the solution it finds. Giving these language fallbacks
- * their own entry point produced duplicate-main / duplicate-class compile
- * errors, so they correctly define only `solution` / `class Solution`.
- *
- * Scratch mode has no problem, so no driver is ever generated, and a snippet
- * that only *declares* something runs and prints nothing. That is the bug these
- * * templates fix: each one is a complete program with a real entry point, so the
- * moment the terminal is in scratch mode and Run is pressed, output appears.
+ * getLanguageStarterCode provides a language-appropriate starter stub for both
+ * problem mode (fallback when no DB snippet exists) and scratch mode (when the
+ * problem is hidden). The server's prepareFinalCode wraps these with its own
+ * driver for problem-backed runs (public class Main for Java, int main() for
+ * C/C++); for local- oids no driver is generated, so the stub runs verbatim.
  */
-const SCRATCH_STARTERS: Record<SupportedLanguage, string> = {
-  javascript: "// Scratch program — runs as-is.",
-  python: "# Scratch program — runs as-is.",
-  java: "// Scratch program — runs as-is.",
-  c: "// Scratch program — runs as-is.",
-  "c++": "// Scratch program — runs as-is.",
-};
-
-const getScratchStarterCode = (lang: SupportedLanguage): string =>
-  SCRATCH_STARTERS[lang] ?? SCRATCH_STARTERS.javascript;
-
 // ─────────────────────────────────────────────────────────────
 // Terminal Component
 // ─────────────────────────────────────────────────────────────
@@ -492,23 +469,32 @@ const exitScratchMode = useCallback(() => {
       // change), or sets an empty string if none exists.
       const savedCode = getCodeForLanguage(newLang);
       if (!savedCode) {
-        // In scratch mode there is no problem — fall back to a runnable scratch
-        // program, never a stale problem snippet.
-        setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getScratchStarterCode(newLang));
+        // In scratch mode there is no problem — fall back to the language
+        // starter wrapper so the editor always has runnable boilerplate.
+        setCode(activeProblem ? getBoilerplate(activeProblem, newLang) : getLanguageStarterCode(newLang));
       }
     },
     [activeProblem, setLanguage, setCode, getCodeForLanguage]
   );
 
   // ── Reset code to starter boilerplate ─────────────────────
+  // In problems mode: restore the problem's boilerplate for the current language.
+  // In scratch mode (hidden problem): restore the same default wrapper that
+  // enterScratchMode rendered — never a mere comment placeholder, so the editor
+  // stays runnable.
   const handleResetCode = useCallback(() => {
-    // Scratch reset = a runnable scratch program for the current language (no
-    // problem to pull a template from).
-    const starter = activeProblem ? getBoilerplate(activeProblem, language) : getScratchStarterCode(language);
-    setCode(starter);
-    // Also update the per-language storage
-    setCodeForLanguage(language, starter);
-  }, [activeProblem, language, setCode, setCodeForLanguage]);
+    if (mode === 'no-problem') {
+      const starter = getLanguageStarterCode(language);
+      setCode(starter);
+      setCodeForLanguage(language, starter);
+    } else {
+      const starter = activeProblem
+        ? getBoilerplate(activeProblem, language)
+        : getLanguageStarterCode(language);
+      setCode(starter);
+      setCodeForLanguage(language, starter);
+    }
+  }, [mode, activeProblem, language, setCode, setCodeForLanguage]);
 
   // ── Select problem from sidebar ───────────────────────────
   const handleSelectProblem = useCallback(
@@ -820,6 +806,10 @@ const exitScratchMode = useCallback(() => {
                 {activeProblem.difficulty_level.toUpperCase()}
               </span>
             )} */}
+            {/* Show/Hide Problem button — only visible during standard practice
+                sessions, hidden during competitive/multiplayer events (active
+                battle room or custom lobby) */}
+            {!activeBattleRoom && !customLobby && (
             <button
               onClick={toggleMode}
               className="px-2 py-0.5 text-[13px] font-semibold rounded border border-accent-primary/30 bg-accent-primary/5 hover:bg-accent-primary/10 transition sm:px-2 sm:text-[13px]"
@@ -828,6 +818,7 @@ const exitScratchMode = useCallback(() => {
             >
               {mode === 'problems' ? (isMobile ? "X" : "Hide Problems") : (isMobile ? "≡" : "Show Problems")}
             </button>
+            )}
             {activeProblem && (
               <ProblemReport
                 activeProblem={activeProblem}
