@@ -48,4 +48,4 @@ RUN mkdir -p logs server/logs
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "cd server && npx prisma db push && npx pm2 start ../ecosystem.config.cjs --env production && pm2 logs --lines 1000 && wait"]
+CMD ["sh", "-c", "cd server && npx prisma db push --accept-data-loss && npx pm2 start ../ecosystem.config.cjs --env production && pm2 logs --lines 1000 && wait"]
