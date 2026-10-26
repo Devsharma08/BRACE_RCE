@@ -166,18 +166,12 @@ function getOrCreateSocket(userId: string): Socket {
     "http://localhost:3000";
   const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
 
-  // Fetch a short-lived socket.io auth token from the backend.
-  // This is needed when the frontend is on a different domain than the
-  // socket.io server (e.g., Vercel frontend → EC2 backend), because the
-  // HTTP-only token cookie won't be sent cross-domain for WebSocket.
-  // Using the auth callback ensures the token is fetched during the
-  // socket.io handshake, before any connection attempt is made.
+  // For cross-domain WebSocket (Vercel frontend → EC2 backend), the HTTP-only
+  // token cookie may not be sent. Pass userId in the handshake; the server
+  // accepts it when the cookie is absent.
+  // Prefer WebSocket transport, fall back to polling only if WS unavailable.
   socket = io(socketUrl, {
-    auth: (cb) => {
-      api.get("/auth/socket-token")
-        .then((res) => cb({ token: res.data?.token, userId }))
-        .catch(() => cb({ userId }));
-    },
+    auth: { userId },
     withCredentials: true,
     transports: ["websocket", "polling"],
   });

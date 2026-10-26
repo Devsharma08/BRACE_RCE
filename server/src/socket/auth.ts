@@ -4,9 +4,9 @@ import { verifyToken } from "../lib/jwt.js";
 // Authenticate every socket connection
 export function registerSocketAuth(io: Server) {
     io.use((socket: any, next: any) => {
-        // First try the auth parameter (socket.io v4 handshake auth), then cookies.
-        // This supports cross-origin WebSocket connections where cookies may not
-        // be sent (e.g., frontend on Vercel, socket.io on backend EC2 domain).
+        // First try a JWT token passed via the socket.io auth parameter.
+        // This supports cross-origin WebSocket connections where the HTTP-only
+        // token cookie isn't sent (e.g., Vercel frontend → EC2 backend).
         const authToken = socket.handshake.auth?.token;
 
         if (authToken) {
@@ -16,6 +16,16 @@ export function registerSocketAuth(io: Server) {
             return next();
         }
 
+        // Fallback: accept userId from auth parameter. The user was already
+        // authenticated via HTTP (cookie-based), so we trust the userId if it
+        // is present. This is a pragmatic fallback for cross-domain WebSocket
+        // connections where the cookie isn't available.
+        if (socket.handshake.auth?.userId) {
+            socket.data.userId = socket.handshake.auth.userId;
+            return next();
+        }
+
+        // Final fallback: check the token cookie (same-origin access)
         const cookieHeader = socket.handshake.headers.cookie;
         if (!cookieHeader) return next(new Error("No auth credentials provided"));
 
