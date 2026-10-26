@@ -1866,49 +1866,55 @@ export const Battle = () => {
               label={room?.closesAt ? "CLOSES IN:" : "TIME LEFT:"}
               variant="pill"
             />
-            {battleState.status === "WAITING" && (
-              <button
-                onClick={handleStartOperation}
-                disabled={isStartingOperation}
-                className="flex items-center gap-1 px-2 py-1 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[9px] font-mono font-bold rounded hover:bg-accent-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
-              >
-                {isStartingOperation ? (
-                  <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
-                ) : (
-                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                )}
-                {isStartingOperation ? "STARTING..." : "START"}
-              </button>
-            )}
-             <button
-               onClick={() => {
-                 setConfirmDialog({
-                   isOpen: true,
-                   title: "End this battle?",
-                   message:
-                     "End this battle for everyone? Pending participants will be marked TIMEOUT.",
-                   confirmLabel: "End battle",
-                   onConfirm: handleHostEndMatch,
-                 });
-               }}
-               disabled={
-                 battleState.status !== "WAITING" &&
-                 battleState.status !== "IN_PROGRESS"
-               }
-               className={`flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] ${
-                 battleState.status !== "WAITING" &&
-                 battleState.status !== "IN_PROGRESS"
-                   ? "opacity-40 cursor-not-allowed"
-                   : ""
-               }`}
-             >
-               <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
-            </button>
             <button
               onClick={() => navigate("/lobby")}
               className="flex items-center gap-1 px-2 py-1 border border-subtle-line bg-surface-hover/60 text-subtle text-[9px] font-mono font-bold rounded hover:bg-surface-hover transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]"
             >
               LOBBY
+            </button>
+          </div>
+        </div>
+
+        {/* ── HOST ACTION BAR ── */}
+        <div className="px-6 py-4 shrink-0">
+          <div className="mx-auto max-w-5xl flex flex-wrap items-center gap-3">
+            {battleState.status === "WAITING" && (
+              <button
+                onClick={handleStartOperation}
+                disabled={isStartingOperation}
+                className="flex items-center gap-2 px-4 py-2 border border-accent-primary/40 bg-accent-primary/10 text-accent-primary text-[9px] font-mono font-bold uppercase tracking-widest rounded-lg hover:bg-accent-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:text-[10px]"
+              >
+                {isStartingOperation ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Play className="w-3 h-3" />
+                )}
+                {isStartingOperation ? "STARTING..." : "START OPERATION"}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setConfirmDialog({
+                  isOpen: true,
+                  title: "End this battle?",
+                  message:
+                    "End this battle for everyone? Pending participants will be marked TIMEOUT.",
+                  confirmLabel: "End battle",
+                  onConfirm: handleHostEndMatch,
+                });
+              }}
+              disabled={
+                battleState.status !== "WAITING" &&
+                battleState.status !== "IN_PROGRESS"
+              }
+              className={`flex items-center gap-2 px-4 py-2 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold uppercase tracking-widest rounded-lg hover:bg-accent-danger/20 transition-all sm:text-[10px] ${
+                battleState.status !== "WAITING" &&
+                battleState.status !== "IN_PROGRESS"
+                  ? "opacity-40 cursor-not-allowed"
+                  : ""
+              }`}
+            >
+              <StopCircle className="w-3 h-3" /> END BATTLE
             </button>
           </div>
         </div>
@@ -2218,6 +2224,26 @@ export const Battle = () => {
             closing soon
           </button>
         )}
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          danger={
+            confirmDialog.confirmLabel === "Kick & block" ||
+            confirmDialog.confirmLabel === "Terminate" ||
+            confirmDialog.confirmLabel === "End battle"
+          }
+          onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+          onConfirm={() => {
+            confirmDialog.onConfirm?.();
+            setConfirmDialog({
+              ...confirmDialog,
+              isOpen: false,
+              onConfirm: null,
+            });
+          }}
+        />
       </div>
     );
   }
@@ -2930,44 +2956,48 @@ export const Battle = () => {
               label={problems.length > 1 ? "GLOBAL:" : "TIME LEFT:"}
               variant="pill"
             />
-            {/* Host button shortcut in top bar */}
-            {isHost && battleState.status === "IN_PROGRESS" && (
+             {/* Host button shortcut in top bar */}
+             {isHost && battleState.status === "IN_PROGRESS" && (
+               <button
+                 onClick={() => {
+                   setIsHostPanelOpen((v) => !v);
+                   if (!isHostPanelOpen) {
+                     void fetchBlockedParticipants();
+                   }
+                 }}
+                 className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[8px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
+               >
+                 <ShieldAlert className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> HOST
+               </button>
+             )}
+           </div>
+        </div>
+
+        {/* ── PARTICIPANT ACTION BAR (End Group button) ── */}
+        {isHost && problems.length > 1 &&
+          battleState.status === "IN_PROGRESS" && (
+          <div className="px-4 py-3 border-b border-subtle-line bg-raised shrink-0 sm:px-6 sm:py-3">
+            <div className="mx-auto max-w-5xl flex items-center gap-3">
               <button
                 onClick={() => {
-                  setIsHostPanelOpen((v) => !v);
-                  if (!isHostPanelOpen) {
-                    void fetchBlockedParticipants();
-                  }
+                  setConfirmDialog({
+                    isOpen: true,
+                    title: "Terminate group battle?",
+                    message:
+                      "Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.",
+                    confirmLabel: "Terminate",
+                    danger: true,
+                    onConfirm: () =>
+                      socket?.emit("terminate_group", { roomId }),
+                  });
                 }}
-                className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-warning/30 bg-accent-warning/10 text-accent-warning text-[8px] font-mono font-bold rounded hover:bg-accent-warning/20 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
+                className="flex items-center gap-2 px-4 py-2 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold uppercase tracking-widest rounded-lg hover:bg-accent-danger/20 transition-all sm:text-[10px]"
               >
-                <ShieldAlert className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> HOST
+                <StopCircle className="w-3 h-3" /> END GROUP
               </button>
-            )}
-            {/* Terminate group (host/admin) — ends the event for everyone */}
-            {isHost &&
-              problems.length > 1 &&
-              battleState.status === "IN_PROGRESS" && (
-                <button
-                  onClick={() => {
-                    setConfirmDialog({
-                      isOpen: true,
-                      title: "Terminate group battle?",
-                      message:
-                        "Terminate this group battle for everyone? Pending participants will be marked TIMEOUT.",
-                      confirmLabel: "Terminate",
-                      danger: true,
-                      onConfirm: () =>
-                        socket?.emit("terminate_group", { roomId }),
-                    });
-                  }}
-                  className="flex items-center gap-1 px-1.5 py-0.5 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[8px] font-mono font-bold rounded hover:bg-accent-danger/10 transition-all sm:gap-1.5 sm:px-2 sm:py-1 sm:text-[10px]"
-                >
-                  <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END GROUP
-                </button>
-              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-50">
           {/* CLEAR THIS LOGIC */}
