@@ -2,18 +2,17 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LayoutDashboard, ChevronLeft, Clock } from "lucide-react";
 import {
-  ModeratorEventsQuery,
+  type ModeratorEventsQuery,
   useModeratorEvents,
   useEventAnalyticsDetail,
   invalidateModeratorEvents,
 } from "../../../hooks/useModeratorEvents";
+import type { QueryClient } from "@tanstack/react-query";
 import { ModeratorEventList } from "./ModeratorEventList";
 import { EventAnalyticsDetailView } from "./EventAnalyticsDetail";
 
 interface ModeratorAnalyticsPageProps {
-  queryClient: ReturnType<
-    typeof import("@tanstack/react-query").useQueryClient
-  >;
+  queryClient: QueryClient;
 }
 
 export function ModeratorAnalyticsPage({
@@ -28,6 +27,7 @@ export function ModeratorAnalyticsPage({
     sortOrder: "desc",
   });
   const [page, setPage] = useState(1);
+  const navigate = useNavigate();
 
   const navigateHome = () => navigate("/");
 

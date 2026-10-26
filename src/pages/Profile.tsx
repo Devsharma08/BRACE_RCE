@@ -44,10 +44,7 @@ interface MatchRecord {
   score: number;
   timeTakenMs: number | null;
   createdAt: string;
-  event?: {
-    commonProblem?: { name: string; difficulty_level: string };
-    performances?: any[];
-  };
+  event?: { name?: string; commonProblem?: { name?: string; difficulty_level?: string }; performances?: any[] };
   problem?: { name: string; difficulty_level: string };
   submissions?: any[];
 }

@@ -30,6 +30,7 @@ export interface BattleTrendPoint {
   result: "WIN" | "LOSS" | "SURRENDER";
   score: number;
   questionsSolved: number;
+  winRate: number;
 }
 
 export interface LanguageUsage {

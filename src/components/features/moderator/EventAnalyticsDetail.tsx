@@ -11,9 +11,9 @@ import {
   Code,
 } from "lucide-react";
 import {
-  EventAnalyticsDetail,
-  EventParticipantDetail,
-  EventProblemDetail,
+  type EventAnalyticsDetail,
+  type EventParticipantDetail,
+  type EventProblemDetail,
 } from "../../../hooks/useModeratorEvents";
 
 const STATUS_COLORS: Record<string, string> = {

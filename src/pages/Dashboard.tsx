@@ -46,7 +46,7 @@ type DashboardMatch = {
   status?: string;
   score?: number;
   createdAt?: string;
-  event?: { commonProblem?: { name?: string } | null } | null;
+  event?: { name?: string; commonProblem?: { name?: string } | null } | null;
 };
 
 const formatRelativeTime = (value?: string | null) => {

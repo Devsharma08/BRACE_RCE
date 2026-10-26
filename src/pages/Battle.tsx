@@ -320,13 +320,14 @@ export const Battle = () => {
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
   const [isStartingOperation, setIsStartingOperation] =
     useState<boolean>(false);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmLabel: string;
-    onConfirm: (() => void) | null;
-  }>({
+   const [confirmDialog, setConfirmDialog] = useState<{
+     isOpen: boolean;
+     title: string;
+     message: string;
+     confirmLabel: string;
+     danger?: boolean;
+     onConfirm: (() => void) | null;
+   }>({
     isOpen: false,
     title: "",
     message: "",
@@ -1716,11 +1717,13 @@ export const Battle = () => {
         setTerminalOutput("SUCCESS: All test cases passed!");
         playBattleSound("submit-success");
         if (isBattleActive) {
-          // Calculate progress based on solved problems vs total problems
-          // to avoid marking the entire event as 100% after solving one problem.
+          // Calculate progress based on solved problems vs total problems.
+          // The current problem's test cases have already been updated with
+          // PASSED status in the setProblems call above, so it is already
+          // counted by the filter — no extra +1 needed.
           const solvedCount = problems.filter((p: any) =>
             (p.test_cases || []).some((tc: any) => tc.status === "PASSED"),
-          ).length + 1; // +1 for the current problem just solved
+          ).length;
           const totalCount = problems.length || 1;
           const progress = Math.round((solvedCount / totalCount) * 100);
           socket?.emit("battle_action", {
@@ -1877,23 +1880,29 @@ export const Battle = () => {
                 {isStartingOperation ? "STARTING..." : "START"}
               </button>
             )}
-            <button
-              onClick={() => {
-                setConfirmDialog({
-                  isOpen: true,
-                  title: "End this battle?",
-                  message:
-                    "End this battle for everyone? Pending participants will be marked TIMEOUT.",
-                  confirmLabel: "End battle",
-                  onConfirm: handleHostEndMatch,
-                });
-              }}
-              disabled={battleState.status !== "IN_PROGRESS"}
-              className={`flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] ${
-                battleState.status !== "IN_PROGRESS" ? "opacity-40 cursor-not-allowed" : ""
-              }`}
-            >
-              <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
+             <button
+               onClick={() => {
+                 setConfirmDialog({
+                   isOpen: true,
+                   title: "End this battle?",
+                   message:
+                     "End this battle for everyone? Pending participants will be marked TIMEOUT.",
+                   confirmLabel: "End battle",
+                   onConfirm: handleHostEndMatch,
+                 });
+               }}
+               disabled={
+                 battleState.status !== "WAITING" &&
+                 battleState.status !== "IN_PROGRESS"
+               }
+               className={`flex items-center gap-1 px-2 py-1 border border-accent-danger/40 bg-accent-danger/10 text-accent-danger text-[9px] font-mono font-bold rounded hover:bg-accent-danger/20 transition-all sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px] ${
+                 battleState.status !== "WAITING" &&
+                 battleState.status !== "IN_PROGRESS"
+                   ? "opacity-40 cursor-not-allowed"
+                   : ""
+               }`}
+             >
+               <StopCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> END
             </button>
             <button
               onClick={() => navigate("/lobby")}
@@ -1973,9 +1982,10 @@ export const Battle = () => {
                       const intel = playerProgress[participantId];
                       const isMe = participantId === myUserId;
                       const verdict = participantVerdict(p, battleState.status);
-                      const passed = (p.submissions ?? []).filter(
-                        (s: any) => (s.status || "").toUpperCase() === "PASSED",
-                      ).length;
+                      const subs = p.submissions ?? [];
+                      const bestSubmission = subs.find((s: any) => s.isBestSubmission);
+                      const passedTests = bestSubmission?.passedCase ?? 0;
+                      const totalTests = bestSubmission?.totalCases ?? 0;
                       return (
                         <div
                           key={participantId}
@@ -2059,7 +2069,9 @@ export const Battle = () => {
                               <span>
                                 {intel?.linesWritten ?? 0} lines written
                               </span>
-                              <span>{passed} passed</span>
+                               <span>
+                                 {passedTests}/{totalTests} testcases passed
+                               </span>
                             </div>
                           </div>
                         </div>
@@ -3167,11 +3179,11 @@ export const Battle = () => {
                     p,
                     battleState?.status || room?.status,
                   );
-                  const subs = p.submissions ?? [];
-                  const passedCount = subs.filter(
-                    (s: any) => (s.status || "").toUpperCase() === "PASSED",
-                  ).length;
-                  const bestRuntime = subs.reduce(
+                   const subs = p.submissions ?? [];
+                   const bestSubmission = subs.find((s: any) => s.isBestSubmission);
+                   const passedTests = bestSubmission?.passedCase ?? 0;
+                   const totalTests = bestSubmission?.totalCases ?? 0;
+                   const bestRuntime = subs.reduce(
                     (m: number | null, s: any) =>
                       s.runtimeMs != null
                         ? Math.min(m ?? s.runtimeMs, s.runtimeMs)
@@ -3224,7 +3236,7 @@ export const Battle = () => {
                                 : "● IN PROGRESS"}
                           </span>
                           <span className="text-[9px] text-subtle font-mono">
-                            {passedCount > 0 ? `${passedCount}/${subs.length}` : "0"} passed
+                            {passedTests > 0 ? `${passedTests}/${totalTests}` : "0/0"} testcases passed
                             {bestRuntime != null ? ` • ${bestRuntime}ms` : ""}
                           </span>
                         </div>

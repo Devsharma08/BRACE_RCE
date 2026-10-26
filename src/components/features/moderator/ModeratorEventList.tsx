@@ -13,8 +13,8 @@ import {
   Pause,
 } from "lucide-react";
 import {
-  ModeratorEventListItem,
-  ModeratorEventsQuery,
+  type ModeratorEventListItem,
+  type ModeratorEventsQuery,
 } from "../../../hooks/useModeratorEvents";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -59,7 +59,7 @@ export function ModeratorEventList({
   onSelectEvent,
 }: ModeratorEventListProps) {
   const [sortBy, setSortBy] = useState<
-    "createdAt" | "startedAt" | "finishedAt" | "participants" | "status"
+    "createdAt" | "startedAt" | "finishedAt" | "participantCount" | "status"
   >("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -68,7 +68,8 @@ export function ModeratorEventList({
       const aVal = a[sortBy];
       const bVal = b[sortBy];
       if (aVal === bVal) return 0;
-      const comparison = aVal < bVal ? -1 : 1;
+      // Handle null values for date fields by treating them as empty strings
+      const comparison = String(aVal ?? "") < String(bVal ?? "") ? -1 : 1;
       return sortOrder === "asc" ? comparison : -comparison;
     });
   }, [events, sortBy, sortOrder]);

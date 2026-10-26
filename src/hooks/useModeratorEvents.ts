@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "../config/api";
 
 // ─── Moderator Events Listing Types ──────────────────────────────────────────
@@ -217,12 +217,12 @@ export function useEventAnalyticsDetail(eventId: string, enabled = true) {
 
 // ─── Invalidation helper ─────────────────────────────────────────────────────
 
-export function invalidateModeratorEvents(queryClient: useQueryClient) {
+export function invalidateModeratorEvents(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ["moderator-events"] });
 }
 
 export function invalidateEventAnalytics(
-  queryClient: useQueryClient,
+  queryClient: QueryClient,
   eventId: string,
 ) {
   queryClient.invalidateQueries({

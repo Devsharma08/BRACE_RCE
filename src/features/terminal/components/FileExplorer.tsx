@@ -5,7 +5,7 @@ import React,{ useEffect, useMemo, useState, type CSSProperties, type KeyboardEv
 import type { FileEntry } from "../../../context/FileNamesContext";
 import type { FileContentResponse } from "../types";
 import { toast } from "sonner";
-import { ConfirmDialog } from "../../ui/ConfirmDialog";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 
 type FileExplorerProps = {
   activeFile: string | null;
@@ -349,6 +349,7 @@ type SidebarTerminalModeProps = {
   isLoadingFiles: boolean;
   onFileClick: (oid: string, name: string) => void;
   onDeleteLocalFile: (oid: string) => void;
+  onDeleteRequest: (fileName: string, oid: string) => void;
   renderLoadingState: (label: string) => React.ReactNode;
 };
 
@@ -414,6 +415,7 @@ const SidebarTerminalMode = React.memo(({
   isLoadingFiles,
   onFileClick,
   onDeleteLocalFile,
+  onDeleteRequest,
   renderLoadingState,
 }: SidebarTerminalModeProps) => {
 
@@ -460,7 +462,7 @@ const SidebarTerminalMode = React.memo(({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setDeleteConfirm({ open: true, fileName: file.name, oid: file.oid });
+                    onDeleteRequest(file.name, file.oid);
                   }}
                   className="sidebar-details text-accent-danger hover:text-accent-danger cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
                 >
@@ -869,17 +871,20 @@ const FileExplorer = ({
             activeFileEntry={activeFileEntry}
           />
         ) : (
-          <SidebarTerminalMode
-            fileName={fileName}
-            setFileName={setFileName}
-            createNewFile={createNewFile}
-            localFiles={localFiles}
-            repositoryFiles={repositoryFiles}
-            isLoadingFiles={isLoadingFiles}
-            onFileClick={onFileClick}
-            onDeleteLocalFile={onDeleteLocalFile}
-            renderLoadingState={renderLoadingState}
-          />
+           <SidebarTerminalMode
+             fileName={fileName}
+             setFileName={setFileName}
+             createNewFile={createNewFile}
+             localFiles={localFiles}
+             repositoryFiles={repositoryFiles}
+             isLoadingFiles={isLoadingFiles}
+             onFileClick={onFileClick}
+             onDeleteLocalFile={onDeleteLocalFile}
+             onDeleteRequest={(fileName, oid) =>
+               setDeleteConfirm({ open: true, fileName, oid })
+             }
+             renderLoadingState={renderLoadingState}
+           />
         )}
         </div>
       </aside>

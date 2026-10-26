@@ -417,11 +417,13 @@ const exitScratchMode = useCallback(() => {
 
   // ── Load all system problems on mount ─────────────────────
   useEffect(() => {
+    let mounted = true;
     const controller = new AbortController();
     setProblemsLoading(true);
 
     fetchSystemProblems(controller.signal)
       .then((data) => {
+        if (!mounted) return;
         if (!Array.isArray(data)) throw new Error("Invalid problem payload");
         setProblems(data);
         setProblemsError(null);
@@ -444,16 +446,15 @@ const exitScratchMode = useCallback(() => {
         if (initial && mode !== 'no-problem') loadProblem(initial, data);
       })
       .catch((e) => {
-        if (e.name !== "AbortError") {
+        // Ignore abort/cancellation errors (React 18 StrictMode double-invoke,
+        // user navigation, etc.). Only log unexpected errors.
+        if (e.name !== "AbortError" && e.name !== "CanceledError") {
           console.error("Failed to load problems:", e);
           setProblemsError("The complete problem catalog could not be loaded.");
         }
       })
       .finally(() => {
-        // A superseded request (auth restore re-runs this effect) must not
-        // clear the NEWER request's flag — that race flashed "NO PROBLEMS
-        // FOUND" while the real catalog was still in flight.
-        if (!controller.signal.aborted) setProblemsLoading(false);
+        if (mounted) setProblemsLoading(false);
       });
 
     return () => controller.abort();

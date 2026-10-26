@@ -90,8 +90,8 @@ interface ParticipantLayoutProps {
   currentIndex: number;
   setCurrentIndex: (idx: number) => void;
   activeProblem: any;
-  language: string;
-  setLanguage: (lang: string) => void;
+   language: SupportedLanguage;
+   setLanguage: (lang: SupportedLanguage) => void;
   code: string;
   setCode: (code: string) => void;
   isSubmitting: boolean;
@@ -109,7 +109,7 @@ interface ParticipantLayoutProps {
   handleRunCode: () => void;
   handleRunSingleTestCase: (tc: any) => void;
   handleResetCode: () => void;
-  handleLanguageChange: (lang: string) => void;
+   handleLanguageChange: (lang: SupportedLanguage) => void;
   handleCodeChange: (code: string) => void;
   handleJoinBattleMessage: (e: any) => void;
   newBattleMessage: string;
@@ -205,7 +205,6 @@ export function ParticipantLayout(props: ParticipantLayoutProps) {
   const {
     sidebarWidth,
     setSidebarWidth,
-    outputGridTemplateRows,
     outputHeight: _outputHeight,
   } = useTerminalLayout();
 
@@ -214,7 +213,8 @@ export function ParticipantLayout(props: ParticipantLayoutProps) {
 
   // Derived state
   const me = match;
-  const opponents = (match.event?.performances ?? []).filter(
+  const participants = match.event?.performances ?? [];
+  const opponents = participants.filter(
     (p: any) => p.userId !== user?.id,
   );
   const mode =
