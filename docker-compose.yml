@@ -53,6 +53,7 @@ services:
       - ./locations.conf:/etc/nginx/locations.conf:ro
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+      - ./ssl:/etc/ssl/certs:ro
     depends_on:
       - app
       - certbot
