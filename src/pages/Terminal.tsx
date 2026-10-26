@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { queryKeys } from "../lib/queryKeys";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { TerminalContext } from "../context/TerminalContext";
-import { executeCode, fetchSystemProblems } from "../features/terminal/api";
+import { executeCode, fetchProblemById, fetchSystemProblemsPage } from "../features/terminal/api";
 import EditorToolbar from "../features/terminal/components/EditorToolbar";
 import LoadingOverlay from "../features/terminal/components/LoadingOverlay";
 import MonacoIDE from "../features/terminal/components/MonacoIDE";
@@ -134,13 +134,58 @@ const Terminal = () => {
   const targetId = searchParams.get("id") || searchParams.get("oid") || searchParams.get("problemId") || "";
 
   // ── State ──────────────────────────────────────────────────
-  const [problems, setProblems] = useState<PracticeProblem[]>([]);
   const [activeProblem, setActiveProblem] = useState<PracticeProblem | null>(null);
-  const [problemsLoading, setProblemsLoading] = useState(true);
-  const [problemsError, setProblemsError] = useState<string | null>(null);
-  // Bumped by Retry buttons — re-runs the catalog fetch without a remount.
-  const [problemsNonce, setProblemsNonce] = useState(0);
-  const retryProblems = useCallback(() => setProblemsNonce((n) => n + 1), []);
+  const TERMINAL_PAGE_SIZE = 24;
+
+  // Catalog query: paginated summary data for the sidebar PROBLEMS list tab.
+  // Only fetches metadata (id, name, difficulty, isSolved) — not test cases
+  // or code snippets.
+  const {
+    data: catalogProblems = [],
+    isLoading: catalogLoading,
+    error: catalogErrorObj,
+    refetch: refetchCatalog,
+  } = useQuery({
+    queryKey: [...queryKeys.problems.system({ userId: user?.id }), 'terminal-catalog'],
+    queryFn: async () => {
+      const res = await fetchSystemProblemsPage(1, TERMINAL_PAGE_SIZE);
+      return res as PracticeProblem[];
+    },
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
+  });
+
+  // Detail query: fetches full problem data (test_cases, code_snippets,
+  // problem_definition, problem_hints) only when a problem ID is in the URL.
+  const {
+    data: detailProblem,
+    isLoading: detailLoading,
+    error: detailErrorObj,
+    refetch: refetchDetail,
+  } = useQuery({
+    queryKey: ["terminal", "problem", targetId, user?.id],
+    queryFn: () => fetchProblemById(targetId),
+    enabled: !!targetId,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+  });
+
+  // Combined loading/error state for the initial page load.
+  const problemsLoading = !targetId ? catalogLoading : (detailLoading || catalogLoading);
+  const problemsError =
+    !targetId
+      ? (catalogErrorObj ? (catalogErrorObj?.message ?? "Failed to load problem catalog") : null)
+      : (detailErrorObj ? (detailErrorObj?.message ?? "Failed to load problem") : null);
+
+  // Retry — invalidates the relevant query to trigger a refetch.
+  const retryProblems = useCallback(() => {
+    if (targetId) {
+      void refetchDetail();
+    } else {
+      void refetchCatalog();
+    }
+  }, [refetchCatalog, refetchDetail, targetId]);
 
   // Terminal mode: 'problems' (show problem list & test cases) | 'no-problem' (editor + output only)
   const [mode, setMode] = useState<'problems' | 'no-problem'>('problems');
@@ -292,7 +337,7 @@ const Terminal = () => {
 
   // ── Load problem into editor ───────────────────────────────
   const loadProblem = useCallback(
-    (problem: PracticeProblem, allProblems?: PracticeProblem[]) => {
+    (problem: PracticeProblem) => {
       setActiveProblem(problem);
       setActiveFile(problem.github_oid || problem.id);
       setOutput(null);
@@ -342,9 +387,6 @@ const Terminal = () => {
       setCustomInput("");
       setCustomInputActive(false);
       setIsCustomInputRun(false);
-
-      // Sync solved status on problem objects (in case we come from list)
-      if (allProblems) setProblems(allProblems);
     },
     [setActiveFile, setActiveProblemId, setCode, setCustomInput, setCustomInputActive, setLanguage, setOutput, setTestCases, activeBattleRoom, customLobby]
   );
@@ -401,12 +443,12 @@ const exitScratchMode = useCallback(() => {
     // this, exiting a hidden-problem state leaves activeProblem === null, so the
     // sidebar and editor render a blank canvas and the description disappears.
     if (lastProblemRef.current) {
-      loadProblem(lastProblemRef.current, problems);
+      loadProblem(lastProblemRef.current);
     }
     setIsPanelOpen(true);
     setIsSidebarCollapsed(false);
     if (sidebarWidth < 220) setSidebarWidth(360);
-  }, [setSidebarWidth, sidebarWidth, problems, loadProblem]);
+  }, [setSidebarWidth, sidebarWidth, catalogProblems, loadProblem]);
   // The header "Hide/Show Problems" button must run the full enter/exit above —
   // a bare setMode flip leaves the sidebar mounted, the problem context live,
   // and the old code in the editor.
@@ -415,51 +457,31 @@ const exitScratchMode = useCallback(() => {
     else exitScratchMode();
   }, [mode, enterScratchMode, exitScratchMode]);
 
-  // ── Load all system problems on mount ─────────────────────
+  // ── Resolve initial problem from URL or catalog ────────────
+  // When a URL id is present and the detail query resolves, load the full
+  // problem into the editor. When no URL id, auto-select the first catalog
+  // problem once it loads.
   useEffect(() => {
-    let mounted = true;
-    const controller = new AbortController();
-    setProblemsLoading(true);
+    if (targetId && detailProblem && activeProblem?.id !== detailProblem.id) {
+      // Load into editor on next tick to avoid synchronous setState in effect
+      const t = setTimeout(() => loadProblem(detailProblem as PracticeProblem));
+      return () => clearTimeout(t);
+    }
+  }, [targetId, detailProblem, activeProblem?.id, loadProblem]);
 
-    fetchSystemProblems(controller.signal)
-      .then((data) => {
-        if (!mounted) return;
-        if (!Array.isArray(data)) throw new Error("Invalid problem payload");
-        setProblems(data);
-        setProblemsError(null);
-
-        // Auto-select: by URL id, or first problem
-        let initial: PracticeProblem | null = null;
-        if (targetId) {
-          initial =
-            data.find(
-              (p: PracticeProblem) =>
-                p.id === targetId ||
-                p.github_oid === targetId ||
-                String(p.problem_number) === targetId
-            ) ?? null;
-        }
-        if (!initial && data.length > 0) initial = data[0];
-        // Scratch mode owns the editor: a catalog refresh (login restore,
-        // retry) must not yank the default wrapper away and load a problem
-        // the user explicitly hid.
-        if (initial && mode !== 'no-problem') loadProblem(initial, data);
-      })
-      .catch((e) => {
-        // Ignore abort/cancellation errors (React 18 StrictMode double-invoke,
-        // user navigation, etc.). Only log unexpected errors.
-        if (e.name !== "AbortError" && e.name !== "CanceledError") {
-          console.error("Failed to load problems:", e);
-          setProblemsError("The complete problem catalog could not be loaded.");
-        }
-      })
-      .finally(() => {
-        if (mounted) setProblemsLoading(false);
-      });
-
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, problemsNonce]);
+  useEffect(() => {
+    // No URL id — when the catalog loads, auto-select the first problem.
+    if (!targetId && catalogProblems.length > 0 && !activeProblem && mode === 'problems') {
+      const firstId = catalogProblems[0].id || catalogProblems[0].github_oid;
+      if (firstId) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("id", firstId);
+          return next;
+        });
+      }
+    }
+  }, [targetId, catalogProblems, activeProblem, mode, setSearchParams]);
 
   // ── Handle language switch (load boilerplate for new lang) ─
   const handleLanguageChange = useCallback(
@@ -491,14 +513,15 @@ const exitScratchMode = useCallback(() => {
   // ── Select problem from sidebar ───────────────────────────
   const handleSelectProblem = useCallback(
     (problem: PracticeProblem) => {
+      // Set the URL id — the detail query will fetch full problem data.
+      const id = problem.id || problem.github_oid || String(problem.problem_number ?? "");
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("id", problem.id);
+        next.set("id", id);
         return next;
       });
-      loadProblem(problem);
     },
-    [loadProblem, setSearchParams]
+    [setSearchParams]
   );
 
   // ── Execute code ──────────────────────────────────────────
@@ -544,22 +567,26 @@ const exitScratchMode = useCallback(() => {
 
         // Update solved status in local list if submission passed
         if (mode === "SUBMIT" && data.status === "PASSED" && activeProblem) {
-          setProblems((prev) =>
-            prev.map((p) =>
-              p.id === activeProblem.id
-                ? { ...p, isSolved: true, solvedAt: new Date().toISOString(), attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage }
-                : p
-            )
+          queryClient.setQueryData(
+            [...queryKeys.problems.system({ userId: user?.id }), 'terminal-catalog'],
+            (old: PracticeProblem[] | undefined) =>
+              (old ?? []).map((p) =>
+                p.id === activeProblem.id
+                  ? { ...p, isSolved: true, solvedAt: new Date().toISOString(), attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage }
+                  : p
+              )
           );
           setActiveProblem((prev) =>
             prev ? { ...prev, isSolved: true, solvedAt: new Date().toISOString(), lastCode: nextCode, lastLanguage: nextLanguage } : prev
           );
         } else if (mode === "SUBMIT" && activeProblem) {
           // Still count the attempt and save lastCode/lastLanguage
-          setProblems((prev) =>
-            prev.map((p) =>
-              p.id === activeProblem.id ? { ...p, attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage } : p
-            )
+          queryClient.setQueryData(
+            [...queryKeys.problems.system({ userId: user?.id }), 'terminal-catalog'],
+            (old: PracticeProblem[] | undefined) =>
+              (old ?? []).map((p) =>
+                p.id === activeProblem.id ? { ...p, attempts: (p.attempts ?? 0) + 1, lastCode: nextCode, lastLanguage: nextLanguage } : p
+              )
           );
           setActiveProblem((prev) =>
             prev ? { ...prev, lastCode: nextCode, lastLanguage: nextLanguage } : prev
@@ -595,6 +622,8 @@ const exitScratchMode = useCallback(() => {
       setIsCustomInputRun,
       setStatus,
       authorizeExecution,
+      queryClient,
+      user?.id,
     ]
   );
 
@@ -718,7 +747,7 @@ const exitScratchMode = useCallback(() => {
         <div className="w-full h-full bg-raised border-r border-subtle-line shadow-2xl overflow-hidden relative">
           <div className="flex flex-col h-full" style={{ width: `${sidebarWidth}px` }}>
             <PracticeSidebar
-              problems={problems}
+              problems={catalogProblems}
               activeProblem={activeProblem}
               onSelectProblem={handleSelectProblem}
               width={sidebarWidth}
