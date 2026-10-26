@@ -1,6 +1,7 @@
 import { Router, type Router as ExpressRouter } from "express";
 import rateLimit from "express-rate-limit";
 import authcontroller from "../controllers/auth.js";
+import { socketToken } from "../controllers/auth.js";
 import { authentication } from "../middleware/authentication.js";
 import { validate, signupSchema, signinSchema, googleAuthSchema, googleCallbackSchema, otpSendSchema, otpVerifySchema, passwordResetRequestSchema, passwordResetConfirmSchema } from "../middleware/validation.js";
 
@@ -20,6 +21,7 @@ authRouter.post('/signup', authLimiter, validate(signupSchema), authcontroller.s
 authRouter.post('/signin', authLimiter, validate(signinSchema), authcontroller.signin);
 authRouter.post('/signout', authcontroller.signout);
 authRouter.get('/me', authentication, authcontroller.me);
+authRouter.get('/socket-token', authentication, socketToken);
 
 // ---- Firebase email flows (OTP + password reset) ----
 

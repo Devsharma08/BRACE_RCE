@@ -1,8 +1,9 @@
+import jwt from "jsonwebtoken";
 import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import { getToken } from "../lib/jwt.js";
+import { getToken, JWT_SECRET } from "../lib/jwt.js";
 import type { AuthRequest } from "../middleware/authentication.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateOtp } from "../lib/otp.js";
@@ -18,6 +19,9 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
         secure: process.env.NODE_ENV === "production",
+        // Share cookie across subdomains so WebSocket (wss://bracerce.server.devsharma.dev)
+        // receives the token cookie set via the Vercel-proxied API (bracerce.devsharma.dev)
+        domain: process.env.COOKIE_DOMAIN || ".devsharma.dev",
     });
 
     setTokenCookie = async (res: any, userId: string) => {
@@ -481,5 +485,17 @@ export class AuthController {
 }
 
 const authcontroller = new AuthController();
+
+// Endpoint to get a socket.io auth token (short-lived JWT).
+// Used by the frontend when the token cookie may not be sent
+// (e.g., cross-origin WebSocket from Vercel-hosted frontend to
+// backend EC2 domain).
+export const socketToken = async (req: any, res: any) => {
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ message: "Not authenticated" });
+    if (!JWT_SECRET) return res.status(500).json({ message: "JWT secret not configured" });
+    const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1h", algorithm: "HS256" });
+    res.json({ token });
+};
 
 export default authcontroller;
