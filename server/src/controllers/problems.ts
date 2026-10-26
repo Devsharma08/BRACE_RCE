@@ -44,6 +44,25 @@ const USER_PROGRESS_SELECT = {
 } as const;
 
 /**
+ * Fields shipped in list responses (`/problems/system`, `/problems/custom`).
+ *
+ * List consumers only need metadata for display and filtering — the Terminal
+ * sidebar, the Problems index, the Dashboard, CreateRoom, ChallengeModal, and
+ * DataStructureDetail all render name / difficulty / solved status / attempts.
+ *
+ * Test cases, code snippets, and the full problem statement are NOT selected here.
+ * They live only in the detail response (`GET /problems/:id`), which the Terminal
+ * fetches on demand when a user opens a specific problem.
+ */
+const SUMMARY_SELECT = {
+    id: true,
+    name: true,
+    problem_number: true,
+    github_oid: true,
+    difficulty_level: true,
+} as const;
+
+/**
  * Ship every stored test case to the client, WITH its real input and expected
  * output — including the ones flagged `is_public: false`.
  *
@@ -58,7 +77,8 @@ const USER_PROGRESS_SELECT = {
  * submissions against them server-side), so grading is unaffected; this only
  * prevents the client from ever seeing the hidden answers at all.
  *
- * Both the list and detail endpoints call this so the two cannot drift.
+ * Called only from the detail endpoint (`GET /problems/:id`) — the list
+ * endpoints no longer select test_cases at all.
  */
 function shipTestCases<
     T extends { id: string; input: string; expectedOutput: string | null; is_public: boolean },
@@ -109,27 +129,7 @@ class Problems {
                     skip,
                     take: limit,
                     select: {
-                        id: true,
-                        name: true,
-                        problem_number: true,
-                        github_oid: true,
-                        problem_definition: true,
-                        problem_hints: true,
-                        difficulty_level: true,
-                        timeLimitMs: true,
-                        createdAt: true,
-                        code_snippets: {
-                            select: { language: true, code: true }
-                        },
-                        test_cases: {
-                            // Every stored case is shipped so the UI can render
-                            // the full 15-case list. Non-public cases keep their
-                            // input and expected output withheld below — the
-                            // client learns how many cases exist and how each
-                            // one scored, never what to feed in.
-                            orderBy: { id: "asc" },
-                            select: { id: true, input: true, expectedOutput: true, is_public: true }
-                        },
+                        ...SUMMARY_SELECT,
                         userProgress: userId
                             ? { where: { userId }, select: USER_PROGRESS_SELECT }
                             : // Guest: skip the join entirely. An undefined key
@@ -146,7 +146,6 @@ class Problems {
                 const { userProgress, ...rest } = p as any;
                 return {
                     ...withDisplayProblemName(rest),
-                    test_cases: shipTestCases((rest as any).test_cases ?? []),
                     isSolved: progress?.isSolved ?? false,
                     solvedAt: progress?.solvedAt ?? null,
                     attempts: progress?.attempts ?? 0,
@@ -262,7 +261,10 @@ class Problems {
             const [problems, total] = await Promise.all([
                 prisma.problem.findMany({
                     where: { creatorId: userId, isCustom: true },
-                    include: { test_cases: true, code_snippets: true },
+                    select: {
+                        ...SUMMARY_SELECT,
+                        createdAt: true,
+                    },
                     orderBy: { createdAt: 'desc' },
                     skip,
                     take: limit,

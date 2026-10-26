@@ -13,6 +13,7 @@ jest.mock("../utils/problemName.js", () => ({
 
 // Assign mocks directly to Prisma delegate methods
 (prisma.problem.findMany as any) = jest.fn();
+(prisma.problem.findFirst as any) = jest.fn();
 (prisma.problem.create as any) = jest.fn();
 (prisma.problem.upsert as any) = jest.fn();
 (prisma.problem.count as any) = jest.fn();
@@ -47,15 +48,8 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
           id: "prob-1", 
           name: "LeetCode-01E", 
           problem_number: 1, 
-          isCustom: false,
-          github_oid: "two-sum",
-          problem_definition: "Test problem",
-          problem_hints: [],
           difficulty_level: "EASY",
-          timeLimitMs: 60000,
-          createdAt: new Date(),
-          code_snippets: [],
-          test_cases: [],
+          github_oid: "two-sum",
           userProgress: [{
             isSolved: false,
             solvedAt: null,
@@ -80,23 +74,46 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
     });
 
     test("should ship all test cases with their real input and expected output", async () => {
+      (prisma.problem.findFirst as jest.Mock<any>).mockResolvedValue({
+        id: "prob-1",
+        name: "Masked Cases Problem",
+        problem_number: 1,
+        isCustom: false,
+        problem_definition: "Test",
+        problem_hints: [],
+        difficulty_level: "EASY",
+        code_snippets: [],
+        test_cases: [
+          { id: "tc-1", input: "1", expectedOutput: "1", is_public: true },
+          { id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false },
+          { id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false },
+        ],
+        userProgress: [],
+      });
+
+      const res = await request(app)
+        .get("/api/v1/problems/prob-1")
+        .set("Cookie", cookieHeader);
+
+      expect(res.status).toBe(200);
+      const cases = res.body.problem.test_cases;
+      // Every case ships with its real input and expected output — including
+      // the non-public ones. The terminal Output panel renders all 15 in full.
+      expect(cases[0]).toEqual({ id: "tc-1", input: "1", expectedOutput: "1", is_public: true });
+      // Hidden cases are still present (so the UI reports the total count) but
+      // their content is now sent whole, not blanked.
+      expect(cases[1]).toEqual({ id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false });
+      expect(cases[2]).toEqual({ id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false });
+    });
+
+    test("should NOT include test_cases or code_snippets in list response", async () => {
       (prisma.problem.findMany as jest.Mock<any>).mockResolvedValue([
         {
           id: "prob-1",
-          name: "Masked Cases Problem",
+          name: "LeetCode-01E",
           problem_number: 1,
-          isCustom: false,
-          problem_definition: "Test",
-          problem_hints: [],
           difficulty_level: "EASY",
-          timeLimitMs: 60000,
-          createdAt: new Date(),
-          code_snippets: [],
-          test_cases: [
-            { id: "tc-1", input: "1", expectedOutput: "1", is_public: true },
-            { id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false },
-            { id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false },
-          ],
+          github_oid: "two-sum",
           userProgress: [],
         },
       ]);
@@ -107,14 +124,12 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
         .set("Cookie", cookieHeader);
 
       expect(res.status).toBe(200);
-      const cases = res.body.problems[0].test_cases;
-      // Every case ships with its real input and expected output — including
-      // the non-public ones. The terminal Output panel renders all 15 in full.
-      expect(cases[0]).toEqual({ id: "tc-1", input: "1", expectedOutput: "1", is_public: true });
-      // Hidden cases are still present (so the UI reports the total count) but
-      // their content is now sent whole, not blanked.
-      expect(cases[1]).toEqual({ id: "tc-2", input: "secret-input", expectedOutput: "secret-output", is_public: false });
-      expect(cases[2]).toEqual({ id: "tc-3", input: "hidden-in", expectedOutput: "hidden-out", is_public: false });
+      expect(res.body.problems).toHaveLength(1);
+      // List endpoint should NOT include test_cases or code_snippets
+      expect(res.body.problems[0]).not.toHaveProperty("test_cases");
+      expect(res.body.problems[0]).not.toHaveProperty("code_snippets");
+      expect(res.body.problems[0]).not.toHaveProperty("problem_definition");
+      expect(res.body.problems[0]).not.toHaveProperty("problem_hints");
     });
   });
 
@@ -124,18 +139,10 @@ describe("Problems Controller Routes (/api/v1/problems)", () => {
         { 
           id: "custom-1", 
           name: "My Problem", 
-          isCustom: true, 
-          creatorId: "user-1",
+          difficulty_level: "EASY",
           problem_number: 1,
           github_oid: "my-problem",
-          problem_definition: "Test problem",
-          problem_hints: [],
-          difficulty_level: "EASY",
-          timeLimitMs: 60000,
-          test_cases: [],
-          code_snippets: [],
           createdAt: new Date(),
-          userProgress: []
         },
       ]);
       (prisma.problem.count as jest.Mock<any>).mockResolvedValue(1);
