@@ -170,17 +170,14 @@ function getOrCreateSocket(userId: string): Socket {
   // This is needed when the frontend is on a different domain than the
   // socket.io server (e.g., Vercel frontend → EC2 backend), because the
   // HTTP-only token cookie won't be sent cross-domain for WebSocket.
-  let socketToken: string | undefined;
-  const userApi = api;
-  const tokenResponse = await userApi.get("/auth/socket-token").catch(() => null);
-  if (tokenResponse?.data?.token) {
-    socketToken = tokenResponse.data.token;
-  }
-
-  // Pass user identity in auth handshake (server must support this)
-  // Prefer WebSocket transport, fall back to polling only if WS unavailable.
+  // Using the auth callback ensures the token is fetched during the
+  // socket.io handshake, before any connection attempt is made.
   socket = io(socketUrl, {
-    auth: { token: socketToken, userId },
+    auth: (cb) => {
+      api.get("/auth/socket-token")
+        .then((res) => cb({ token: res.data?.token, userId }))
+        .catch(() => cb({ userId }));
+    },
     withCredentials: true,
     transports: ["websocket", "polling"],
   });
