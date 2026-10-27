@@ -1052,7 +1052,7 @@ export const Battle = () => {
       if (!mounted) return;
 
       // Only act if this is about OUR opponent (not myself).
-      if (data.userId === user?.id) return;
+      if (data.userId === myUserId) return;
 
       toast.info("Opponent disconnected — solve the problem to claim victory.", {
         id: "opponent-disconnected",
