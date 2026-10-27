@@ -29,6 +29,12 @@ const Layout = () => {
   // the full-size footer crowds their vertical layout.
   const isTrimmedFooter = pathname.startsWith('/profile');
 
+  // The /friends workspace renders its own full-height 3-column chat layout
+  // with internal scrolling — a document-level footer would force the page to
+  // scroll and break the contained scroll budget. Skip the footer here so the
+  // friends page is self-contained.
+  const noFooter = pathname === '/friends';
+
   // Routes rendered inside ConsoleShell (Root.tsx). ConsoleShell mounts the
   // FIXED DashboardSidebar rail and the FIXED MobileBottomNav, but the footer
   // is rendered by Layout OUTSIDE that shell — so on these paths the footer
@@ -90,10 +96,12 @@ const Layout = () => {
             <Outlet />
           </main>
 
-          <Footer
-            variant={isTrimmedFooter ? 'compact' : 'full'}
-            offsetRail={isConsoleRoute}
-          />
+          {!noFooter ? (
+            <Footer
+              variant={isTrimmedFooter ? 'compact' : 'full'}
+              offsetRail={isConsoleRoute}
+            />
+          ) : null}
         </>
       )}
     </div>

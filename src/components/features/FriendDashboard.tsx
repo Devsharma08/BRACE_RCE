@@ -437,7 +437,7 @@ const handleRemoveFriend = async (friendId: string) => {
     : undefined;
 
   return (
-    <div className="flex w-full text-fg font-mono">
+    <div className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-col text-fg font-mono overflow-hidden">
       {/* ══════════════════════════════════════════════════════════════════════ */}
 
 
@@ -449,7 +449,7 @@ const handleRemoveFriend = async (friendId: string) => {
           that double-spaced the whole friends workspace. The calc() below only
           compensates for the header's height in the scroll budget.
           pb-16 (not pb-14) clears the 56px MobileBottomNav on <768px. */}
-      <main className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-1 overflow-hidden pb-16 md:pb-0">
+      <main className="flex min-h-0 flex-1 overflow-hidden pb-16 md:pb-0">
 
         {/* ── LEFT COLUMN: NAVIGATION + CHAT LIST ─────────────────────────── */}
         <aside

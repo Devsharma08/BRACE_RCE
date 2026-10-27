@@ -55,7 +55,6 @@ const railOffsetClass = "md:ml-[var(--sidebar-width)]";
 test.each([
   ["/dashboard", "DASHBOARD_PAGE"],
   ["/lobby", "LOBBY_PAGE"],
-  ["/friends", "FRIENDS_PAGE"],
   ["/profile", "PROFILE_PAGE"],
   ["/create-room", "CREATE_ROOM_PAGE"],
   ["/problems", "PROBLEMS_PAGE"],
@@ -63,6 +62,12 @@ test.each([
   renderAt(path);
   expect(screen.getByText(page)).toBeInTheDocument();
   expect(screen.getByRole("contentinfo").className).toContain(railOffsetClass);
+});
+
+test("/friends renders no footer (self-contained scroll layout)", () => {
+  renderAt("/friends");
+  expect(screen.getByText("FRIENDS_PAGE")).toBeInTheDocument();
+  expect(screen.queryByRole("contentinfo")).not.toBeInTheDocument();
 });
 
 test.each([

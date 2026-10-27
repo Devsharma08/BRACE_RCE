@@ -2,9 +2,10 @@ import { prisma } from "../../lib/prisma.js";
 import { displayProblemName } from "../../utils/problemName.js";
 import type { HandlerCtx } from "../types.js";
 import { getSocketId } from "../stateRedis.js";
+import { emitToUser } from "../ioRegistry.js";
 
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
-    const { io, socket, userId } = ctx;
+    const { socket, userId } = ctx;
 
     //DIRECT CHALLENGE PING — supports RANDOM (difficulty) and CUSTOM (problemId)
     socket.on("send_challenge", async (data: {
@@ -15,8 +16,6 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         problemId?: string,
         problemName?: string,
     }) => {
-        const targetSocketId = await getSocketId(data.targetUserId);
-
         const mode = data.mode ?? "RANDOM";
         const difficulty = (data.difficulty ?? "MEDIUM").toUpperCase();
         let problemId = data.problemId;
@@ -62,7 +61,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
             problemName,
         };
 
-        // queue notification even if target is offline
+        // Queue notification even if target is offline
         try {
             const { notifyChallenge } = await import("../../services/notificationService.js");
             const challenger = await prisma.user.findUnique({
@@ -77,13 +76,15 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
                 problemId,
                 problemName,
             });
-            // Use io.to(userId) to reach all sockets for the target user across all PM2 workers
-            // (each socket joins its userId room on connect)
-            io.to(data.targetUserId).emit("incoming_challenge", payload);
-            io.to(data.targetUserId).emit("notification:new", notif);
+            // Use emitToUser for guaranteed cross-process delivery — reaches ALL
+            // sockets (tabs/devices) of the target, not just the current worker.
+            // io.to(userId) only works within one PM2 worker's socket rooms,
+            // causing mobile↔desktop delivery failures.
+            await emitToUser(data.targetUserId, "incoming_challenge", payload);
+            await emitToUser(data.targetUserId, "notification:new", notif);
         } catch (e) {
             console.error("challenge notify error:", e);
-            io.to(data.targetUserId).emit("incoming_challenge", payload);
+            await emitToUser(data.targetUserId, "incoming_challenge", payload);
         }
     });
 
@@ -154,27 +155,30 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
 
         const roomId = `room-${event.id}`;
 
-        // Instantly wrap both players to arena, using the fetched problemId + timeLimitMs
-        io.to(socket.id).emit("custom_match_started", {
-            roomId, problemId, timeLimitMs
-        })
+         // Instantly wrap both players to arena, using the fetched problemId + timeLimitMs.
+         // Use emitToUser for guaranteed cross-process delivery — reaches ALL sockets
+         // (tabs/devices), fixing the desktop UI not updating after accept when the
+         // active tab is on a different PM2 worker.
+         await emitToUser(userId, "custom_match_started", {
+             roomId, problemId, timeLimitMs
+         });
 
-        io.to(data.challengerId).emit("custom_match_started", { roomId, problemId, timeLimitMs });
+         await emitToUser(data.challengerId, "custom_match_started", { roomId, problemId, timeLimitMs });
 
-        // challenge-accepted queue entries for both players
-        try {
-            const { notifyChallengeResult } = await import("../../services/notificationService.js");
-            const [me, other] = await Promise.all([
-                prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
-                prisma.user.findUnique({ where: { id: data.challengerId }, select: { username: true } }),
-            ]);
-            const n1 = await notifyChallengeResult(userId, true, other?.username ?? "Friend");
-            const n2 = await notifyChallengeResult(data.challengerId, true, me?.username ?? "Friend");
-            io.to(socket.id).emit("notification:new", n1);
-            io.to(data.challengerId).emit("notification:new", n2);
-        } catch (e) {
-            console.error("challenge accept notify error:", e);
-        }
+         // challenge-accepted queue entries for both players
+         try {
+             const { notifyChallengeResult } = await import("../../services/notificationService.js");
+             const [me, other] = await Promise.all([
+                 prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+                 prisma.user.findUnique({ where: { id: data.challengerId }, select: { username: true } }),
+             ]);
+             const n1 = await notifyChallengeResult(userId, true, other?.username ?? "Friend");
+             const n2 = await notifyChallengeResult(data.challengerId, true, me?.username ?? "Friend");
+             await emitToUser(userId, "notification:new", n1);
+             await emitToUser(data.challengerId, "notification:new", n2);
+         } catch (e) {
+             console.error("challenge accept notify error:", e);
+         }
 
     })
 
@@ -186,10 +190,10 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
                 where: { id: userId },
                 select: { username: true }
             });
-            // Use io.to(userId) to reach all sockets for the challenger across all PM2 workers
+            // Use emitToUser to reach all sockets for the challenger across all PM2 workers
             const n = await notifyChallengeResult(data.challengerId, false, me?.username ?? "Friend");
-            io.to(data.challengerId).emit("notification:new", n);
-            io.to(data.challengerId).emit("challenge_declined", { byUserId: userId });
+            await emitToUser(data.challengerId, "notification:new", n);
+            await emitToUser(data.challengerId, "challenge_declined", { byUserId: userId });
         } catch (e) {
             console.error("challenge decline notify error:", e);
         }

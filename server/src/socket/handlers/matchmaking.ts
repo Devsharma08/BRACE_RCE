@@ -5,7 +5,7 @@ import { emitToUser } from "../ioRegistry.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
-    const { io, socket, userId } = ctx;
+    const { socket, userId } = ctx;
     const { activeSearchIntervals } = ctx.state;
 
     // PVP matching events
@@ -143,13 +143,18 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                             prisma.user.findUnique({ where: { id: opponentQueue.userId }, select: { username: true, bio: true, avatarUrl: true } })
                         ]);
 
-                        // Notify both players to ACCEPT with opponent data.
-                        // Use emitToUser for guaranteed cross-process delivery.
-                        socket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user2, opponentUserId: opponentQueue.userId });
+                         // Notify both players to ACCEPT with opponent data.
+                         // Use emitToUser for guaranteed cross-process delivery to ALL
+                         // sockets (tabs/devices) — socket.emit only reaches the current
+                         // socket, which causes the cross-platform search discrepancy
+                         // when the user's active tab is on a different PM2 worker.
+                         await emitToUser(userId, "match_found_pending", {
+                             matchId: roomName, problemId, opponent: user2, opponentUserId: opponentQueue.userId
+                         });
 
-                        await emitToUser(opponentQueue.userId, "match_found_pending", {
-                            matchId: roomName, problemId, opponent: user1, opponentUserId: userId
-                        });
+                         await emitToUser(opponentQueue.userId, "match_found_pending", {
+                             matchId: roomName, problemId, opponent: user1, opponentUserId: userId
+                         });
 
                         // Acceptance timeout — if neither player accepts within 15s,
                         // cancel the event and notify both players so they can re-queue.

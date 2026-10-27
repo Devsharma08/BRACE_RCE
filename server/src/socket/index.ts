@@ -77,16 +77,17 @@ async function cleanupStaleSockets(): Promise<void> {
       await client.connect();
     }
     const pattern = `${CACHE_KEY_PREFIX}user:*:sockets`;
-    let cursor = "0";
+    let cursor = 0;
     let totalDeleted = 0;
     do {
-      const [nextCursor, keys] = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
-      cursor = nextCursor;
+      const result = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
+      cursor = result.cursor;
+      const keys = result.keys;
       if (keys.length > 0) {
         await client.del(keys);
         totalDeleted += keys.length;
       }
-    } while (cursor !== "0");
+    } while (cursor !== 0);
     if (totalDeleted > 0) {
       logger.info(`Cleaned up ${totalDeleted} stale socket entries from Redis`);
     }
