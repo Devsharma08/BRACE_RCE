@@ -7,6 +7,13 @@ import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { useAuth } from "./AuthContext";
 
+// Simple console wrapper for socket diagnostics. Matches server's logger interface.
+const logger = {
+  info: (msg: string) => console.info(`[socket] ${msg}`),
+  warn: (msg: string) => console.warn(`[socket] ${msg}`),
+  error: (msg: string) => console.error(`[socket] ${msg}`),
+};
+
 // Module-level singleton to ensure the context is the SAME instance across all
 // imports — including duplicate module copies emitted alongside sources (the
 // stray *.js files; see docs/CONTEXT_WINDOW_RECENT_CHANGES.md §4). A plain
@@ -151,6 +158,77 @@ const socketSingletons = new Map<string, Socket | null>();
 // Track current authenticated user for this socket
 let currentSocketUserId: string | null = null;
 
+// Transport fallback memory: when WebSocket repeatedly fails the handshake,
+// pin subsequent connections to polling so the user gets a working socket
+// instead of cycling through "closed before established" errors.
+// Stored per-URL so dev (localhost) and prod (EC2) don't interfere.
+const wsFailureCounts = new Map<string, number>();
+const WS_FAILURE_THRESHOLD = 3;
+
+function resolveSocketUrl(): string {
+  const rawSocketUrl =
+    import.meta.env.VITE_SOCKET_URL ||
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    "http://localhost:3000";
+  return rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+}
+
+function createSocket(userId: string): Socket {
+  const socketUrl = resolveSocketUrl();
+  const failCount = wsFailureCounts.get(socketUrl) ?? 0;
+  const preferPolling = failCount >= WS_FAILURE_THRESHOLD;
+  const transports = preferPolling ? ["polling", "websocket"] : ["websocket", "polling"];
+
+  const socket = io(socketUrl, {
+    auth: { userId },
+    withCredentials: true,
+    transports,
+    reconnection: true,
+    reconnectionAttempts: 30,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    timeout: 10000,
+    pingInterval: 25000,
+    pingTimeout: 10000,
+    upgrade: true,
+    rememberUpgrade: true,
+    autoUpgrade: true,
+    randomizationFactor: 0.5,
+  });
+
+  // Track WebSocket handshake failures for transport fallback memory.
+  // After WS_FAILURE_THRESHOLD failures, the next socket creation will start
+  // on polling instead of attempting WebSocket first, avoiding the
+  // "WebSocket is closed before the connection is established" cycle.
+  socket.on("connect_error", (err: Error) => {
+    const msg = err?.message ?? "";
+    const isTransportError =
+      msg.includes("websocket") ||
+      msg.includes("ETIMEDOUT") ||
+      msg.includes("timeout") ||
+      msg.includes("not opened");
+    if (isTransportError) {
+      const count = (wsFailureCounts.get(socketUrl) ?? 0) + 1;
+      wsFailureCounts.set(socketUrl, count);
+    }
+  });
+
+  // When reconnection exhausts all 30 attempts, clear the singleton so a
+  // fresh socket (potentially on polling if the fallback triggered) can be
+  // created on the next render cycle.
+  socket.on("reconnect_failed", () => {
+    socketSingletons.set(userId, null);
+  });
+
+  // Clear failure memory and downgrade flag once we successfully connect.
+  socket.on("connect", () => {
+    wsFailureCounts.set(socketUrl, 0);
+  });
+
+  return socket;
+}
+
 function getOrCreateSocket(userId: string): Socket {
   // If user changed, dispose old socket
   if (currentSocketUserId && currentSocketUserId !== userId) {
@@ -160,25 +238,19 @@ function getOrCreateSocket(userId: string): Socket {
   }
 
   currentSocketUserId = userId;
-  let socket = socketSingletons.get(userId);
-  if (socket) return socket;
+  const existing = socketSingletons.get(userId);
+  if (existing && existing.connected) return existing;
+  if (existing && !existing.connected && !existing.disconnected) {
+    // Socket is reconnecting — reuse it, don't create a duplicate.
+    return existing;
+  }
 
-  const rawSocketUrl =
-    import.meta.env.VITE_SOCKET_URL ||
-    import.meta.env.VITE_API_URL ||
-    import.meta.env.VITE_BACKEND_URL ||
-    "http://localhost:3000";
-  const socketUrl = rawSocketUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+  // If the existing socket was manually disconnected, create a fresh one.
+  if (existing && existing.disconnected) {
+    socketSingletons.set(userId, null);
+  }
 
-  // For cross-domain WebSocket (Vercel frontend → EC2 backend), the HTTP-only
-  // token cookie may not be sent. Pass userId in the handshake; the server
-  // accepts it when the cookie is absent.
-  // Prefer WebSocket transport, fall back to polling only if WS unavailable.
-  socket = io(socketUrl, {
-    auth: { userId },
-    withCredentials: true,
-    transports: ["websocket", "polling"],
-  });
+  const socket = createSocket(userId);
   socketSingletons.set(userId, socket);
   return socket;
 }
@@ -436,16 +508,30 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setCurrentBattleRoomId(battleRoomManager.roomId);
   }, []);
 
-  useEffect(() => {
-    if (!userId || socketCreatedRef.current) return;
+   useEffect(() => {
+     if (!userId) return;
 
-    socketCreatedRef.current = true;
-    const newSocket = getOrCreateSocket(userId);
-    socketRef.current = newSocket;
-    // Increment the tick so React always detects a change and re-renders
-    // consumers — even when the singleton returns the same Socket instance.
-    setSocketTick((t) => t + 1);
-    const socket = newSocket;
+     // Guard against creating a duplicate socket. If we already have one that
+     // is (re)connecting or connected, reuse it. If the previous socket was
+     // permanently disconnected (by disconnect/reconnect-failed handlers),
+     // socketCreatedRef is false and we create a fresh one here.
+     const existingSocket = socketRef.current;
+     if (socketCreatedRef.current && existingSocket && (existingSocket.connected || existingSocket.connecting)) {
+       return;
+     }
+
+     socketCreatedRef.current = true;
+     const newSocket = getOrCreateSocket(userId);
+     socketRef.current = newSocket;
+     // Force-connect the socket (it may have been created but not yet
+     // initiated, e.g. after a manual disconnect).
+     if (!newSocket.connected && !newSocket.connecting) {
+       newSocket.connect();
+     }
+     // Increment the tick so React always detects a change and re-renders
+     // consumers — even when the singleton returns the same Socket instance.
+     setSocketTick((t) => t + 1);
+     const socket = newSocket;
 
     const cleanupFns: Array<() => void> = [];
     const bind = (event: string, handler: (...args: any[]) => void) => {
@@ -558,13 +644,68 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setActiveBattleRoom(data);
     });
 
-    bind("disconnect", () => {
+    bind("disconnect", (reason: string) => {
       setIsConnected(false);
       disconnectedAtRef.current = Date.now();
       const prev = matchmakingStatusRef.current;
       reconnectStatusRef.current = prev === "SEARCHING" ? "SEARCHING" : "IDLE";
       if (prev !== "SEARCHING") setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
+
+      if (reason === "io server disconnect" || reason === "transport error") {
+        // Server explicitly dropped us or the transport died — these won't
+        // auto-reconnect in socket.io v4. Trigger a fresh socket creation.
+        socketCreatedRef.current = false;
+        socketSingletons.set(userId, null);
+        setTimeout(() => {
+          const freshSocket = getOrCreateSocket(userId);
+          socketRef.current = freshSocket;
+          setSocketTick((t) => t + 1);
+        }, 1000);
+      }
+    });
+
+    // Surface connection errors to users with a non-blocking toast, so they
+    // know real-time features are degraded and a manual refresh may be needed.
+    bind("connect_error", (err: Error & { type?: string }) => {
+      const msg = err?.message ?? "Connection error";
+      const errType = err?.type;
+      if (errType === "Unauthorized" || msg.includes("auth")) {
+        toast.error("Session expired — please sign in again.");
+        return;
+      }
+      // Non-fatal transport errors are handled silently by the reconnection
+      // strategy above. Only toast persistent failures.
+    });
+
+    // Log reconnection attempts for diagnostics + trigger state resync on
+    // the first successful reconnect after a multi-attempt sequence.
+    let reconnectAttemptCount = 0;
+    bind("reconnect_attempt", () => {
+      reconnectAttemptCount++;
+      if (reconnectAttemptCount >= 5) {
+        toast.warning("Connection unstable — retrying...", { duration: 3000 });
+      }
+    });
+    bind("reconnect", (attempt: number) => {
+      reconnectAttemptCount = 0;
+      logger.info(`Socket reconnected after ${attempt} attempt(s)`);
+    });
+    bind("reconnect_failed", () => {
+      reconnectAttemptCount = 0;
+      socketCreatedRef.current = false;
+      socketSingletons.set(userId, null);
+      toast.error("Connection lost — click to restore real-time features.", {
+        duration: 10000,
+        action: {
+          label: "Reconnect",
+          onClick: () => {
+            const freshSocket = getOrCreateSocket(userId);
+            socketRef.current = freshSocket;
+            setSocketTick((t) => t + 1);
+          },
+        },
+      });
     });
 
     bind("match_found_pending", (data) => {
@@ -720,10 +861,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     }
 
     return () => {
+      // Remove all event listeners from this socket. The socket singleton
+      // itself survives StrictMode remounts — if it's still connected or
+      // reconnecting, the next effect run will reuse it. If it was
+      // permanently disconnected, the reconnect_failed / disconnect handlers
+      // already nulled the singleton and reset socketCreatedRef.
       for (const fn of cleanupFns) fn();
-      socketCreatedRef.current = false;
-      // Do NOT null out socketState here — the socket singleton survives
-      // the effect teardown (StrictMode remount). Only clear on userId change.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, presenceFriends]);

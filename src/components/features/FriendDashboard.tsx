@@ -11,13 +11,16 @@ import {
   ChevronLeft,
   User,
   Trophy,
+  X,
+  BarChart2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../config/api";
 import { ChallengeModal } from "./ChallengeModal";
-import { TIER_COLORS, useLeaderboard } from "../../hooks/useLeaderboard";
+import { TIER_COLORS, useLeaderboard, type LeaderboardEntry } from "../../hooks/useLeaderboard";
 import { FriendsWorkspaceHeader } from "./FriendsWorkspaceHeader";
 import { useSocketInvalidation } from "../../hooks/useSocketInvalidation";
+import { getInitialsAvatar } from "../../utils/avatar";
 
 interface Friend {
   id: string;
@@ -436,6 +439,23 @@ const handleRemoveFriend = async (friendId: string) => {
     ? leaderboardRows.find((row) => row.userId === activeTab.id)
     : undefined;
 
+  // Merge leaderboard avatar data into the friends list so profile images
+  // always show the latest available avatar. The /friends endpoint may return
+  // null avatarUrl (e.g., after a GitHub avatar update) while the leaderboard
+  // cache has the fresh value from the most recent sync.
+  const friendsWithAvatars = useMemo(() => {
+    return friends.map((f) => {
+      const lbRow = leaderboardRows.find((r) => r.userId === f.id);
+      const avatarUrl = f.avatarUrl || lbRow?.avatarUrl || null;
+      return { ...f, avatarUrl };
+    });
+  }, [friends, leaderboardRows]);
+
+  // Stats overlay state — shows the full battle record on small screens
+  // when a user taps a friend's profile image. On large screens the right
+  // sidebar already shows this inline, so the overlay is mobile-only.
+  const [statsOverlayFriend, setStatsOverlayFriend] = useState<Friend | null>(null);
+
   return (
     <div className="flex h-[calc(100vh-var(--header-height))] min-w-0 flex-col text-fg font-mono overflow-hidden">
       {/* ══════════════════════════════════════════════════════════════════════ */}
@@ -486,33 +506,69 @@ const handleRemoveFriend = async (friendId: string) => {
           <div className="themed-scroll flex-1 overflow-y-auto">
             {friendsLoading ? (
               <div className="p-4 text-xs text-subtle">Loading...</div>
-            ) : friends.length === 0 ? (
+            ) : friendsWithAvatars.length === 0 ? (
               <div className="p-4 text-xs text-subtle">No friends yet</div>
             ) : (
-              friends
+              friendsWithAvatars
                 .filter((f) => f.username.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((friend) => (
-                  <button
-                    key={friend.id}
-                    onClick={() => selectFriend(friend)}
-                    className={`flex w-full items-center gap-3 border-l-2 px-3 py-3 transition-all hover:bg-surface-hover ${
-                      activeTab?.id === friend.id ? "border-l-accent-primary bg-accent-primary/10" : "border-l-transparent"
-                    }`}
-                  >
-                    <div className="relative shrink-0">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
-                        <span className="text-[9px] font-bold text-accent-primary">{friend.username.slice(0, 2).toUpperCase()}</span>
+                .map((friend) => {
+                  const isOnline = onlineIds.includes(friend.id);
+                  return (
+                    <button
+                      key={friend.id}
+                      onClick={() => selectFriend(friend)}
+                      className={`flex w-full items-center gap-3 border-l-2 px-3 py-3 transition-all hover:bg-surface-hover ${
+                        activeTab?.id === friend.id ? "border-l-accent-primary bg-accent-primary/10" : "border-l-transparent"
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
+                          {friend.avatarUrl ? (
+                            <img
+                              src={friend.avatarUrl}
+                              alt={friend.username}
+                              className="h-8 w-8 rounded-btn object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.currentTarget as HTMLImageElement;
+                                if (!target.dataset.fallback) {
+                                  target.dataset.fallback = "1";
+                                  target.src = getInitialsAvatar(friend.username);
+                                  target.className = "h-8 w-8 rounded-btn object-contain p-1";
+                                }
+                              }}
+                            />
+                          ) : (
+                            <span className="text-[9px] font-bold text-accent-primary">{friend.username.slice(0, 2).toUpperCase()}</span>
+                          )}
+                        </div>
+                        {isOnline && (
+                          <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-panel bg-accent-success" />
+                        )}
                       </div>
-                      {onlineIds.includes(friend.id) && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-panel bg-accent-success" />
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="truncate text-xs font-bold text-fg">{friend.username}</div>
+                        <div className="truncate text-[9px] text-subtle">{isOnline ? "Online now" : "Offline"}</div>
+                      </div>
+                      {/* Stats overlay trigger on small screens: tap the profile
+                          image to see the full battle record. On larger screens
+                          the right sidebar already shows this inline. */}
+                      {!isOnline && friend.avatarUrl && friend.avatarUrl.trim() !== "" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setStatsOverlayFriend(friend);
+                          }}
+                          aria-label={`View ${friend.username} stats`}
+                          className="md:hidden shrink-0 rounded-btn border border-subtle-line p-1 text-subtle hover:text-fg hover:bg-surface-hover"
+                          title={`View ${friend.username} stats`}
+                        >
+                          <BarChart2 className="h-3 w-3" />
+                        </button>
                       )}
-                    </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <div className="truncate text-xs font-bold text-fg">{friend.username}</div>
-                      <div className="truncate text-[9px] text-subtle">{onlineIds.includes(friend.id) ? "Online now" : "Offline"}</div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  );
+                })
             )}
           </div>
         </aside>
@@ -536,8 +592,24 @@ const handleRemoveFriend = async (friendId: string) => {
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
-                    <span className="text-[9px] font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                  <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-btn border border-accent-primary/20 bg-elevated">
+                    {activeTab.avatarUrl ? (
+                      <img
+                        src={activeTab.avatarUrl}
+                        alt={activeTab.username}
+                        className="h-8 w-8 rounded-btn object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (!target.dataset.fallback) {
+                            target.dataset.fallback = "1";
+                            target.src = getInitialsAvatar(activeTab.username);
+                            target.className = "h-8 w-8 rounded-btn object-contain p-1";
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-[9px] font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                    )}
                   </div>
                   <div>
                     <div className="text-sm text-fg font-bold">{activeTab.username}</div>
@@ -632,8 +704,24 @@ const handleRemoveFriend = async (friendId: string) => {
               {/* Friend Profile Card */}
               <div className="p-4 border-b border-line-low">
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-elevated border border-subtle-line flex items-center justify-center mb-3">
-                    <span className="text-lg font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                  <div className="relative mb-3 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-btn border border-accent-primary/20 bg-elevated">
+                    {activeTab.avatarUrl ? (
+                      <img
+                        src={activeTab.avatarUrl}
+                        alt={activeTab.username}
+                        className="h-16 w-16 rounded-btn object-cover"
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (!target.dataset.fallback) {
+                            target.dataset.fallback = "1";
+                            target.src = getInitialsAvatar(activeTab.username);
+                            target.className = "h-16 w-16 rounded-btn object-contain p-2";
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span className="text-lg font-bold text-accent-primary">{activeTab.username.slice(0, 2).toUpperCase()}</span>
+                    )}
                   </div>
                   <h3 className="text-sm font-bold text-fg">{activeTab.username}</h3>
                   <p className="text-[10px] text-subtle mt-1">
@@ -759,7 +847,138 @@ const handleRemoveFriend = async (friendId: string) => {
         </aside>
       </main>
 
-      <ChallengeModal friend={challengeFriend} open={Boolean(challengeFriend)} onClose={() => setChallengeFriend(null)} />
+       <ChallengeModal friend={challengeFriend} open={Boolean(challengeFriend)} onClose={() => setChallengeFriend(null)} />
+
+      {/* Stats overlay — mobile-only modal that mirrors the right sidebar's
+          battle record. Triggered by tapping the avatar/stats icon on small
+          screens where the xl sidebar is hidden. */}
+      {statsOverlayFriend && (
+        <StatsOverlay
+          friend={statsOverlayFriend}
+          record={statsOverlayFriend ? leaderboardRows.find((r) => r.userId === statsOverlayFriend.id) : undefined}
+          onClose={() => setStatsOverlayFriend(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface StatsOverlayProps {
+  friend: Friend;
+  record: LeaderboardEntry | undefined;
+  onClose: () => void;
+}
+
+function StatsOverlay({ friend, record, onClose }: StatsOverlayProps) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${friend.username} battle record`}
+    >
+      <div
+        className="w-full max-w-sm bg-base border border-subtle-line shadow-card data-[open]:animate-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-line-low p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-btn border border-accent-primary/20 bg-elevated">
+                {friend.avatarUrl ? (
+                  <img
+                    src={friend.avatarUrl}
+                    alt={friend.username}
+                    className="h-10 w-10 rounded-btn object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      if (!target.dataset.fallback) {
+                        target.dataset.fallback = "1";
+                        target.src = getInitialsAvatar(friend.username);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className="text-[9px] font-bold text-accent-primary">{friend.username.slice(0, 2).toUpperCase()}</span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-fg">{friend.username}</h3>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-btn p-1 text-subtle hover:text-fg hover:bg-surface-hover"
+              aria-label="Close stats"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4">
+          {!record ? (
+            <p className="text-[10px] leading-relaxed text-muted">
+              No ranked record — this operative has not completed a ranked battle yet.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 divide-x divide-subtle-line border-y border-subtle-line">
+                <div className="px-1 py-3 text-center">
+                  <b className="block font-mono text-sm font-bold tabular-nums text-fg">
+                    {record.totalMatches ?? 0}
+                  </b>
+                  <span className="mt-1 block text-[8px] uppercase tracking-widest text-muted">
+                    matches
+                  </span>
+                </div>
+                <div className="px-1 py-3 text-center">
+                  <b className="block font-mono text-sm font-bold tabular-nums text-accent-success">
+                    {record.wins ?? 0}
+                  </b>
+                  <span className="mt-1 block text-[8px] uppercase tracking-widest text-muted">
+                    wins
+                  </span>
+                </div>
+                <div className="px-1 py-3 text-center">
+                  <b className="block font-mono text-sm font-bold tabular-nums text-accent-primary">
+                    {record.totalMatches ? `${Math.round(record.winRate)}%` : "—"}
+                  </b>
+                  <span className="mt-1 block text-[8px] uppercase tracking-widest text-muted">
+                    rate
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-subtle">Division</span>
+                <span className={`font-bold ${TIER_COLORS[record.tier ?? ""] ?? "text-fg"}`}>
+                  {record.tier ?? " —"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-subtle">Rating</span>
+                <span className="font-mono font-bold tabular-nums text-accent-primary">
+                  {record.rating ?? "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-subtle">Global rank</span>
+                <span className="font-mono font-bold tabular-nums text-fg">
+                  #{record.rank ?? "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-subtle">Losses</span>
+                <span className="font-mono font-bold tabular-nums text-accent-danger">
+                  {(record.totalMatches ?? 0) - (record.wins ?? 0)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -26,11 +26,22 @@ const httpServer = createServer(app);
 
 // Init socket.io on that server with CORS. Reuse the same allow-list as the
 // HTTP API so ALLOWED_ORIGINS is the single source of truth for both.
+// Explicit pingInterval/pingTimeout prevents "WebSocket is closed before the
+// connection is established" errors under nginx proxy buffers — the defaults
+// (25s/5s) can race the 86400s nginx timeout on idle connections.
 const io = new Server(httpServer, {
   cors: {
     origin: getAllowedOrigins(),
     credentials: true,
-  }
+  },
+  pingInterval: 25000,
+  pingTimeout: 10000,
+  upgradeTimeout: 30000,
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000,
+    skipMiddlewares: true,
+  },
+  allowEIO3: false,
 });
 
 // Inject custom socket logic

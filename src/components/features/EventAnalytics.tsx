@@ -85,40 +85,100 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ analytics, compa
         </div>
       )}
 
-      {/* Per-participant breakdown */}
-      <div>
-        <p className="text-[9px] text-faint font-mono tracking-widest uppercase mb-2">
-          Participants
-        </p>
-        <div className="flex flex-col gap-1 max-h-56 overflow-y-auto themed-scroll">
-          {perParticipant.map((p: EventParticipantAnalytics) => (
-            <div
-              key={p.userId}
-              className="flex items-center gap-3 bg-base/30 border border-line rounded-lg px-2 py-1.5"
-            >
-              <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[9px] font-mono font-bold text-fg">
-                {p.username?.[0]?.toUpperCase() || "?"}
-              </div>
-              <span className="text-xs font-mono text-fg flex-1 truncate">
-                {p.username}
-              </span>
-              <span className={`text-[8px] px-1 py-0.25 rounded border font-bold ${
-                ["PASSED", "COMPLETED", "WON"].includes(p.status)
-                  ? "border-accent-success/30 text-accent-success"
-                  : ["FAILED", "TIMEOUT", "LOST"].includes(p.status)
-                  ? "border-accent-danger/30 text-accent-danger"
-                  : "border-accent-warning/30 text-accent-warning"
-              }`}>
-                {p.status}
-              </span>
-              <span className="text-[9px] text-subtle font-mono">
-                {p.submissionCount} subs
-                {p.bestRuntimeMs ? ` · ${p.bestRuntimeMs}ms` : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+{/* Per-participant breakdown */}
+       <div>
+         <p className="text-[9px] text-faint font-mono tracking-widest uppercase mb-2">
+           Participants
+         </p>
+         <div className="flex flex-col gap-1 max-h-80 overflow-y-auto themed-scroll">
+           {perParticipant.map((p: EventParticipantAnalytics) => {
+             const passed = ["PASSED", "COMPLETED", "WON"].includes(p.status);
+             const failed = ["FAILED", "TIMEOUT", "LOST"].includes(p.status);
+             const progressPct = p.questionsSolved > 0 && p.submissionCount > 0
+               ? Math.min(100, Math.round((p.questionsSolved / Math.max(p.questionsSolved, 1)) * 100))
+               : 0;
+             return (
+               <div
+                 key={p.userId}
+                 className="flex items-center gap-3 bg-base/30 border border-line rounded-lg px-2 py-1.5"
+               >
+                 {p.avatarUrl ? (
+                   <img
+                     src={p.avatarUrl}
+                     alt={p.username}
+                     className="h-6 w-6 rounded-full object-cover border border-subtle-line"
+                   />
+                 ) : (
+                   <div className="w-6 h-6 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-[7px] font-mono font-bold text-fg">
+                     {p.username?.[0]?.toUpperCase() || "?"}
+                   </div>
+                 )}
+                 <span className="text-xs font-mono text-fg flex-1 truncate">
+                   {p.username}
+                 </span>
+
+                 {/* Progress bar — shows proportion of problems solved */}
+                 <div className="hidden sm:flex items-center gap-1.5 min-w-[80px]">
+                   <div className="flex-1 h-1.5 rounded bg-subtle-line overflow-hidden">
+                     <div
+                       className={`h-full rounded ${
+                         progressPct > 0
+                           ? passed
+                             ? "bg-accent-success"
+                             : "bg-accent-danger"
+                           : "bg-transparent"
+                       }`}
+                       style={{ width: `${progressPct}%` }}
+                     />
+                   </div>
+                   <span className="text-[9px] text-subtle font-mono">
+                     {p.questionsSolved}/{perParticipant.length}
+                   </span>
+                 </div>
+
+                 {/* Status badge */}
+                 <span className={`text-[8px] px-1 py-0.25 rounded border font-bold ${
+                   passed
+                     ? "border-accent-success/30 text-accent-success"
+                     : failed
+                       ? "border-accent-danger/30 text-accent-danger"
+                       : "border-accent-warning/30 text-accent-warning"
+                 }`}>
+                   {p.status}
+                 </span>
+
+                 {/* Detailed metrics on larger screens */}
+                 <div className="hidden md:flex items-center gap-3 text-[9px] text-subtle font-mono">
+                   <span className="flex items-center gap-1">
+                     <span>{p.submissionCount} subs</span>
+                   </span>
+                   {p.bestRuntimeMs && (
+                     <span className="flex items-center gap-1">
+                       <span>best {p.bestRuntimeMs}ms</span>
+                     </span>
+                   )}
+                   {p.timeTakenMs && (
+                     <span className="flex items-center gap-1">
+                       <span>{Math.round(p.timeTakenMs / 1000)}s</span>
+                     </span>
+                   )}
+                   {p.score != null && (
+                     <span className="text-accent-primary font-bold">
+                       {p.score} pts
+                     </span>
+                   )}
+                 </div>
+
+                 {/* Compact metrics on small screens */}
+                 <div className="md:hidden text-[8px] text-subtle font-mono">
+                   {p.submissionCount} subs
+                   {p.bestRuntimeMs ? ` · ${p.bestRuntimeMs}ms` : ""}
+                 </div>
+               </div>
+             );
+           })}
+         </div>
+       </div>
     </div>
   );
 };
