@@ -92,9 +92,13 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                     if (opponentQueue) {
                         clearInterval(searchInterval);
 
-                        // Lock both queues
+                        // Lock both queues — only if both are still WAITING
+                        // to prevent the dual-interval race condition
                         await prisma.matchmakingQueue.updateMany({
-                            where: { id: { in: [queueEntry.id, opponentQueue.id] } },
+                            where: {
+                                id: { in: [queueEntry.id, opponentQueue.id] },
+                                status: "WAITING" // conditional: only lock if still waiting
+                            },
                             data: { status: "MATCHED", matchedAt: new Date() }
                         });
                         // Fetch a problem matching the opponent's requested difficulty
@@ -124,12 +128,17 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                         const roomName = `room-${event.id}`;
                         const problemId = event.commonProblem?.github_oid || "local-battle";
 
-                        // Join both players to the socket room instantly
-                        socket.join(roomName);
+                        // Get opponent's socket ID (cross-process aware via Redis fallback)
                         const opponentSocketId = await getSocketId(opponentQueue.userId);
+
+                        // Join both players to the socket room instantly.
+                        // Use io.to() for cross-process safety — io.sockets.sockets.get()
+                        // only works within the same PM2 worker.
+                        socket.join(roomName);
                         if (opponentSocketId) {
-                            const oppSocket = io.sockets.sockets.get(opponentSocketId);
-                            oppSocket?.join(roomName);
+                            (io.of("/") as any).adapter.addSocketsToRoom
+                                ? (io.of("/") as any).adapter.addSocketsToRoom([opponentSocketId], roomName, 0, 60_000)
+                                : (io.of("/") as any).adapter.join(opponentSocketId, roomName);
                         }
 
                         // Fetch users for profile exchange
@@ -138,12 +147,12 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                             prisma.user.findUnique({ where: { id: opponentQueue.userId }, select: { username: true, bio: true, avatarUrl: true } })
                         ]);
 
-                        // Notify both players to ACCEPT individually with opponent data
+                        // Notify both players to ACCEPT individually with opponent data.
+                        // Use io.to() for cross-process safety.
                         socket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user2 });
 
-                        const oppSocket = io.sockets.sockets.get(opponentSocketId || "");
-                        if (oppSocket) {
-                            oppSocket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user1 });
+                        if (opponentSocketId) {
+                            io.to(opponentSocketId).emit("match_found_pending", { matchId: roomName, problemId, opponent: user1 });
                         }
 
                         // Acceptance timeout — if neither player accepts within 15s,
@@ -158,9 +167,10 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                                     where: { id: event.id },
                                     data: { status: "CANCELLED" },
                                 });
-                                socket.emit("match_timeout");
-                                if (oppSocket) {
-                                    oppSocket.emit("match_timeout");
+                                // Use io.to() for cross-process safety
+                                if (socket) socket.emit("match_timeout");
+                                if (opponentSocketId) {
+                                    io.to(opponentSocketId).emit("match_timeout");
                                 }
                             }
                         }, 15000);

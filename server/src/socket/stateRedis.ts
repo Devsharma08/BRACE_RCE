@@ -181,14 +181,36 @@ export async function markOffline(userId: string, socketId?: string): Promise<bo
 
 /**
  * Return a Map of userId → one arbitrary socketId for each online user.
- * Kept for backward compatibility with presence broadcasts.
+ * Checks in-memory first, then falls back to Redis for cross-process users.
  */
 export async function getOnlineUsers(): Promise<Map<string, string>> {
   const result = new Map<string, string>();
+
+  // Collect from in-memory state first
   for (const [userId, sockets] of memoryOnlineUsers) {
     const first = sockets.values().next().value;
     if (first) result.set(userId, first);
   }
+
+  // Also scan Redis for users connected to OTHER worker processes.
+  // Each online user has a key: brace:socket:user:<userId>:sockets
+  const client = await getRedis();
+  if (client) {
+    try {
+      const keys = await client.keys(`${CACHE_KEY_PREFIX}user:*:sockets`);
+      for (const key of keys) {
+        // Extract userId from key: "brace:socket:user:<userId>:sockets"
+        const parts = key.split(":");
+        const userId = parts[3];
+        if (!userId || result.has(userId)) continue; // Skip if already in memory
+        const socketId = await getSocketId(userId);
+        if (socketId) result.set(userId, socketId);
+      }
+    } catch (err) {
+      logger.error(`Redis SCAN for online users failed: ${String(err)}`);
+    }
+  }
+
   return result;
 }
 

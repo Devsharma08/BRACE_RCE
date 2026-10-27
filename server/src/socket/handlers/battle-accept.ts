@@ -35,12 +35,15 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
                     include: { commonProblem: true }
                 });
 
-                // Join socket rooms and notify
+                // Join socket rooms and notify — use io.to() for cross-process safety.
+                // The Redis adapter routes events to any worker, and io.to() works
+                // with the adapter's room membership regardless of which worker.
                 for (const perf of performances) {
                     const socketId = await getSocketId(perf.userId);
                     if (socketId) {
-                        const pSocket = io.sockets.sockets.get(socketId);
-                        pSocket?.join(matchId);
+                        (io.of("/") as any).adapter.addSocketsToRoom
+                            ? (io.of("/") as any).adapter.addSocketsToRoom([socketId], matchId, 0, 60_000)
+                            : (io.of("/") as any).adapter.join(socketId, matchId);
                     }
                 }
 

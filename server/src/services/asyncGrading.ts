@@ -81,8 +81,10 @@ export const enqueueAsyncGrading = async (req: AuthRequest, res: Response) => {
     if (!testCases) {
       const fileData = await prisma.problem.findFirst({
         where: { OR: [{ github_oid: oid }, { id: oid }] },
-        select: { id: true, test_cases: true },
-        orderBy: { id: "asc" },
+        select: { 
+          id: true, 
+          test_cases: { orderBy: { id: "asc" } } 
+        },
       });
 
       problemId = fileData?.id || oid;

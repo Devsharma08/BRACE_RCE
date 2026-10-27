@@ -1922,7 +1922,12 @@ export const executeCode = async (req: Request, res: Response) => {
             { id: githubOid }
           ]
         },
-        select: { test_cases: true, code_snippets: true, problem_number: true, name: true },
+         select: { 
+           test_cases: { orderBy: { id: "asc" } },
+           code_snippets: true, 
+           problem_number: true, 
+           name: true 
+         },
         // MUST match the `orderBy` in problems.ts (getSystemProblems and
         // getProblemById). The client renders card N from index N and matches
         // each ExecutionDetail by testCaseIndex, so a different order here
