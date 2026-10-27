@@ -289,10 +289,11 @@ export const Battle = () => {
     "WON" | "LOST" | "CHEATER" | null
   >(null);
   const [defeatReason, setDefeatReason] = useState<
-    "opponent" | "timeout" | "surrender"
+    "opponent" | "timeout" | "surrender" | "disconnected"
   >("opponent");
   const [isBattleMenuOpen, setIsBattleMenuOpen] = useState<boolean>(false);
   const [opponent, setOpponent] = useState<any>(null);
+  const [opponentLeft, setOpponentLeft] = useState(false);
   const [myUserId, setMyUserId] = useState<string>("");
   const [blockedParticipants, setBlockedParticipants] = useState<any[]>([]);
 
@@ -1039,6 +1040,29 @@ export const Battle = () => {
     };
 
     // ─────────────────────────────────────────────────────────────────────
+    // When a player disconnects during an ACTIVE 1v1 battle (network drop,
+    // tab close), the server emits battle_player_left with the disconnecting
+    // user's id. The opponent can still submit a passing solution to claim
+    // the win; the disconnected player's performance is already marked
+    // SURRENDER server-side.
+    const onBattlePlayerLeft = (data: {
+      userId: string;
+      reason?: string;
+    }) => {
+      if (!mounted) return;
+
+      // Only act if this is about OUR opponent (not myself).
+      if (data.userId === user?.id) return;
+
+      toast.info("Opponent disconnected — solve the problem to claim victory.", {
+        id: "opponent-disconnected",
+        duration: 8000,
+      });
+
+      setOpponentLeft(true);
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
     const onGroupTerminated = (data: {
       roomId?: string;
       roomCode?: string;
@@ -1236,6 +1260,7 @@ export const Battle = () => {
     socket.on("participants_updated", onParticipantsUpdated);
     socket.on("participant_joined", onParticipantJoined);
     socket.on("participant_left", onParticipantLeft);
+    socket.on("battle_player_left", onBattlePlayerLeft);
     socket.on("group_terminated", onGroupTerminated);
     socket.on("battle_finished", onBattleFinished);
     socket.on("match_completed", onMatchCompleted);
@@ -1263,6 +1288,7 @@ export const Battle = () => {
       socket.off("participants_updated", onParticipantsUpdated);
       socket.off("participant_joined", onParticipantJoined);
       socket.off("participant_left", onParticipantLeft);
+      socket.off("battle_player_left", onBattlePlayerLeft);
       socket.off("group_terminated", onGroupTerminated);
       socket.off("battle_finished", onBattleFinished);
       socket.off("match_completed", onMatchCompleted);
@@ -3196,9 +3222,11 @@ export const Battle = () => {
                       ? "Excessive focus loss detected. Your opponent has been declared the winner."
                       : defeatReason === "opponent"
                         ? "Your opponent completed the problem first."
-                        : defeatReason === "surrender"
-                          ? "You surrendered the match."
-                          : "Your time has run out."}
+                  : defeatReason === "surrender"
+                      ? "You surrendered the match."
+                      : defeatReason === "disconnected"
+                        ? "Your opponent disconnected. Solve the problem to claim victory."
+                        : "Your time has run out."}
                 </p>
               </div>
 

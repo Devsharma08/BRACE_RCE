@@ -12,6 +12,7 @@ import {
   getActiveLobbiesMap 
 } from "./stateRedis.js";
 import { emitPresenceToFriends, getFriendIds } from "./presence.js";
+import { emitToUser } from "./ioRegistry.js";
 import type { HandlerCtx } from "./types.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
@@ -135,12 +136,51 @@ export const initSocketServer = async (io: Server) => {
             // Presence is only relevant to friends — broadcasting to every
             // connected user on every disconnect is noisy and leaks presence.
             // Skip entirely while the user still has another live socket.
-            if (wentOffline) {
+             if (wentOffline) {
                 const onlineUsersMap = await getOnlineUsers();
                 emitPresenceToFriends(io, onlineUsersMap, await getFriendIds(userId), {
                     userId,
                     status: "OFFLINE"
                 });
+            }
+
+            // Notify opponent if the user was in an active 1v1 battle.
+            // When a player drops mid-battle, the opponent needs to know so
+            // they aren't left waiting for progress updates that will never
+            // arrive. Mark the disconnecting user's performance as SURRENDER
+            // so the event can be resolved (opponent can submit to win).
+            const activeBattle = await getActiveBattleForUser(userId);
+            if (activeBattle) {
+                const event = await prisma.event.findUnique({
+                    where: { id: activeBattle.eventId },
+                    select: {
+                        id: true,
+                        roomCode: true,
+                        type: true,
+                        hostId: true,
+                        performances: {
+                            where: { userId: { not: userId } },
+                            select: { userId: true }
+                        }
+                    }
+                });
+                if (event && event.type === "ONE_VS_ONE") {
+                    await prisma.userPersonalPerformance.updateMany({
+                        where: { eventId: event.id, userId },
+                        data: { status: "SURRENDER" }
+                    }).catch(() => {});
+
+                    const targetRooms = [event.id, `room-${event.id}`, event.roomCode ?? ""].filter(Boolean);
+                    const payload = { userId, reason: "disconnected" };
+
+                    for (const tr of targetRooms) {
+                        io.to(tr).emit("battle_player_left", payload);
+                    }
+
+                    for (const perf of event.performances) {
+                        await emitToUser(perf.userId, "battle_player_left", payload);
+                    }
+                }
             }
         });
 
