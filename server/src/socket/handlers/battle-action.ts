@@ -158,7 +158,7 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
 
         // Notify clients that a battle ended so they can remove it from
         // their dashboard/active list and refresh the lobby room list
-        io.emit("rooms:invalidate", { type: "battle_ended", roomId: roomName });
+        io.emit("rooms:invalidate", { type: "battle_ended", roomId });
     });
 }
 
