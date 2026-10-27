@@ -55,6 +55,7 @@ function attachAdapterWithReconnect(io: Server, pubClient: any, subClient: any) 
   pubClient.on("ready", onReconnect);
   subClient.on("ready", onReconnect);
 }
+
 import { registerMessagingHandlers } from "./handlers/messaging.js";
 import { registerChallengeHandlers } from "./handlers/challenge.js";
 import { registerMatchmakingHandlers } from "./handlers/matchmaking.js";
@@ -67,7 +68,37 @@ import { registerReportHandlers } from "./handlers/report.js";
 import { createSocketRateLimiter } from "./rateLimiter.js";
 import { registerIO } from "./ioRegistry.js";
 
+const CACHE_KEY_PREFIX = "brace:socket:";
+
+async function cleanupStaleSockets(): Promise<void> {
+  try {
+    const client = getRedisClient();
+    if (!client.isOpen) {
+      await client.connect();
+    }
+    const pattern = `${CACHE_KEY_PREFIX}user:*:sockets`;
+    let cursor = "0";
+    let totalDeleted = 0;
+    do {
+      const [nextCursor, keys] = await client.scan(cursor, { MATCH: pattern, COUNT: 100 });
+      cursor = nextCursor;
+      if (keys.length > 0) {
+        await client.del(keys);
+        totalDeleted += keys.length;
+      }
+    } while (cursor !== "0");
+    if (totalDeleted > 0) {
+      logger.info(`Cleaned up ${totalDeleted} stale socket entries from Redis`);
+    }
+  } catch (err) {
+    logger.warn(`Stale socket cleanup failed: ${String(err)}`);
+  }
+}
+
 export const initSocketServer = async (io: Server) => {
+    // Clean up stale socket entries from previous server instances
+    await cleanupStaleSockets();
+
     // Expose io to HTTP controllers (friend events, notifications, ...)
     registerIO(io);
 
@@ -115,6 +146,16 @@ export const initSocketServer = async (io: Server) => {
         // different PM2 worker. Required by the matchmaking fallback
         // path when getSocketId() returns undefined.
         await socket.join(userId);
+
+        // Notify friends that this user just came online.
+        // The disconnect handler already emits "OFFLINE" — this closes
+        // the loop so friend status dots light up on connect.
+        const friendIds = await getFriendIds(userId);
+        const presenceMap = await getOnlineUsers();
+        emitPresenceToFriends(io, presenceMap, friendIds, {
+            userId,
+            status: "ONLINE"
+        });
 
         socket.on("disconnect", async () => {
             // False when the user still has another live socket (e.g. second tab).

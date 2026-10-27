@@ -11,6 +11,7 @@ import {
   LayoutTemplate,
   Lightbulb,
   LockKeyhole,
+  Loader2,
   Plus,
   Radio,
   Save,
@@ -675,7 +676,6 @@ const CreateRoom = () => {
       await queryClient.invalidateQueries({ queryKey: ["room-templates"] });
       toast.success("Template saved — reuse it from Battle templates.");
     } catch (err) {
-      console.error(err);
       toast.error(getErrorMessage(err));
     } finally {
       setSaveTemplateLoading(false);
@@ -732,7 +732,6 @@ const CreateRoom = () => {
       });
       navigate(`/battle/${res.data.room.roomCode}`);
     } catch (err) {
-      console.error(err);
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -782,7 +781,6 @@ const CreateRoom = () => {
       setStudioOpen(false);
       toast.success("Custom problem created and queued.");
     } catch (err) {
-      console.error(err);
       toast.error(getErrorMessage(err));
     } finally {
       setCustomLoading(false);
@@ -873,6 +871,19 @@ const CreateRoom = () => {
                     className="border border-subtle-line px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-subtle transition hover:text-fg sm:px-5 sm:py-3 sm:text-[10px]"
                   >
                     Edit configuration
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveTemplate}
+                    disabled={saveTemplateLoading || selectedProblemIds.length === 0 || !name.trim()}
+                    className="flex items-center justify-center gap-1.5 border border-accent-primary/30 bg-accent-primary/[0.06] px-3 py-2 font-mono text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/10 disabled:cursor-not-allowed disabled:opacity-50 sm:gap-2 sm:px-5 sm:py-3 sm:text-[10px]"
+                  >
+                    {saveTemplateLoading ? (
+                      <Loader2 size={14} className="animate-spin" aria-hidden />
+                    ) : (
+                      <Save size={14} aria-hidden />
+                    )}
+                    Save to Template
                   </button>
                   <button
                     type="button"

@@ -142,8 +142,10 @@ export async function markOnline(userId: string, socketId: string): Promise<bool
   memoryOnlineUsers.set(userId, existing);
 
   // Persist the FULL set (local + Redis) so other workers see all sockets.
+  // TTL: 5 minutes — short enough to auto-expire stale sockets from crashed
+  // browsers/tabs, long enough to survive brief network hiccups.
   const arr = Array.from(existing);
-  await redisSet(cacheKey(`user:${userId}:sockets`), arr, 86400);
+  await redisSet(cacheKey(`user:${userId}:sockets`), arr, 300);
 
   return true;
 }
@@ -189,7 +191,7 @@ export async function markOffline(userId: string, socketId?: string): Promise<bo
 
   // User still has live sockets — update both in-memory and Redis.
   memoryOnlineUsers.set(userId, existing);
-  await redisSet(cacheKey(`user:${userId}:sockets`), Array.from(existing), 86400);
+  await redisSet(cacheKey(`user:${userId}:sockets`), Array.from(existing), 300);
   return false;
 }
 

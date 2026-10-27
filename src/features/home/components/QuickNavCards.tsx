@@ -5,6 +5,8 @@ import {
   Code2,
   Layers3,
 } from "lucide-react";
+import { useIntersectionObserver } from "../../../hooks/useIntersectionObserver";
+import { useState, useEffect } from "react";
 
 /**
  * QuickNavCards — four uniform navigation cards on the home page.
@@ -58,8 +60,25 @@ const cards = [
 ];
 
 export function QuickNavCards() {
+  const { isIntersecting, ref } = useIntersectionObserver<HTMLDivElement>({ 
+    threshold: 0.15, 
+    triggerOnce: true,
+    rootMargin: '0px 0px -50px 0px'
+  });
+  const [visibleCards, setVisibleCards] = useState<Set<number>>(new Set());
+
+  // Start staggering card animations when section enters viewport
+  useEffect(() => {
+    if (isIntersecting) {
+      const timer = setTimeout(() => {
+        setVisibleCards(new Set([0, 1, 2, 3]));
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isIntersecting]);
+
   return (
-    <section aria-label="Quick navigation" className="w-full py-10 sm:py-14 lg:py-20 relative overflow-hidden">
+    <section aria-label="Quick navigation" className="w-full py-10 sm:py-14 lg:py-20 relative overflow-hidden" ref={ref}>
       <div className="pointer-events-none absolute inset-0 opacity-75 [background-image:linear-gradient(rgba(148,163,184,.1)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.1)_1px,transparent_1px)] [background-size:48px_48px]" />
       <div className="mx-auto max-w-6xl relative">
         {/* Section header — identical treatment to every other section */}
@@ -78,41 +97,51 @@ export function QuickNavCards() {
 
         {/* Card grid — uniform radius, surface, border, icon, heading, copy */}
         <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
-                    {cards.map(({ href, icon: Icon, accent, label, title, description, footerLabel, footerAction }) => (
-            <Link
-              key={href}
-              to={href}
-              className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-6 transition duration-300 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary"
-            >
-              {/* Label + icon row */}
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-subtle">
-                  {label}
-                </span>
-                <span className={`grid h-9 w-9 place-items-center rounded-full border border-line bg-surface/60 ${accent} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
-                  <Icon size={17} />
-                </span>
-              </div>
-              {/* Title + description */}
-              <div className="mt-4 flex flex-col gap-2">
-                <h3 className="font-mono text-lg font-bold tracking-tight text-fg group-hover:text-accent-primary transition-colors">
-                  {title}
-                </h3>
-                <p className="text-sm leading-6 text-subtle group-hover:text-subtle transition-colors">
-                  {description}
-                </p>
-              </div>
-              {/* Footer chip */}
+                    {cards.map(({ href, icon: Icon, accent, label, title, description, footerLabel, footerAction }, index) => {
+            const isVisible = visibleCards.has(index);
+
+            return (
+              <Link
+                key={href}
+                to={href}
+                className={`group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface p-6 transition-all duration-500 hover:-translate-y-1 hover:border-line-mid hover:bg-surface-hover md:p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-primary ${
+                  isVisible ? 'animate-fade-in-up' : 'opacity-0 translate-y-6'
+                }`}
+                style={{
+                  transitionDelay: `${index * 80}ms`,
+                  willChange: 'opacity, transform',
+                }}
+              >
+                {/* Label + icon row */}
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-subtle">
+                    {label}
+                  </span>
+                  <span className={`grid h-9 w-9 place-items-center rounded-full border border-line bg-surface/60 ${accent} transition duration-300 group-hover:scale-105 group-hover:border-line-mid`}>
+                    <Icon size={17} />
+                  </span>
+                </div>
+                {/* Title + description */}
+                <div className="mt-4 flex flex-col gap-2">
+                  <h3 className="font-mono text-lg font-bold tracking-tight text-fg group-hover:text-accent-primary transition-colors">
+                    {title}
+                  </h3>
+                  <p className="text-sm leading-6 text-subtle group-hover:text-subtle transition-colors">
+                    {description}
+                  </p>
+                </div>
+                {/* Footer chip */}
                             <div className="mt-auto flex items-center justify-between border-t border-line pt-4">
-                <span className="font-mono text-[9px] uppercase tracking-wider text-subtle">
-                  {footerLabel ?? "Open protocol"}
-                </span>
-                <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${accent}`}>
-                  {footerAction ?? "Go"} <span className="transition group-hover:translate-x-0.5 group-hover:translate-y-[-0.5]">→</span>
-                </span>
-              </div>
-            </Link>
-          ))}
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-subtle">
+                    {footerLabel ?? "Open protocol"}
+                  </span>
+                  <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${accent}`}>
+                    {footerAction ?? "Go"} <span className="transition group-hover:translate-x-0.5 group-hover:translate-y-[-0.5]">→</span>
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

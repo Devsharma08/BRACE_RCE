@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/api/(.*)", "destination": "https://bracerce.server.devsharma.dev/api/$1" },
     { "source": "/health", "destination": "https://bracerce.server.devsharma.dev/health" },
     { "source": "/live", "destination": "https://bracerce.server.devsharma.dev/live" },

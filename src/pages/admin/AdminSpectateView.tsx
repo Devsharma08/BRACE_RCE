@@ -87,11 +87,7 @@ const AdminSpectateView = () => {
 
     // Use centralized joinBattleRoom — handles deduplication internally
     if (battleRoomStatus !== "JOINED") {
-      joinBattleRoom(roomId, (ack) => {
-        if (!ack?.success) {
-          console.warn("[AdminSpectateView] Failed to join battle room:", ack?.error);
-        }
-      });
+      joinBattleRoom(roomId);
     }
 
     return () => {

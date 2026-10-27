@@ -4,6 +4,8 @@ import type { FC } from 'react'
 import { ArrowDown, ArrowUpRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMediaQuery } from '../../../hooks/useMediaQuery'
+import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver'
+import { useState, useEffect } from 'react'
 
 /**
  * Home hero — the "signal" hero: the three-word headline over a heartbeat trace
@@ -44,6 +46,24 @@ export const BracePixelHero: FC = () => {
   // to remove the element from the DOM, not just restyle it. The headline text
   // never animates, so it needs no gating.
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  
+  // Signal trace animation triggered when section enters viewport
+  const { isIntersecting: signalVisible, ref: signalRef } = useIntersectionObserver<SVGSVGElement>({ 
+    threshold: 0.2, 
+    triggerOnce: true,
+    rootMargin: '0px 0px -20% 0px',
+    enabled: !reducedMotion 
+  })
+  const [signalIntensity, setSignalIntensity] = useState(1)
+
+  // Intensify signal animation when section becomes visible
+  useEffect(() => {
+    if (signalVisible) {
+      setSignalIntensity(2)
+    } else {
+      setSignalIntensity(1)
+    }
+  }, [signalVisible])
 
   return (
     <section
@@ -106,12 +126,18 @@ export const BracePixelHero: FC = () => {
               translate used to centre this element. Centring uses inset +
               margin:auto instead, leaving transform free for the animation. */}
           <svg
+            ref={signalRef}
             aria-hidden="true"
             viewBox="0 0 1000 160"
             preserveAspectRatio="none"
-            className={`signal-drift pointer-events-none absolute inset-x-2 top-[18%] bottom-[18%] z-0 m-auto h-auto w-[calc(100%-1rem)] opacity-70 ${
+            className={`signal-drift pointer-events-none absolute inset-x-2 top-[18%] bottom-[18%] z-0 m-auto h-auto w-[calc(100%-1rem)] ${
               reducedMotion ? 'signal-trace-static' : ''
-            }`}
+            } transition-opacity duration-300`}
+            style={{
+              opacity: signalVisible ? 1 : 0.7,
+              filter: `drop-shadow(0 0 ${signalIntensity * 20}px rgba(0, 212, 255, ${signalIntensity * 0.4})) brightness(${signalIntensity})`,
+              transition: 'filter 300ms ease-out, opacity 300ms ease-out',
+            }}
             fill="none"
           >
             {/* The gradient itself is fixed; <animateTransform> below slides

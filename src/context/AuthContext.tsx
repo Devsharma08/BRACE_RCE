@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 // load — it drives the login redirect, so it is not an error and
                 // must not spam the console. Only surface unexpected failures.
                 if (error?.response?.status !== 401) {
-                    console.error("Auth check failed:", error);
+                    void error;
                 }
                 return null;
             }
@@ -93,8 +93,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = useCallback(async () => {
         try {
             await api.post("/auth/signout");
-        } catch (error) {
-            console.error("Logout failed:", error);
+        } catch {
+            // Signout errors are intentionally swallowed — the client still
+            // clears its local socket/React Query state below.
         } finally {
             clearSocketSingleton(user?.id);
             queryClient.setQueryData(["auth-me"], null);

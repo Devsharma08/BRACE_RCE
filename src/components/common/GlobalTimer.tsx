@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export const formatTime = (seconds: number | null): string => {
   if (seconds === null || seconds < 0) return "00:00";
@@ -64,6 +64,7 @@ interface GlobalTimerProps {
   onExpire?: () => void;
   label?: string;
   variant?: 'compact' | 'pill' | 'banner';
+  showIcon?: boolean;
 }
 
 export const GlobalTimer: React.FC<GlobalTimerProps> = ({ 
@@ -71,7 +72,8 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
   totalDurationMs, 
   onExpire, 
   label = "TIME LEFT:", 
-  variant = "pill" 
+  variant = "pill",
+  showIcon = true
 }) => {
   const { remainingSeconds, isExpired } = useGlobalTimer(startedAt, totalDurationMs, onExpire);
 
@@ -79,12 +81,49 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
      return null;
   }
 
-  const isWarning = remainingSeconds > 0 && remainingSeconds <= 60; // Less than 1 minute
+  const isWarning = remainingSeconds > 0 && remainingSeconds <= 60;
+  const isCritical = remainingSeconds > 0 && remainingSeconds <= 10;
+
+  const getVariantStyles = () => {
+    if (isExpired) {
+      return {
+        base: "border-accent-danger/30 bg-accent-danger/10 text-accent-danger",
+        icon: "text-accent-danger",
+        bg: "bg-accent-danger/10 border-accent-danger/30",
+        pulse: true,
+      };
+    }
+    if (isCritical) {
+      return {
+        base: "border-accent-danger/50 bg-accent-danger/15 text-accent-danger",
+        icon: "text-accent-danger animate-pulse",
+        bg: "bg-accent-danger/10 border-accent-danger/50",
+        pulse: true,
+      };
+    }
+    if (isWarning) {
+      return {
+        base: "border-accent-warning/30 bg-accent-warning/10 text-accent-warning",
+        icon: "text-accent-warning animate-pulse",
+        bg: "bg-accent-warning/10 border-accent-warning/30",
+        pulse: true,
+      };
+    }
+    return {
+      base: "border-accent-success/30 bg-accent-success/10 text-accent-success",
+      icon: "text-accent-success",
+      bg: "bg-accent-success/10 border-accent-success/30",
+      pulse: false,
+    };
+  };
+
+  const styles = getVariantStyles();
+  const timeStr = formatTime(remainingSeconds);
 
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-1.5 font-bold ${isExpired ? 'text-accent-danger' : isWarning ? 'text-accent-danger animate-pulse' : 'text-accent-success'}`}>
-        <Clock className="w-3.5 h-3.5" />
+      <div className={`flex items-center gap-1.5 font-bold ${styles.base} transition-colors`}>
+        {showIcon && <Clock className={`w-3.5 h-3.5 ${styles.icon} ${styles.pulse ? 'animate-pulse' : ''}`} />}
         <span className="text-[11px] uppercase tracking-widest">{formatTime(remainingSeconds)}</span>
       </div>
     );
@@ -92,17 +131,17 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
 
   if (variant === 'banner') {
     return (
-      <div className={`w-full py-2 flex items-center justify-center gap-3 border-y ${isExpired ? 'bg-accent-danger/10 border-accent-danger/30 text-accent-danger' : isWarning ? 'bg-accent-danger/10 border-accent-danger/50 text-accent-danger animate-pulse' : 'bg-accent-success/10 border-accent-success/30 text-accent-success'}`}>
-         <Clock className="w-5 h-5" />
-         <span className="text-sm font-bold tracking-[0.2em]">{label} {formatTime(remainingSeconds)}</span>
+      <div className={`w-full py-3 flex items-center justify-center gap-3 border-y ${styles.bg} text-accent-success transition-colors`}>
+        {showIcon && <Clock className={`w-5 h-5 ${styles.icon} ${styles.pulse ? 'animate-pulse' : ''}`} />}
+        <span className="text-sm font-bold tracking-[0.2em]">{label} {formatTime(remainingSeconds)}</span>
       </div>
     );
   }
 
   // Default pill variant
   return (
-    <div className={`flex items-center gap-1.5 border px-3 py-1 text-[11px] font-bold ${isExpired ? 'border-accent-danger/30 bg-accent-danger/10 text-accent-danger' : isWarning ? 'border-accent-danger/50 bg-accent-danger/15 text-accent-danger animate-pulse' : 'border-accent-success/30 bg-accent-success/10 text-accent-success'}`}>
-      <Clock className={`w-3.5 h-3.5 ${isExpired || isWarning ? 'text-accent-danger' : 'text-accent-success'}`} />
+    <div className={`flex items-center gap-1.5 border px-4 py-2 rounded-xl text-[11px] font-bold ${styles.base} transition-colors ${styles.pulse ? 'animate-pulse' : ''}`}>
+      {showIcon && <Clock className={`w-3.5 h-3.5 ${styles.icon}`} />}
       <span className="text-[9px] text-subtle uppercase tracking-widest">{label}</span>
       <span>{formatTime(remainingSeconds)}</span>
     </div>

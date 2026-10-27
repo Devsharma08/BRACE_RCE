@@ -86,7 +86,6 @@ export function setNote(type: 'common' | 'problem', id: string, value: string): 
           timestamp: Date.now(),
         }));
       } catch {
-        console.warn('Notes storage full, could not save');
       }
     }
   }

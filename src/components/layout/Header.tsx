@@ -14,6 +14,7 @@ import {
   Home as HomeIcon,
   X,
   CircleHelp,
+  LogOut,
 } from 'lucide-react'
 import { NotificationCenter } from '../features/NotificationCenter'
 
@@ -37,7 +38,7 @@ const links = [
 const Header = () => {
   const { visible } = UseHeadroom()
   const { pathname } = useLocation()
-  const { isAuthenticated, isAdmin, user } = useAuth()
+  const { isAuthenticated, isAdmin, user, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const navRef = useRef<HTMLElement>(null)
 
@@ -219,19 +220,32 @@ const Header = () => {
               </Link>
             ))}
             {isAuthenticated ? (
-              <Link
-                to='/profile'
-                onClick={() => setOpen(false)}
-                role='menuitem'
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
-                  isActive('/profile')
-                    ? 'bg-accent-primary/10 text-accent-primary'
-                    : 'text-faint hover:bg-surface-hover hover:text-fg'
-                }`}
-              >
-                <User size={15} />
-                Profile
-              </Link>
+              <>
+                <Link
+                  to='/profile'
+                  onClick={() => setOpen(false)}
+                  role='menuitem'
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${
+                    isActive('/profile')
+                      ? 'bg-accent-primary/10 text-accent-primary'
+                      : 'text-faint hover:bg-surface-hover hover:text-fg'
+                  }`}
+                >
+                  <User size={15} />
+                  Profile
+                </Link>
+                <button
+                  onClick={() => {
+                    logout();
+                    setOpen(false);
+                  }}
+                  role='menuitem'
+                  className='flex items-center gap-3 rounded-xl px-3 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-accent-danger transition hover:bg-accent-danger/10'
+                >
+                  <LogOut size={15} />
+                  Sign Out
+                </button>
+              </>
             ) : (
               <Link
                 to='/signin'

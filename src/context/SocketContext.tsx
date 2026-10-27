@@ -353,16 +353,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         isOnline: liveById.get(f.id) ?? false,
       }));
     });
-    socketRef.current?.emit("request_presence", { userIds: list.map((f) => f.id) });
   }, [presenceFriends]);
 
-  // Reconcile presence whenever the socket (re)connects — the snapshot
-  // answer only covers ids present in `friends`, so refresh the question
-  // rather than trusting flags from before the drop.
+  // Request presence when BOTH friends data and socket connection are ready.
+  // This avoids the race where presenceFriends arrives before socket connects,
+  // or socket connects before presenceFriends loads.
   useEffect(() => {
     if (!isConnected) return;
     const ids = presenceFriends?.friends?.map((f) => f.id);
-    if (ids && ids.length > 0) socketRef.current?.emit("request_presence", { userIds: ids });
+    if (ids && ids.length > 0) {
+      socketRef.current?.emit("request_presence", { userIds: ids });
+    }
   }, [isConnected, presenceFriends]);
 
   // Local ticker to increment waiting seconds smoothly by 1 every second
@@ -520,9 +521,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
         socket.emit("join_battle", battleRoomManager.roomId, (ack: { success: boolean }) => {
           if (ack?.success) {
-            console.log("[SocketContext] Reconnected to battle room:", battleRoomManager.roomId);
+            battleRoomManager.status = "JOINED";
           } else {
-            console.warn("[SocketContext] reconnect rejoin failed for", battleRoomManager.roomId);
             battleRoomManager.status = "NONE";
             battleRoomManager.roomId = null;
             syncBattleRoomState();
@@ -686,7 +686,9 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
         socket.emit("join_battle", battleRoomManager.roomId, (ack: { success: boolean }) => {
           if (!ack?.success) {
-            console.warn("[SocketContext] already-connected rejoin failed for", battleRoomManager.roomId);
+            battleRoomManager.status = "NONE";
+            battleRoomManager.roomId = null;
+            syncBattleRoomState();
           }
         });
       }
@@ -780,9 +782,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setMatchmakingStatus("IDLE");
       setWaitingTime(0);
       setIsClicked(false);
-      api.post("/matchmaking/cancel").catch((err) => {
-        console.error("Matchmaking cancel (HTTP fallback) failed:", err);
-      });
+      api.post("/matchmaking/cancel").catch(() => {});
     }
   }, [isConnected]);
 
@@ -851,8 +851,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     } else {
       // HTTP fallback when WebSocket is unavailable
       setIsClicked(true);
-      api.post("/matchmaking/decline", { matchId: pendingMatchId })
-        .catch((err) => console.error("Match decline (HTTP fallback) failed:", err));
+      api.post("/matchmaking/decline", { matchId: pendingMatchId }).catch(() => {});
     }
   }, [isConnected, pendingMatchId]);
 

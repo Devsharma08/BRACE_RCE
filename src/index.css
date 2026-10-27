@@ -458,6 +458,94 @@ body {
 .ds-countdown-pop {
   animation: dsCountdownPop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* New overlay animations for cohesive design system */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down {
+  animation: slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes countdownPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-countdown-pop {
+  animation: countdownPop 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.1); opacity: 1; }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-bounce-in {
+  animation: bounceIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Proximity-triggered fade-in animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Signal disk proximity animation */
+@keyframes signalPulse {
+  0%, 100% { 
+    transform: scale(1); 
+    filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.4)) brightness(1); 
+  }
+  50% { 
+    transform: scale(1.02); 
+    filter: drop-shadow(0 0 40px rgba(0, 212, 255, 0.6)) brightness(1.1); 
+  }
+}
+.animate-signal-pulse {
+  animation: signalPulse 2s ease-in-out infinite;
+}
+
+/* Staggered entrance for card grids */
+@keyframes staggerFadeInUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-stagger-fade-in-up {
+  animation: staggerFadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Respect reduced motion for all proximity animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-signal-pulse,
+  .animate-stagger-fade-in-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 @keyframes dsGlitch {
   0%, 100% { transform: translate(0); }
   20% { transform: translate(-2px, 2px); }

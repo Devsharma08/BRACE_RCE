@@ -149,9 +149,21 @@ const Profile = () => {
             </div>
             <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.1fr_.9fr]">
               <div className="flex gap-3 sm:gap-5">
-                <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-accent-primary/30 bg-accent-primary/10 text-lg font-bold text-accent-primary sm:h-20 sm:w-20 sm:text-xl">
-                  OP
-                  <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-surface bg-accent-success" />
+                <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-2xl border border-accent-primary/30 bg-accent-primary/10 text-lg font-bold text-accent-primary sm:h-20 sm:w-20 sm:text-xl overflow-hidden">
+                  {profile?.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt={`${profile.username}'s avatar`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      {profile?.username
+                        ? profile.username.slice(0, 2).toUpperCase()
+                        : "OP"}
+                      <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-surface bg-accent-success" />
+                    </>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-[9px] uppercase tracking-[0.2em] text-accent-primary">Operative identity</p>

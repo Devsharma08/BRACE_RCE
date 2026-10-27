@@ -25,10 +25,13 @@ class Rooms {
       const maxTime = req.query.maxTime as string;
 
       const where: any = {
-        isPublic: true,
         isTemplate: false,
         status: { in: ["WAITING", "IN_PROGRESS"] },
         type: "PUBLIC",
+        OR: [
+          { isPublic: true },
+          { AND: [{ isPublic: false }, { password: { not: null } }, { password: { not: "" } }] },
+        ],
       };
 
       if (search) {

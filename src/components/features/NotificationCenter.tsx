@@ -120,8 +120,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
         senderId: notif.data?.senderId,
       });
       await clearRow(notif.id);
-    } catch (error) {
-      console.error("Failed to accept friend request:", error);
+     } catch {
       toast.error("Failed to accept friend request");
     }
   };
@@ -130,8 +129,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen: control
     try {
       await api.post("/friends/reject", { requestId: notif.data?.requestId });
       await clearRow(notif.id);
-    } catch (error) {
-      console.error("Failed to reject friend request:", error);
+     } catch {
       toast.error("Failed to reject friend request");
     }
   };

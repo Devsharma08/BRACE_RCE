@@ -15,6 +15,9 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  BarChart2,
+  Loader2,
+  ShieldAlert,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +29,8 @@ import { toast } from "sonner";
 import { useSocket } from "../context/SocketContext";
 import { useDebounce } from "../hooks/useDebounce";
 import { isFeatureEnabled } from "../config/features";
+import { useEventAnalytics } from "../hooks/useEventAnalytics";
+import { EventAnalytics } from "../components/features/EventAnalytics";
 
 interface Room {
   id: string;
@@ -53,6 +58,35 @@ const roomTimeMinutes = (room: Room) =>
 const isProtected = (room: Room) =>
   Boolean(room.password) || room.isPublic === false;
 
+// Event Analytics Loader — fetches analytics for a completed event and
+// renders the EventAnalytics component. Handles loading/error states.
+const EventAnalyticsLoader = ({ eventId }: { eventId: string }) => {
+  const { data, isLoading, error } = useEventAnalytics(eventId, true);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-accent-primary" aria-hidden />
+        <span className="ml-3 text-fg font-mono text-xs">Loading analytics...</span>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <ShieldAlert className="h-10 w-10 text-accent-danger mb-3" aria-hidden />
+        <p className="text-fg font-mono text-sm">Failed to load analytics</p>
+        <p className="mt-2 text-xs text-faint">
+          {error?.message || "No analytics data available for this event."}
+        </p>
+      </div>
+    );
+  }
+
+  return <EventAnalytics analytics={data} />;
+};
+
 const Lobby = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -77,6 +111,7 @@ const Lobby = () => {
     confirmLabel: "Confirm",
     onConfirm: null,
   });
+  const [analyticsEventId, setAnalyticsEventId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [maxUsers, setMaxUsers] = useState("any");
@@ -260,8 +295,7 @@ const Lobby = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-rooms"] });
       queryClient.invalidateQueries({ queryKey: ["lobby-templates"] });
       navigate(`/battle/${res.data.room.roomCode}`);
-    } catch (error) {
-      console.error(error);
+     } catch {
       toast.error("Failed to clone template");
     } finally {
       setCloningId(null);
@@ -291,8 +325,7 @@ const Lobby = () => {
       queryClient.invalidateQueries({ queryKey: ["lobby-templates"] });
       queryClient.invalidateQueries({ queryKey: ["lobby-archives"] });
       toast.success(`${noun[0].toUpperCase()}${noun.slice(1)} deleted`);
-    } catch (error) {
-      console.error(error);
+     } catch {
       toast.error(`Failed to delete ${noun}`);
     }
   };
@@ -366,51 +399,9 @@ const Lobby = () => {
             {room.host?.username}
           </span>
         </div>
-
-        {isArchive ? (
-          <button
-            onClick={() => handleDeleteEvent(room.id)}
-            className="mt-3 flex w-full items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08] sm:mt-4 sm:w-auto sm:flex-1"
-            aria-label={`Delete operation: ${room.name}`}
-          >
-            Delete operation
-            <Trash2 size={14} aria-hidden />
-          </button>
-        ) : isTemplate ? (
-          <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
-            <button
-              onClick={() => handleCloneTemplate(room.id)}
-              disabled={cloningId === room.id}
-              className="flex flex-1 items-center justify-center gap-2 border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label={`Deploy template: ${room.name}`}
-            >
-              {cloningId === room.id ? "Deploying template" : "Deploy template"}
-              <RefreshCw
-                size={14}
-                aria-hidden
-                className={cloningId === room.id ? "animate-spin" : ""}
-              />
-            </button>
-            <button
-              onClick={() => handleDeleteEvent(room.id, "template")}
-              className="flex flex-1 items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
-              aria-label={`Delete template: ${room.name}`}
-            >
-              Delete
-              <Trash2 size={14} aria-hidden />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => handleJoinRoom(room)}
-            className="mt-3 w-full flex items-center justify-center gap-2 border border-accent/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent/[0.08] sm:mt-4 sm:w-auto"
-            aria-label={`Join operation: ${room.name}`}
-          >
-            {queued ? "Queued for entry" : "Join operation"}
-            <ArrowUpRight size={14} aria-hidden />
-          </button>
-        )}
       </article>
+
+        
     );
   };
 
@@ -729,6 +720,38 @@ const Lobby = () => {
                 });
               }}
             />
+
+            {/* Analytics Modal for Archived Events */}
+            {analyticsEventId && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                onClick={() => setAnalyticsEventId(null)}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="analytics-title"
+              >
+                <div
+                  className="w-full max-w-4xl max-h-[90vh] overflow-auto rounded-xl border border-subtle-line bg-base"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="sticky top-0 z-10 flex items-center justify-between border-b border-subtle-line bg-base/95 px-5 py-3 backdrop-blur-sm">
+                    <h2 id="analytics-title" className="text-lg font-bold text-fg">
+                      Event Analytics
+                    </h2>
+                    <button
+                      onClick={() => setAnalyticsEventId(null)}
+                      className="rounded-btn p-1 text-faint hover:text-fg transition"
+                      aria-label="Close analytics"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="p-5">
+                    <EventAnalyticsLoader eventId={analyticsEventId} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

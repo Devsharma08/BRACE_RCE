@@ -308,8 +308,7 @@ export const Battle = () => {
       const eventId = roomId.replace("room-", "");
       const res = await api.get(`/rooms/${eventId}/blocks`);
       setBlockedParticipants(res.data.blocks || []);
-    } catch (e) {
-      console.error("Failed to fetch blocked participants:", e);
+    } catch {
     }
   }, [roomId]);
   fetchBlockedParticipantsRef.current = fetchBlockedParticipants;
@@ -549,7 +548,6 @@ export const Battle = () => {
         );
       }
     } catch (err: any) {
-      console.error(err);
       setTerminalOutput(
         `COMPILATION/RUNTIME ERROR:\n${err.message || String(err)}`,
       );
@@ -657,7 +655,6 @@ export const Battle = () => {
   useEffect(() => {
     if (!roomError) return;
     const err: any = roomError;
-    console.error("Failed to load room", err);
     const blockReason = err.response?.data?.blockReason;
     const msg = blockReason
       ? `You are blocked from this event: ${blockReason}`
@@ -752,7 +749,6 @@ export const Battle = () => {
     if (socket && roomId) {
       joinBattleRoom(roomId, (ack: { success: boolean; error?: string }) => {
         if (!ack?.success) {
-          console.error("Failed to join battle:", ack?.error);
           toast.error("Failed to join battle room");
           navigate("/lobby");
         }
@@ -1388,7 +1384,6 @@ export const Battle = () => {
   useEffect(() => {
     if (activeProblem && codes[activeProblem.id]) {
       setCode(codes[activeProblem.id]);
-      console.log("active problem:", activeProblem.test_cases);
     }
     // Extract Java class name from code_snippets
     if (activeProblem) {
@@ -1786,7 +1781,6 @@ export const Battle = () => {
         }
       }
     } catch (err: any) {
-      console.error(err);
       setTerminalOutput(
         `COMPILATION/RUNTIME ERROR:\n${err.message || String(err)}`,
       );
@@ -1804,28 +1798,40 @@ export const Battle = () => {
   // stay hidden behind <PageSkeleton /> until the API data arrives.
   if (countdown > 0 || commencing) {
     return (
-      <div className="fixed inset-0 z-[100] flex select-none flex-col items-center justify-center bg-base">
-        <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
-          <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
-          OPERATIVE ALERT // BATTLE COMMENCING
-        </div>
-        <h2 className="mb-6 font-mono text-2xl font-black uppercase tracking-[0.4em] text-fg">
-          {commencing ? "BATTLE COMMENCING" : "GET READY"}
-        </h2>
-        <div className="relative flex min-h-32 items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
-          <div
-            key={countdown || "commencing"}
-            className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl"
-          >
-            {commencing ? "01" : countdown}
+      <div className="fixed inset-0 z-[100] flex select-none flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="relative z-10 w-full max-w-md mx-auto px-4">
+          <div className="mb-6 flex items-center justify-center gap-2 rounded-xl border border-accent-warning/30 bg-accent-warning/10 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-[0_0_20px_rgba(255,165,0,0.2)] animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
+            <span className="flex items-center gap-2">
+              <span className="relative">
+                <span className="absolute -inset-1 bg-accent-warning/30 blur-lg animate-pulse" />
+                <span className="relative">OPERATIVE ALERT</span>
+              </span>
+              <span className="text-fg">//</span>
+              <span className="relative">
+                <span className="absolute -inset-1 bg-accent-primary/30 blur-lg animate-pulse" />
+                <span className="relative">BATTLE COMMENCING</span>
+              </span>
+            </span>
           </div>
+          <h2 className="mb-6 text-center font-mono text-2xl sm:text-3xl font-black uppercase tracking-[0.4em] text-fg drop-shadow-[0_0_20px_rgba(0,212,255,0.5)]">
+            {commencing ? "BATTLE COMMENCING" : "GET READY"}
+          </h2>
+          <div className="relative flex min-h-32 items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
+            <div
+              key={countdown || "commencing"}
+              className="relative font-mono text-7xl sm:text-9xl font-black tracking-widest text-accent-primary drop-shadow-[0_0_40px_rgba(0,212,255,0.6)] animate-countdown-pop"
+            >
+              {commencing ? "01" : countdown}
+            </div>
+          </div>
+          <p className="mt-8 text-center font-mono text-xs sm:text-sm uppercase tracking-widest text-faint/80">
+            {commencing
+              ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
+              : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
+          </p>
         </div>
-        <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
-          {commencing
-            ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
-            : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
-        </p>
       </div>
     );
   }
@@ -2324,28 +2330,40 @@ export const Battle = () => {
       className={`viewport-shell relative flex w-full overflow-hidden bg-base ${focusFlash ? "ds-focus-flash" : ""}`}
     >
       {(countdown > 0 || commencing) && (
-        <div className="ds-overlay fixed inset-0 z-[100] flex select-none flex-col items-center justify-center px-4 text-center">
-          <div className="mb-6 flex items-center gap-2 rounded-full border border-accent-warning/40 bg-accent-warning/10 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-glow-warning">
-            <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
-            OPERATIVE ALERT // BATTLE COMMENCING
-          </div>
-          <h2 className="mb-6 font-mono text-2xl font-black uppercase tracking-[0.4em] text-fg">
-            {commencing ? "BATTLE COMMENCING" : "GET READY"}
-          </h2>
-          <div className="relative flex min-h-32 items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
-            <div
-              key={countdown || "commencing"}
-              className="ds-countdown-pop relative font-mono text-7xl font-black tracking-widest text-accent-primary text-shadow-accent sm:text-9xl"
-            >
-              {commencing ? "01" : countdown}
+        <div className="fixed inset-0 z-[100] flex select-none flex-col items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative z-10 w-full max-w-md mx-auto px-4">
+            <div className="mb-6 flex items-center justify-center gap-2 rounded-xl border border-accent-warning/30 bg-accent-warning/10 px-5 py-2.5 font-mono text-xs uppercase tracking-[0.3em] text-accent-warning shadow-[0_0_20px_rgba(255,165,0,0.2)] animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-accent-warning animate-ping" />
+              <span className="flex items-center gap-2">
+                <span className="relative">
+                  <span className="absolute -inset-1 bg-accent-warning/30 blur-lg animate-pulse" />
+                  <span className="relative">OPERATIVE ALERT</span>
+                </span>
+                <span className="text-fg">//</span>
+                <span className="relative">
+                  <span className="absolute -inset-1 bg-accent-primary/30 blur-lg animate-pulse" />
+                  <span className="relative">BATTLE COMMENCING</span>
+                </span>
+              </span>
             </div>
+            <h2 className="mb-6 text-center font-mono text-2xl sm:text-3xl font-black uppercase tracking-[0.4em] text-fg drop-shadow-[0_0_20px_rgba(0,212,255,0.5)]">
+              {commencing ? "BATTLE COMMENCING" : "GET READY"}
+            </h2>
+            <div className="relative flex min-h-32 items-center justify-center">
+              <div className="absolute inset-0 rounded-full bg-accent-primary/20 blur-3xl animate-pulse" />
+              <div
+                key={countdown || "commencing"}
+                className="relative font-mono text-7xl sm:text-9xl font-black tracking-widest text-accent-primary drop-shadow-[0_0_40px_rgba(0,212,255,0.6)] animate-countdown-pop"
+              >
+                {commencing ? "01" : countdown}
+              </div>
+            </div>
+            <p className="mt-8 text-center font-mono text-xs sm:text-sm uppercase tracking-widest text-faint/80">
+              {commencing
+                ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
+                : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
+            </p>
           </div>
-          <p className="mt-8 font-mono text-xs uppercase tracking-widest text-label">
-            {commencing
-              ? "WORKSPACE UNLOCKING // ENTER THE ARENA"
-              : "PREPARE YOUR EDITOR // INITIALIZING WORKSPACE"}
-          </p>
         </div>
       )}
       {/* SCHEDULED CLOSE WARNING — minimizable banner */}

@@ -202,8 +202,9 @@ export default function FriendsDashboard() {
   const { data: directMessages = [] } = useQuery({
     queryKey: ["direct-messages", activeTab?.id],
     enabled: Boolean(activeTab?.id),
-    queryFn: async () => {
-      const res = await api.get(`/friends/messages/${activeTab?.id}`);
+    queryFn: async ({ queryKey }) => {
+      const friendId = queryKey[1] as string;
+      const res = await api.get(`/friends/messages/${friendId}`);
       return res.data.messages || [];
     },
   });
