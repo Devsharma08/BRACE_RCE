@@ -398,10 +398,65 @@ const Lobby = () => {
           >
             {room.host?.username}
           </span>
-        </div>
+</div>
+
+        {/* Action buttons based on tab type */}
+        {isArchive ? (
+          <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
+            <button
+              onClick={() => setAnalyticsEventId(room.id)}
+              className="flex flex-1 items-center justify-center gap-2 border border-accent-primary/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent-primary/[0.08]"
+              aria-label={`View analytics: ${room.name}`}
+            >
+              View analytics
+              <BarChart2 size={14} aria-hidden />
+            </button>
+            <button
+              onClick={() => handleDeleteEvent(room.id)}
+              className="flex flex-1 items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
+              aria-label={`Delete operation: ${room.name}`}
+            >
+              Delete operation
+              <Trash2 size={14} aria-hidden />
+            </button>
+          </div>
+        ) : isTemplate ? (
+          <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:gap-3">
+            <button
+              onClick={() => handleCloneTemplate(room.id)}
+              disabled={cloningId === room.id}
+              className="flex flex-1 items-center justify-center gap-2 border border-accent-warning/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-warning transition hover:bg-accent-warning/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={`Deploy template: ${room.name}`}
+            >
+              {cloningId === room.id ? "Deploying template" : "Deploy template"}
+              <RefreshCw
+                size={14}
+                aria-hidden
+                className={cloningId === room.id ? "animate-spin" : ""}
+              />
+            </button>
+            <button
+              onClick={() => handleDeleteEvent(room.id, "template")}
+              className="flex flex-1 items-center justify-center gap-2 border border-accent-danger/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-danger transition hover:bg-accent-danger/[0.08]"
+              aria-label={`Delete template: ${room.name}`}
+            >
+              Delete
+              <Trash2 size={14} aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => handleJoinRoom(room)}
+            className="mt-3 w-full flex items-center justify-center gap-2 border border-accent/25 px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-accent-primary transition hover:bg-accent/[0.08] sm:mt-4 sm:w-auto"
+            aria-label={`Join operation: ${room.name}`}
+          >
+            {queued ? "Queued for entry" : "Join operation"}
+            <ArrowUpRight size={14} aria-hidden />
+          </button>
+        )}
       </article>
 
-        
+       
     );
   };
 

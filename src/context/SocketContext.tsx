@@ -341,6 +341,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     enabled: Boolean(userId),
   });
 
+  // Reconcile friends list with server presence data
   useEffect(() => {
     const list = presenceFriends?.friends;
     if (!Array.isArray(list)) return;
@@ -355,16 +356,38 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [presenceFriends]);
 
-  // Request presence when BOTH friends data and socket connection are ready.
-  // This avoids the race where presenceFriends arrives before socket connects,
-  // or socket connects before presenceFriends loads.
+  // Request presence when friends data loads (initial load or refetch)
+  useEffect(() => {
+    const ids = presenceFriends?.friends?.map((f) => f.id);
+    if (ids && ids.length > 0 && isConnected) {
+      socketRef.current?.emit("request_presence", { userIds: ids });
+    }
+  }, [presenceFriends]);
+
+  // Request presence when socket connects/reconnects
   useEffect(() => {
     if (!isConnected) return;
     const ids = presenceFriends?.friends?.map((f) => f.id);
     if (ids && ids.length > 0) {
       socketRef.current?.emit("request_presence", { userIds: ids });
     }
-  }, [isConnected, presenceFriends]);
+  }, [isConnected]);
+
+  // Request presence on socket reconnection
+  useEffect(() => {
+    if (!socketRef.current) return;
+    const socket = socketRef.current;
+    const onReconnect = () => {
+      const ids = presenceFriends?.friends?.map((f) => f.id);
+      if (ids && ids.length > 0) {
+        socket.emit("request_presence", { userIds: ids });
+      }
+    };
+    socket.on("reconnect", onReconnect);
+    return () => {
+      socket.off("reconnect", onReconnect);
+    };
+  }, [presenceFriends]);
 
   // Local ticker to increment waiting seconds smoothly by 1 every second
   useEffect(() => {
