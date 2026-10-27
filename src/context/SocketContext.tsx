@@ -467,13 +467,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       if (type === "battle_ended" && data?.roomId) {
         // A battle finished — remove it from the lobby's room list and
         // refresh the Dashboard (stats, recent battles, problems).
-        queryClient.invalidateQueries(["lobby-rooms"]);
-        queryClient.invalidateQueries(["dashboard-profile"]);
-        queryClient.invalidateQueries(["dashboard-stats"]);
-        queryClient.invalidateQueries(["dashboard-problems"]);
+        queryClient.invalidateQueries({ queryKey: ["lobby-rooms"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-profile"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-problems"] });
       } else {
         // Generic invalidation — refetch lobby rooms
-        queryClient.invalidateQueries(["lobby-rooms"]);
+        queryClient.invalidateQueries({ queryKey: ["lobby-rooms"] });
       }
     });
 
