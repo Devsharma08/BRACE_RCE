@@ -560,6 +560,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   const socketCreatedRef = useRef(false);
   const isLeavingRef = useRef(false);
+  const reconnectWarningShownRef = useRef(false);
+  const matchTimeoutShownRef = useRef(false);
 
   // Explicit disconnect on page unload so the server knows immediately instead
   // of waiting for the pingTimeout to expire. The `isLeavingRef` guard prevents
@@ -714,25 +716,18 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       // client explicitly re-joins. This was the root cause of "nothing
       // updates until I refresh."
       //
-      // Uses the centralized battleRoomManager — no more double join from
-      // Battle.tsx and AdminSpectateView.tsx. Wrapped in emitWithAck so a
-      // non-responsive server doesn't leave us in a half-joined state.
+      // Uses the centralized emitJoinBattle wrapper which provides:
+      // - Deduplication: skips if already JOINED or JOINING
+      // - Ack timeout: prevents hangs if the server doesn't respond
+      // - Queueing: handles rapid reconnects gracefully
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
-        emitWithAck(
-          socket,
-          "join_battle",
-          [battleRoomManager.roomId],
-          (ack: { success: boolean }) => {
-            if (ack?.success) {
-              battleRoomManager.status = "JOINED";
-            } else {
-              battleRoomManager.status = "NONE";
-              battleRoomManager.roomId = null;
-              syncBattleRoomState();
-            }
-          },
-          10000,
-        );
+        emitJoinBattle(socket, battleRoomManager.roomId, userId, (ack: { success: boolean }) => {
+          if (!ack?.success) {
+            battleRoomManager.status = "NONE";
+            battleRoomManager.roomId = null;
+            syncBattleRoomState();
+          }
+        });
       }
     });
 
@@ -772,7 +767,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       const msg = err?.message ?? "Connection error";
       const errType = err?.type;
       if (errType === "Unauthorized" || msg.includes("auth")) {
-        toast.error("Session expired — please sign in again.");
+        // Only show once per connection lifecycle — connect_error can fire
+        // multiple times during a reconnection sequence.
+        toast.error("Session expired — please sign in again.", {
+          id: "socket-auth-error",
+          duration: 10000,
+        });
         return;
       }
       // Non-fatal transport errors are handled silently by the reconnection
@@ -784,17 +784,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     let reconnectAttemptCount = 0;
     bind("reconnect_attempt", () => {
       reconnectAttemptCount++;
-      if (reconnectAttemptCount >= 5) {
-        toast.warning("Connection unstable — retrying...", { duration: 3000 });
+      if (reconnectAttemptCount >= 5 && !reconnectWarningShownRef.current) {
+        reconnectWarningShownRef.current = true;
+        toast.warning("Connection unstable — retrying...", {
+          id: "socket-reconnect-warning",
+          duration: 3000,
+        });
       }
     });
     bind("reconnect", (attempt: number) => {
       reconnectAttemptCount = 0;
+      reconnectWarningShownRef.current = false;
+      matchTimeoutShownRef.current = false;
       isLeavingRef.current = false;
       logger.info(`Socket reconnected after ${attempt} attempt(s)`);
     });
     bind("reconnect_failed", () => {
       reconnectAttemptCount = 0;
+      reconnectWarningShownRef.current = false;
       // Don't show error or recreate if we're intentionally disconnecting.
       if (isLeavingRef.current) {
         socketCreatedRef.current = false;
@@ -803,6 +810,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       socketCreatedRef.current = false;
       socketSingletons.set(userId, null);
       toast.error("Connection lost — click to restore real-time features.", {
+        id: "socket-reconnect-failed",
         duration: 10000,
         action: {
           label: "Reconnect",
@@ -843,6 +851,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
 
     bind("match_timeout", () => {
+      if (matchTimeoutShownRef.current) return;
+      matchTimeoutShownRef.current = true;
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
@@ -859,6 +869,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setPendingMatchId(null);
       setMatchmakingStatus("SEARCHING");
       setIsClicked(false);
+      toast.info("Opponent declined — searching for a new match...", { duration: 3000 });
       socket.emit("join_matchmaking", { difficulty: queueDifficultyRef.current, waitingSeconds: waitingTimeRef.current });
     });
 
@@ -900,16 +911,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     // participant_left to all remaining participants (including the moderator).
     // This is distinct from "you_were_kicked" or "player_kicked" — it's a
     // voluntary or timed leave that occurs during the WAITING phase.
-    bind("participant_left", (data: ParticipantLeftPayload) => {
-      const username = data.username || "A fellow operative";
-
-      // Show a toast notification for all remaining participants
-      toast.info(`${username} left the operation.`, {
-        id: `participant-left-${data.userId}`,
-        duration: 5000,
-      });
-
-      // Sync state to React
+    //
+    // Toast notification is handled by Battle.tsx's own handler, which has
+    // access to the full participant roster context. Only sync state here.
+    bind("participant_left", () => {
       syncBattleRoomState();
     });
 
@@ -928,22 +933,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       roomId?: string;
       roomCode?: string;
     }) => {
-      const username = data.username || data.user?.username || "A new operative";
-
-      // Conditional check: only show notification if this isn't for the
-      // current user (we don't want to notify ourselves about our own join)
+      // Conditional check: only process if this isn't for the current user
       if (data.userId === userId) return;
 
       // Update participant count tracking
       battleRoomManager.participantCount = (battleRoomManager.participantCount || 0) + 1;
 
-      // Show a toast notification for all remaining participants
-      toast.info(`${username} has joined the operation.`, {
-        id: `participant-joined-${data.userId}-${Date.now()}`,
-        duration: 5000,
-      });
-
-      // Sync state to React
+      // Toast notification is handled by Battle.tsx's own handler, which has
+      // access to the full participant roster context. Only sync state here.
       syncBattleRoomState();
     });
 
@@ -955,19 +952,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(true);
       socket.emit("check_active_battle");
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
-        emitWithAck(
-          socket,
-          "join_battle",
-          [battleRoomManager.roomId],
-          (ack: { success: boolean }) => {
-            if (!ack?.success) {
-              battleRoomManager.status = "NONE";
-              battleRoomManager.roomId = null;
-              syncBattleRoomState();
-            }
-          },
-          10000,
-        );
+        emitJoinBattle(socket, battleRoomManager.roomId, userId, (ack: { success: boolean }) => {
+          if (!ack?.success) {
+            battleRoomManager.status = "NONE";
+            battleRoomManager.roomId = null;
+            syncBattleRoomState();
+          }
+        });
       }
       const ids = presenceFriends?.friends?.map((f) => f.id);
       if (ids && ids.length > 0) socket.emit("request_presence", { userIds: ids });
@@ -1043,7 +1034,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         event: "send_direct_message",
         args: [{ targetUserId, content }],
       });
-      toast.info("Message queued — will send when connection restores.", { duration: 2000 });
+      // Show toast only once per offline period — subsequent sends just
+      // append silently to the queue.
+      toast.info("Connection restoring — queued messages will send on reconnect.", {
+        id: "socket-offline-toast",
+        duration: 4000,
+      });
     }
   }, []);
 
