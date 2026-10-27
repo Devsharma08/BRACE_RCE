@@ -465,12 +465,15 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     bind("rooms:invalidate", (data?: { roomId?: string; type?: string }) => {
       const type = data?.type;
       if (type === "battle_ended" && data?.roomId) {
-        // A battle finished — remove it from the dashboard's active list
-        invalidateQueries(["active-battles"]);
-      } else {
-        // Generic invalidation — refetch lobby rooms and dashboard battles
+        // A battle finished — remove it from the lobby's room list and
+        // refresh the Dashboard (stats, recent battles, problems).
         invalidateQueries(["lobby-rooms"]);
-        invalidateQueries(["active-battles"]);
+        invalidateQueries(["dashboard-profile"]);
+        invalidateQueries(["dashboard-stats"]);
+        invalidateQueries(["dashboard-problems"]);
+      } else {
+        // Generic invalidation — refetch lobby rooms
+        invalidateQueries(["lobby-rooms"]);
       }
     });
 
