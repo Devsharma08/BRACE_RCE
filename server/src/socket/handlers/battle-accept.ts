@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
+import { emitToUser } from "../ioRegistry.js";
+import { getSocketIds } from "../stateRedis.js";
 import type { HandlerCtx } from "../types.js";
-import { getSocketId } from "../stateRedis.js";
 
 export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
@@ -35,23 +36,19 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
                     include: { commonProblem: true }
                 });
 
-                // Join socket rooms and notify — use io.to() for cross-process safety.
-                // The Redis adapter routes events to any worker, and io.to() works
-                // with the adapter's room membership regardless of which worker.
+                // Notify both players to start the battle.
+                // Use emitToUser for guaranteed cross-process delivery —
+                // the Redis adapter routes via socket IDs directly, which
+                // works regardless of which PM2 worker each socket is on.
+                // (io.to(matchId) alone fails if room joins via the adapter
+                // addSocketsToRoom/join don't propagate correctly.)
                 for (const perf of performances) {
-                    const socketId = await getSocketId(perf.userId);
-                    if (socketId) {
-                        (io.of("/") as any).adapter.addSocketsToRoom
-                            ? (io.of("/") as any).adapter.addSocketsToRoom([socketId], matchId, 0, 60_000)
-                            : (io.of("/") as any).adapter.join(socketId, matchId);
-                    }
+                    await emitToUser(perf.userId, "match_starting", {
+                        eventId: eventId,
+                        roomName: matchId,
+                        problemId: event.commonProblem?.github_oid || "local-battle",
+                    });
                 }
-
-                io.to(matchId).emit("match_starting", {
-                    eventId: eventId,
-                    roomName: matchId,
-                    problemId: event.commonProblem?.github_oid || "local-battle"
-                });
             }
         } catch (error) {
             console.error("Accept match error:", error);
@@ -78,13 +75,11 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
             // send standard decline to the person who declined
             socket.emit("match_declined");
 
-            // send auto - requeue command to innocent player
+            // send auto-requeue command to innocent player — use emitToUser
+            // for cross-process delivery instead of io.to(socketId) which
+            // may not reach sockets on other PM2 workers.
             if (innocentPlayer) {
-                const innocentSocketId = await getSocketId(innocentPlayer.userId);
-                if (innocentSocketId) {
-                    io.to(innocentSocketId).emit(
-                        "match_opponent_declined");
-                }
+                await emitToUser(innocentPlayer.userId, "match_opponent_declined");
             }
         } catch (error) {
             console.error("Decline match error:", error);

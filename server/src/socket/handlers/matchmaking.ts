@@ -1,8 +1,8 @@
 import { prisma } from "../../lib/prisma.js";
 import { Level } from "../../generated/prisma/client.js";
 import { getAllowedDifficulties } from "../matchmakingUtils.js";
+import { emitToUser } from "../ioRegistry.js";
 import type { HandlerCtx } from "../types.js";
-import { getSocketId } from "../stateRedis.js";
 
 export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
     const { io, socket, userId } = ctx;
@@ -134,22 +134,8 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                         const roomName = `room-${event.id}`;
                         const problemId = event.commonProblem?.github_oid || "local-battle";
 
-                        // Get opponent's socket ID (cross-process aware via Redis fallback)
-                        const opponentSocketId = await getSocketId(opponentQueue.userId);
-
-                        // If we can't resolve the opponent's socket (e.g., Redis
-                        // is down), fall back to a Redis-based broadcast using
-                        // the socket.io Redis adapter. io.to() with a room name
-                        // works cross-process; but if the opponent hasn't joined
-                        // the room yet (they didn't get match_found_pending),
-                        // we need to emit directly. Use io.to() on the userId
-                        // as a fallback room.
+                        // Join socket rooms for this battle
                         socket.join(roomName);
-                        if (opponentSocketId) {
-                            (io.of("/") as any).adapter.addSocketsToRoom
-                                ? (io.of("/") as any).adapter.addSocketsToRoom([opponentSocketId], roomName, 0, 60_000)
-                                : (io.of("/") as any).adapter.join(opponentSocketId, roomName);
-                        }
 
                         // Fetch users for profile exchange
                         const [user1, user2] = await Promise.all([
@@ -157,20 +143,13 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                             prisma.user.findUnique({ where: { id: opponentQueue.userId }, select: { username: true, bio: true, avatarUrl: true } })
                         ]);
 
-                        // Notify both players to ACCEPT individually with opponent data.
-                        // Use io.to() for cross-process safety.
+                        // Notify both players to ACCEPT with opponent data.
+                        // Use emitToUser for guaranteed cross-process delivery.
                         socket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user2, opponentUserId: opponentQueue.userId });
 
-                        if (opponentSocketId) {
-                            io.to(opponentSocketId).emit("match_found_pending", { matchId: roomName, problemId, opponent: user1, opponentUserId: userId });
-                        } else {
-                            // Fallback: emit to opponent's userId as a room name.
-                            // The opponent's client will join this room on connect
-                            // (see SocketContext connect handler).
-                            io.to(opponentQueue.userId).emit("match_found_pending", {
-                                matchId: roomName, problemId, opponent: user1, opponentUserId: userId
-                            });
-                        }
+                        await emitToUser(opponentQueue.userId, "match_found_pending", {
+                            matchId: roomName, problemId, opponent: user1, opponentUserId: userId
+                        });
 
                         // Acceptance timeout — if neither player accepts within 15s,
                         // cancel the event and notify both players so they can re-queue.
@@ -184,13 +163,10 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                                     where: { id: event.id },
                                     data: { status: "CANCELLED" },
                                 });
-                                // Use io.to() for cross-process safety
+                                // Notify both players of timeout — use emitToUser
+                                // for guaranteed cross-process delivery
                                 if (socket) socket.emit("match_timeout");
-                                if (opponentSocketId) {
-                                    io.to(opponentSocketId).emit("match_timeout");
-                                } else {
-                                    io.to(opponentQueue.userId).emit("match_timeout");
-                                }
+                                await emitToUser(opponentQueue.userId, "match_timeout");
                             }
                         }, 15000);
                     }
