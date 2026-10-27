@@ -98,7 +98,7 @@ export const initSocketServer = async (io: Server) => {
         const userId = socket.data.userId;
         const socketId = socket.id;
         const connected = await markOnline(userId, socketId);
-        
+
         if (!connected) {
           // Connection limit exceeded
           socket.emit("connection_limit_exceeded", {
@@ -108,6 +108,12 @@ export const initSocketServer = async (io: Server) => {
           socket.disconnect(true);
           return;
         }
+
+        // Join the user's personal room so cross-process emits via
+        // io.to(userId) reach this socket even when it lives on a
+        // different PM2 worker. Required by the matchmaking fallback
+        // path when getSocketId() returns undefined.
+        await socket.join(userId);
 
         socket.on("disconnect", async () => {
             // False when the user still has another live socket (e.g. second tab).

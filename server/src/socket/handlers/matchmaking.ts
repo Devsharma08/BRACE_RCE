@@ -94,13 +94,19 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
 
                         // Lock both queues — only if both are still WAITING
                         // to prevent the dual-interval race condition
-                        await prisma.matchmakingQueue.updateMany({
+                        const lockResult = await prisma.matchmakingQueue.updateMany({
                             where: {
                                 id: { in: [queueEntry.id, opponentQueue.id] },
                                 status: "WAITING" // conditional: only lock if still waiting
                             },
                             data: { status: "MATCHED", matchedAt: new Date() }
                         });
+
+                        // If another worker already locked these queues, abort — don't create a duplicate event
+                        if (lockResult.count !== 2) {
+                            console.log(`Queue lock contention: only ${lockResult.count}/2 rows updated, aborting match`);
+                            return;
+                        }
                         // Fetch a problem matching the opponent's requested difficulty
                         const matchedProblems = await prisma.problem.findMany({
                             where: { difficulty_level: opponentQueue.preferredDifficulty },
@@ -131,9 +137,13 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                         // Get opponent's socket ID (cross-process aware via Redis fallback)
                         const opponentSocketId = await getSocketId(opponentQueue.userId);
 
-                        // Join both players to the socket room instantly.
-                        // Use io.to() for cross-process safety — io.sockets.sockets.get()
-                        // only works within the same PM2 worker.
+                        // If we can't resolve the opponent's socket (e.g., Redis
+                        // is down), fall back to a Redis-based broadcast using
+                        // the socket.io Redis adapter. io.to() with a room name
+                        // works cross-process; but if the opponent hasn't joined
+                        // the room yet (they didn't get match_found_pending),
+                        // we need to emit directly. Use io.to() on the userId
+                        // as a fallback room.
                         socket.join(roomName);
                         if (opponentSocketId) {
                             (io.of("/") as any).adapter.addSocketsToRoom
@@ -149,10 +159,17 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
 
                         // Notify both players to ACCEPT individually with opponent data.
                         // Use io.to() for cross-process safety.
-                        socket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user2 });
+                        socket.emit("match_found_pending", { matchId: roomName, problemId, opponent: user2, opponentUserId: opponentQueue.userId });
 
                         if (opponentSocketId) {
-                            io.to(opponentSocketId).emit("match_found_pending", { matchId: roomName, problemId, opponent: user1 });
+                            io.to(opponentSocketId).emit("match_found_pending", { matchId: roomName, problemId, opponent: user1, opponentUserId: userId });
+                        } else {
+                            // Fallback: emit to opponent's userId as a room name.
+                            // The opponent's client will join this room on connect
+                            // (see SocketContext connect handler).
+                            io.to(opponentQueue.userId).emit("match_found_pending", {
+                                matchId: roomName, problemId, opponent: user1, opponentUserId: userId
+                            });
                         }
 
                         // Acceptance timeout — if neither player accepts within 15s,
@@ -171,10 +188,11 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                                 if (socket) socket.emit("match_timeout");
                                 if (opponentSocketId) {
                                     io.to(opponentSocketId).emit("match_timeout");
+                                } else {
+                                    io.to(opponentQueue.userId).emit("match_timeout");
                                 }
                             }
                         }, 15000);
-
                     }
                 } catch (e) {
                     console.error("Matchmaking interval error:", e);

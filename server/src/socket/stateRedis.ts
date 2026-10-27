@@ -128,7 +128,11 @@ export async function getAllLobbies(): Promise<LobbyWithId[]> {
  * so emitToUser can fan out to every live tab.
  */
 export async function markOnline(userId: string, socketId: string): Promise<boolean> {
-  const existing = memoryOnlineUsers.get(userId) ?? new Set<string>();
+  // Read the authoritative Redis set first so cross-worker sockets are preserved
+  const cached = await redisGet<string[]>(cacheKey(`user:${userId}:sockets`));
+  const existing = cached && cached.length > 0
+    ? new Set<string>(cached)
+    : (memoryOnlineUsers.get(userId) ?? new Set<string>());
 
   if (existing.size >= MAX_SOCKETS_PER_USER) {
     return false;
@@ -137,7 +141,7 @@ export async function markOnline(userId: string, socketId: string): Promise<bool
   existing.add(socketId);
   memoryOnlineUsers.set(userId, existing);
 
-  // Persist the full set to Redis so cross-process workers can read it.
+  // Persist the FULL set (local + Redis) so other workers see all sockets.
   const arr = Array.from(existing);
   await redisSet(cacheKey(`user:${userId}:sockets`), arr, 86400);
 
@@ -151,11 +155,21 @@ export async function markOnline(userId: string, socketId: string): Promise<bool
  * preserved in the set so emitToUser never targets a dead id.
  */
 export async function markOffline(userId: string, socketId?: string): Promise<boolean> {
-  const existing = memoryOnlineUsers.get(userId);
+  // Read the authoritative Redis set FIRST — local memory may be empty if the
+  // user's other sockets live on a different PM2 worker. Only delete the Redis
+  // entry when ALL sockets are gone (truly offline).
+  const cached = await redisGet<string[]>(cacheKey(`user:${userId}:sockets`));
+  let existing: Set<string>;
 
-  if (!existing || existing.size === 0) {
+  if (cached && cached.length > 0) {
+    existing = new Set<string>(cached);
+  } else {
+    existing = memoryOnlineUsers.get(userId) ?? new Set<string>();
+  }
+
+  if (existing.size === 0) {
+    // User was not tracked anywhere — nothing to clean up.
     memoryOnlineUsers.delete(userId);
-    await redisDel(cacheKey(`user:${userId}:sockets`));
     return true;
   }
 
@@ -173,7 +187,7 @@ export async function markOffline(userId: string, socketId?: string): Promise<bo
     return true;
   }
 
-  // User still has live sockets — update the stored set.
+  // User still has live sockets — update both in-memory and Redis.
   memoryOnlineUsers.set(userId, existing);
   await redisSet(cacheKey(`user:${userId}:sockets`), Array.from(existing), 86400);
   return false;

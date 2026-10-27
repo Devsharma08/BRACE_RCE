@@ -116,6 +116,10 @@ export interface CustomLobbyState {
   currentUsers: number;
   maxUsers: number;
   difficulty: string;
+  isPublic?: boolean;
+  isTemplate?: boolean;
+  password?: string | null;
+  passwordProtected?: boolean;
 }
 
 const RESYNC_GAP_MS = 5000;
@@ -455,6 +459,19 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     bind("lobby_ended", () => {
       setCustomLobby(null);
       toast.info("Lobby has ended.");
+    });
+
+    // Real-time invalidator for lobby/room list changes (new rooms, room deleted, etc.)
+    bind("rooms:invalidate", (data?: { roomId?: string; type?: string }) => {
+      const type = data?.type;
+      if (type === "battle_ended" && data?.roomId) {
+        // A battle finished — remove it from the dashboard's active list
+        invalidateQueries(["active-battles"]);
+      } else {
+        // Generic invalidation — refetch lobby rooms and dashboard battles
+        invalidateQueries(["lobby-rooms"]);
+        invalidateQueries(["active-battles"]);
+      }
     });
 
     bind(

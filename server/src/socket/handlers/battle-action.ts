@@ -155,6 +155,10 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
         await deleteCachedByPrefix("leaderboard:");
         await deleteCachedByPrefix("my-rating:");
         io.emit("leaderboard:invalidate");
+
+        // Notify clients that a battle ended so they can remove it from
+        // their dashboard/active list and refresh the lobby room list
+        io.emit("rooms:invalidate", { type: "battle_ended", roomId: roomName });
     });
 }
 
