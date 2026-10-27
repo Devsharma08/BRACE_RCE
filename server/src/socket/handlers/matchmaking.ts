@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { Level } from "../../generated/prisma/client.js";
 import { getAllowedDifficulties } from "../matchmakingUtils.js";
 import { emitToUser } from "../ioRegistry.js";
+import { pendingMatchTimeouts } from "../state.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
@@ -156,24 +157,28 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                              matchId: roomName, problemId, opponent: user1, opponentUserId: userId
                          });
 
-                        // Acceptance timeout — if neither player accepts within 15s,
-                        // cancel the event and notify both players so they can re-queue.
-                        setTimeout(async () => {
-                            const checkEvent = await prisma.event.findUnique({
-                                where: { id: event.id },
-                                select: { status: true },
-                            });
-                            if (checkEvent?.status === "WAITING") {
-                                await prisma.event.update({
-                                    where: { id: event.id },
-                                    data: { status: "CANCELLED" },
-                                });
-                                // Notify both players of timeout — use emitToUser
-                                // for guaranteed cross-process delivery
-                                if (socket) socket.emit("match_timeout");
-                                await emitToUser(opponentQueue.userId, "match_timeout");
-                            }
-                        }, 15000);
+                         // Acceptance timeout — if neither player accepts within 15s,
+                         // cancel the event and notify both players so they can re-queue.
+                         // Tracked by socket id so it can be cleared on disconnect,
+                         // preventing zombie timers from firing after the socket dies.
+                         const acceptTimeout = setTimeout(async () => {
+                             pendingMatchTimeouts.delete(socket.id);
+                             const checkEvent = await prisma.event.findUnique({
+                                 where: { id: event.id },
+                                 select: { status: true },
+                             });
+                             if (checkEvent?.status === "WAITING") {
+                                 await prisma.event.update({
+                                     where: { id: event.id },
+                                     data: { status: "CANCELLED" },
+                                 });
+                                 // Notify both players of timeout — use emitToUser
+                                 // for guaranteed cross-process delivery
+                                 socket.emit("match_timeout");
+                                 await emitToUser(opponentQueue.userId, "match_timeout");
+                             }
+                         }, 15000);
+                         pendingMatchTimeouts.set(socket.id, acceptTimeout);
                     }
                 } catch (e) {
                     console.error("Matchmaking interval error:", e);

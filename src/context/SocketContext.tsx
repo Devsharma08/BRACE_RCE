@@ -165,6 +165,44 @@ let currentSocketUserId: string | null = null;
 const wsFailureCounts = new Map<string, number>();
 const WS_FAILURE_THRESHOLD = 3;
 
+/**
+ * Offline event queue: messages emitted while disconnected are buffered here
+ * and flushed on reconnect so chat/battle messages aren't silently dropped.
+ * Only non-critical, idempotent events go through the queue — state-changing
+ * operations (join_battle, accept_match, etc.) should use emitWithAck instead.
+ */
+interface QueuedEvent {
+  event: string;
+  args: unknown[];
+}
+const offlineEventQueue: QueuedEvent[] = [];
+
+/**
+ * Emit an acknowledgment-protected event with a timeout. If the server doesn't
+ * respond within `timeoutMs`, the callback receives an error and pending state is
+ * cleaned up. This prevents ack callbacks from hanging indefinitely when the server
+ * is slow, the socket dies mid-roundtrip, or the event was rate-limited.
+ */
+export function emitWithAck<T = unknown>(
+  socket: Socket | null,
+  event: string,
+  args: unknown[],
+  ack: (response: T) => void,
+  timeoutMs: number = 5000,
+): void {
+  if (!socket || !socket.connected) {
+    ack({ success: false, error: "Socket not connected" } as unknown as T);
+    return;
+  }
+  const timer = setTimeout(() => {
+    ack({ success: false, error: "Acknowledgment timeout" } as unknown as T);
+  }, timeoutMs);
+  socket.emit(event, ...args, (response: T) => {
+    clearTimeout(timer);
+    ack(response);
+  });
+}
+
 function resolveSocketUrl(): string {
   const rawSocketUrl =
     import.meta.env.VITE_SOCKET_URL ||
@@ -180,7 +218,7 @@ function createSocket(userId: string): Socket {
   const preferPolling = failCount >= WS_FAILURE_THRESHOLD;
   const transports = preferPolling ? ["polling", "websocket"] : ["websocket", "polling"];
 
-  const socket = io(socketUrl, {
+   const socket = io(socketUrl, {
     auth: { userId },
     withCredentials: true,
     transports,
@@ -195,6 +233,15 @@ function createSocket(userId: string): Socket {
     rememberUpgrade: true,
     autoUpgrade: true,
     randomizationFactor: 0.5,
+    maxPayloadBytes: 1e6,
+    // Ask the server for buffered events from the last 2 minutes of disconnection.
+    // connectionStateRecovery on the server holds events for users who reconnect
+    // within maxDisconnectionDuration — this lets us catch missed toasts or
+    // match_found_pending events without a page refresh.
+    recovery: {
+      enabled: true,
+      maxDisconnectionDuration: 120000,
+    },
   });
 
   // Track WebSocket handshake failures for transport fallback memory.
@@ -224,6 +271,14 @@ function createSocket(userId: string): Socket {
   // Clear failure memory and downgrade flag once we successfully connect.
   socket.on("connect", () => {
     wsFailureCounts.set(socketUrl, 0);
+  });
+
+  // Surface rate-limit events to users with a non-blocking toast so they
+  // understand why an action didn't take effect.
+  socket.on("rate_limit_exceeded", (data: { event?: string; message?: string; retryAfterMs?: number }) => {
+    const eventName = data?.event ? ` "${data.event}"` : "";
+    const msg = data?.message ?? "Rate limited";
+    toast.warning(`Action${eventName} rate-limited: ${msg}`, { duration: 4000 });
   });
 
   return socket;
@@ -311,7 +366,11 @@ function emitJoinBattle(
   battleRoomManager.roomId = roomId;
   battleRoomManager.userId = userId;
 
-  socket?.emit("join_battle", roomId, (ackResp: { success: boolean; error?: string; participantCount?: number }) => {
+  emitWithAck(
+    socket,
+    "join_battle",
+    [roomId],
+    (ackResp: { success: boolean; error?: string; participantCount?: number }) => {
     // Resolve all queued callbacks for this room
     const callback = battleRoomManager.joinCallbacks.get(roomId);
     battleRoomManager.joinCallbacks.delete(roomId);
@@ -329,7 +388,9 @@ function emitJoinBattle(
       ack?.(ackResp);
       callback?.(ackResp);
     }
-  });
+  },
+    10000,
+  );
 }
 
 /**
@@ -498,6 +559,22 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const disconnectedAtRef = useRef(0);
 
   const socketCreatedRef = useRef(false);
+  const isLeavingRef = useRef(false);
+
+  // Explicit disconnect on page unload so the server knows immediately instead
+  // of waiting for the pingTimeout to expire. The `isLeavingRef` guard prevents
+  // the disconnect → reconnect_failed → recreate cycle from firing a spurious
+  // reconnect after a normal navigation.
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      isLeavingRef.current = true;
+      socketRef.current?.disconnect();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   /**
    * Synchronize battleRoomManager state to React state.
@@ -508,30 +585,32 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     setCurrentBattleRoomId(battleRoomManager.roomId);
   }, []);
 
-   useEffect(() => {
-     if (!userId) return;
+    useEffect(() => {
+      if (!userId) return;
 
-     // Guard against creating a duplicate socket. If we already have one that
-     // is (re)connecting or connected, reuse it. If the previous socket was
-     // permanently disconnected (by disconnect/reconnect-failed handlers),
-     // socketCreatedRef is false and we create a fresh one here.
-     const existingSocket = socketRef.current;
-     if (socketCreatedRef.current && existingSocket && (existingSocket.connected || existingSocket.connecting)) {
-       return;
-     }
+      // Guard against creating a duplicate socket. If we already have one that
+      // is (re)connecting or connected, reuse it. If the previous socket was
+      // permanently disconnected (by disconnect/reconnect-failed handlers),
+      // socketCreatedRef is false and we create a fresh one here.
+      const existingSocket = socketRef.current;
+      const reuseExisting = socketCreatedRef.current && existingSocket && (existingSocket.connected || existingSocket.connecting);
 
-     socketCreatedRef.current = true;
-     const newSocket = getOrCreateSocket(userId);
-     socketRef.current = newSocket;
-     // Force-connect the socket (it may have been created but not yet
-     // initiated, e.g. after a manual disconnect).
-     if (!newSocket.connected && !newSocket.connecting) {
-       newSocket.connect();
-     }
-     // Increment the tick so React always detects a change and re-renders
-     // consumers — even when the singleton returns the same Socket instance.
-     setSocketTick((t) => t + 1);
-     const socket = newSocket;
+      socketCreatedRef.current = true;
+      const newSocket = reuseExisting ? existingSocket : getOrCreateSocket(userId);
+      socketRef.current = newSocket;
+      // Force-connect the socket (it may have been created but not yet
+      // initiated, e.g. after a manual disconnect).
+      if (!reuseExisting && !newSocket.connected && !newSocket.connecting) {
+        newSocket.connect();
+      }
+      // Increment the tick so React always detects a change and re-renders
+      // consumers — even when the singleton returns the same Socket instance.
+      // Skip the tick when reusing — handlers are still re-bound below, but
+      // consumers don't need a new socket reference.
+      if (!reuseExisting) {
+        setSocketTick((t) => t + 1);
+      }
+      const socket = newSocket;
 
     const cleanupFns: Array<() => void> = [];
     const bind = (event: string, handler: (...args: any[]) => void) => {
@@ -604,6 +683,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(true);
       socket.emit("check_active_battle");
 
+      // Flush any messages that were queued while offline so they don't get
+      // silently dropped during a network blip.
+      if (offlineEventQueue.length > 0) {
+        const queued = [...offlineEventQueue];
+        offlineEventQueue.length = 0;
+        for (const item of queued) {
+          socket.emit(item.event, ...item.args);
+        }
+      }
+
       if (disconnectedAtRef.current && Date.now() - disconnectedAtRef.current > RESYNC_GAP_MS) {
         queryClient.invalidateQueries({
           predicate: (q) => q.queryKey[0] !== "auth-me",
@@ -626,17 +715,24 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       // updates until I refresh."
       //
       // Uses the centralized battleRoomManager — no more double join from
-      // Battle.tsx and AdminSpectateView.tsx.
+      // Battle.tsx and AdminSpectateView.tsx. Wrapped in emitWithAck so a
+      // non-responsive server doesn't leave us in a half-joined state.
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
-        socket.emit("join_battle", battleRoomManager.roomId, (ack: { success: boolean }) => {
-          if (ack?.success) {
-            battleRoomManager.status = "JOINED";
-          } else {
-            battleRoomManager.status = "NONE";
-            battleRoomManager.roomId = null;
-            syncBattleRoomState();
-          }
-        });
+        emitWithAck(
+          socket,
+          "join_battle",
+          [battleRoomManager.roomId],
+          (ack: { success: boolean }) => {
+            if (ack?.success) {
+              battleRoomManager.status = "JOINED";
+            } else {
+              battleRoomManager.status = "NONE";
+              battleRoomManager.roomId = null;
+              syncBattleRoomState();
+            }
+          },
+          10000,
+        );
       }
     });
 
@@ -655,6 +751,11 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       if (reason === "io server disconnect" || reason === "transport error") {
         // Server explicitly dropped us or the transport died — these won't
         // auto-reconnect in socket.io v4. Trigger a fresh socket creation.
+        // Skip if we're intentionally disconnecting (page unload).
+        if (isLeavingRef.current) {
+          socketCreatedRef.current = false;
+          return;
+        }
         socketCreatedRef.current = false;
         socketSingletons.set(userId, null);
         setTimeout(() => {
@@ -689,10 +790,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
     bind("reconnect", (attempt: number) => {
       reconnectAttemptCount = 0;
+      isLeavingRef.current = false;
       logger.info(`Socket reconnected after ${attempt} attempt(s)`);
     });
     bind("reconnect_failed", () => {
       reconnectAttemptCount = 0;
+      // Don't show error or recreate if we're intentionally disconnecting.
+      if (isLeavingRef.current) {
+        socketCreatedRef.current = false;
+        return;
+      }
       socketCreatedRef.current = false;
       socketSingletons.set(userId, null);
       toast.error("Connection lost — click to restore real-time features.", {
@@ -848,16 +955,31 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setIsConnected(true);
       socket.emit("check_active_battle");
       if (battleRoomManager.roomId && battleRoomManager.status === "JOINED") {
-        socket.emit("join_battle", battleRoomManager.roomId, (ack: { success: boolean }) => {
-          if (!ack?.success) {
-            battleRoomManager.status = "NONE";
-            battleRoomManager.roomId = null;
-            syncBattleRoomState();
-          }
-        });
+        emitWithAck(
+          socket,
+          "join_battle",
+          [battleRoomManager.roomId],
+          (ack: { success: boolean }) => {
+            if (!ack?.success) {
+              battleRoomManager.status = "NONE";
+              battleRoomManager.roomId = null;
+              syncBattleRoomState();
+            }
+          },
+          10000,
+        );
       }
       const ids = presenceFriends?.friends?.map((f) => f.id);
       if (ids && ids.length > 0) socket.emit("request_presence", { userIds: ids });
+      // Also flush any messages queued during the brief window before the
+      // connect handler ran (e.g. StrictMode remount race).
+      if (offlineEventQueue.length > 0) {
+        const queued = [...offlineEventQueue];
+        offlineEventQueue.length = 0;
+        for (const item of queued) {
+          socket.emit(item.event, ...item.args);
+        }
+      }
     }
 
     return () => {
@@ -912,7 +1034,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   }, [syncBattleRoomState]);
 
   const sendDirectMessage = useCallback((targetUserId: string, content: string) => {
-    socketRef.current?.emit("send_direct_message", { targetUserId, content });
+    const socket = socketRef.current;
+    if (socket && socket.connected) {
+      socket.emit("send_direct_message", { targetUserId, content });
+    } else {
+      // Queue for replay on reconnect so messages aren't lost during blip.
+      offlineEventQueue.push({
+        event: "send_direct_message",
+        args: [{ targetUserId, content }],
+      });
+      toast.info("Message queued — will send when connection restores.", { duration: 2000 });
+    }
   }, []);
 
   const declineChallenge = useCallback((targetUserId: string) => {
@@ -962,7 +1094,15 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   }, [isConnected]);
 
   const sendBattleMessage = useCallback((roomId: string, content: string) => {
-    socketRef.current?.emit("send_battle_message", { roomId, content });
+    const socket = socketRef.current;
+    if (socket && socket.connected) {
+      socket.emit("send_battle_message", { roomId, content });
+    } else {
+      offlineEventQueue.push({
+        event: "send_battle_message",
+        args: [{ roomId, content }],
+      });
+    }
   }, []);
 
   const createCustomRoom = useCallback((
@@ -988,7 +1128,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   const startCustomMatch = useCallback(() => {
     if (customLobby?.isHost)
-      socketRef.current?.emit("start_custom_match", customLobby.roomCode);
+      emitWithAck(
+        socketRef.current,
+        "start_custom_match",
+        [customLobby.roomCode],
+        (ack: { success?: boolean; error?: string }) => {
+          if (!ack?.success) {
+            toast.error(ack?.error ?? "Failed to start match.");
+          }
+        },
+        10000,
+      );
   }, [customLobby]);
 
   const leaveCustomMatch = useCallback(() => {
@@ -1006,7 +1156,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const acceptMatch = useCallback(() => {
     if (socketRef.current && pendingMatchId) {
       setIsClicked(true);
-      socketRef.current.emit("accept_match", pendingMatchId);
+      emitWithAck(
+        socketRef.current,
+        "accept_match",
+        [pendingMatchId],
+        (ack: { success?: boolean; error?: string }) => {
+          if (!ack?.success) {
+            toast.error(ack?.error ?? "Failed to accept match.");
+          }
+        },
+        10000,
+      );
     }
   }, [pendingMatchId]);
 

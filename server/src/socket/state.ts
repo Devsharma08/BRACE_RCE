@@ -3,6 +3,12 @@ import type { CustomLobby } from "./types.js";
 export const activeLobbies = new Map<string, CustomLobby>();
 export const onlineUsers = new Map<string, string>();
 export const activeSearchIntervals = new Map<string, NodeJS.Timeout>();
+/**
+ * Track match-making accept timeouts by socket id so they can be cleared
+ * when the socket disconnects, preventing zombie timers from firing on
+ * a dead connection (and potentially corrupting event state).
+ */
+export const pendingMatchTimeouts = new Map<string, NodeJS.Timeout>();
 
 /**
  * Maximum concurrent socket connections per user.

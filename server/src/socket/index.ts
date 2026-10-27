@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { initModuleGC } from "./gc.js";
 import { registerSocketAuth } from "./auth.js";
 import { getActiveBattleForUser } from "./activeBattle.js";
-import { activeSearchIntervals } from "./state.js";
+import { activeSearchIntervals, pendingMatchTimeouts } from "./state.js";
 import { 
   markOnline, 
   markOffline, 
@@ -166,6 +166,12 @@ export const initSocketServer = async (io: Server) => {
             if (activeSearchIntervals.has(socket.id)) {
                 clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
                 activeSearchIntervals.delete(socket.id);
+            }
+
+            // Clear any pending match-accept timeout for this socket
+            if (pendingMatchTimeouts.has(socket.id)) {
+                clearTimeout(pendingMatchTimeouts.get(socket.id) as NodeJS.Timeout);
+                pendingMatchTimeouts.delete(socket.id);
             }
 
             await prisma.matchmakingQueue.updateMany({
