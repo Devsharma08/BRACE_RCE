@@ -54,7 +54,7 @@ const apiErrorMessage = (err: unknown, fallback: string) => {
 };
 
 export default function FriendsDashboard() {
-  const { sendDirectMessage, socket, requestPresence, friends: socketFriends, setFriends: setSocketFriends } = useSocket();
+  const { sendDirectMessage, socket, requestPresence, friends: socketFriends, setFriends: setSocketFriends, getDirectMessages, subscribeToDirectMessages } = useSocket();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Friend | null>(null);
@@ -93,7 +93,6 @@ export default function FriendsDashboard() {
   useSocketInvalidation("friends:update", [
     ["friends-list"],
     ["friend-requests"],
-    ["blocked-users"],
   ]);
 
   // Debounce the directory search: the query only commits 300ms after the user
@@ -192,15 +191,6 @@ export default function FriendsDashboard() {
     },
   });
 
-  // No blocked-list UI yet; the query exists so the `blocked-users` cache that
-  // socket invalidations target is a real query, and blocking can refresh it.
-  const { refetch: getBlockedUsers } = useQuery<Friend[]>({
-    queryKey: ["blocked-users"],
-    queryFn: async () => {
-      const res = await api.get("/friends/blocked");
-      return ((res.data.users || []) as { receiver: Friend }[]).map((entry) => entry.receiver);
-    },
-  });
 
   const { data: directMessages = [] } = useQuery({
     queryKey: ["direct-messages", activeTab?.id],
@@ -280,17 +270,49 @@ export default function FriendsDashboard() {
     });
   }, [displayedMessages]);
 
+  // Load direct messages from the global store when the active tab or user changes.
+  // This ensures messages received while the user was on a different route are
+  // present immediately — no page refresh required.
+  useEffect(() => {
+    if (!activeTab?.id || !user?.id) return;
+    const stored = getDirectMessages(user.id, activeTab.id);
+    setMessages(stored);
+  }, [activeTab?.id, user?.id, getDirectMessages]);
+
+  // Subscribe to the global direct-message store so incoming DMs update the UI
+  // in real time regardless of which route the user is on.
+  useEffect(() => {
+    if (!subscribeToDirectMessages) return;
+    const conversationKey = activeTab?.id && user?.id ? [user.id, activeTab.id].sort().join(":") : null;
+    if (!conversationKey) return;
+
+    const unsubscribe = subscribeToDirectMessages((key, msgs) => {
+      if (key !== conversationKey) return;
+      // Merge store messages with any locally-optimistic messages (dedup by id).
+      setMessages((prev) => {
+        const storeIds = new Set(msgs.map((m) => m.id));
+        return [...msgs, ...prev.filter((m) => !storeIds.has(m.id))];
+      });
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subscribeToDirectMessages, activeTab?.id, user?.id]);
+
+  // Local socket listener for direct messages: appends new arrivals to local
+  // state (optimistic) and updates the query cache. The global store handler
+  // in SocketContext already persists the message; this effect keeps the local
+  // reactive subscription in sync for the active conversation.
   useEffect(() => {
     if (!socket) return;
     const handleMessage = (data: { senderId: string; content: string; createdAt: string; id: string }) => {
       if (activeTab && data.senderId === activeTab.id) {
-        setMessages((prev) => [...prev, { ...data, receiverId: "ME" }]);
-        // Also append into the query cache: the message currently lives only in
-        // local state, so navigating away and back would lose it (the REST cache
-        // is fetched before the DB-side message list refreshes).
+        const optimisticMsg = { ...data, receiverId: "ME" };
+        setMessages((prev) => [...prev, optimisticMsg]);
+        // Also append into the query cache so the message survives a refetch
+        // before the DB-side message list refreshes.
         queryClient.setQueryData<Message[]>(
           ["direct-messages", activeTab.id],
-          (old) => [...(old ?? []), { ...data, receiverId: "ME" }],
+          (old) => [...(old ?? []), optimisticMsg],
         );
       }
     };
@@ -350,7 +372,7 @@ export default function FriendsDashboard() {
       setSentRequestIds((prev) =>
         prev.includes(targetUserId) ? prev : [...prev, targetUserId],
       );
-      fetchFriends();
+      await queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       fetchRequests();
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, "Failed to send request"));
@@ -365,19 +387,10 @@ export default function FriendsDashboard() {
     try {
       await api.post("/friends/accept", { requestId, senderId });
       toast.success("Friend request accepted");
-      // Optimistically add the friend (sender) to the list
-      setFriends(prev => {
-        // Avoid duplicate
-        if (prev.some(f => f.id === senderId)) return prev;
-        // Try to get the friend object from socketFriends
-        const friendFromSocket = socketFriends.find(f => f.id === senderId);
-        if (friendFromSocket) {
-          return [...prev, friendFromSocket];
-        }
-        // Fallback placeholder
-        return [...prev, { id: senderId, username: "Loading...", avatarUrl: null, requestSent: false }];
-      });
-      fetchFriends();
+      // Invalidate queries directly for immediate refetch (more reliable than
+      // waiting for socket event which may arrive before handler is attached).
+      await queryClient.invalidateQueries({ queryKey: ["friends-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       fetchRequests();
     } catch (err) {
       toast.error(apiErrorMessage(err, "Failed to accept request"));
@@ -394,6 +407,7 @@ export default function FriendsDashboard() {
       // Route is POST /friends/reject with { requestId } in the body.
       await api.post("/friends/reject", { requestId });
       toast.success("Friend request rejected");
+      await queryClient.invalidateQueries({ queryKey: ["friend-requests"] });
       fetchRequests();
     } catch (err: unknown) {
       toast.error(apiErrorMessage(err, "Failed to reject request"));
@@ -411,25 +425,15 @@ const handleRemoveFriend = async (friendId: string) => {
       setFriends(prev => prev.filter(f => f.id !== friendId));
       if (activeTab?.id === friendId) {
         selectFriend(null);
-    }
-    // Refresh the query to stay in sync with server
-    fetchFriends();
-} catch (err) {
-  toast.error("Failed to remove friend");
-}
-  };
-
-  const handleBlockUser = async (userId: string) => {
-    try {
-      await api.post("/friends/block", { targetUserId: userId });
-      toast.success("User blocked");
+      }
+      // Refresh the query to stay in sync with server
+      await queryClient.invalidateQueries({ queryKey: ["friends-list"] });
       fetchFriends();
-      getBlockedUsers();
-    } catch {
-      toast.error("Failed to block user");
+    } catch (err) {
+      toast.error("Failed to remove friend");
+      fetchFriends();
     }
   };
-
 
   // A friend's ranked record lives only on the leaderboard — /friends returns
   // identity, not stats. One cached fetch (10 min staleTime) serves every
@@ -819,13 +823,6 @@ const handleRemoveFriend = async (friendId: string) => {
                 >
                   <Swords className="w-4 h-4" />
                   Challenge to Battle
-                </button>
-                <button
-                  onClick={() => handleBlockUser(activeTab.id)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-line text-subtle hover:text-accent-danger hover:border-accent-danger/30 text-[10px] uppercase tracking-widest transition-all"
-                >
-                  <Ban className="w-3 h-3" />
-                  Block User
                 </button>
                 <button
                   onClick={() => handleRemoveFriend(activeTab.id)}

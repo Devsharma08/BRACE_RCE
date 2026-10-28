@@ -67,7 +67,7 @@ class Profile {
                     finishedAt: true,
                     createdAt: true,
                     event: {
-                        include: {
+                        select: {
                             commonProblem: { select: { name: true, problem_number: true, difficulty_level: true, timeLimitMs: true } },
                             totalTimeLimitMs: true,
                         }
@@ -187,12 +187,12 @@ class Profile {
             } = req.body;
 
             // Map the difficulty to specific time limits (in milliseconds)
-            // EASY: 15 mins, MEDIUM: 20 mins, HARD: 30 mins
+            // EASY: 15 mins, MEDIUM: 20 mins, HARD: 25 mins
             const diffLevel = difficulty_level || "MEDIUM";
             const timeLimitMap: Record<string, number> = {
                 "EASY": 15 * 60 * 1000,
                 "MEDIUM": 20 * 60 * 1000,
-                "HARD": 30 * 60 * 1000
+                "HARD": 25 * 60 * 1000
             };
             const timeLimitMs = timeLimitMap[diffLevel];
 

@@ -8,7 +8,7 @@ export const formatTime = (seconds: number | null): string => {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 };
 
-export function useGlobalTimer(startedAt: string | Date | null, totalDurationMs: number | null, onExpire?: () => void) {
+export function useGlobalTimer(startedAt: string | Date | null, totalDurationMs: number | null, onExpire?: () => void, resetKey?: string | number) {
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const hasExpiredRef = useRef(false);
@@ -53,7 +53,7 @@ export function useGlobalTimer(startedAt: string | Date | null, totalDurationMs:
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [startedAt, totalDurationMs, onExpire]);
+  }, [startedAt, totalDurationMs, onExpire, resetKey]);
 
   return { remainingSeconds, isExpired };
 }
@@ -65,6 +65,9 @@ interface GlobalTimerProps {
   label?: string;
   variant?: 'compact' | 'pill' | 'banner';
   showIcon?: boolean;
+  /** When provided, changing this value forces the timer to re-initialize,
+   *  clearing stale state from a previous battle. */
+  resetKey?: string | number;
 }
 
 export const GlobalTimer: React.FC<GlobalTimerProps> = ({ 
@@ -73,9 +76,10 @@ export const GlobalTimer: React.FC<GlobalTimerProps> = ({
   onExpire, 
   label = "TIME LEFT:", 
   variant = "pill",
-  showIcon = true
+  showIcon = true,
+  resetKey
 }) => {
-  const { remainingSeconds, isExpired } = useGlobalTimer(startedAt, totalDurationMs, onExpire);
+  const { remainingSeconds, isExpired } = useGlobalTimer(startedAt, totalDurationMs, onExpire, resetKey);
 
   if (remainingSeconds === null) {
      return null;

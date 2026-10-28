@@ -50,6 +50,7 @@ import {
   Home,
 } from "lucide-react";
 import { GlobalTimer, formatTime } from "../components/common/GlobalTimer";
+import { getTimeLimitByDifficulty } from "../utils/difficultyTime";
 import { api } from "../config/api";
 import { NotesPanel, clearEventNotes } from "../components/ui/NotesPanel";
 import { participantVerdict, verdictStyle } from "../utils/participantVerdict";
@@ -183,6 +184,7 @@ const SpectateView = ({
               startedAt={battleState.startedAt}
               totalDurationMs={battleState.totalDurationMs}
               variant="compact"
+              resetKey={battleState.totalDurationMs}
             />
           )}
         </div>
@@ -276,7 +278,7 @@ export const Battle = () => {
   const roomPassword = routerState?.password || sessionPassword || undefined;
   // SocketContext now manages room joining/leaving centrally.
   // We only need to bind event handlers here.
-  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom } =
+  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom, getBattleMessages, subscribeToBattleMessages } =
     useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
@@ -296,6 +298,21 @@ export const Battle = () => {
   const [opponentLeft, setOpponentLeft] = useState(false);
   const [myUserId, setMyUserId] = useState<string>("");
   const [blockedParticipants, setBlockedParticipants] = useState<any[]>([]);
+
+  // Use global battle messages from SocketContext (persists across navigation).
+  // Reactive subscription ensures messages render in real-time even when the
+  // user navigates away and back — no page refresh required.
+  const [battleMessages, setBattleMessages] = useState<BattleMessage[]>(() =>
+    roomId ? getBattleMessages(roomId) : []
+  );
+
+  useEffect(() => {
+    if (!roomId) return;
+    const unsubscribe = subscribeToBattleMessages((rid, msgs) => {
+      if (rid === roomId) setBattleMessages(msgs);
+    });
+    return unsubscribe;
+  }, [roomId, subscribeToBattleMessages]);
 
   // Use a ref so this function is never a socket-effect dep (prevents spurious
   // effect teardowns that drop socket room membership).
@@ -337,6 +354,13 @@ export const Battle = () => {
 
   // --- PROBLEM STATE ---
   const [problems, setProblems] = useState<any[]>([]);
+
+  // Resolve time limit: per-problem timeLimitMs takes precedence,
+  // otherwise fall back to difficulty-based default (EASY=15min, MEDIUM=20min, HARD=25min).
+  const firstProblem = problems?.[0];
+  const firstProblemDifficulty = firstProblem?.difficulty_level || firstProblem?.difficulty;
+  const firstProblemTimeLimitMs = firstProblem?.timeLimitMs;
+  const resolvedTimeLimitMs = getTimeLimitByDifficulty(firstProblemDifficulty, firstProblemTimeLimitMs);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Clear execution output and reset test case statuses when the problem changes
@@ -387,7 +411,7 @@ export const Battle = () => {
   const [closingSeconds, setClosingSeconds] = useState<number | null>(null);
 
   // --- CHAT STATE ---
-  const [battleMessages, setBattleMessages] = useState<BattleMessage[]>([]);
+  // battleMessages now comes from SocketContext global store (getBattleMessages)
   const [newBattleMessage, setNewBattleMessage] = useState("");
   const [activePanelTab, setActivePanelTab] = useState<
     "PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY" | "MODERATOR"
@@ -672,6 +696,8 @@ export const Battle = () => {
 
     setRoom(roomData);
     setMyUserId(myId);
+
+    // ... rest of existing code
     myUserIdRef.current = myId;
     const isUserHost = myId === roomData.hostId;
     setIsHost(isUserHost);
@@ -719,6 +745,22 @@ export const Battle = () => {
     });
     setPlayerProgress(initialProgress);
 
+    // Fetch battle chat history
+    const eventId = roomId?.replace("room-", "");
+    if (eventId) {
+      api.get(`/rooms/${eventId}/messages?limit=50`)
+        .then((res) => {
+          const history = res.data.messages || [];
+          // Sort by createdAt ascending for chronological order
+          history.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          // Messages are stored in SocketContext global store via receive_battle_message
+          // No local state update needed
+        })
+        .catch(() => {
+          // Silent fail - history is optional
+        });
+    }
+
     let targetProblems = [];
     if (roomData.type === "ONE_VS_ONE" || roomData.type === "FRIENDS") {
       targetProblems = roomData.commonProblem ? [roomData.commonProblem] : [];
@@ -749,7 +791,7 @@ export const Battle = () => {
     if (socket && roomId) {
       joinBattleRoom(roomId, (ack: { success: boolean; error?: string }) => {
         if (!ack?.success) {
-          toast.error("Failed to join battle room");
+          toast.error(ack?.error || "Failed to join battle room");
           navigate("/lobby");
         }
       });
@@ -852,14 +894,6 @@ export const Battle = () => {
       setBattleState((prev: any) => ({ ...prev, ...data }));
     };
 
-    const onReceiveBattleMessage = (msg: any) => {
-      if (!mounted) return;
-      setBattleMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-    };
-
     const onBattleMessageError = (errMsg: string) => {
       if (!mounted) return;
       toast.error(errMsg || "Failed to send battle message.", {
@@ -905,7 +939,7 @@ export const Battle = () => {
           (p) => p.userId !== data.userId && p.user?.id !== data.userId,
         ),
       );
-      if (data.blocked) {
+      if (isHostRef.current) {
         void fetchBlockedParticipantsRef.current();
       }
     };
@@ -925,7 +959,9 @@ export const Battle = () => {
           (p) => p.userId !== data.userId && p.user?.id !== data.userId,
         ),
       );
-      void fetchBlockedParticipantsRef.current();
+      if (isHostRef.current) {
+        void fetchBlockedParticipantsRef.current();
+      }
     };
 
     const onPlayerUnblocked = () => {
@@ -1245,7 +1281,6 @@ export const Battle = () => {
     socket.on("start_failed", onStartFailed);
     socket.on("participant_rejected", onParticipantRejected);
     socket.on("battle_state", onBattleState);
-    socket.on("receive_battle_message", onReceiveBattleMessage);
     socket.on("battle_message_error", onBattleMessageError);
     socket.on("battle_update", onBattleUpdate);
     socket.on("you_were_kicked", onYouWereKicked);
@@ -1273,7 +1308,6 @@ export const Battle = () => {
       socket.off("start_failed", onStartFailed);
       socket.off("participant_rejected", onParticipantRejected);
       socket.off("battle_state", onBattleState);
-      socket.off("receive_battle_message", onReceiveBattleMessage);
       socket.off("battle_message_error", onBattleMessageError);
       socket.off("battle_update", onBattleUpdate);
       socket.off("you_were_kicked", onYouWereKicked);
@@ -1889,14 +1923,13 @@ export const Battle = () => {
             <SoundToggle />
             <GlobalTimer
               startedAt={battleState.startedAt || room?.startedAt}
-              totalDurationMs={
-                battleState.totalDurationMs || room?.totalTimeLimitMs
-              }
+              totalDurationMs={resolvedTimeLimitMs}
               onExpire={() => {
                 /* host does not compete; timer is informational */
               }}
               label={room?.closesAt ? "CLOSES IN:" : "TIME LEFT:"}
               variant="pill"
+              resetKey={resolvedTimeLimitMs}
             />
             <button
               onClick={() => navigate("/lobby")}
@@ -2993,12 +3026,11 @@ export const Battle = () => {
             <SoundToggle />
             <GlobalTimer
               startedAt={battleState.startedAt || room?.startedAt}
-              totalDurationMs={
-                battleState.totalDurationMs || room?.totalTimeLimitMs
-              }
+              totalDurationMs={resolvedTimeLimitMs}
               onExpire={handleTimerExpire}
               label={problems.length > 1 ? "GLOBAL:" : "TIME LEFT:"}
               variant="pill"
+              resetKey={resolvedTimeLimitMs}
             />
              {/* Host button shortcut in top bar */}
              {isHost && battleState.status === "IN_PROGRESS" && (

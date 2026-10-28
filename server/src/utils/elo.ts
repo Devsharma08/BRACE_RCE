@@ -1,25 +1,32 @@
-/**
- * Skill-Based ELO & Rating Tier System (ROADMAP §1)
- *
- * Pure, dependency-free functions so they can be unit-tested without a DB.
- * Ratings are *derived* from existing UserPersonalPerformance rows, so no
- * Prisma migration is required: every user starts at BASE_RATING and each
- * finished performance adjusts the rating sequentially.
- */
+// Skill-Based ELO & Rating Tier System (ROADMAP §1)
+
+// Pure, dependency-free functions so they can be unit-tested without a DB.
+// Ratings are *derived* from existing UserPersonalPerformance rows, so no
+// Prisma migration is required: every user starts at BASE_RATING and each
+// finished performance adjusts the rating sequentially.
 
 export const BASE_RATING = 1000;
 export const K_FACTOR = 32;
 
-export type MatchOutcome = "WIN" | "LOSS" | "DRAW";
+export type MatchOutcome = "WIN" | "LOSS" | "DRAW" | "BOTH_LOST";
 
-/** Performance statuses that count as a win / loss for rating purposes. */
-export function outcomeFromStatus(status: string | null | undefined): MatchOutcome | null {
-  if (!status) return null;
-  const s = status.toUpperCase();
-  if (s === "WON" || s === "PASSED" || s === "COMPLETED") return "WIN";
-  if (s === "LOST" || s === "FAILED" || s === "SURRENDER" || s === "TIMEOUT") return "LOSS";
-  if (s === "DRAW" || s === "TIED" || s === "TIE") return "DRAW";
-  return null; // PENDING and friends do not move rating
+/** 
+ * Outcome resolution for 1v1 battle.
+ * - Normal cases preserved (WIN/LOSS/DRAW)
+ * - New: when both players fail to pass (no row / absent), it's BOTH_LOST
+ *   instead of DRAW, with points deduction for both players.
+ */
+export function resolveBattleOutcome(
+  myPassed: boolean,
+  opponentPassed: boolean | null
+): MatchOutcome {
+  if (opponentPassed === null || opponentPassed === undefined) {
+    return myPassed ? "WIN" : "LOSS";
+  }
+  if (myPassed && !opponentPassed) return "WIN";
+  if (!myPassed && opponentPassed) return "LOSS";
+  // Both passed or both failed → previously DRAW, now BOTH_LOST with penalty
+  return "BOTH_LOST";
 }
 
 export function expectedScore(playerRating: number, opponentRating: number): number {
@@ -32,7 +39,7 @@ export function actualScore(outcome: MatchOutcome): number {
   return 0.5;
 }
 
-/**
+/** 
  * Explicit win / tie / loss points model (Task 3).
  *
  * ELO above stays as the secondary derived rating so existing rating
@@ -42,6 +49,7 @@ export function actualScore(outcome: MatchOutcome): number {
  * - Win  (you PASS, opponent FAILED/absent): +basePoints scaled by difficulty
  * - Tie  (both PASS or both FAILED):          0 delta, minus focus-penalty
  * - Loss:                                    -basePoints (floored to 0 at apply)
+ * - Both Lost:                               -basePoints - penalty (negative points)
  *
  * Focus-penalty percentage is always applied against the max award for the
  * difficulty — never against the raw delta — so a penalty hurts a win as
@@ -69,51 +77,44 @@ export function focusPenaltyDeduction(maxAward: number, penaltyPercent?: number 
   return Math.floor((maxAward * pct) / 100);
 }
 
-/**
- * Resolve a 1v1 outcome from pass flags.
+/** Resolve a 1v1 outcome from pass flags.
  * `opponentPassed === null` means the opponent is absent / has no row yet —
  * a pass then counts as a win, a non-pass as a loss.
  * Same result on both sides (both PASS or both FAILED) is a tie.
+ * New: both failed → BOTH_LOST with penalty.
  */
-export function resolveBattleOutcome(
-  myPassed: boolean,
-  opponentPassed: boolean | null,
-): MatchOutcome {
-  if (opponentPassed === null || opponentPassed === undefined) {
-    return myPassed ? "WIN" : "LOSS";
-  }
-  if (myPassed && !opponentPassed) return "WIN";
-  if (!myPassed && opponentPassed) return "LOSS";
-  return "DRAW";
-}
 
 export interface BattlePointsResult {
   outcome: MatchOutcome;
   maxAward: number;
   delta: number;
   penaltyDeduction: number;
-  /** Delta with the penalty cut, floored so a score never goes below 0. */
+  /** Delta with the penalty cut. Can be negative if both players "both lost". */
   finalPoints: number;
 }
 
-/**
- * Explicit points for one player: win = +max, tie = 0, loss = -max,
- * then subtract penalty% of max and floor at 0.
+/** 
+ * Explicit points for one player: 
+ * - win = +max, tie = 0, loss = -max, both_lost = -max - penalty
+ * Then subtract penalty% of max and floor at 0 *unless* both_lost, 
+ * then allow negative to represent penalty.
  */
 export function calculateBattlePoints(
   outcome: MatchOutcome,
   difficulty?: string | null,
   focusPenaltyPercent?: number | null,
+  allowNegative?: boolean
 ): BattlePointsResult {
   const maxAward = maxAwardForDifficulty(difficulty);
   const penaltyDeduction = focusPenaltyDeduction(maxAward, focusPenaltyPercent);
-  const delta = outcome === "WIN" ? maxAward : outcome === "LOSS" ? -maxAward : 0;
-  const finalPoints = Math.max(0, delta - penaltyDeduction);
+  const delta = outcome === "WIN" ? maxAward : outcome === "LOSS" ? -maxAward : outcome === "BOTH_LOST" ? -maxAward : 0;
+  const finalPoints = allowNegative && outcome === "BOTH_LOST"
+    ? -maxAward - penaltyDeduction
+    : Math.max(0, delta - penaltyDeduction);
   return { outcome, maxAward, delta, penaltyDeduction, finalPoints };
 }
 
-/**
- * Standard ELO delta, adjusted by:
+/** Standard ELO delta, adjusted by:
  *  - timeBonus: faster wins gain slightly more (0..K*0.25)
  *  - attemptPenalty: extra submission attempts reduce gains (up to K*0.25)
  */
@@ -172,4 +173,14 @@ export function computeRatingFromHistory(performances: RatedPerformance[]): numb
     rating = Math.max(100, rating); // floor so ratings never go degenerate
   }
   return Math.round(rating);
+}
+
+/** Maps performance status to MatchOutcome for ELO purposes. */
+export function outcomeFromStatus(status: string | null | undefined): MatchOutcome | null {
+  if (!status) return null;
+  const s = status.toUpperCase();
+  if (s === "WON" || s === "PASSED" || s === "COMPLETED") return "WIN";
+  if (s === "LOST" || s === "FAILED" || s === "SURRENDER" || s === "TIMEOUT") return "LOSS";
+  if (s === "DRAW" || s === "TIED" || s === "TIE") return "DRAW";
+  return null; // PENDING and friends do not move rating
 }

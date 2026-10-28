@@ -82,6 +82,15 @@ async function main() {
     const canonicalProblemData = {
       ...problemData,
       name: displayProblemName(problemData.name, problemData.problem_number, problemData.problem_definition),
+      // Set time limit based on difficulty: EASY=15min, MEDIUM=20min, HARD=25min
+      timeLimitMs: (() => {
+        switch (problemData.difficulty_level) {
+          case "EASY": return 15 * 60 * 1000;
+          case "MEDIUM": return 20 * 60 * 1000;
+          case "HARD": return 25 * 60 * 1000;
+          default: return 600000;
+        }
+      })(),
     };
 
     const problem = await prisma.problem.upsert({

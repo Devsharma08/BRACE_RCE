@@ -1075,6 +1075,55 @@ class Rooms {
     }
   }
 
+  // GET BATTLE CHAT HISTORY
+  async getBattleMessages(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.userId as string;
+      const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+      const before = req.query.before as string | undefined;
+
+      // Verify user is participant of this event
+      const performance = await prisma.userPersonalPerformance.findFirst({
+        where: { eventId: eventId, userId },
+        select: { id: true },
+      });
+
+      if (!performance) {
+        return res.status(403).json({ message: "Not a participant of this event" });
+      }
+
+      const where: any = {
+        data: {
+          path: ["eventId"],
+          equals: eventId,
+        },
+      };
+
+      if (before) {
+        where.createdAt = { lt: new Date(before) };
+      }
+
+      const messages = await prisma.message.findMany({
+        where,
+        orderBy: { createdAt: "asc" },
+        take: limit,
+        select: {
+          id: true,
+          senderId: true,
+          content: true,
+          createdAt: true,
+          sender: { select: { username: true, avatarUrl: true } },
+        },
+      });
+
+      return res.json({ status: "success", messages });
+    } catch (error) {
+      console.error("Get battle messages error:", error);
+      return res.status(500).json({ message: "Server error" });
+    }
+  }
+
   // GET MODERATOR EVENTS LISTING (moderator/admin only)
   async getModeratorEvents(req: AuthRequest, res: Response) {
     try {

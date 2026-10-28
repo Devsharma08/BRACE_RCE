@@ -3,6 +3,24 @@ import { emitToUser } from "../ioRegistry.js";
 import { deriveEventDurationMs } from "../../lib/eventTimeLimit.js";
 import type { HandlerCtx } from "../types.js";
 
+// Retry helper for transient DB errors (EAI_AGAIN, ETIMEDOUT, ECONNRESET)
+async function withDbRetry<T>(fn: () => Promise<T>, retries = 3, baseDelay = 100): Promise<T> {
+    let lastError: unknown;
+    for (let i = 0; i <= retries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            const msg = error instanceof Error ? error.message : String(error);
+            const isTransient = msg.includes("EAI_AGAIN") || msg.includes("ETIMEDOUT") ||
+                msg.includes("ECONNRESET") || msg.includes("getaddrinfo") || msg.includes("ECONNREFUSED");
+            if (!isTransient || i === retries) throw error;
+            await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, i)));
+        }
+    }
+    throw lastError;
+}
+
 export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
     const { socket, userId } = ctx;
 
@@ -12,15 +30,15 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
             const eventId = matchId.replace("room-", "");
 
             // Update this user's performance to ACCEPTED
-            await prisma.userPersonalPerformance.updateMany({
+            await withDbRetry(() => prisma.userPersonalPerformance.updateMany({
                 where: { eventId, userId },
                 data: { status: 'ACCEPTED' }
-            });
+            }));
 
             // Check if all players have accepted
-            const performances = await prisma.userPersonalPerformance.findMany({
+            const performances = await withDbRetry(() => prisma.userPersonalPerformance.findMany({
                 where: { eventId }
-            });
+            }));
 
             const allAccepted = performances.length === 2 && performances.every(p => p.status === 'ACCEPTED');
 
@@ -29,14 +47,14 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
                 const futureStartTime = new Date(Date.now() + COUNTDOWN_MS);
                 // Update event to IN_PROGRESS — include commonProblem so we can
                 // derive the time limit from the problem's difficulty-based setting.
-                const event = await prisma.event.update({
+                const event = await withDbRetry(() => prisma.event.update({
                     where: { id: eventId },
                     data: {
                         status: 'IN_PROGRESS',
                         startedAt: futureStartTime,
                     },
                     include: { commonProblem: true, problems: true }
-                });
+                }));
 
                 // Derive the battle duration from the problem difficulty setting.
                 // Priority: global totalTimeLimitMs → sum of problem limits → commonProblem limit → default.
@@ -79,15 +97,15 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
         try {
             const eventId = matchId.replace("room-", "");
 
-            await prisma.event.update({
+            await withDbRetry(() => prisma.event.update({
                 where: { id: eventId },
                 data: { status: 'CANCELLED' }
-            });
+            }));
 
             // find both players in the event
-            const performances = await prisma.userPersonalPerformance.findMany({
+            const performances = await withDbRetry(() => prisma.userPersonalPerformance.findMany({
                 where: { eventId }
-            });
+            }));
 
             // identify the innocent player - userId comes from the context of the socket
             const innocentPlayer = performances.find((p: any) => p.userId !== userId);

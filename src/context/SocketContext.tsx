@@ -100,6 +100,10 @@ export interface SocketContextType {
   acceptChallenge: (challengerId: string, opts?: { problemId?: string; mode?: "RANDOM" | "CUSTOM"; difficulty?: string }) => void;
   declineChallenge: (targetUserId: string) => void;
   sendBattleMessage: (roomId: string, content: string) => void;
+  getBattleMessages: (roomId: string) => BattleMessage[];
+  subscribeToBattleMessages: (listener: (roomId: string, messages: BattleMessage[]) => void) => () => void;
+  getDirectMessages: (userIdA: string, userIdB: string) => DirectMessage[];
+  subscribeToDirectMessages: (listener: (key: string, messages: DirectMessage[]) => void) => () => void;
   isClicked: boolean;
   waitingTime: number;
   requestPresence: (userIds: string[]) => void;
@@ -178,6 +182,110 @@ interface QueuedEvent {
 const offlineEventQueue: QueuedEvent[] = [];
 
 /**
+ * Global battle message store: persists messages across page navigation.
+ * Maps roomId -> array of messages. This ensures messages are received and
+ * stored even when the user is not on the Battle page.
+ */
+interface BattleMessage {
+  id: string;
+  socketId: string;
+  senderId: string;
+  username: string;
+  role: string;
+  isHost: boolean;
+  content: string;
+  createdAt: string;
+  roomId?: string;
+}
+const battleMessageStore = new Map<string, BattleMessage[]>();
+
+function addBattleMessage(roomId: string, msg: BattleMessage): void {
+  const existing = battleMessageStore.get(roomId) || [];
+  // Deduplicate by ID
+  if (!existing.some((m) => m.id === msg.id)) {
+    battleMessageStore.set(roomId, [...existing, msg]);
+    // Notify all subscribed React components so the chat re-renders
+    // even when the user navigated away and is now back on the battle page.
+    notifyBattleMessageListeners(roomId);
+  }
+}
+
+function getBattleMessages(roomId: string): BattleMessage[] {
+  return battleMessageStore.get(roomId) || [];
+}
+
+/**
+ * Reactive subscription system for the global battle message store.
+ * Components call subscribeToBattleMessages() to receive updates whenever
+ * a new message is added to any room. This ensures messages render in
+ * real-time regardless of which route the user is on, and appear
+ * immediately when navigating back to a battle page.
+ */
+type BattleMessageListener = (roomId: string, messages: BattleMessage[]) => void;
+const battleMessageListeners = new Set<BattleMessageListener>();
+
+function notifyBattleMessageListeners(roomId: string): void {
+  const messages = battleMessageStore.get(roomId) || [];
+  for (const listener of battleMessageListeners) {
+    listener(roomId, messages);
+  }
+}
+
+function subscribeToBattleMessages(listener: BattleMessageListener): () => void {
+  battleMessageListeners.add(listener);
+  return () => battleMessageListeners.delete(listener);
+}
+
+/** ─── Direct Message Global Store ───
+ * Persists direct messages across page navigation. Maps a canonical
+ * friend-pair key -> array of messages. This ensures DMs are received
+ * and stored even when the user is not on the /friends page.
+ */
+interface DirectMessage {
+  id: string;
+  content: string;
+  senderId: string;
+  receiverId: string;
+  createdAt: string;
+}
+
+/** Canonical key for a direct-message conversation between two users,
+ * sorted so (A,B) and (B,A) produce the same key. */
+function dmKey(userIdA: string, userIdB: string): string {
+  return [userIdA, userIdB].sort().join(":");
+}
+
+const directMessageStore = new Map<string, DirectMessage[]>();
+
+function addDirectMessage(senderId: string, receiverId: string, msg: DirectMessage): void {
+  const key = dmKey(senderId, receiverId);
+  const existing = directMessageStore.get(key) || [];
+  if (!existing.some((m) => m.id === msg.id)) {
+    directMessageStore.set(key, [...existing, msg]);
+    notifyDirectMessageListeners(key);
+  }
+}
+
+function getDirectMessages(userIdA: string, userIdB: string): DirectMessage[] {
+  return directMessageStore.get(dmKey(userIdA, userIdB)) || [];
+}
+
+type DirectMessageListener = (key: string, messages: DirectMessage[]) => void;
+const directMessageListeners = new Set<DirectMessageListener>();
+
+function notifyDirectMessageListeners(key: string): void {
+  const messages = directMessageStore.get(key) || [];
+  for (const listener of directMessageListeners) {
+    listener(key, messages);
+  }
+}
+
+function subscribeToDirectMessages(listener: DirectMessageListener): () => void {
+  directMessageListeners.add(listener);
+  return () => directMessageListeners.delete(listener);
+}
+
+/**
  * Emit an acknowledgment-protected event with a timeout. If the server doesn't
  * respond within `timeoutMs`, the callback receives an error and pending state is
  * cleaned up. This prevents ack callbacks from hanging indefinitely when the server
@@ -223,31 +331,31 @@ function createSocket(userId: string): Socket {
   const preferPolling = failCount >= WS_FAILURE_THRESHOLD;
   const transports = preferPolling ? ["polling", "websocket"] : ["websocket", "polling"];
 
-   const socket = io(socketUrl, {
-    auth: { userId },
-    withCredentials: true,
-    transports,
-    reconnection: true,
-    reconnectionAttempts: 30,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 30000,
-    timeout: 10000,
-    pingInterval: 25000,
-    pingTimeout: 10000,
-    upgrade: true,
-    rememberUpgrade: true,
-    autoUpgrade: true,
-    randomizationFactor: 0.5,
-    maxPayloadBytes: 1e6,
-    // Ask the server for buffered events from the last 2 minutes of disconnection.
-    // connectionStateRecovery on the server holds events for users who reconnect
-    // within maxDisconnectionDuration — this lets us catch missed toasts or
-    // match_found_pending events without a page refresh.
-    recovery: {
-      enabled: true,
-      maxDisconnectionDuration: 120000,
-    },
-  });
+const socket = io(socketUrl, {
+     auth: { userId },
+     withCredentials: true,
+     transports,
+     reconnection: true,
+     reconnectionAttempts: 30,
+     reconnectionDelay: 1000,
+     reconnectionDelayMax: 30000,
+     timeout: 10000,
+     pingInterval: 25000,
+     pingTimeout: 10000,
+     upgrade: true,
+     rememberUpgrade: true,
+     autoUpgrade: true,
+     randomizationFactor: 0.5,
+     maxPayloadBytes: 1e6,
+     // Ask the server for buffered events from the last 2 minutes of disconnection.
+     // connectionStateRecovery on the server holds events for users who reconnect
+     // within maxDisconnectionDuration — this lets us catch missed toasts or
+     // match_found_pending events without a page refresh.
+     recovery: {
+       enabled: true,
+       maxDisconnectionDuration: 120000,
+     },
+   } as any);
 
   // Track WebSocket handshake failures for transport fallback memory.
   // After WS_FAILURE_THRESHOLD failures, the next socket creation will start
@@ -600,14 +708,15 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       // permanently disconnected (by disconnect/reconnect-failed handlers),
       // socketCreatedRef is false and we create a fresh one here.
       const existingSocket = socketRef.current;
-      const reuseExisting = socketCreatedRef.current && existingSocket && (existingSocket.connected || existingSocket.connecting);
+      const isConnecting = existingSocket && !existingSocket.connected && !existingSocket.disconnected;
+      const reuseExisting = socketCreatedRef.current && existingSocket && (existingSocket.connected || isConnecting);
 
       socketCreatedRef.current = true;
       const newSocket = reuseExisting ? existingSocket : getOrCreateSocket(userId);
       socketRef.current = newSocket;
       // Force-connect the socket (it may have been created but not yet
       // initiated, e.g. after a manual disconnect).
-      if (!reuseExisting && !newSocket.connected && !newSocket.connecting) {
+      if (!reuseExisting && !newSocket.connected && !newSocket.disconnected) {
         newSocket.connect();
       }
       // Increment the tick so React always detects a change and re-renders
@@ -649,8 +758,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     );
 
     bind("lobby_error", (msg: string) => {
+      // Deduplicate: only show one toast per unique error message within 3 seconds
+      const lastErrorRef = bind.lastErrorRef;
+      const now = Date.now();
+      if (lastErrorRef.current === msg && now - lastErrorRef.time < 3000) {
+        return;
+      }
+      lastErrorRef.current = msg;
+      lastErrorRef.time = now;
       toast.error(msg);
     });
+    bind.lastErrorRef = { current: "", time: 0 };
 
     bind("connection_limit_exceeded", (data: { message?: string; maxConnections?: number }) => {
       toast.error("Too many open tabs", {
@@ -661,6 +779,14 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     bind("lobby_ended", () => {
       setCustomLobby(null);
       toast.info("Lobby has ended.");
+    });
+
+    // Handle challenge acceptance from friend challenge
+    bind("challenge_accepted", (data: { roomId: string; problemId: string; timeLimitMs: number }) => {
+      setCustomLobby(null);
+      navigateRef.current(
+        `/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`,
+      );
     });
 
     // Real-time invalidator for lobby/room list changes (new rooms, room deleted, etc.)
@@ -679,13 +805,16 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    bind(
+bind(
       "custom_match_started",
       (data: { roomId: string; problemId: string; timeLimitMs: number }) => {
         setCustomLobby(null);
-        navigateRef.current(
-           `/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`,
-         );
+        // Prevent duplicate navigation if already on battle page
+        if (!window.location.pathname.startsWith("/battle/")) {
+          navigateRef.current(
+            `/battle/${data.roomId}?oid=${data.problemId}&timeLimit=${data.timeLimitMs}`,
+          );
+        }
       },
     );
 
@@ -845,19 +974,22 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setWaitingTime(data.waitingSeconds);
     });
 
-    bind("battle_starting", (data) => {
+    bind("battle_starting", (data: { roomName: string; problemId: string; countdownSeconds?: number }) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
       setWaitingTime(0);
-      navigateRef.current(`/battle/${data.roomName}?oid=${data.problemId}`);
+      // Prevent duplicate navigation if already on battle page
+      if (!window.location.pathname.startsWith("/battle/")) {
+        navigateRef.current(`/battle/${data.roomName}?oid=${data.problemId}`);
+      }
     });
 
     bind("match_declined", () => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
-      toast.error("Match declined.");
+      toast.error("Match declined.", { id: "match-declined" });
       setWaitingTime(0);
     });
 
@@ -867,12 +999,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
-      toast.error("Match timed out — no response received.");
+      toast.error("Match timed out — no response received.", { id: "match-timeout" });
       setWaitingTime(0);
     });
 
     bind("challenge_declined", () => {
-      toast.info("Challenge was declined.");
+      toast.info("Challenge was declined.", { id: "challenge-declined" });
       setIsClicked(false);
     });
 
@@ -880,7 +1012,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setPendingMatchId(null);
       setMatchmakingStatus("SEARCHING");
       setIsClicked(false);
-      toast.info("Opponent declined — searching for a new match...", { duration: 3000 });
+      toast.info("Opponent declined — searching for a new match...", { id: "match-opponent-declined", duration: 3000 });
       socket.emit("join_matchmaking", { difficulty: queueDifficultyRef.current, waitingSeconds: waitingTimeRef.current });
     });
 
@@ -897,7 +1029,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       });
     });
 
-    bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnline?: boolean }> | { users: Array<{ userId: string; status?: string; isOnline?: boolean }> }) => {
+bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnline?: boolean }> | { users: Array<{ userId: string; status?: string; isOnline?: boolean }> }) => {
        const list = Array.isArray(data) ? data : Array.isArray(data?.users) ? data.users : [];
        const statusById = new Map(list.map((u) => [u.userId, u.isOnline ?? u.status === "ONLINE"] as const));
        setFriends((prev) => {
@@ -912,9 +1044,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
            }
            return f;
          });
+         // DO NOT add unknown users from presence snapshot.
+         // Friends list comes from API which includes proper usernames.
+         // Presence only updates online status for known friends.
          return changed ? next : prev;
        });
-    });
+     });
 
     // ─────────────────────────────────────────────────────────────────────
     // PARTICIPANT_LEFT EVENT HANDLER (Pre-start leave notification)
@@ -954,6 +1089,22 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       // Toast notification is handled by Battle.tsx's own handler, which has
       // access to the full participant roster context. Only sync state here.
       syncBattleRoomState();
+    });
+
+    // Global battle message handler — receives messages regardless of current page.
+    // Stores in global battleMessageStore so messages persist across page navigation.
+    bind("receive_battle_message", (msg: BattleMessage) => {
+      if (msg.roomId) {
+        addBattleMessage(msg.roomId, msg);
+      }
+    });
+
+    // Global direct message handler — receives DMs regardless of current page.
+    // Stores in global directMessageStore so messages persist across page navigation.
+    bind("receive_direct_message", (msg: DirectMessage) => {
+      if (msg.senderId && msg.receiverId && msg.senderId !== userId) {
+        addDirectMessage(msg.senderId, msg.receiverId, msg);
+      }
     });
 
     // If the socket is already connected when we bind handlers (StrictMode
@@ -1226,6 +1377,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         acceptChallenge,
         declineChallenge,
         sendBattleMessage,
+        getBattleMessages,
+        subscribeToBattleMessages,
+        getDirectMessages,
+        subscribeToDirectMessages,
         joinBattleRoom,
         leaveBattleRoom,
         isClicked,

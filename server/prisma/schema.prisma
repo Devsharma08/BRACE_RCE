@@ -185,6 +185,7 @@ model Message {
   content    String
   senderId   String
   receiverId String
+  data       Json?
   createdAt  DateTime @default(now())
   receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
   sender     User     @relation("SentMessage", fields: [senderId], references: [id])

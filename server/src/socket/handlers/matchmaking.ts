@@ -5,6 +5,24 @@ import { emitToUser } from "../ioRegistry.js";
 import { pendingMatchTimeouts } from "../state.js";
 import type { HandlerCtx } from "../types.js";
 
+// Retry helper for transient DB errors (EAI_AGAIN, ETIMEDOUT, ECONNRESET)
+async function withDbRetry<T>(fn: () => Promise<T>, retries = 3, baseDelay = 100): Promise<T> {
+    let lastError: unknown;
+    for (let i = 0; i <= retries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            const msg = error instanceof Error ? error.message : String(error);
+            const isTransient = msg.includes("EAI_AGAIN") || msg.includes("ETIMEDOUT") ||
+                msg.includes("ECONNRESET") || msg.includes("getaddrinfo") || msg.includes("ECONNREFUSED");
+            if (!isTransient || i === retries) throw error;
+            await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, i)));
+        }
+    }
+    throw lastError;
+}
+
 export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
     const { socket, userId } = ctx;
     const { activeSearchIntervals } = ctx.state;
@@ -27,7 +45,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
             const initialWaitingSeconds = typeof payload === "object" && payload.waitingSeconds ? payload.waitingSeconds : 0;
 
             // cancel any existing waiting queue entries for this user before queueing
-            await prisma.matchmakingQueue.updateMany({
+            await withDbRetry(() => prisma.matchmakingQueue.updateMany({
                 where: {
                     userId,
                     status: "WAITING"
@@ -35,16 +53,16 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                 data: {
                     status: "CANCELLED"
                 }
-            });
+            }));
 
             // Create the Queue Entry
-            const queueEntry = await prisma.matchmakingQueue.create({
+            const queueEntry = await withDbRetry(() => prisma.matchmakingQueue.create({
                 data: {
                     userId,
                     preferredDifficulty: difficulty,
                     status: "WAITING"
                 }
-            });
+            }));
 
             // Start a polling interval to dynamically check for opponents every 3 seconds
             let currentWaitingSeconds = initialWaitingSeconds;
@@ -53,7 +71,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                     currentWaitingSeconds += 3;
 
                     // Prevent race condition: stop polling if we got passively matched
-                    const selfQueue = await prisma.matchmakingQueue.findUnique({ where: { id: queueEntry.id } });
+                    const selfQueue = await withDbRetry(() => prisma.matchmakingQueue.findUnique({ where: { id: queueEntry.id } }));
                     if (!selfQueue || selfQueue.status !== "WAITING") {
                         clearInterval(searchInterval);
                         activeSearchIntervals.delete(socket.id);
@@ -64,10 +82,10 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                     if (currentWaitingSeconds >= 90) {
                         clearInterval(searchInterval);
                         activeSearchIntervals.delete(socket.id);
-                        await prisma.matchmakingQueue.update({
+                        await withDbRetry(() => prisma.matchmakingQueue.update({
                             where: { id: queueEntry.id },
                             data: { status: "CANCELLED" }
-                        })
+                        }))
 
                         socket.emit("matchmaking_timeout", {
                             message: "No match found in queue limit. Please try again. "
@@ -82,26 +100,26 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                     socket.emit("matchmaking_search_state", { waitingSeconds: currentWaitingSeconds, allowedDifficulties });
 
                     // Find compatible opponent
-                    const opponentQueue = await prisma.matchmakingQueue.findFirst({
+                    const opponentQueue = await withDbRetry(() => prisma.matchmakingQueue.findFirst({
                         where: {
                             status: "WAITING",
                             userId: { not: userId },
                             preferredDifficulty: { in: allowedDifficulties }
                         },
                         orderBy: { joinedAt: "asc" }
-                    });
+                    }));
                     if (opponentQueue) {
                         clearInterval(searchInterval);
 
                         // Lock both queues — only if both are still WAITING
                         // to prevent the dual-interval race condition
-                        const lockResult = await prisma.matchmakingQueue.updateMany({
+                        const lockResult = await withDbRetry(() => prisma.matchmakingQueue.updateMany({
                             where: {
                                 id: { in: [queueEntry.id, opponentQueue.id] },
                                 status: "WAITING" // conditional: only lock if still waiting
                             },
                             data: { status: "MATCHED", matchedAt: new Date() }
-                        });
+                        }));
 
                         // If another worker already locked these queues, abort — don't create a duplicate event
                         if (lockResult.count !== 2) {
@@ -109,10 +127,10 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                             return;
                         }
                         // Fetch a problem matching the opponent's requested difficulty
-                        const matchedProblems = await prisma.problem.findMany({
+                        const matchedProblems = await withDbRetry(() => prisma.problem.findMany({
                             where: { difficulty_level: opponentQueue.preferredDifficulty },
                             select: { id: true, github_oid: true, timeLimitMs: true }
-                        });
+                        }));
                         const randomProblem = matchedProblems.length > 0
                             ? matchedProblems[Math.floor(Math.random() * matchedProblems.length)]
                             : null;
@@ -125,7 +143,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                         const totalTimeLimitMs = randomProblem?.timeLimitMs ?? 600000;
 
                         // Create the Match Event
-                        const event = await prisma.event.create({
+                        const event = await withDbRetry(() => prisma.event.create({
                             data: {
                                 type: 'ONE_VS_ONE',
                                 status: 'WAITING',
@@ -139,7 +157,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                                 }
                             },
                             include: { commonProblem: true }
-                        });
+                        }));
                         const roomName = `room-${event.id}`;
                         const problemId = event.commonProblem?.github_oid || "local-battle";
 
@@ -148,8 +166,8 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
 
                         // Fetch users for profile exchange
                         const [user1, user2] = await Promise.all([
-                            prisma.user.findUnique({ where: { id: userId }, select: { username: true, bio: true, avatarUrl: true } }),
-                            prisma.user.findUnique({ where: { id: opponentQueue.userId }, select: { username: true, bio: true, avatarUrl: true } })
+                            withDbRetry(() => prisma.user.findUnique({ where: { id: userId }, select: { username: true, bio: true, avatarUrl: true } })),
+                            withDbRetry(() => prisma.user.findUnique({ where: { id: opponentQueue.userId }, select: { username: true, bio: true, avatarUrl: true } }))
                         ]);
 
                          // Notify both players to ACCEPT with opponent data.
@@ -165,21 +183,18 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                              matchId: roomName, problemId, opponent: user1, opponentUserId: userId
                          });
 
-                         // Acceptance timeout — if neither player accepts within 15s,
-                         // cancel the event and notify both players so they can re-queue.
-                         // Tracked by socket id so it can be cleared on disconnect,
-                         // preventing zombie timers from firing after the socket dies.
+                         // Start accept timeout for both players
                          const acceptTimeout = setTimeout(async () => {
                              pendingMatchTimeouts.delete(socket.id);
-                             const checkEvent = await prisma.event.findUnique({
+                             const checkEvent = await withDbRetry(() => prisma.event.findUnique({
                                  where: { id: event.id },
                                  select: { status: true },
-                             });
+                             }));
                              if (checkEvent?.status === "WAITING") {
-                                 await prisma.event.update({
+                                 await withDbRetry(() => prisma.event.update({
                                      where: { id: event.id },
                                      data: { status: "CANCELLED" },
-                                 });
+                                 }));
                                  // Notify both players of timeout — use emitToUser
                                  // for guaranteed cross-process delivery
                                  socket.emit("match_timeout");
@@ -188,32 +203,28 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                          }, 15000);
                          pendingMatchTimeouts.set(socket.id, acceptTimeout);
                     }
-                } catch (e) {
-                    console.error("Matchmaking interval error:", e);
+
+                } catch (error) {
+                    console.error("Matchmaking search error:", error);
                 }
             }, 3000);
 
             activeSearchIntervals.set(socket.id, searchInterval);
 
         } catch (error) {
-            console.error("Matchmaking error:", error);
+            console.error("join_matchmaking error:", error);
         }
     });
 
     // CANCEL MATCHMAKING SEARCH
     socket.on("cancel_matchmaking", async () => {
         try {
-            await prisma.matchmakingQueue.updateMany({
+            await withDbRetry(() => prisma.matchmakingQueue.updateMany({
                 where: { userId, status: "WAITING" },
                 data: { status: "CANCELLED" }
-            });
+            }));
         } catch (error) {
             console.error("cancel_matchmaking error:", error);
-        }
-
-        if (activeSearchIntervals.has(socket.id)) {
-            clearInterval(activeSearchIntervals.get(socket.id) as NodeJS.Timeout);
-            activeSearchIntervals.delete(socket.id);
         }
     });
 }

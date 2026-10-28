@@ -10,10 +10,11 @@ import { initTracing } from "./lib/tracing.js";
 import { initSentry, flushSentry } from "./lib/sentry.js";
 import { startAllWorkers, stopAllWorkers } from "./lib/queue.js";
 import { closeRedisClient } from "./lib/redis.js";
-import { logger } from "./lib/logger.js";
 
-// Initialize observability early
-initTracing();
+// Initialize observability early - only in production or when collector is configured
+if (process.env.NODE_ENV === 'production' || process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  initTracing();
+}
 initSentry();
 
 assertRuntimeEnv();

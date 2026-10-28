@@ -6,7 +6,9 @@ import { startAllWorkers, stopAllWorkers } from "../lib/queue.js";
 import { closeRedisClient } from "../lib/redis.js";
 import { logger } from "../lib/logger.js";
 
-initTracing();
+if (process.env.NODE_ENV === 'production' || process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  initTracing();
+}
 initSentry();
 assertRuntimeEnv();
 
