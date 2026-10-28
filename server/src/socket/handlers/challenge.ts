@@ -5,6 +5,24 @@ import { getSocketIds } from "../stateRedis.js";
 import { emitToUser } from "../ioRegistry.js";
 import { logger } from "../../lib/logger.js";
 
+// Retry helper for transient DB errors (EAI_AGAIN, ETIMEDOUT, ECONNRESET)
+async function withDbRetry<T>(fn: () => Promise<T>, retries = 3, baseDelay = 100): Promise<T> {
+    let lastError: unknown;
+    for (let i = 0; i <= retries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            const msg = error instanceof Error ? error.message : String(error);
+            const isTransient = msg.includes("EAI_AGAIN") || msg.includes("ETIMEDOUT") ||
+                msg.includes("ECONNRESET") || msg.includes("getaddrinfo") || msg.includes("ECONNREFUSED");
+            if (!isTransient || i === retries) throw error;
+            await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, i)));
+        }
+    }
+    throw lastError;
+}
+
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
     const { socket, userId } = ctx;
 
@@ -25,10 +43,10 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         // Resolve CUSTOM problem snapshot for the overlay + notification
         if (mode === "CUSTOM" && problemId) {
             try {
-                const prob = await prisma.problem.findUnique({
+                const prob = await withDbRetry(() => prisma.problem.findUnique({
                     where: { id: problemId },
                     select: { id: true, name: true, problem_number: true, github_oid: true, difficulty_level: true }
-                });
+                }));
                 if (prob) {
                     problemName = displayProblemName(prob.name, prob.problem_number);
                 }
@@ -38,13 +56,13 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         // RANDOM mode: pre-pick a real problem by difficulty so accept is instant
         if (mode === "RANDOM") {
             try {
-                const pool = await prisma.problem.findMany({
+                const pool = await withDbRetry(() => prisma.problem.findMany({
                     where: {
                         isCustom: false,
                         ...(difficulty === "ANY" ? {} : { difficulty_level: difficulty as never }),
                     },
                     select: { id: true, name: true, problem_number: true }
-                });
+                }));
                 if (pool.length > 0) {
                     const pick = pool[Math.floor(Math.random() * pool.length)];
                     problemId = pick.id;
@@ -113,10 +131,10 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
 
             // CUSTOM: use the exact problem the challenger picked
             if (data.problemId) {
-                const custom = await prisma.problem.findUnique({
+                const custom = await withDbRetry(() => prisma.problem.findUnique({
                     where: { id: data.problemId },
                     select: { id: true, github_oid: true, timeLimitMs: true }
-                }).catch(() => null);
+                })).catch(() => null);
                 if (custom) {
                     battleProblemId = custom.id;
                     problemId = custom.github_oid || custom.id;
@@ -127,13 +145,13 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
             // RANDOM (or CUSTOM fallback): pick by difficulty
             if (!battleProblemId) {
                 const diff = (data.difficulty ?? "MEDIUM").toUpperCase();
-                const problems = await prisma.problem.findMany({
+                const problems = await withDbRetry(() => prisma.problem.findMany({
                     where: {
                         isCustom: false,
                         ...(diff === "ANY" ? {} : { difficulty_level: diff as never }),
                     },
                     select: { id: true, github_oid: true, timeLimitMs: true }
-                });
+                }));
                 if (problems.length > 0) {
                     const randomProblem = problems[Math.floor(Math.random() * problems.length)];
                     battleProblemId = randomProblem.id;
@@ -146,7 +164,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
             }
 
             // create a brand new custom event behind the scenes
-            const event = await prisma.event.create({
+            const event = await withDbRetry(() => prisma.event.create({
                 data: {
                     type: "FRIENDS",
                     status: "IN_PROGRESS",
@@ -161,7 +179,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
                         }]
                     }
                 }
-            });
+            }));
 
             const roomId = `room-${event.id}`;
 
@@ -203,7 +221,15 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
 
         } catch (error) {
             logger.error({ err: error }, "accept_challenge error");
-            socket.emit("lobby_error", "Failed to accept challenge. Please try again.");
+            const errMsg = error instanceof Error ? error.message : String(error);
+            // Surface specific DB errors to help debugging
+            if (errMsg.includes("EAI_AGAIN") || errMsg.includes("ETIMEDOUT") || errMsg.includes("ECONNRESET") || errMsg.includes("getaddrinfo")) {
+                socket.emit("lobby_error", "Database connection issue. Please try again in a moment.");
+            } else if (errMsg.includes("P2003") || errMsg.includes("foreign key")) {
+                socket.emit("lobby_error", "Invalid challenge data. Please try again.");
+            } else {
+                socket.emit("lobby_error", `Failed to accept challenge: ${errMsg}`);
+            }
         }
     });
 

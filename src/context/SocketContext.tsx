@@ -889,9 +889,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       const isOnline = data.isOnline ?? data.status === "ONLINE";
       setFriends((prev) => {
         const list = Array.isArray(prev) ? prev : [];
-        if (!list.some((f) => f.id === data.userId)) {
-          return [...list, { id: data.userId, username: data.userId, avatarUrl: null, isOnline }];
-        }
+        // Only update online status for EXISTING friends.
+        // New friends should only be added via the friends API (getFriends),
+        // which includes username and avatarUrl. This handler only updates
+        // presence status for friends already in the list.
         return list.map((f) => (f.id === data.userId ? { ...f, isOnline } : f));
       });
     });
