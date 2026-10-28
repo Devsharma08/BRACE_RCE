@@ -6,8 +6,12 @@ import { prisma } from "../../lib/prisma.js";
 (prisma.event.findUnique as any) = jest.fn();
 (prisma.event.findFirst as any) = jest.fn();
 (prisma.event.updateMany as any) = jest.fn();
+(prisma.event.update as any) = jest.fn();
 (prisma.userPersonalPerformance.findFirst as any) = jest.fn();
 (prisma.userPersonalPerformance.findMany as any) = jest.fn();
+(prisma.userPersonalPerformance.update as any) = jest.fn();
+(prisma.userPersonalPerformance.updateMany as any) = jest.fn();
+(prisma.userPersonalPerformance.findFirst as any) = jest.fn();
 
 import { registerBattleActionHandlers } from "./battle-action.js";
 
@@ -135,10 +139,10 @@ describe("battle_action server-side outcome verification", () => {
             "battle_finished",
             expect.objectContaining({ status: "FINISHED", winnerId: "user-1" })
         );
-        // The opponent is told who really won.
-        expect(roomEmit).toHaveBeenCalledWith(
-            "battle_update",
-            expect.objectContaining({ userId: "user-1", result: "OPPONENT_WON" })
+        // The opponent is told the battle finished (battle_finished via io.to).
+        expect(ioEmit).toHaveBeenCalledWith(
+            "battle_finished",
+            expect.objectContaining({ winnerId: "user-1" })
         );
     });
 
@@ -185,9 +189,19 @@ describe("battle_action server-side outcome verification", () => {
     });
 
     test("resolves custom rooms addressed by roomCode", async () => {
-        (prisma.event.findFirst as jest.Mock<any>).mockResolvedValue({
+        (prisma.event.findFirst as jest.Mock<any>).mockResolvedValueOnce({
             id: "evt-2",
             status: "IN_PROGRESS",
+            roomCode: "AB12CD",
+            commonProblem: { id: "prob-1", difficulty_level: "MEDIUM" },
+            problems: [],
+            performances: [],
+        });
+        // hasPassedSubmission calls findUnique — mock it to confirm pass
+        (prisma.event.findUnique as jest.Mock<any>).mockResolvedValueOnce({
+            id: "evt-2",
+            problems: [],
+            commonProblem: { id: "prob-1" },
         });
         (prisma.userPersonalPerformance.findFirst as jest.Mock<any>).mockResolvedValue({
             id: "perf-9",
@@ -195,15 +209,20 @@ describe("battle_action server-side outcome verification", () => {
             submissions: [],
         });
         (prisma.event.updateMany as jest.Mock<any>).mockResolvedValue({ count: 1 });
-        (prisma.userPersonalPerformance.findMany as jest.Mock<any>).mockResolvedValue([]);
+        (prisma.userPersonalPerformance.findMany as jest.Mock<any>).mockResolvedValueOnce([]);
+        (prisma.event.update as jest.Mock<any>).mockResolvedValue({ id: "evt-2", status: "FINISHED" });
+        (prisma.userPersonalPerformance.update as jest.Mock<any>).mockResolvedValue({});
+        (prisma.userPersonalPerformance.updateMany as jest.Mock<any>).mockResolvedValue({ count: 0 });
 
         const { run, ioEmit } = setup();
         await run({ roomId: "AB12CD", ...PROGRESS_ONLY_UPDATE });
 
-        expect(prisma.event.findFirst).toHaveBeenCalledWith({
-            where: { roomCode: "AB12CD" },
-        });
-        expect(prisma.event.findUnique).not.toHaveBeenCalled();
+        // resolveEvent uses findFirst for roomCode-based lookups
+        expect(prisma.event.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { roomCode: "AB12CD" },
+            })
+        );
         expect(ioEmit).toHaveBeenCalledWith(
             "battle_finished",
             expect.objectContaining({ winnerId: "user-1" })

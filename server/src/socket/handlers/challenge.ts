@@ -1,7 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { displayProblemName } from "../../utils/problemName.js";
 import type { HandlerCtx } from "../types.js";
-import { getSocketId } from "../stateRedis.js";
+import { getSocketIds } from "../stateRedis.js";
 import { emitToUser } from "../ioRegistry.js";
 
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
@@ -95,9 +95,13 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
         mode?: "RANDOM" | "CUSTOM";
         difficulty?: string;
     }) => {
-        const challengerSocketId = await getSocketId(data.challengerId);
+        // Use emitToUser for guaranteed cross-process delivery to ALL sockets
+        // (tabs/devices). The old getSocketId approach returned a single socket
+        // id and could miss sockets on other PM2 workers, causing "Challenger
+        // went offline" even when the challenger was online on another tab.
+        const challengerSocketIds = await getSocketIds(data.challengerId);
 
-        if (!challengerSocketId) {
+        if (challengerSocketIds.length === 0) {
             return socket.emit('lobby_error', "Challenger went offline!")
         }
 
@@ -144,6 +148,7 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
                 startedAt: new Date(),
                 maxUsers: 2,
                 commonProblemId: battleProblemId,
+                totalTimeLimitMs: timeLimitMs,
                 performances: {
                     create: [{ userId: userId, status: "PENDING" }, {
                         userId: data.challengerId,

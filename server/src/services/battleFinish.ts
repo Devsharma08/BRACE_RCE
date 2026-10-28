@@ -99,7 +99,11 @@ export async function finishEventWithVerdicts(
         data: {
           status: verdict,
           timeTakenMs: perf.timeTakenMs ?? event.totalTimeLimitMs ?? undefined,
-          finishedAt: (perf as any).finishedAt ?? undefined,
+          outcome,
+          battlePoints: outcome === "WIN" ? Math.max(finalPoints, 0) : 0,
+          finalPoints,
+          focusPenaltyPercent: opts.focusPenaltyByUser?.[perf.userId] ?? 0,
+          finishedAt: new Date(),
           score: finalPoints,
         } as any,
       })

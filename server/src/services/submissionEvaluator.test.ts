@@ -32,9 +32,13 @@ describe("SubmissionEvaluator Service", () => {
       isBestSubmission: false,
     };
 
-    (prisma.codeSubmission.findMany as jest.Mock<any>).mockResolvedValue(mockExistingSubmissions);
+    (prisma.codeSubmission.findMany as jest.Mock<any>).mockResolvedValueOnce([]);
+    (prisma.codeSubmission.findMany as jest.Mock<any>).mockResolvedValueOnce([
+        { problemId: "prob-1", status: "PASSED" },
+    ]);
     (prisma.codeSubmission.create as jest.Mock<any>).mockResolvedValue(mockNewSubmission);
     (prisma.$transaction as jest.Mock<any>).mockResolvedValue([]);
+    (prisma.userPersonalPerformance.findUnique as jest.Mock<any>).mockResolvedValue(null);
     (prisma.userPersonalPerformance.update as jest.Mock<any>).mockResolvedValue({});
 
     const result = await saveSubmisssion({
@@ -63,6 +67,7 @@ describe("SubmissionEvaluator Service", () => {
       data: {
         score: 1000,
         status: "PASSED",
+        questionsSolved: 1,
       },
     });
 
@@ -114,6 +119,7 @@ describe("SubmissionEvaluator Service", () => {
       data: {
         score: 400,
         status: "PENDING",
+        questionsSolved: 0,
       },
     });
   });

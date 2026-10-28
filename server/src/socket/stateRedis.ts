@@ -88,7 +88,7 @@ const memoryLobbies = new Map<string, CustomLobby>();
 const memoryOnlineUsers = new Map<string, Set<string>>();
 const memorySearchIntervals = new Map<string, NodeJS.Timeout>();
 
-export const MAX_SOCKETS_PER_USER = 5;
+export const MAX_SOCKETS_PER_USER = 15;
 
 export interface LobbyWithId extends CustomLobby {
   id: string;

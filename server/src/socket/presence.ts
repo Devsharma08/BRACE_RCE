@@ -1,5 +1,6 @@
 import type { Server } from "socket.io";
 import { prisma } from "../lib/prisma.js";
+import { getSocketIds } from "./stateRedis.js";
 
 /**
  * Resolve the accepted-friend ids of a user (the `User.friends` self-relation).
@@ -28,21 +29,24 @@ export async function getFriendIds(userId: string): Promise<string[]> {
 }
 
 /**
- * Emit a presence change to the sockets of `friendIds` only.
+ * Emit a presence change to ALL sockets of each friend.
  *
- * Presence used to be sent with `io.emit(...)` on every connect/disconnect,
- * which pushed a message to every connected user, leaked the presence of
- * unrelated users, and got O(users²) noisy at scale.
+ * Uses getSocketIds (not a single socket id) so multi-tab users receive
+ * the update on every open tab, not just the first one registered.
+ *
+ * The `resolveSocketIds` parameter is a seam for testing — production
+ * callers use the default `getSocketIds` from stateRedis.
  */
-export function emitPresenceToFriends(
+export async function emitPresenceToFriends(
     io: Server,
-    onlineUsers: Map<string, string>,
     friendIds: string[],
     payload: { userId: string; status: "ONLINE" | "OFFLINE" },
-): void {
+): Promise<void> {
     for (const friendId of friendIds) {
         if (friendId === payload.userId) continue;
-        const socketId = onlineUsers.get(friendId);
-        if (socketId) io.to(socketId).emit("user_online_status", payload);
+        const socketIds = await getSocketIds(friendId);
+        for (const sid of socketIds) {
+            io.to(sid).emit("user_online_status", payload);
+        }
     }
 }

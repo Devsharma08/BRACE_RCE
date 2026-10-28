@@ -7,7 +7,6 @@ import { activeSearchIntervals, pendingMatchTimeouts } from "./state.js";
 import { 
   markOnline, 
   markOffline, 
-  getSocketId, 
   getOnlineUsers, 
   getActiveLobbiesMap 
 } from "./stateRedis.js";
@@ -152,8 +151,7 @@ export const initSocketServer = async (io: Server) => {
         // The disconnect handler already emits "OFFLINE" — this closes
         // the loop so friend status dots light up on connect.
         const friendIds = await getFriendIds(userId);
-        const presenceMap = await getOnlineUsers();
-        emitPresenceToFriends(io, presenceMap, friendIds, {
+        await emitPresenceToFriends(io, friendIds, {
             userId,
             status: "ONLINE"
         });
@@ -185,8 +183,7 @@ export const initSocketServer = async (io: Server) => {
             // connected user on every disconnect is noisy and leaks presence.
             // Skip entirely while the user still has another live socket.
              if (wentOffline) {
-                const onlineUsersMap = await getOnlineUsers();
-                emitPresenceToFriends(io, onlineUsersMap, await getFriendIds(userId), {
+                await emitPresenceToFriends(io, await getFriendIds(userId), {
                     userId,
                     status: "OFFLINE"
                 });
@@ -257,8 +254,7 @@ export const initSocketServer = async (io: Server) => {
         // Fire-and-forget: handler registration above must never wait on the DB,
         // and `getFriendIds` never throws.
         void getFriendIds(userId).then(async (friendIds) => {
-            const onlineUsersMap = await getOnlineUsers();
-            emitPresenceToFriends(io, onlineUsersMap, friendIds, {
+            await emitPresenceToFriends(io, friendIds, {
                 userId,
                 status: "ONLINE"
             });

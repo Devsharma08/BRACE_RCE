@@ -14,15 +14,25 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswor
 
 export class AuthController {
 
-    private tokenCookieOptions = () => ({
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
-        secure: process.env.NODE_ENV === "production",
-        // Share cookie across subdomains so WebSocket (wss://bracerce.server.devsharma.dev)
-        // receives the token cookie set via the Vercel-proxied API (bracerce.devsharma.dev)
-        domain: process.env.COOKIE_DOMAIN || ".devsharma.dev",
-    });
+    private tokenCookieOptions = () => {
+        const isProd = process.env.NODE_ENV === "production";
+        // In production the API hostname differs from the WebSocket host
+        // (Vercel-proxied api vs wss://bracerce.server...), so the token cookie
+        // is scoped to ".devsharma.dev" to ride both. In dev the frontend lives
+        // on localhost and Vite proxies /api to localhost:3000 — pinning the
+        // cookie to ".devsharma.dev" there makes it invisible to localhost, which
+        // is exactly why /auth/me returns "Token is not present" right after a
+        // successful 200 login. So in dev we OMIT domain, yielding a host-only
+        // cookie that the Vite proxy will attach to follow-up requests.
+        const domain = process.env.COOKIE_DOMAIN ?? (isProd ? ".devsharma.dev" : undefined);
+        return {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            sameSite: isProd ? "none" as const : "lax" as const,
+            secure: isProd,
+            ...(domain ? { domain } : {}),
+        };
+    };
 
     setTokenCookie = async (res: any, userId: string) => {
         const token = getToken(userId)
@@ -307,11 +317,12 @@ export class AuthController {
     }
 
     signout = async (req: Request, res: Response) => {
-        res.clearCookie("token", {
-            httpOnly: true,
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            secure: process.env.NODE_ENV === "production",
-        });
+        // Reuse the same option shape (esp. `domain` + `sameSite` + `secure`) so
+        // the clear matches the cookie set by setTokenCookie — otherwise a
+        // domain-pinned token cookie survives logout. maxAge is irrelevant for
+        // clearCookie and is dropped so the cookie is expired immediately.
+        const { maxAge: _maxAge, ...clearOpts } = this.tokenCookieOptions();
+        res.clearCookie("token", clearOpts);
         res.clearCookie("csrf_token", {
             httpOnly: false,
             sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",

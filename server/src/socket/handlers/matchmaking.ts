@@ -111,11 +111,18 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                         // Fetch a problem matching the opponent's requested difficulty
                         const matchedProblems = await prisma.problem.findMany({
                             where: { difficulty_level: opponentQueue.preferredDifficulty },
-                            select: { id: true, github_oid: true }
+                            select: { id: true, github_oid: true, timeLimitMs: true }
                         });
                         const randomProblem = matchedProblems.length > 0
                             ? matchedProblems[Math.floor(Math.random() * matchedProblems.length)]
                             : null;
+
+                        // Derive the battle duration from the problem's difficulty-based time limit.
+                        // This makes the allocated time explicit on the event record so
+                        // deriveEventDurationMs uses it as the highest-priority source,
+                        // matching the agreed priority: global totalTimeLimitMs →
+                        // sum of problem limits → commonProblem limit → default.
+                        const totalTimeLimitMs = randomProblem?.timeLimitMs ?? 600000;
 
                         // Create the Match Event
                         const event = await prisma.event.create({
@@ -123,6 +130,7 @@ export function registerMatchmakingHandlers(ctx: HandlerCtx): void {
                                 type: 'ONE_VS_ONE',
                                 status: 'WAITING',
                                 commonProblemId: randomProblem?.id || null,
+                                totalTimeLimitMs,
                                 performances: {
                                     create: [
                                         { userId: userId, status: 'PENDING' },

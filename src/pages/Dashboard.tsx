@@ -30,6 +30,7 @@ import {
   Gauge,
   ChevronRight,
   LayoutDashboard,
+  Clock3,
 } from "lucide-react";
 
 // Loose shapes for the untyped server payloads this page consumes —
@@ -39,14 +40,48 @@ type DashboardProblem = {
   github_oid?: string;
   name?: string;
   difficulty_level?: string;
+  timeLimitMs?: number | null;
 };
 
 type DashboardMatch = {
   id?: string;
   status?: string;
   score?: number;
+  timeTakenMs?: number | null;
+  outcome?: string | null;
+  battlePoints?: number | null;
+  finalPoints?: number | null;
+  focusPenaltyPercent?: number | null;
+  finishedAt?: string | null;
   createdAt?: string;
-  event?: { name?: string; commonProblem?: { name?: string } | null } | null;
+  event?: {
+    name?: string | null;
+    totalTimeLimitMs?: number | null;
+    commonProblem?: {
+      name?: string | null;
+      problem_number?: number | null;
+      difficulty_level?: string;
+      timeLimitMs?: number | null;
+    } | null;
+  } | null;
+};
+
+const getOutcomeTone = (outcome?: string | null): "live" | "warning" | "danger" | "muted" => {
+  const o = (outcome ?? "").toUpperCase();
+  if (o === "WIN") return "live";
+  if (o === "DRAW") return "warning";
+  if (o === "LOSS") return "danger";
+  return "muted";
+};
+
+const getOutcomeLabel = (outcome?: string | null, isWin?: boolean): string => {
+  if (outcome === "DRAW") return "DRAW";
+  return isWin ? "WIN" : "LOSS";
+};
+
+const getOutcomeShort = (outcome?: string | null, isWin?: boolean): string => {
+  if (outcome === "DRAW") return "D";
+  return isWin ? "W" : "L";
 };
 
 const formatRelativeTime = (value?: string | null) => {
@@ -615,9 +650,20 @@ export const Dashboard: React.FC = () => {
                           <span className="sr-only">{diff}</span>
                         </StatusPill>
                       </span>
-                      <span className="hidden shrink-0 sm:inline">
+                       <span className="hidden shrink-0 sm:inline">
                         <StatusPill tone={tone}>{diff}</StatusPill>
                       </span>
+                      {problem.timeLimitMs && (
+                        <span
+                          className="shrink-0 font-mono text-[9px] text-subtle group-hover:text-fg transition-colors"
+                          title={`Allocated time for this difficulty`}
+                        >
+                          <Clock3 size={12} className="inline mr-1" />
+                          {problem.timeLimitMs >= 60000
+                            ? `${Math.round(problem.timeLimitMs / 60000)}m`
+                            : `${Math.round(problem.timeLimitMs / 1000)}s`}
+                        </span>
+                      )}
                       <ChevronRight
                         size={14}
                         className="hidden shrink-0 text-subtle group-hover:text-accent sm:block"
@@ -666,41 +712,82 @@ export const Dashboard: React.FC = () => {
                 <div className="divide-y divide-subtle-line">
                   {recentBattles.slice(0, 5).map((perf: DashboardMatch, i: number) => {
                     const isWin = isWinnerStatus(perf.status);
+                    const outcome = perf.outcome;
                     const problemName = perf.event?.name || perf.event?.commonProblem?.name || "Untitled Problem";
+                    const outcomeTone = getOutcomeTone(outcome) ?? (isWin ? "live" : "danger");
+                    const allocatedMs = perf.event?.totalTimeLimitMs ?? perf.event?.commonProblem?.timeLimitMs ?? 0;
+                    const timeTaken = perf.timeTakenMs ?? undefined;
+                    const finishedAt = perf.finishedAt ?? perf.createdAt;
+                    const battlePoints = perf.battlePoints ?? 0;
+                    const finalPoints = perf.finalPoints ?? perf.score ?? 0;
+                    const focusPenalty = perf.focusPenaltyPercent ?? 0;
+                    const hasPenalty = focusPenalty > 0;
+                    const hasBattlePoints = battlePoints !== 0;
+                    const showPoints = finalPoints > 0 || hasBattlePoints;
                     return (
                       <div
                         key={perf.id || i}
-                        className="flex flex-col gap-1.5 px-3 py-2.5 transition hover:bg-surface-hover sm:flex-row sm:items-center sm:gap-3 sm:px-4"
+                        className="flex flex-col gap-1 px-3 py-2 sm:gap-2 sm:px-4"
                       >
-                        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
-                          {problemName}
-                        </span>
-                        {/* Phone: compact W/L pill + score + time on a wrap-free
-                            second line; sm+: the original single-line row. */}
-                        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                          {/* Same wrapper rule as the E/M/H pills above —
-                              `hidden` must win over the pill's `inline-flex`. */}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg" title={problemName}>
+                            {problemName}
+                          </span>
                           <span className="sm:hidden">
-                            <StatusPill tone={isWin ? "live" : "danger"}>
-                              <span aria-hidden="true">{isWin ? "W" : "L"}</span>
-                              <span className="sr-only">{isWin ? "WIN" : "LOSS"}</span>
+                            <StatusPill tone={outcomeTone}>
+                              <span aria-hidden="true">{getOutcomeShort(outcome, isWin)}</span>
+                              <span className="sr-only">{getOutcomeLabel(outcome, isWin)}</span>
                             </StatusPill>
                           </span>
                           <span className="hidden sm:inline">
-                            <StatusPill tone={isWin ? "live" : "danger"}>
-                              {isWin ? "WIN" : "LOSS"}
+                            <StatusPill tone={outcomeTone}>
+                              {getOutcomeLabel(outcome, isWin)}
                             </StatusPill>
                           </span>
-                          <span className="font-mono text-[11px] text-subtle">
-                            {perf.score ?? 0}
-                          </span>
-                          <span aria-hidden="true" className="font-mono text-[11px] text-faint">·</span>
+                          {showPoints && (
+                            <span className="font-mono text-[11px] text-subtle">
+                              {finalPoints} pts
+                            </span>
+                          )}
+                          {hasPenalty && (
+                            <span className="font-mono text-[10px] text-accent-warning">
+                              -{focusPenalty}%
+                            </span>
+                          )}
                           <time
-                            className="whitespace-nowrap font-mono text-[10px] font-bold text-secondary sm:text-[11px]"
-                            dateTime={perf.createdAt}
+                            className="whitespace-nowrap font-mono text-[10px] font-bold text-secondary"
+                            dateTime={finishedAt}
                           >
-                            {formatRelativeTime(perf.createdAt)}
+                            {formatRelativeTime(finishedAt)}
                           </time>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 font-mono text-[10px] text-subtle">
+                          {allocatedMs > 0 && timeTaken !== undefined && (
+                            <span
+                              className="inline-flex items-center gap-1"
+                              title={`Time used: ${formatMs(timeTaken)} of ${formatMs(allocatedMs)} allocated`}
+                            >
+                              <Activity size={10} />
+                              <span className={timeTaken > allocatedMs ? "text-accent-danger" : "text-accent-success"}>
+                                {Math.round((timeTaken / allocatedMs) * 100)}%
+                              </span>
+                              <span className="text-faint">of budget</span>
+                            </span>
+                          )}
+                          {hasBattlePoints && (
+                            <span
+                              className="inline-flex items-center gap-1"
+                              title={`Battle points: ${battlePoints} (base award before penalty)`}
+                            >
+                              <Flame size={10} />
+                              <span className="text-accent-warning">{battlePoints}</span>
+                            </span>
+                          )}
+                          {perf.timeTakenMs !== null && perf.timeTakenMs !== undefined && allocatedMs > 0 && (
+                            <span className="text-faint">
+                              {formatMs(timeTaken)} / {formatMs(allocatedMs)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );

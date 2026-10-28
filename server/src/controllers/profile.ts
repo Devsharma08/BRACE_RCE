@@ -52,16 +52,24 @@ class Profile {
             // Get all performance records for this user
             const performances = await prisma.userPersonalPerformance.findMany({
                 where: { userId },
-                include: {
+                select: {
+                    id: true,
+                    userId: true,
+                    eventId: true,
+                    questionsSolved: true,
+                    timeTakenMs: true,
+                    status: true,
+                    score: true,
+                    outcome: true,
+                    battlePoints: true,
+                    finalPoints: true,
+                    focusPenaltyPercent: true,
+                    finishedAt: true,
+                    createdAt: true,
                     event: {
                         include: {
-                            commonProblem: { select: { name: true, problem_number: true, difficulty_level: true } },
-                            performances: {
-                                include: {
-                                    user: { select: { id: true, username: true, avatarUrl: true } },
-                                    submissions: { orderBy: { attemptNumber: 'asc' } }
-                                }
-                            }
+                            commonProblem: { select: { name: true, problem_number: true, difficulty_level: true, timeLimitMs: true } },
+                            totalTimeLimitMs: true,
                         }
                     },
                     submissions: { orderBy: { attemptNumber: 'asc' } }

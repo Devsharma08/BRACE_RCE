@@ -124,17 +124,22 @@ model Event {
 }
 
 model UserPersonalPerformance {
-  id              String           @id @default(uuid())
-  userId          String
-  eventId         String
-  questionsSolved Int              @default(0)
-  timeTakenMs     Int?
-  status          String           @default("PENDING")
-  score           Int              @default(0)
-  createdAt       DateTime         @default(now())
-  submissions     CodeSubmission[]
-  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String           @id @default(uuid())
+  userId                String
+  eventId               String
+  questionsSolved       Int              @default(0)
+  timeTakenMs           Int?
+  status                String           @default("PENDING")
+  score                 Int              @default(0)
+  outcome               String?          /// WIN | DRAW | LOSS — resolved from pass flags
+  battlePoints          Int?             /// +max / 0 / -max scaled by difficulty
+  finalPoints           Int?             /// score after focus-penalty deduction (floored at 0)
+  focusPenaltyPercent   Int?             @default(0)  /// exponential focus-loss penalty
+  finishedAt            DateTime?        /// when the participant's verdict was recorded
+  createdAt             DateTime         @default(now())
+  submissions           CodeSubmission[]
+  event                 Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([eventId])

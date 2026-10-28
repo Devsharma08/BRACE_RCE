@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { deleteCachedByPrefix } from "../../lib/cache.js";
+import { finishEventWithVerdicts } from "../../services/battleFinish.js";
 import type { HandlerCtx } from "../types.js";
 
 interface BattleActionPayload {
@@ -113,13 +114,24 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
         if (!passed) return;
 
         // Atomically claim the finish so concurrent emissions (double submits,
-        // both players finishing at once) emit `battle_finished` exactly once.
+        // both players finishing at once) resolve exactly once.
+        // finishEventWithVerdicts checks status === "FINISHED" internally and
+        // returns early, providing the same once-only guarantee.
         const claim = await prisma.event.updateMany({
             where: { id: event.id, status: { not: "FINISHED" } },
             data: { status: "FINISHED", finishedAt: new Date() }
         }).catch(() => ({ count: 0 }));
 
         if (claim.count === 0) return;
+
+        // Now that the event is marked FINISHED, run the authoritative verdict
+        // logic to persist per-participant outcomes, battlePoints, and ratings.
+        // This replaces the bare status update above — finishEventWithVerdicts
+        // resolves PASSED/TIMEOUT verdicts from submission data, computes
+        // outcomes (WIN/DRAW/LOSS), and writes scores.
+        await finishEventWithVerdicts(event.id).catch((e) => {
+            console.error("[battle_action] finishEventWithVerdicts error:", e);
+        });
 
         const performances = await prisma.userPersonalPerformance.findMany({
             where: { eventId: event.id },

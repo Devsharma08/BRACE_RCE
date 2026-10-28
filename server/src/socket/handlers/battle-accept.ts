@@ -1,10 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToUser } from "../ioRegistry.js";
-import { getSocketIds } from "../stateRedis.js";
+import { deriveEventDurationMs } from "../../lib/eventTimeLimit.js";
 import type { HandlerCtx } from "../types.js";
 
 export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
-    const { io, socket, userId } = ctx;
+    const { socket, userId } = ctx;
 
     socket.on('accept_match', async (matchId: string) => {
         try {
@@ -25,16 +25,22 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
             const allAccepted = performances.length === 2 && performances.every(p => p.status === 'ACCEPTED');
 
             if (allAccepted) {
-                const futureStartTime = new Date(Date.now() + 5000);
-                // Update event to IN_PROGRESS
+                const COUNTDOWN_MS = 5000;
+                const futureStartTime = new Date(Date.now() + COUNTDOWN_MS);
+                // Update event to IN_PROGRESS — include commonProblem so we can
+                // derive the time limit from the problem's difficulty-based setting.
                 const event = await prisma.event.update({
                     where: { id: eventId },
                     data: {
                         status: 'IN_PROGRESS',
                         startedAt: futureStartTime,
                     },
-                    include: { commonProblem: true }
+                    include: { commonProblem: true, problems: true }
                 });
+
+                // Derive the battle duration from the problem difficulty setting.
+                // Priority: global totalTimeLimitMs → sum of problem limits → commonProblem limit → default.
+                const totalDurationMs = deriveEventDurationMs(event);
 
                 // Notify both players to start the battle.
                 // Use emitToUser for guaranteed cross-process delivery —
@@ -43,12 +49,26 @@ export function registerBattleAcceptHandlers(ctx: HandlerCtx): void {
                 // (io.to(matchId) alone fails if room joins via the adapter
                 // addSocketsToRoom/join don't propagate correctly.)
                 for (const perf of performances) {
-                    await emitToUser(perf.userId, "match_starting", {
+                    await emitToUser(perf.userId, "battle_starting", {
                         eventId: eventId,
                         roomName: matchId,
                         problemId: event.commonProblem?.github_oid || "local-battle",
+                        countdownSeconds: Math.round(COUNTDOWN_MS / 1000),
                     });
                 }
+
+                // After the countdown, emit battle_started to unlock the editor.
+                setTimeout(async () => {
+                    for (const perf of performances) {
+                        await emitToUser(perf.userId, "battle_started", {
+                            startedAt: futureStartTime,
+                            problemId: event.commonProblem?.github_oid || "local-battle",
+                            totalDurationMs,
+                            commonProblem: event.commonProblem,
+                            problems: event.problems,
+                        });
+                    }
+                }, COUNTDOWN_MS);
             }
         } catch (error) {
             console.error("Accept match error:", error);

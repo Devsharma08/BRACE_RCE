@@ -204,6 +204,11 @@ export function emitWithAck<T = unknown>(
 }
 
 function resolveSocketUrl(): string {
+  // In development, connect to the current origin so Vite's proxy handles
+  // WebSocket upgrade to the local backend. VITE_SOCKET_URL points to prod.
+  if (import.meta.env.DEV) {
+    return "";
+  }
   const rawSocketUrl =
     import.meta.env.VITE_SOCKET_URL ||
     import.meta.env.VITE_API_URL ||
@@ -495,7 +500,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     if (ids && ids.length > 0 && isConnected) {
       socketRef.current?.emit("request_presence", { userIds: ids });
     }
-  }, [presenceFriends]);
+  }, [presenceFriends, isConnected]);
 
   // Request presence when socket connects/reconnects
   useEffect(() => {
@@ -645,6 +650,12 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     bind("lobby_error", (msg: string) => {
       toast.error(msg);
+    });
+
+    bind("connection_limit_exceeded", (data: { message?: string; maxConnections?: number }) => {
+      toast.error("Too many open tabs", {
+        description: data?.message ?? `Close some tabs (limit: ${data?.maxConnections ?? 15})`,
+      });
     });
 
     bind("lobby_ended", () => {
@@ -834,7 +845,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       setWaitingTime(data.waitingSeconds);
     });
 
-    bind("match_starting", (data) => {
+    bind("battle_starting", (data) => {
       setMatchmakingStatus("IDLE");
       setPendingMatchId(null);
       setIsClicked(false);
