@@ -3,6 +3,7 @@ import { displayProblemName } from "../../utils/problemName.js";
 import type { HandlerCtx } from "../types.js";
 import { getSocketIds } from "../stateRedis.js";
 import { emitToUser } from "../ioRegistry.js";
+import { logger } from "../../lib/logger.js";
 
 export function registerChallengeHandlers(ctx: HandlerCtx): void {
     const { socket, userId } = ctx;
@@ -105,87 +106,106 @@ export function registerChallengeHandlers(ctx: HandlerCtx): void {
             return socket.emit('lobby_error', "Challenger went offline!")
         }
 
-        let battleProblemId: string | null = null;
-        let problemId = "local-battle";
-        let timeLimitMs = 600000;
+        try {
+            let battleProblemId: string | null = null;
+            let problemId = "local-battle";
+            let timeLimitMs = 600000;
 
-        // CUSTOM: use the exact problem the challenger picked
-        if (data.problemId) {
-            const custom = await prisma.problem.findUnique({
-                where: { id: data.problemId },
-                select: { id: true, github_oid: true, timeLimitMs: true }
-            }).catch(() => null);
-            if (custom) {
-                battleProblemId = custom.id;
-                problemId = custom.github_oid || custom.id;
-                timeLimitMs = custom.timeLimitMs || 600000;
-            }
-        }
-
-        // RANDOM (or CUSTOM fallback): pick by difficulty
-        if (!battleProblemId) {
-            const diff = (data.difficulty ?? "MEDIUM").toUpperCase();
-            const problems = await prisma.problem.findMany({
-                where: {
-                    isCustom: false,
-                    ...(diff === "ANY" ? {} : { difficulty_level: diff as never }),
-                },
-                select: { id: true, github_oid: true, timeLimitMs: true }
-            });
-            if (problems.length > 0) {
-                const randomProblem = problems[Math.floor(Math.random() * problems.length)];
-                battleProblemId = randomProblem.id;
-                problemId = randomProblem.github_oid || randomProblem.id || "local-battle";
-                timeLimitMs = randomProblem.timeLimitMs || 600000;
-            }
-        }
-
-        // create a brand new custom event behind the scenes
-        const event = await prisma.event.create({
-            data: {
-                type: "FRIENDS",
-                status: "IN_PROGRESS",
-                startedAt: new Date(),
-                maxUsers: 2,
-                commonProblemId: battleProblemId,
-                totalTimeLimitMs: timeLimitMs,
-                performances: {
-                    create: [{ userId: userId, status: "PENDING" }, {
-                        userId: data.challengerId,
-                        status: "PENDING"
-                    }]
+            // CUSTOM: use the exact problem the challenger picked
+            if (data.problemId) {
+                const custom = await prisma.problem.findUnique({
+                    where: { id: data.problemId },
+                    select: { id: true, github_oid: true, timeLimitMs: true }
+                }).catch(() => null);
+                if (custom) {
+                    battleProblemId = custom.id;
+                    problemId = custom.github_oid || custom.id;
+                    timeLimitMs = custom.timeLimitMs || 600000;
                 }
             }
-        })
 
-        const roomId = `room-${event.id}`;
+            // RANDOM (or CUSTOM fallback): pick by difficulty
+            if (!battleProblemId) {
+                const diff = (data.difficulty ?? "MEDIUM").toUpperCase();
+                const problems = await prisma.problem.findMany({
+                    where: {
+                        isCustom: false,
+                        ...(diff === "ANY" ? {} : { difficulty_level: diff as never }),
+                    },
+                    select: { id: true, github_oid: true, timeLimitMs: true }
+                });
+                if (problems.length > 0) {
+                    const randomProblem = problems[Math.floor(Math.random() * problems.length)];
+                    battleProblemId = randomProblem.id;
+                    problemId = randomProblem.github_oid || randomProblem.id || "local-battle";
+                    timeLimitMs = randomProblem.timeLimitMs || 600000;
+                } else {
+                    logger.warn(`No problems found for difficulty ${diff}`);
+                    return socket.emit('lobby_error', "No problems available for this difficulty");
+                }
+            }
 
-         // Instantly wrap both players to arena, using the fetched problemId + timeLimitMs.
-         // Use emitToUser for guaranteed cross-process delivery — reaches ALL sockets
-         // (tabs/devices), fixing the desktop UI not updating after accept when the
-         // active tab is on a different PM2 worker.
-         await emitToUser(userId, "custom_match_started", {
-             roomId, problemId, timeLimitMs
-         });
+            // create a brand new custom event behind the scenes
+            const event = await prisma.event.create({
+                data: {
+                    type: "FRIENDS",
+                    status: "IN_PROGRESS",
+                    startedAt: new Date(),
+                    maxUsers: 2,
+                    commonProblemId: battleProblemId,
+                    totalTimeLimitMs: timeLimitMs,
+                    performances: {
+                        create: [{ userId: userId, status: "PENDING" }, {
+                            userId: data.challengerId,
+                            status: "PENDING"
+                        }]
+                    }
+                }
+            });
 
-         await emitToUser(data.challengerId, "custom_match_started", { roomId, problemId, timeLimitMs });
+            const roomId = `room-${event.id}`;
 
-         // challenge-accepted queue entries for both players
-         try {
-             const { notifyChallengeResult } = await import("../../services/notificationService.js");
-             const [me, other] = await Promise.all([
-                 prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
-                 prisma.user.findUnique({ where: { id: data.challengerId }, select: { username: true } }),
-             ]);
-             const n1 = await notifyChallengeResult(userId, true, other?.username ?? "Friend");
-             const n2 = await notifyChallengeResult(data.challengerId, true, me?.username ?? "Friend");
-             await emitToUser(userId, "notification:new", n1);
-             await emitToUser(data.challengerId, "notification:new", n2);
-         } catch (e) {
-             console.error("challenge accept notify error:", e);
-         }
+            // Instantly wrap both players to arena, using the fetched problemId + timeLimitMs.
+            // Use emitToUser for guaranteed cross-process delivery — reaches ALL sockets
+            // (tabs/devices), fixing the desktop UI not updating after accept when the
+            // active tab is on a different PM2 worker.
+            const matchStartedPayload = { roomId, problemId, timeLimitMs };
 
-    })
+            const [acceptorResult, challengerResult] = await Promise.allSettled([
+                emitToUser(userId, "custom_match_started", matchStartedPayload),
+                emitToUser(data.challengerId, "custom_match_started", matchStartedPayload),
+            ]);
+
+            if (acceptorResult.status === "rejected") {
+                logger.error({ err: acceptorResult.reason }, `Failed to emit custom_match_started to acceptor ${userId}`);
+            }
+            if (challengerResult.status === "rejected") {
+                logger.error({ err: challengerResult.reason }, `Failed to emit custom_match_started to challenger ${data.challengerId}`);
+            }
+
+            // challenge-accepted queue entries for both players
+            try {
+                const { notifyChallengeResult } = await import("../../services/notificationService.js");
+                const [me, other] = await Promise.all([
+                    prisma.user.findUnique({ where: { id: userId }, select: { username: true } }),
+                    prisma.user.findUnique({ where: { id: data.challengerId }, select: { username: true } }),
+                ]);
+                const n1 = await notifyChallengeResult(userId, true, other?.username ?? "Friend");
+                const n2 = await notifyChallengeResult(data.challengerId, true, me?.username ?? "Friend");
+                await emitToUser(userId, "notification:new", n1);
+                await emitToUser(data.challengerId, "notification:new", n2);
+            } catch (e) {
+                logger.error({ err: e }, "challenge accept notify error");
+            }
+
+            // Acknowledge the accept to the acceptor
+            socket.emit("challenge_accepted", { roomId, problemId, timeLimitMs });
+
+        } catch (error) {
+            logger.error({ err: error }, "accept_challenge error");
+            socket.emit("lobby_error", "Failed to accept challenge. Please try again.");
+        }
+    });
 
     // CHALLENGE DECLINE — notify the challenger + queue the result
     socket.on("decline_challenge", async (data: { challengerId: string }) => {
