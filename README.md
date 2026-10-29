@@ -30,9 +30,9 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code-exe
 ```
 
 ---
-
+ 
 ## 🛠️ Technology Stack
-
+ 
 | Domain | Technologies Used |
 | :--- | :--- |
 | **Frontend UI** | React 19, TypeScript, Vite, TailwindCSS v4, `@monaco-editor/react`, Lucide React icons, TanStack Query |
@@ -44,9 +44,67 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code-exe
 | **Hardening** | Helmet, CORS allow-list, CSRF protection, per-IP rate limits, daily execution quotas |
 | **Observability** | pino logging, Sentry, OpenTelemetry + Prometheus metrics |
 | **Testing** | Jest (server, ESM), Vitest (frontend), supertest, DB-driven problem verification suites |
-
+ 
 ---
-
+ 
+## 🚀 Current Production Status (v2026.10)
+ 
+### ✅ Deployed & Operational
+ 
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Backend API** | ✅ Live | `https://bracerce.server.devsharma.dev` (EC2: 16.192.126.74) |
+| **Frontend (Vercel)** | ✅ Auto-deploys | Vercel domain linked, SSL handled by Vercel |
+| **WebSocket** | ✅ Live | `wss://bracerce.server.devsharma.dev/socket.io/` |
+| **SSL/TLS** | ✅ Let's Encrypt | Auto-renewing cert for `bracerce.server.devsharma.dev` (valid to Jan 27, 2027) |
+| **Database** | ✅ Neon PostgreSQL | Prisma ORM, schema in sync |
+| **Cache/Redis** | ✅ Upstash/Docker | Socket.IO adapter + rate limiting |
+| **RCE Engine (Piston)** | ✅ 3 runtimes | Python 3.12, Node 20.11, Java 15 (GCC install pending) |
+| **Authentication** | ✅ Firebase + Gmail OTP | OTP via Gmail App Password, Google OAuth, JWT sessions |
+| **Health Check** | ✅ Passing | `GET https://bracerce.server.devsharma.dev/health` |
+ 
+### 📡 API Endpoints (Production)
+ 
+| Service | URL |
+|---------|-----|
+| REST API | `https://bracerce.server.devsharma.dev/api` |
+| WebSocket | `wss://bracerce.server.devsharma.dev/socket.io/` |
+| Health Check | `https://bracerce.server.devsharma.dev/health` |
+| Swagger (dev only) | `http://localhost:3000/api-docs` |
+ 
+### 🐳 Deployment Architecture (EC2)
+ 
+```bash
+EC2 Instance (16.192.126.74)
+├── nginx:80/443          # TLS termination, reverse proxy, rate limiting
+├── app:5000              # Node.js (PM2 cluster x2 + worker x1)
+├── redis:6379            # Cache + Socket.IO Redis adapter
+├── piston:2000           # Polyglot RCE (3 runtimes installed)
+└── certbot               # Let's Encrypt auto-renewal
+```
+ 
+### 🔐 Environment Configuration (Production)
+ 
+All secrets managed via `.env` on EC2 and Vercel Dashboard:
+ 
+| Variable | Where |
+|----------|-------|
+| `VITE_BACKEND_URL` | Vercel: `https://bracerce.server.devsharma.dev/api` |
+| `VITE_API_URL` | Vercel: `https://bracerce.server.devsharma.dev/api` |
+| `VITE_SOCKET_URL` | Vercel: `wss://bracerce.server.devsharma.dev` |
+| `VITE_GOOGLE_CLIENT_ID` | Vercel + EC2 |
+| `DATABASE_URL` / `DIRECT_URL` | EC2 `.env` (Neon) |
+| `REDIS_URL` | EC2 `.env` (Upstash/Docker) |
+| `JWT_SECRET` | EC2 `.env` |
+| `GMAIL_USER` / `GMAIL_APP_PASSWORD` | EC2 `.env` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | EC2 `.env` + Vercel |
+| `FIREBASE_*` | EC2 `.env` |
+| `ALLOWED_ORIGINS` | EC2 `.env` (Vercel + EC2 domains) |
+| `SENTRY_DSN` | EC2 `.env` (optional) |
+| `PISTON_URL` | EC2 `.env` (internal `http://piston:2000`) |
+ 
+---
+ 
 ## ✅ WHAT HAS BEEN IMPLEMENTED
 
 ### 1. 🚀 Polyglot Remote Code Execution (RCE) Engine
@@ -126,8 +184,17 @@ BRACE RCE combines a real-time WebSocket matchmaking engine, a polyglot code-exe
 ### 6. 🎵 Audio & Cyberpunk Sound FX System
 - [x] **Battle Sound Effects**: Zero-asset WebAudio synth (`src/utils/battleSounds.ts` — tick, match-start, test-pass, submit-success, surrender) wired into `Battle.tsx` with persisted mute toggle (`SoundToggle`).
 
----
+### 7. 🔧 Production Hardening & Fixes (2026-10)
+- [x] **Socket.IO Reliability**: Exponential backoff reconnection (30 attempts), transport fallback (WS → polling), connection state recovery (2-min buffer), offline event queue with flush on reconnect, `emitWithAck` for critical operations, toast deduplication.
+- [x] **1v1 Matchmaking Fixes**: `withDbRetry` for transient DB errors (EAI_AGAIN, ETIMEDOUT, ECONNRESET), cross-PM2-worker `emitToUser` delivery via Redis, restored `cancel_matchmaking` handler.
+- [x] **Battle Timer by Difficulty**: EASY=15min, MEDIUM=20min, HARD=25min (was 30min); backend-driven timer consumed by `GlobalTimer` component.
+- [x] **Chat Persistence**: Global `battleMessageStore` survives navigation; history fetched on Battle mount via `GET /api/rooms/:eventId/messages`.
+- [x] **Friends Page**: Avatar fallback (`getInitialsAvatar`), mobile stats overlay (`StatsOverlay`), online status fixed.
+- [x] **Lobby Analytics**: Per-participant avatars, progress bars, detailed metrics grid, color-coded status badges.
+- [x] **Hydration Fixes**: Removed nested `<button>` in `FriendDashboard`, replaced with accessible `<span role="button">`.
 
+---
+ 
 ## 🔑 Authentication API Reference
 
 All routes are mounted under both the versioned prefix **`/api/v1`** and the legacy **`/api`** prefix.
@@ -305,15 +372,40 @@ pnpm problem:verify-exec              # end-to-end execution validation
 ```
 
 ---
-
+ 
 ## 🐳 Deployment
-
+ 
+### Production (Current — EC2 + Vercel)
+ 
+- **Backend**: EC2 instance (16.192.126.74) running Docker Compose stack
+  - `docker-compose.yml` defines: `app` (Node.js + PM2), `redis`, `piston`, `nginx`, `certbot`
+  - Let's Encrypt SSL via certbot (auto-renewal) for `bracerce.server.devsharma.dev`
+  - Health: `GET https://bracerce.server.devsharma.dev/health`
+ 
+- **Frontend**: Vercel (auto-deploys on push to `main`)
+  - Domain linked to Vercel, SSL handled by Vercel
+  - Env vars set in Vercel Dashboard
+ 
+### Local / Self-Hosted
+ 
 - `Dockerfile` + `docker-compose.yml` define the production stack (`app`, `postgres:16-alpine`, execution services).
 - Production runs the compiled server (`pnpm --prefix server build` → `pnpm --prefix server start`) with `NODE_MODE=production`, which loads `server/.env.production`.
 - Set `ALLOWED_ORIGINS` to your real frontend origins, use managed Postgres (e.g. Neon) `DATABASE_URL`/`DIRECT_URL`, and point the Firebase password-reset template Action URL at your deployed `/reset-password` route.
-
+ 
+### Deploy Script (New EC2 Instance)
+ 
+A complete deployment script is available at `deploy/new-instance.sh`:
+ 
+```bash
+# On fresh Amazon Linux 2023 instance:
+scp -i key.pem deploy/new-instance.sh ec2-user@<IP>:/home/ec2-user/
+ssh -i key.pem ec2-user@<IP> "chmod +x new-instance.sh && sudo ./new-instance.sh"
+```
+ 
+This script handles: swap, Docker/Compose, git clone, `.env` with correct Gmail creds, build, Prisma migrate, PM2, Piston runtime installs, and health checks.
+ 
 ---
-
+ 
 ## 📄 License
 
 MIT License. Designed and built for high-performance competitive coding and multi-language execution.
