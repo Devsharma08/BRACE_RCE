@@ -376,8 +376,8 @@ pnpm problem:verify-exec              # end-to-end execution validation
 ## 🐳 Deployment
  
 ### Production (Current — EC2 + Vercel)
- 
-- **Backend**: EC2 instance (16.192.126.74) running Docker Compose stack
+
+- **Backend**: EC2 instance running Docker Compose stack
   - `docker-compose.yml` defines: `app` (Node.js + PM2), `redis`, `piston`, `nginx`, `certbot`
   - Let's Encrypt SSL via certbot (auto-renewal) for `bracerce.server.devsharma.dev`
   - Health: `GET https://bracerce.server.devsharma.dev/health`
@@ -403,9 +403,3 @@ ssh -i key.pem ec2-user@<IP> "chmod +x new-instance.sh && sudo ./new-instance.sh
 ```
  
 This script handles: swap, Docker/Compose, git clone, `.env` with correct Gmail creds, build, Prisma migrate, PM2, Piston runtime installs, and health checks.
- 
----
- 
-## 📄 License
-
-MIT License. Designed and built for high-performance competitive coding and multi-language execution.
