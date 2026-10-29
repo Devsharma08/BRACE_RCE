@@ -558,17 +558,25 @@ const handleRemoveFriend = async (friendId: string) => {
                           image to see the full battle record. On larger screens
                           the right sidebar already shows this inline. */}
                       {!isOnline && friend.avatarUrl && friend.avatarUrl.trim() !== "" && (
-                        <button
+                        <span
                           onClick={(e) => {
                             e.stopPropagation();
                             setStatsOverlayFriend(friend);
                           }}
                           aria-label={`View ${friend.username} stats`}
-                          className="md:hidden shrink-0 rounded-btn border border-subtle-line p-1 text-subtle hover:text-fg hover:bg-surface-hover"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setStatsOverlayFriend(friend);
+                            }
+                          }}
+                          className="md:hidden shrink-0 rounded-btn border border-subtle-line p-1 text-subtle hover:text-fg hover:bg-surface-hover cursor-pointer"
                           title={`View ${friend.username} stats`}
                         >
                           <BarChart2 className="h-3 w-3" />
-                        </button>
+                        </span>
                       )}
                     </button>
                   );
