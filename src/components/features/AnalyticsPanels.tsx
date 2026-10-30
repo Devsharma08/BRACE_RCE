@@ -138,7 +138,7 @@ export const ActivityHeatmap = memo(({ data }: { data: ActivityPoint[] }) => {
 // ─── 2. Difficulty Breakdown — full-width three columns ──────────────────────────
 export const DifficultyBreakdown = memo(
   ({ data }: { data: { EASY: number; MEDIUM: number; HARD: number } }) => {
-    const total = data.EASY + data.MEDIUM + data.HARD || 1;
+    const total = (data.EASY || 0) + (data.MEDIUM || 0) + (data.HARD || 0) || 1;
 
     const segments = [
       {
@@ -229,7 +229,7 @@ export const BattleTrendChart = memo(
               className="text-3xl font-black font-mono text-accent-primary"
               style={{ filter: "drop-shadow(0 0 8px rgba(0,212,255,0.4))" }}
             >
-              {Math.round(data[data.length - 1].winRate * 100)}%
+               {Math.round((data[data.length - 1].winRate ?? 0) * 100)}%
             </span>
           )}
         </div>
@@ -366,7 +366,7 @@ const LANG_COLORS: Record<string, string> = {
 
 export const LanguageBars = memo(({ data }: { data: LanguageUsage[] }) => {
   const top = data.slice(0, 5);
-  const maxCount = Math.max(...top.map((d) => d.count), 1);
+  const maxCount = Math.max(...top.map((d) => d.count || 0), 1);
 
   // Zero state: with no submissions every language genuinely sits at 0, so
   // render scaffold rows at 0 with empty tracks instead of a text stub.
@@ -381,7 +381,7 @@ export const LanguageBars = memo(({ data }: { data: LanguageUsage[] }) => {
   // braces conflicting with JSX expression delimiters.
   const languageRows = rows.map((d) => {
     const color = LANG_COLORS[d.language] ?? "#64748b";
-    const pct = Math.round((d.count / maxCount) * 100);
+    const pct = Math.round(((d.count || 0) / maxCount) * 100);
     return (
       <div key={d.language} className="flex flex-col gap-1 min-w-0">
         <div className="flex items-center justify-between">

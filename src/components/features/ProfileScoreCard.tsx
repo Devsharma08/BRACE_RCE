@@ -66,7 +66,7 @@ export const ProfileScoreCard: React.FC<ProfileScoreCardProps> = ({ profile, sta
             <p className="text-[10px] text-subtle mt-0.5 truncate">{profile?.email || "—"}</p>
             <div className="flex items-center gap-3 mt-2">
               <span className="text-accent-warning font-black text-xs flex items-center gap-1">
-                <Trophy className="w-3.5 h-3.5" /> {score.toLocaleString()} PTS
+                <Trophy className="w-3.5 h-3.5" /> {(score || 0).toLocaleString()} PTS
               </span>
               <span className="text-faint">·</span>
               <span className="text-accent-success font-black text-[11px]">{winRate}% WR</span>

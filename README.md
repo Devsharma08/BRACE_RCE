@@ -192,6 +192,8 @@ All secrets managed via `.env` on EC2 and Vercel Dashboard:
 - [x] **Friends Page**: Avatar fallback (`getInitialsAvatar`), mobile stats overlay (`StatsOverlay`), online status fixed.
 - [x] **Lobby Analytics**: Per-participant avatars, progress bars, detailed metrics grid, color-coded status badges.
 - [x] **Hydration Fixes**: Removed nested `<button>` in `FriendDashboard`, replaced with accessible `<span role="button">`.
+- [x] **Win Rate Trend Fix**: Fixed NaN display in `BattleTrendChart` — server now computes cumulative `winRate` per battle in `battleTrend` data; frontend falls back to `0` via `?? 0` for missing/undefined values. Also guards `DifficultyBreakdown` totals with `|| 0` coalescing.
+- [x] **Profile ScoreCard NaN Guards**: `ProfileScoreCard.tsx` now safely handles undefined/null `stats` with `|| 0` defaults on `wins`, `losses`, `totalMatches`, `totalScore`; `winRate` computed via guarded ternary; XP bar percentage clamped via `Math.min(100, ...)` with `nextThreshold`/`prevThreshold` fallback.
 
 ---
  

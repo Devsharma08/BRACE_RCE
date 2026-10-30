@@ -9,7 +9,7 @@ import { queryKeys } from "../lib/queryKeys";
  * than the Terminal sidebar, which pages through everything.
  */
 export async function fetchAllProblems<T = any>(
-  path: "/problems/system" | "/problems/custom",
+  path: "/problems/system",
   pageSize = 100,
 ): Promise<T[]> {
   const all: T[] = [];
@@ -54,7 +54,6 @@ export const PROBLEM_QUERY_ROOTS = [
   "system-problems",
   "all-available-problems",
   "challenge-system-problems",
-  "challenge-custom-problems",
 ] as const;
 
 /**
@@ -62,7 +61,7 @@ export const PROBLEM_QUERY_ROOTS = [
  * currently mounted and refresh the rest on their next mount.
  *
  * Call after anything that can change the user's solved status or attempt count
- * (a practice SUBMIT, a battle SUBMIT, creating a custom problem).
+ * (a practice SUBMIT, a battle SUBMIT).
  *
  * Now uses the centralized query key factory - invalidates ALL problems.* queries
  * including parameterized variants like problems.system({ userId }) etc.

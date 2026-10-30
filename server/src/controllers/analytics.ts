@@ -138,10 +138,20 @@ class Analytics {
       }));
 
       // ── 4. BATTLE TREND (last 20 battles) ─────────────────────────────
-      const battleTrend = performances
+      const battleFiltered = performances
         .filter((p) => outcomeFromStatus(p.status) !== null)
-        .slice(-20)
-        .map((p, idx) => ({
+        .slice(-20);
+
+      const battleTrend = battleFiltered.map((p, idx) => {
+        const winsSoFar = battleFiltered
+          .slice(0, idx + 1)
+          .filter(
+            (perf) =>
+              perf.status === "PASSED" ||
+              perf.status === "WON" ||
+              perf.status === "COMPLETED"
+          ).length;
+        return {
           index: idx + 1,
           result:
             p.status === "PASSED" || p.status === "WON" || p.status === "COMPLETED"
@@ -151,7 +161,9 @@ class Analytics {
               : "LOSS",
           score: p.score,
           questionsSolved: p.questionsSolved,
-        }));
+          winRate: Math.round((winsSoFar / (idx + 1)) * 100) / 100,
+        };
+      });
 
       // ── 5. LANGUAGE USAGE ─────────────────────────────────────────────
       const langMap = new Map<string, number>();

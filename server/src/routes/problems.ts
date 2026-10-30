@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authentication, optionalAuthentication, isAdmin } from "../middleware/authentication.js";
 import { problemController } from "../controllers/problems.js";
-import { validate, validateQuery, createCustomProblemSchema, seedSystemProblemsSchema, paginationSchema } from "../middleware/validation.js";
+import { validate, validateQuery, seedSystemProblemsSchema, paginationSchema } from "../middleware/validation.js";
 
 const problemsRouter: Router = Router();
 
@@ -33,14 +33,10 @@ const problemsRouter: Router = Router();
 // Register the literal paths before /:id so they are not shadowed by it.
 problemsRouter.get("/system", optionalAuthentication, validateQuery(paginationSchema), problemController.getSystemProblems);
 
-// ── User-scoped reads ──────────────────────────────────────────────────────
-problemsRouter.get("/custom", authentication, validateQuery(paginationSchema), problemController.getMyCustomProblems);
-
 // ── Public read by identifier (runs last: its `:id` matches one segment) ───
 problemsRouter.get("/:id", optionalAuthentication, problemController.getProblemById);
 
-// ── User-scoped writes ─────────────────────────────────────────────────────
-problemsRouter.post("/create", authentication, validate(createCustomProblemSchema), problemController.createCustomProblem);
+// ── Admin writes ───────────────────────────────────────────────────────────
 problemsRouter.post("/seed", authentication, isAdmin, validate(seedSystemProblemsSchema), problemController.seedSystemProblems);
 
 export { problemsRouter };

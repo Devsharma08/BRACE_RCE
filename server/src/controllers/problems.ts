@@ -24,7 +24,6 @@ const GUEST_CACHE_NAMESPACE = "guest";
 const cacheNamespace = (userId?: string): string => userId ?? GUEST_CACHE_NAMESPACE;
 
 const systemKey = (userId: string | undefined, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:system:${page}:${limit}`;
-const customKey = (userId: string | undefined, page: number, limit: number) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:custom:${page}:${limit}`;
 const detailKey = (userId: string | undefined, id: string) => `${PROBLEMS_CACHE_PREFIX}${cacheNamespace(userId)}:detail:${id}`;
 
 /**
@@ -233,112 +232,6 @@ class Problems {
             });
         } catch (error) {
             console.error("Fetch problem by ID error:", error);
-            return res.status(500).json({ message: "Server error" });
-        }
-    }
-
-    // GET USER'S CUSTOM PROBLEMS - WITH PAGINATION
-    async getMyCustomProblems(req: AuthRequest, res: Response) {
-        try {
-            const userId = req.userId as string;
-            const validatedQuery = (req as any).validatedQuery || req.query;
-            const page = Math.max(1, parseInt(String(validatedQuery.page ?? "1"), 10) || 1);
-            const limit = Math.min(100, Math.max(1, parseInt(String(validatedQuery.limit ?? "25"), 10) || 25));
-            const cacheKey = customKey(userId, page, limit);
-
-            const cached = await getCached<any[]>(cacheKey);
-            if (cached) {
-                return res.json({
-                    status: "success",
-                    problems: cached.map((problem) => withDisplayProblemName(problem)),
-                    cached: true,
-                    pagination: { page, limit },
-                });
-            }
-
-            const skip = (page - 1) * limit;
-
-            const [problems, total] = await Promise.all([
-                prisma.problem.findMany({
-                    where: { creatorId: userId, isCustom: true },
-                    select: {
-                        ...SUMMARY_SELECT,
-                        createdAt: true,
-                    },
-                    orderBy: { createdAt: 'desc' },
-                    skip,
-                    take: limit,
-                }),
-                prisma.problem.count({ where: { creatorId: userId, isCustom: true } })
-            ]);
-
-            const displayProblems = problems.map((problem) => withDisplayProblemName(problem));
-            await setCached(cacheKey, displayProblems, PROBLEMS_CACHE_TTL_SECONDS);
-
-            return res.json({ 
-                status: "success", 
-                problems: displayProblems, 
-                cached: false,
-                pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-            });
-        } catch (error) {
-            console.error("Fetch custom problems error:", error);
-            return res.status(500).json({ message: "Server error" });
-        }
-    }
-
-    // CREATE CUSTOM PROBLEM
-    async createCustomProblem(req: AuthRequest, res: Response) {
-        try {
-            const userId = req.userId as string;
-            const { 
-                name, 
-                problem_definition, 
-                problem_hints, 
-                difficulty_level,
-                test_cases,     // Array of { input, expectedOutput, is_public }
-                code_snippets,  // Array of { language, code, wrapperCode }
-                signature       // Optional signature for auto-generation
-            } = req.body;
-
-            const generatedSnippets = signature ? WrapperGenerator.generateAll(signature) : null;
-            const finalSnippets = code_snippets || generatedSnippets || [];
-
-            // Using Prisma Nested Writes to create the Problem, Test Cases, and Snippets all at once
-            const newProblem = await prisma.problem.create({
-                data: {
-                    name,
-                    problem_definition,
-                    problem_hints: problem_hints || [],
-                    difficulty_level: difficulty_level || Level.MEDIUM,
-                    isCustom: true,
-                    creatorId: userId,
-                    
-                    test_cases: {
-                        create: test_cases.map((tc: any) => ({
-                            input: tc.input,
-                            expectedOutput: tc.expectedOutput,
-                            is_public: tc.is_public ?? true
-                        }))
-                    },
-
-                    code_snippets: {
-                        create: finalSnippets.map((cs: any) => ({
-                            language: cs.language,
-                            code: cs.code,
-                            wrapperCode: cs.wrapperCode
-                        }))
-                    }
-                },
-                include: { test_cases: true, code_snippets: true }
-            });
-
-            // The creator's cached lists/detail no longer match the catalog.
-            await invalidateUserProblemsCache(userId);
-
-            return res.json({ status: "success", message: "Custom problem created!", problem: newProblem });
-        } catch (error) {
-            console.error("Create custom problem error:", error);
             return res.status(500).json({ message: "Server error" });
         }
     }

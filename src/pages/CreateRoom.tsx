@@ -12,7 +12,6 @@ import {
   Lightbulb,
   LockKeyhole,
   Loader2,
-  Plus,
   Radio,
   Save,
   Search,
@@ -47,16 +46,10 @@ const getErrorMessage = (err: unknown): string => {
   return data.message || data.error || "Request failed";
 };
 
-import {
-  TestCaseGeneratorPanel,
-  type CreatorSignature,
-} from "../components/features/TestCaseGeneratorPanel";
-
 interface Problem {
   id: string;
   name: string;
   difficulty_level: string;
-  isCustom: boolean;
 }
 
 interface RoomTemplate {
@@ -67,13 +60,6 @@ interface RoomTemplate {
   totalTimeLimitMs: number | null;
   problems: { id: string }[];
 }
-
-type CustomTestCase = {
-  input: string;
-  expectedOutput: string;
-  is_public: boolean;
-};
-type CustomSnippet = { language: string; code: string; wrapperCode: string };
 
 const PAGE_SIZE = 4;
 const MAX_SELECTABLE_PROBLEMS = 10;
@@ -322,7 +308,7 @@ const AccessCapacityCard = ({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Leave blank for open access"
-          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm text-fg outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4 sm:text-base"
+          className="w-full h-10 rounded-btn border border-subtle-line/50 bg-raised/30 px-3 text-sm outline-none placeholder:text-muted focus:border-accent/50 focus:bg-raised/50 transition-all sm:h-12 sm:px-4"
         />
       </div>
     )}
@@ -479,37 +465,10 @@ const CreateRoom = () => {
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [saveTemplateLoading, setSaveTemplateLoading] = useState(false);
 
-  // --- SIGNATURE BUILDER STATE (ROADMAP §2) ---
-  const [creatorSignature, setCreatorSignature] = useState<CreatorSignature>({
-    funcName: "solve",
-    returnType: "int",
-    args: [{ name: "nums", type: "int[]" }],
-  });
-
   // --- SEARCH & FILTER STATE ---
   const [searchQuery, setSearchQuery] = useState("");
   const [difficultyFilter, setDifficultyFilter] = useState("");
-  const [customQuery, setCustomQuery] = useState("");
   const [problemPage, setProblemPage] = useState(1);
-  const [customPage, setCustomPage] = useState(1);
-
-  // --- CUSTOM PROBLEM STUDIO ---
-  const [studioOpen, setStudioOpen] = useState(false);
-  const [customLoading, setCustomLoading] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [customDifficulty, setCustomDifficulty] = useState("MEDIUM");
-  const [customDefinition, setCustomDefinition] = useState("");
-  const [customHints, setCustomHints] = useState<string[]>([""]);
-  const [customTestCases, setCustomTestCases] = useState<CustomTestCase[]>([
-    { input: "", expectedOutput: "", is_public: true },
-  ]);
-  const [customSnippets, setCustomSnippets] = useState<CustomSnippet[]>([
-    {
-      language: "javascript",
-      code: "// Write your code here",
-      wrapperCode: "",
-    },
-  ]);
 
   const { data: availableProblems = [] } = useQuery({
     queryKey: ["all-available-problems"],
@@ -520,11 +479,8 @@ const CreateRoom = () => {
     queryFn: async () => {
       // Paginated endpoints — fetch every page so room creation sees the same
       // full catalog as the Terminal sidebar.
-      const [sysProblems, customProblems] = await Promise.all([
-        fetchAllProblems("/problems/system"),
-        fetchAllProblems("/problems/custom"),
-      ]);
-      return [...sysProblems, ...customProblems] as Problem[];
+      const sysProblems = await fetchAllProblems("/problems/system");
+      return sysProblems as Problem[];
     },
   });
 
@@ -534,18 +490,9 @@ const CreateRoom = () => {
       (await api.get("/rooms/templates")).data.templates as RoomTemplate[],
   });
 
-  const systemProblems = useMemo(
-    () => availableProblems.filter((p) => !p.isCustom),
-    [availableProblems],
-  );
-  const customProblems = useMemo(
-    () => availableProblems.filter((p) => p.isCustom),
-    [availableProblems],
-  );
-
   const filteredProblems = useMemo(
     () =>
-      systemProblems.filter((problem) => {
+      availableProblems.filter((problem) => {
         const matchesSearch =
           !searchQuery ||
           problem.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -553,34 +500,17 @@ const CreateRoom = () => {
           !difficultyFilter || problem.difficulty_level === difficultyFilter;
         return matchesSearch && matchesDifficulty;
       }),
-    [systemProblems, searchQuery, difficultyFilter],
-  );
-
-  const filteredCustom = useMemo(
-    () =>
-      customProblems.filter((problem) =>
-        problem.name.toLowerCase().includes(customQuery.toLowerCase()),
-      ),
-    [customProblems, customQuery],
+    [availableProblems, searchQuery, difficultyFilter],
   );
 
   const problemPageCount = Math.max(
     1,
     Math.ceil(filteredProblems.length / PAGE_SIZE),
   );
-  const customPageCount = Math.max(
-    1,
-    Math.ceil(filteredCustom.length / PAGE_SIZE),
-  );
   const safeProblemPage = Math.min(problemPage, problemPageCount);
-  const safeCustomPage = Math.min(customPage, customPageCount);
   const visibleProblems = filteredProblems.slice(
     (safeProblemPage - 1) * PAGE_SIZE,
     safeProblemPage * PAGE_SIZE,
-  );
-  const visibleCustom = filteredCustom.slice(
-    (safeCustomPage - 1) * PAGE_SIZE,
-    safeCustomPage * PAGE_SIZE,
   );
 
   // Auto-calculate the Global Time Limit whenever problems are selected
@@ -735,55 +665,6 @@ const CreateRoom = () => {
       toast.error(getErrorMessage(err));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateCustomProblem = async () => {
-    if (!customName || !customDefinition) {
-      return toast.error("Please fill out the problem name and definition.");
-    }
-    setCustomLoading(true);
-    try {
-      await fetchCsrfToken();
-      const res = await api.post("/problems/create", {
-        name: customName,
-        problem_definition: customDefinition,
-        problem_hints: customHints.filter((h) => h.trim() !== ""),
-        difficulty_level: customDifficulty,
-        test_cases: customTestCases,
-        code_snippets: customSnippets,
-      });
-
-      const newProb = res.data.problem as Problem;
-
-      // Refetch available problems query
-      invalidateProblemQueries(queryClient);
-
-      // Auto-select it in the queue
-      setSelectedProblemIds((prev) =>
-        [...prev, newProb.id].slice(0, MAX_SELECTABLE_PROBLEMS),
-      );
-
-      // Reset form + close the studio
-      setCustomName("");
-      setCustomDefinition("");
-      setCustomHints([""]);
-      setCustomTestCases([{ input: "", expectedOutput: "", is_public: true }]);
-      setCustomSnippets([
-        {
-          language: "javascript",
-          code: "// Write your code here",
-          wrapperCode: "",
-        },
-      ]);
-      setCustomQuery("");
-      setCustomPage(1);
-      setStudioOpen(false);
-      toast.success("Custom problem created and queued.");
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setCustomLoading(false);
     }
   };
 
@@ -1049,93 +930,12 @@ const CreateRoom = () => {
                     })
                   )}
                 </div>
-                <Pager
+<Pager
                   page={safeProblemPage}
                   total={problemPageCount}
                   setPage={setProblemPage}
                 />
-
-                {/* CUSTOM PROBLEMS */}
-                <div className="mt-5 border-t border-accent-primary/15 pt-5">
-                  <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-widest text-faint">
-                    <span>Custom problems</span>
-                    <span>{customProblems.length} available</span>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      value={customQuery}
-                      onChange={(e) => {
-                        setCustomQuery(e.target.value);
-                        setCustomPage(1);
-                      }}
-                      placeholder="Search or create custom problem"
-                      className="h-10 min-w-0 flex-1 rounded-btn border-2 border-subtle-line/50 bg-raised/30 px-3 text-xs text-fg outline-none placeholder:text-muted focus:border-accent/40 focus:bg-raised/50 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setStudioOpen(true)}
-                      aria-label="Open custom problem studio"
-                      title="Create a custom problem"
-                      className="grid h-10 w-10 shrink-0 place-items-center border border-accent-primary/30 text-accent-primary transition hover:bg-accent-primary/10"
-                    >
-                      <Plus size={14} aria-hidden />
-                    </button>
-                  </div>
-
-                  {visibleCustom.length > 0 ? (
-                    <div className="mt-3 space-y-2">
-                      {visibleCustom.map((problem) => {
-                        const isSelected = selectedProblemIds.includes(
-                          problem.id,
-                        );
-                        return (
-                          <div
-                            key={problem.id}
-                            className={`flex items-center justify-between gap-3 border border-dashed p-3 ${
-                              isSelected
-                                ? "border-accent-primary/50 bg-accent-primary/[0.06]"
-                                : "border-accent-primary/25"
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => toggleProblemSelection(problem.id)}
-                              aria-pressed={isSelected}
-                              className="min-w-0 flex-1 truncate text-left text-xs text-subtle"
-                            >
-                              {problem.name}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (isSelected)
-                                  toggleProblemSelection(problem.id);
-                              }}
-                              aria-label={`Remove ${problem.name} from queue`}
-                              className={`shrink-0 transition ${
-                                isSelected ? "text-accent-danger" : "text-faint"
-                              }`}
-                            >
-                              <Trash2 size={13} aria-hidden />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="mt-3 border border-dashed border-subtle-line p-4 text-center text-xs text-faint">
-                      {customProblems.length === 0
-                        ? "No custom problems yet — create one with the + button."
-                        : "No custom problems match this search."}
-                    </p>
-                  )}
-                  <Pager
-                    page={safeCustomPage}
-                    total={customPageCount}
-                    setPage={setCustomPage}
-                  />
-                </div>
-
+ 
                 <button
                   type="button"
                   onClick={handleCreateRoom}

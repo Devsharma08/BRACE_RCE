@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { Shield, Users, Clock, Play, Lock, UserCheck, X, AlertTriangle, Loader2, Send } from "lucide-react";
-import type { BattleMessage } from "../../pages/Battle";
+import { Shield, Users, Clock, Play, Lock, UserCheck, X, AlertTriangle, Loader2 } from "lucide-react";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 
 interface StagingParticipant {
@@ -28,10 +27,8 @@ interface BattleStagingRoomProps {
   isStartingOperation?: boolean;
   onRejectParticipant?: (userId: string) => void;
   onKickParticipant?: (userId: string) => void;
-  onLeave: () => void;
-  onSendMessage?: (content: string) => void;
-  messages?: BattleMessage[];
-  socketId?: string;
+   loading?: boolean;
+   onLeave: () => void;
 }
 
 export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
@@ -44,14 +41,12 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
   myUserId,
   totalTimeLimitMs,
   closesAt,
-  onStart,
-  isStartingOperation,
-  onRejectParticipant,
-  onKickParticipant,
-  onLeave,
-  onSendMessage,
-  messages,
-  socketId,
+   onStart,
+   isStartingOperation,
+   onRejectParticipant,
+   onKickParticipant,
+   loading,
+   onLeave,
 }) => {
   const timeLimitMinutes = totalTimeLimitMs ? Math.round(totalTimeLimitMs / 60000) : 30;
   const [kickConfirm, setKickConfirm] = useState<{
@@ -79,6 +74,13 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
           <div className="flex items-center gap-2 text-faint text-[11px]">
             <Clock className="w-3.5 h-3.5 text-accent-warning" />
             <span>LIMIT: {timeLimitMinutes} MINS</span>
+          </div>
+          <div className="flex items-center gap-2 text-faint text-[11px]">
+            <Users className="w-3.5 h-3.5 text-accent-primary" />
+            <span className="font-mono font-semibold text-accent-primary">{participants.length}</span>
+            <span>/</span>
+            <span>{maxUsers}</span>
+            <span className="text-[9px] uppercase">OPERATIVES</span>
           </div>
           <button
             onClick={onLeave}
@@ -110,15 +112,6 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
                 <p className="text-xs text-subtle font-mono mt-1">
                   Host: <span className="text-fg font-semibold">{hostName}</span>
                 </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex flex-col items-end font-mono">
-                  <span className="text-[10px] text-faint uppercase">CAPACITY</span>
-                  <span className="text-sm font-bold text-accent-primary">
-                    {participants.length} / {maxUsers} OPERATIVES
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -169,9 +162,21 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {participants.length === 0 ? (
-                <div className="col-span-2 py-8 flex flex-col items-center justify-center text-faint gap-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
-                  <span className="text-xs font-mono">WAITING FOR OPERATIVES TO CONNECT...</span>
+                <div className="col-span-2 py-8 flex flex-col items-center justify-center text-faint gap-3">
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
+                      <span className="text-xs font-mono">WAITING FOR OPERATIVES TO CONNECT...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-6 h-6 text-subtle" />
+                      <div className="text-center">
+                        <p className="text-xs font-mono font-semibold text-subtle mb-1">NO OPERATIVES JOINED YET</p>
+                        <p className="text-[10px] text-faint">Share the room code to invite participants</p>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 participants.map((p) => {
@@ -183,31 +188,43 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
                   return (
                     <div
                       key={pid}
-                      className="flex items-center justify-between p-3 rounded-lg border border-line-low bg-base/40 hover:border-line transition-colors"
+                      className="flex items-center justify-between p-4 rounded-xl border border-line-low bg-base/40 hover:border-line transition-all duration-200 hover:shadow-lg group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-xs font-mono font-bold text-fg shrink-0">
-                          {uname[0]?.toUpperCase()}
+                        <div className="w-10 h-10 rounded-full bg-surface-hover border border-subtle-line flex items-center justify-center text-sm font-mono font-bold text-fg shrink-0 group-hover:border-accent-primary transition-colors">
+                          {p.user?.avatarUrl ? (
+                            <img
+                              src={p.user.avatarUrl}
+                              alt={uname}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            uname[0]?.toUpperCase()
+                          )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-mono font-semibold text-fg truncate flex items-center gap-1.5">
+                          <p className="text-sm font-mono font-semibold text-fg truncate flex items-center gap-2">
                             {uname}
-                            {isMe && <span className="text-[9px] text-accent-primary">(YOU)</span>}
+                            {isMe && (
+                              <span className="inline-flex items-center px-1.5 py-0.25 text-[8px] font-bold text-accent-primary bg-accent-primary/10 border border-accent-primary/30 rounded">
+                                YOU
+                              </span>
+                            )}
                           </p>
-                          <span className="text-[10px] font-mono text-accent-success flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-accent-success" /> READY
+                          <span className="text-[10px] font-mono text-accent-success flex items-center gap-1.5 mt-0.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent-success animate-pulse" /> READY
                           </span>
                         </div>
                       </div>
 
                       {/* Moderator Controls */}
                       {isHost && !isThisHost && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {onRejectParticipant && (
                             <button
                               onClick={() => onRejectParticipant(pid)}
                               title={`Reject ${uname} (returns to lobby)`}
-                              className="px-2 py-1 rounded border border-subtle-line bg-surface-hover/40 text-subtle hover:text-accent-danger hover:border-accent-danger/40 text-[10px] font-mono transition-colors"
+                              className="px-2.5 py-1 rounded border border-subtle-line bg-surface-hover/40 text-subtle hover:text-accent-danger hover:border-accent-danger/40 text-[9px] font-mono transition-colors"
                             >
                               Reject
                             </button>
@@ -218,7 +235,7 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
                                 setKickConfirm({ open: true, userName: uname, userId: pid });
                               }}
                               title={`Kick & block ${uname}`}
-                              className="px-2 py-1 rounded border border-accent-danger/40 bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 text-[10px] font-mono font-bold transition-colors"
+                              className="px-2.5 py-1 rounded border border-accent-danger/40 bg-accent-danger/10 text-accent-danger hover:bg-accent-danger/20 text-[9px] font-mono font-bold transition-colors"
                             >
                               Kick & Block
                             </button>
@@ -232,65 +249,7 @@ export const BattleStagingRoom: React.FC<BattleStagingRoomProps> = ({
             </div>
           </div>
 
-           {/* CHAT COMMS */}
-           <div className="border border-line bg-raised/80 backdrop-blur-md rounded-xl p-4 shadow-xl">
-             <div className="flex items-center justify-between mb-3">
-               <h3 className="text-[10px] font-mono font-bold uppercase tracking-widest text-accent-primary flex items-center gap-2">
-                 <Send className="w-3.5 h-3.5" /> COMMS CHANNEL
-               </h3>
-               <span className="text-[9px] font-mono text-faint">
-                 {participants.length} / {maxUsers} OPERATIVES
-               </span>
-             </div>
-
-             <div className="flex flex-col gap-2 min-h-0 h-32 overflow-y-auto themed-scroll mb-2">
-               {messages && messages.length === 0 ? (
-                 <p className="text-[10px] text-faint font-mono">No transmissions yet.</p>
-               ) : (
-                 messages?.map((msg) => (
-                   <div
-                     key={msg.id}
-                     className={`px-2.5 py-1.5 rounded-lg max-w-[85%] font-mono text-[10px] break-words ${
-                       msg.senderId === socketId
-                         ? "ml-auto bg-accent-primary/15 border border-accent-primary/40 text-fg"
-                         : "mr-auto border border-subtle-line/30 bg-raised/20 text-subtle"
-                     }`}
-                   >
-                     {msg.content}
-                   </div>
-                 ))
-               )}
-             </div>
-
-             {onSendMessage && (
-               <form
-                 onSubmit={(e) => {
-                   e.preventDefault();
-                   const input = (e.currentTarget.elements.namedItem("comms-input") as HTMLInputElement);
-                   if (input?.value.trim()) {
-                     onSendMessage(input.value.trim());
-                     input.value = "";
-                   }
-                 }}
-                 className="flex gap-2"
-               >
-                 <input
-                   name="comms-input"
-                   type="text"
-                   placeholder="TRANSMIT..."
-                   className="flex-1 border-2 border-subtle-line/50 bg-raised/30 px-2 py-1.5 rounded-lg text-xs text-fg placeholder:text-muted focus:border-accent focus:bg-raised outline-none transition-all"
-                 />
-                 <button
-                   type="submit"
-                   className="p-1.5 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all shrink-0"
-                 >
-                   <Send className="w-3.5 h-3.5" />
-                 </button>
-               </form>
-             )}
-           </div>
-
-           {/* RULES & BRIEFING REMINDER */}
+            {/* RULES & BRIEFING REMINDER */}
           <div className="flex items-start gap-3 p-4 rounded-xl border border-line-low bg-base/30 text-faint text-[11px] font-mono">
             <Lock className="w-4 h-4 text-subtle shrink-0 mt-0.5" />
             <div>

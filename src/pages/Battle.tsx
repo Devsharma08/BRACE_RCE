@@ -26,9 +26,8 @@ import {
   Lock,
   Minus,
   AlarmClock,
-  Play,
-  Send,
-  ShieldAlert,
+   Play,
+   ShieldAlert,
   ShieldCheck,
   Skull,
   StopCircle,
@@ -39,9 +38,8 @@ import {
   Users,
   X,
   ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  Flag,
+   ChevronRight,
+   Flag,
   Code,
   Activity,
   Radio,
@@ -67,17 +65,6 @@ import { EventAnalytics } from "../components/features/EventAnalytics";
 import { BattleStagingRoom } from "../components/features/BattleStagingRoom";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { ProblemHintsAccordion } from "../components/features/battle/HintsAccordion";
-
-export interface BattleMessage {
-  id: string;
-  socketId: string;
-  senderId: string;
-  username: string;
-  role: string;
-  isHost: boolean;
-  content: string;
-  createdAt: string;
-}
 
 const getLanguageStarterCode = (
   lang: SupportedLanguage,
@@ -117,7 +104,7 @@ const SpectateView = ({
   room: any;
   playerProgress: Record<
     string,
-    { status: string; progress: number; linesWritten?: number }
+    { status: string; progress: number; linesWritten?: number; focusLossCount?: number }
   >;
   battleState: any;
   onJoin: () => void;
@@ -278,8 +265,7 @@ export const Battle = () => {
   const roomPassword = routerState?.password || sessionPassword || undefined;
   // SocketContext now manages room joining/leaving centrally.
   // We only need to bind event handlers here.
-  const { socket, sendBattleMessage, joinBattleRoom, leaveBattleRoom, getBattleMessages, subscribeToBattleMessages } =
-    useSocket();
+  const { socket, joinBattleRoom, leaveBattleRoom, resetBattleRoom } = useSocket();
   const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   // --- ROOM / EVENT STATE ---
@@ -302,18 +288,6 @@ export const Battle = () => {
   // Use global battle messages from SocketContext (persists across navigation).
   // Reactive subscription ensures messages render in real-time even when the
   // user navigates away and back — no page refresh required.
-  const [battleMessages, setBattleMessages] = useState<BattleMessage[]>(() =>
-    roomId ? getBattleMessages(roomId) : []
-  );
-
-  useEffect(() => {
-    if (!roomId) return;
-    const unsubscribe = subscribeToBattleMessages((rid, msgs) => {
-      if (rid === roomId) setBattleMessages(msgs);
-    });
-    return unsubscribe;
-  }, [roomId, subscribeToBattleMessages]);
-
   // Use a ref so this function is never a socket-effect dep (prevents spurious
   // effect teardowns that drop socket room membership).
   const fetchBlockedParticipantsRef = useRef<() => Promise<void>>(
@@ -331,7 +305,7 @@ export const Battle = () => {
   fetchBlockedParticipantsRef.current = fetchBlockedParticipants;
 
   const [playerProgress, setPlayerProgress] = useState<
-    Record<string, { status: string; progress: number; linesWritten?: number }>
+    Record<string, { status: string; progress: number; linesWritten?: number; focusLossCount?: number }>
   >({});
   const [isHostPanelOpen, setIsHostPanelOpen] = useState(false);
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
@@ -410,13 +384,10 @@ export const Battle = () => {
   const [closingWarningDismissed, setClosingWarningDismissed] = useState(false);
   const [closingSeconds, setClosingSeconds] = useState<number | null>(null);
 
-  // --- CHAT STATE ---
-  // battleMessages now comes from SocketContext global store (getBattleMessages)
-  const [newBattleMessage, setNewBattleMessage] = useState("");
+  // --- ACTIVE PANEL ---
   const [activePanelTab, setActivePanelTab] = useState<
-    "PROBLEM" | "CHAT" | "OPPONENT_TELEMETRY" | "MODERATOR"
+    "PROBLEM" | "OPPONENT_TELEMETRY" | "MODERATOR"
   >("PROBLEM");
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const battleActiveRef = useRef(false);
   battleActiveRef.current =
@@ -442,7 +413,11 @@ export const Battle = () => {
       `⚠ FOCUS LOST (${focusLossCount + 1}) — Penalty: ${displayPenalty}%`,
       { id: "focus-loss" },
     );
-  }, [focusLossCount]);
+    // Relay local focus-loss count to opponent for live telemetry display.
+    if (socket && roomId) {
+      socket.emit("focus_loss", { roomId, focusLossCount: focusLossCount + 1 });
+    }
+  }, [focusLossCount, socket, roomId]);
 
   const handleFocusRestore = useCallback(() => {
     if (!battleActiveRef.current) return;
@@ -745,22 +720,6 @@ export const Battle = () => {
     });
     setPlayerProgress(initialProgress);
 
-    // Fetch battle chat history
-    const eventId = roomId?.replace("room-", "");
-    if (eventId) {
-      api.get(`/rooms/${eventId}/messages?limit=50`)
-        .then((res) => {
-          const history = res.data.messages || [];
-          // Sort by createdAt ascending for chronological order
-          history.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-          // Messages are stored in SocketContext global store via receive_battle_message
-          // No local state update needed
-        })
-        .catch(() => {
-          // Silent fail - history is optional
-        });
-    }
-
     let targetProblems = [];
     if (roomData.type === "ONE_VS_ONE" || roomData.type === "FRIENDS") {
       targetProblems = roomData.commonProblem ? [roomData.commonProblem] : [];
@@ -797,6 +756,17 @@ export const Battle = () => {
       });
     }
   }, [fetchedRoom]);
+
+  // Memoized list of actual participants (excluding host/moderator).
+  // Used for all count displays and participant list rendering so the
+  // moderator is never counted as a player.
+  const playerParticipants = useMemo(
+    () => roomParticipants.filter((p) => {
+      const pid = p.userId || p.user?.id;
+      return pid !== room?.hostId;
+    }),
+    [roomParticipants, room?.hostId],
+  );
 
   // ─────────────────────────────────────────────────────────────────────
   // Socket Event Handlers (Centralized Room Management)
@@ -894,18 +864,12 @@ export const Battle = () => {
       setBattleState((prev: any) => ({ ...prev, ...data }));
     };
 
-    const onBattleMessageError = (errMsg: string) => {
-      if (!mounted) return;
-      toast.error(errMsg || "Failed to send battle message.", {
-        id: "battle-msg-error",
-      });
-    };
-
     const onBattleUpdate = (data: any) => {
       if (!mounted) return;
       setPlayerProgress((prev) => ({
         ...prev,
         [data.userId]: {
+          ...prev[data.userId],
           status: data.status,
           progress: data.progress,
           linesWritten: data.linesWritten,
@@ -924,11 +888,23 @@ export const Battle = () => {
       }
     };
 
+    const onOpponentFocusLoss = (data: { userId: string; focusLossCount: number }) => {
+      if (!mounted) return;
+      setPlayerProgress((prev) => ({
+        ...prev,
+        [data.userId]: {
+          ...prev[data.userId],
+          focusLossCount: data.focusLossCount,
+        },
+      }));
+    };
+
     const onYouWereKicked = () => {
       if (!mounted) return;
       toast.error("You have been removed from this match by the host.", {
         id: "participant-removed",
       });
+      resetBattleRoom();
       navigate("/lobby");
     };
 
@@ -949,6 +925,7 @@ export const Battle = () => {
       toast.error(data?.reason || "You have been blocked from this event.", {
         id: "you-are-blocked",
       });
+      resetBattleRoom();
       navigate("/lobby");
     };
 
@@ -964,11 +941,18 @@ export const Battle = () => {
       }
     };
 
-    const onPlayerUnblocked = () => {
+    const onPlayerUnblocked = (data: { userId: string }) => {
       if (!mounted) return;
+      toast.success("Participant unblocked successfully", { id: "unblock-success" });
       void queryClient.invalidateQueries({
         queryKey: ["battle-room", roomId, isSpectateMode],
       });
+      void fetchBlockedParticipantsRef.current();
+    };
+
+    const onHostError = (data: { message?: string }) => {
+      if (!mounted) return;
+      toast.error(data?.message || "Operation failed. You may not have permission.", { id: "host-error" });
     };
 
     const onParticipantsUpdated = (data: { performances: any[] }) => {
@@ -1014,10 +998,10 @@ export const Battle = () => {
 
       if (newParticipant) {
         setRoomParticipants((prev) => {
+          const newParticipantId = newParticipant.userId || newParticipant.user?.id;
           const exists = prev.some(
             (p: any) =>
-              p.userId === newParticipant.userId ||
-              p.user?.id === newParticipant.user?.id,
+              (p.userId || p.user?.id) === newParticipantId,
           );
           if (exists) return prev;
           toast.info(`${username} has joined the operation.`, {
@@ -1281,13 +1265,14 @@ export const Battle = () => {
     socket.on("start_failed", onStartFailed);
     socket.on("participant_rejected", onParticipantRejected);
     socket.on("battle_state", onBattleState);
-    socket.on("battle_message_error", onBattleMessageError);
     socket.on("battle_update", onBattleUpdate);
+    socket.on("opponent_focus_loss", onOpponentFocusLoss);
     socket.on("you_were_kicked", onYouWereKicked);
     socket.on("player_kicked", onPlayerKicked);
     socket.on("you_are_blocked", onYouAreBlocked);
     socket.on("player_blocked", onPlayerBlocked);
     socket.on("player_unblocked", onPlayerUnblocked);
+    socket.on("host_error", onHostError);
     socket.on("participants_updated", onParticipantsUpdated);
     socket.on("participant_joined", onParticipantJoined);
     socket.on("participant_left", onParticipantLeft);
@@ -1308,13 +1293,14 @@ export const Battle = () => {
       socket.off("start_failed", onStartFailed);
       socket.off("participant_rejected", onParticipantRejected);
       socket.off("battle_state", onBattleState);
-      socket.off("battle_message_error", onBattleMessageError);
-      socket.off("battle_update", onBattleUpdate);
-      socket.off("you_were_kicked", onYouWereKicked);
+       socket.off("battle_update", onBattleUpdate);
+       socket.off("opponent_focus_loss", onOpponentFocusLoss);
+       socket.off("you_were_kicked", onYouWereKicked);
       socket.off("player_kicked", onPlayerKicked);
       socket.off("you_are_blocked", onYouAreBlocked);
       socket.off("player_blocked", onPlayerBlocked);
       socket.off("player_unblocked", onPlayerUnblocked);
+      socket.off("host_error", onHostError);
       socket.off("participants_updated", onParticipantsUpdated);
       socket.off("participant_joined", onParticipantJoined);
       socket.off("participant_left", onParticipantLeft);
@@ -1500,13 +1486,6 @@ export const Battle = () => {
     }
   };
 
-  const handleBattleMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBattleMessage.trim() || !roomId) return;
-    sendBattleMessage(roomId, newBattleMessage);
-    setNewBattleMessage("");
-  };
-
   const handleTimerExpire = () => {
     if (focusPenaltyPercent >= 100 && !isHost) {
       setBattleResult("CHEATER");
@@ -1570,10 +1549,10 @@ export const Battle = () => {
     socket.emit("host_block_user", { roomId, targetUserId, reason });
   };
 
-  const handleUnblockParticipant = (targetUserId: string) => {
+  const handleUnblockParticipant = useCallback((targetUserId: string) => {
     if (!socket || !roomId) return;
     socket.emit("host_unblock_user", { roomId, targetUserId });
-  };
+  }, [socket, roomId]);
 
   const isBattleActive =
     battleState.status === "IN_PROGRESS" && battleResult === null;
@@ -1985,9 +1964,9 @@ export const Battle = () => {
         </div>
 
         <div className="relative z-10 flex-1 min-h-0 overflow-y-auto themed-scroll">
-          <div className="mx-auto max-w-5xl grid gap-6 p-6 lg:grid-cols-3">
-            {/* ── LEFT: TOTAL STATS + ROSTER (span 2) ── */}
-            <div className="lg:col-span-2 flex flex-col gap-6 min-w-0">
+          <div className="mx-auto max-w-5xl grid gap-6 p-6 lg:grid-cols-1">
+            {/* ── MAIN CONTENT ── */}
+            <div className="flex flex-col gap-6 min-w-0">
               {/* TOTAL STATS */}
               <div className="border border-line rounded-xl bg-base/40 p-5">
                 <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-4">
@@ -1999,7 +1978,7 @@ export const Battle = () => {
                       Operatives
                     </div>
                     <div className="mt-1 text-2xl font-mono font-bold text-fg">
-                      {roomParticipants.length}
+                      {playerParticipants.length}
                     </div>
                   </div>
                   <div className="border border-subtle-line bg-raised/60 p-3">
@@ -2039,15 +2018,15 @@ export const Battle = () => {
               <div className="border border-line rounded-xl bg-base/40 p-5">
                 <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest mb-4">
                   <Users className="w-4 h-4 inline mr-1" /> OPERATIVES (
-                  {roomParticipants.length})
+                  {playerParticipants.length})
                 </p>
-                {roomParticipants.length === 0 ? (
+                {playerParticipants.length === 0 ? (
                   <p className="text-faint text-xs font-mono py-8 text-center">
                     No operatives have joined yet. Waiting for participants...
                   </p>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {roomParticipants.map((p: any) => {
+                    {playerParticipants.map((p: any) => {
                       const participantId = p.user?.id || p.userId;
                       const uname = p.user?.username || "Operative";
                       const intel = playerProgress[participantId];
@@ -2209,52 +2188,6 @@ export const Battle = () => {
                 </div>
               )}
             </div>
-
-            {/* ── RIGHT: CHAT ── */}
-            <div className="border border-line rounded-xl bg-base/40 flex flex-col min-h-[320px] max-h-[60vh] lg:max-h-none">
-              <p className="text-[10px] font-mono font-bold text-accent-primary uppercase tracking-widest p-4 border-b border-subtle-line">
-                <MessageSquare className="w-4 h-4 inline mr-1" /> COMMS
-              </p>
-              <div className="flex-1 overflow-y-auto themed-scroll p-4 flex flex-col gap-2 min-h-0">
-                {battleMessages.length === 0 ? (
-                  <p className="text-faint text-[10px] font-mono">
-                    No transmissions yet.
-                  </p>
-                ) : (
-                  battleMessages.map((msg, i) => (
-                    <div
-                      key={msg.id || i}
-                      className={`px-3 py-2 rounded-xl max-w-[90%] font-mono text-xs ${
-                        msg.senderId === myUserIdRef.current
-                          ? "border-2 border-accent-primary/50 bg-raised/40 text-fg self-end"
-                          : "border-2 border-subtle-line/50 bg-raised/20 text-fg self-start"
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
-                  ))
-                )}
-                <div ref={chatEndRef} />
-              </div>
-              <form
-                onSubmit={handleBattleMessage}
-                className="flex gap-2 p-3 border-t border-subtle-line"
-              >
-                <input
-                  type="text"
-                  value={newBattleMessage}
-                  onChange={(e) => setNewBattleMessage(e.target.value)}
-                  placeholder="TRANSMIT..."
-                  className="flex-1 border-2 border-subtle-line/50 bg-raised/30 p-2 rounded-lg text-fg font-mono text-xs placeholder:text-muted focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] outline-none transition-all min-w-0"
-                />
-                <button
-                  type="submit"
-                  className="px-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
           </div>
         </div>
 
@@ -2325,19 +2258,14 @@ export const Battle = () => {
         hostName={room.host?.username || "Commander"}
         isHost={isHost}
         maxUsers={room.maxUsers || 2}
-        participants={roomParticipants}
+           participants={playerParticipants}
         myUserId={myUserId}
         totalTimeLimitMs={room.totalTimeLimitMs}
         closesAt={room.closesAt}
         onStart={isHost ? handleStartOperation : undefined}
         isStartingOperation={isStartingOperation}
-        onLeave={() => navigate("/lobby")}
-        onSendMessage={(content: string) =>
-          socket?.emit("send_battle_message", { roomId, content })
-        }
-        messages={battleMessages}
-        socketId={myUserId}
-        onRejectParticipant={
+         onLeave={() => navigate("/lobby")}
+         onRejectParticipant={
           isHost
             ? (targetUserId: string) => {
                 socket?.emit("host_reject_participant", {
@@ -2347,14 +2275,15 @@ export const Battle = () => {
               }
             : undefined
         }
-        onKickParticipant={
-          isHost
-            ? (targetUserId: string) => {
-                socket?.emit("host_kick_user", { roomId, targetUserId });
-              }
-            : undefined
-        }
-      />
+         onKickParticipant={
+           isHost
+             ? (targetUserId: string) => {
+                 socket?.emit("host_kick_user", { roomId, targetUserId });
+               }
+             : undefined
+         }
+         loading={loading}
+       />
     );
   }
 
@@ -2476,12 +2405,12 @@ export const Battle = () => {
                 {/* Participant List */}
                 <div
                   className="p-2 sm:p-3 flex flex-col gap-2"
-                  aria-busy={loading && roomParticipants.length === 0}
+                  aria-busy={loading && playerParticipants.length === 0}
                 >
                   <p className="text-[8px] sm:text-[10px] text-faint font-mono tracking-widest mb-1">
-                    OPERATIVES ({roomParticipants.length})
+                    OPERATIVES ({playerParticipants.length})
                   </p>
-                  {loading && roomParticipants.length === 0 ? (
+                  {loading && playerParticipants.length === 0 ? (
                     // ── Loader: operative telemetry syncing
                     <div className="flex items-center justify-center gap-2 py-6 border border-line bg-base/40 rounded-none">
                       <Loader2 className="w-3.5 h-3.5 text-accent-primary animate-spin" />
@@ -2490,7 +2419,7 @@ export const Battle = () => {
                       </span>
                     </div>
                   ) : (
-                    roomParticipants.map((p: any) => {
+                    playerParticipants.map((p: any) => {
                       const participantId = p.user?.id || p.userId;
                       const uname = p.user?.username || "Operative";
                       const intel = playerProgress[participantId];
@@ -2688,44 +2617,18 @@ export const Battle = () => {
               )}
             </div>
 
-            {/* PROBLEM NAV GRID OR OPPONENT PROFILE */}
-            {room?.type === "ONE_VS_ONE" && opponent ? (
-              <div className="px-3 py-3 border-b border-accent-danger/20 bg-accent-danger/5 flex items-center gap-3">
-                {opponent.avatarUrl ? (
-                  <img
-                    src={opponent.avatarUrl}
-                    alt="Opponent"
-                    className="w-10 h-10 rounded-full border border-accent-danger shadow-[0_0_15px_rgba(255,59,92,0.3)]"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full border border-accent-danger bg-surface-hover flex items-center justify-center text-accent-danger font-bold text-sm shrink-0 shadow-[0_0_15px_rgba(255,59,92,0.3)]">
-                    {opponent.username?.[0]?.toUpperCase() || "?"}
-                  </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-[10px] text-accent-danger tracking-widest font-bold">
-                    VS OPPONENT
-                  </p>
-                  <p className="font-mono text-fg text-sm font-bold truncate">
-                    {opponent.username}
-                  </p>
-                  <p className="text-xs text-subtle mt-1">
-                    Rating: {opponent.rating || "N/A"}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="px-3 py-3 border-b border-subtle-line bg-accent-primary/5">
-                <p className="text-[10px] text-faint tracking-widest mb-2">
-                  MISSION PLAYLIST ({problems.length})
-                </p>
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                  {problems.map((p, idx) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setCurrentIndex(idx)}
-                      className={`shrink-0 w-9 h-9 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
-                      ${currentIndex === idx ? "bg-accent-primary border-accent-primary text-ink shadow-[0_0_10px_rgba(0,212,255,0.5)]" : "bg-base/50 border-subtle-line text-subtle hover:border-accent-primary/50"}
+            {/* PROBLEM NAV GRID */}
+            <div className="px-3 py-3 border-b border-subtle-line bg-accent-primary/5">
+              <p className="text-[10px] text-faint tracking-widest mb-2">
+                MISSION PLAYLIST ({problems.length})
+              </p>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {problems.map((p, idx) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`shrink-0 w-9 h-9 rounded-lg border font-mono font-bold transition-all flex items-center justify-center
+                    ${currentIndex === idx ? "bg-accent-primary border-accent-primary text-ink shadow-[0_0_10px_rgba(0,212,255,0.5)]" : "bg-base/50 border-subtle-line text-subtle hover:border-accent-primary/50"}
                     `}
                     >
                       {idx + 1}
@@ -2733,7 +2636,6 @@ export const Battle = () => {
                   ))}
                 </div>
               </div>
-            )}
 
             {/* TAB HEADERS */}
             <div className="flex border-b border-subtle-line bg-surface-hover shrink-0">
@@ -2742,12 +2644,6 @@ export const Battle = () => {
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "PROBLEM" ? "border-b-accent-primary text-accent-primary bg-accent-primary/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
               >
                 <Code className="w-3 h-3" /> PROBLEM
-              </button>
-              <button
-                onClick={() => setActivePanelTab("CHAT")}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-all cursor-pointer ${activePanelTab === "CHAT" ? "border-b-accent-primary text-accent-primary bg-accent-primary/5" : "border-b-transparent text-faint hover:text-subtle hover:bg-surface-hover"}`}
-              >
-                <MessageSquare className="w-3 h-3" /> CHAT
               </button>
               <button
                 onClick={() => setActivePanelTab("OPPONENT_TELEMETRY")}
@@ -2838,9 +2734,9 @@ export const Battle = () => {
                         <div className="text-[9px] text-faint uppercase tracking-widest">
                           Focus Alerts
                         </div>
-                        <div className="mt-1 text-lg font-mono font-bold text-accent-warning">
-                          —
-                        </div>
+                           <div className="mt-1 text-lg font-mono font-bold text-accent-warning">
+                           {opponentTelemetry?.focusLossCount ?? 0}
+                         </div>
                       </div>
                     </div>
                   </div>
@@ -2857,15 +2753,15 @@ export const Battle = () => {
                 <div className="flex flex-col gap-4">
                   <div className="border border-line bg-base/40 p-4">
                     <p className="mb-3 text-[10px] font-mono font-bold text-accent-warning uppercase tracking-widest">
-                      Operatives ({roomParticipants.length})
+                      Operatives ({playerParticipants.length})
                     </p>
                     <div className="flex flex-col gap-2">
-                      {roomParticipants.length === 0 ? (
+                      {playerParticipants.length === 0 ? (
                         <p className="text-xs text-faint">
                           Waiting for operatives…
                         </p>
                       ) : (
-                        roomParticipants.map((p: any) => {
+                        playerParticipants.map((p: any) => {
                           const participantId = p.user?.id || p.userId;
                           const uname = p.user?.username || "Operative";
                           const intel = playerProgress[participantId];
@@ -2933,37 +2829,7 @@ export const Battle = () => {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col h-full">
-                  <div className="flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
-                    {battleMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`px-3 py-2 rounded-xl max-w-[85%] font-mono text-sm ${msg.senderId === myUserIdRef.current ? "border-2 border-accent-primary/50 bg-raised/40 text-fg self-end" : "border-2 border-subtle-line/50 bg-raised/20 text-fg self-start"}`}
-                      >
-                        {msg.content}
-                      </div>
-                    ))}
-                    <div ref={chatEndRef} />
-                  </div>
-                  <form
-                    onSubmit={handleBattleMessage}
-                    className="mt-auto flex gap-2 pt-2 border-t border-subtle-line"
-                  >
-                    <input
-                      type="text"
-                      value={newBattleMessage}
-                      onChange={(e) => setNewBattleMessage(e.target.value)}
-                      placeholder="TRANSMIT..."
-                      className="flex-1 border-2 border-subtle-line/50 bg-raised/30 p-3 rounded-lg text-fg font-mono text-xs placeholder:text-muted focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)] outline-none transition-all"
-                    />
-                    <button
-                      type="submit"
-                      className="p-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/50 text-accent-primary rounded-lg transition-all"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </form>
-                </div>
+                <div className="flex flex-col h-full" />
               )}
             </div>
           </div>
@@ -3282,7 +3148,7 @@ export const Battle = () => {
 
               {/* Per-participant verdicts */}
               <div className="w-full flex flex-col gap-2 mb-6">
-                {roomParticipants?.map((p: any) => {
+                {playerParticipants?.map((p: any) => {
                   const verdict = participantVerdict(
                     p,
                     battleState?.status || room?.status,

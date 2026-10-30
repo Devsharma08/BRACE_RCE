@@ -99,9 +99,6 @@ export interface SocketContextType {
   sendChallenge: (targetUserId: string, opts?: ChallengeOpts | string) => void;
   acceptChallenge: (challengerId: string, opts?: { problemId?: string; mode?: "RANDOM" | "CUSTOM"; difficulty?: string }) => void;
   declineChallenge: (targetUserId: string) => void;
-  sendBattleMessage: (roomId: string, content: string) => void;
-  getBattleMessages: (roomId: string) => BattleMessage[];
-  subscribeToBattleMessages: (listener: (roomId: string, messages: BattleMessage[]) => void) => () => void;
   getDirectMessages: (userIdA: string, userIdB: string) => DirectMessage[];
   subscribeToDirectMessages: (listener: (key: string, messages: DirectMessage[]) => void) => () => void;
   isClicked: boolean;
@@ -119,6 +116,11 @@ export interface SocketContextType {
    */
   joinBattleRoom: (roomId: string, ack?: (response: { success: boolean; error?: string }) => void) => void;
   leaveBattleRoom: (roomId: string, options?: { notifyParticipants?: boolean }) => void;
+  /**
+   * Reset battle room state. Called when the user is kicked/blocked
+   * so they can properly rejoin later.
+   */
+  resetBattleRoom: () => void;
 }
 
 export interface CustomLobbyState {
@@ -180,61 +182,6 @@ interface QueuedEvent {
   args: unknown[];
 }
 const offlineEventQueue: QueuedEvent[] = [];
-
-/**
- * Global battle message store: persists messages across page navigation.
- * Maps roomId -> array of messages. This ensures messages are received and
- * stored even when the user is not on the Battle page.
- */
-interface BattleMessage {
-  id: string;
-  socketId: string;
-  senderId: string;
-  username: string;
-  role: string;
-  isHost: boolean;
-  content: string;
-  createdAt: string;
-  roomId?: string;
-}
-const battleMessageStore = new Map<string, BattleMessage[]>();
-
-function addBattleMessage(roomId: string, msg: BattleMessage): void {
-  const existing = battleMessageStore.get(roomId) || [];
-  // Deduplicate by ID
-  if (!existing.some((m) => m.id === msg.id)) {
-    battleMessageStore.set(roomId, [...existing, msg]);
-    // Notify all subscribed React components so the chat re-renders
-    // even when the user navigated away and is now back on the battle page.
-    notifyBattleMessageListeners(roomId);
-  }
-}
-
-function getBattleMessages(roomId: string): BattleMessage[] {
-  return battleMessageStore.get(roomId) || [];
-}
-
-/**
- * Reactive subscription system for the global battle message store.
- * Components call subscribeToBattleMessages() to receive updates whenever
- * a new message is added to any room. This ensures messages render in
- * real-time regardless of which route the user is on, and appear
- * immediately when navigating back to a battle page.
- */
-type BattleMessageListener = (roomId: string, messages: BattleMessage[]) => void;
-const battleMessageListeners = new Set<BattleMessageListener>();
-
-function notifyBattleMessageListeners(roomId: string): void {
-  const messages = battleMessageStore.get(roomId) || [];
-  for (const listener of battleMessageListeners) {
-    listener(roomId, messages);
-  }
-}
-
-function subscribeToBattleMessages(listener: BattleMessageListener): () => void {
-  battleMessageListeners.add(listener);
-  return () => battleMessageListeners.delete(listener);
-}
 
 /** ─── Direct Message Global Store ───
  * Persists direct messages across page navigation. Maps a canonical
@@ -1091,18 +1038,12 @@ bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnli
       syncBattleRoomState();
     });
 
-    // Global battle message handler — receives messages regardless of current page.
-    // Stores in global battleMessageStore so messages persist across page navigation.
-    bind("receive_battle_message", (msg: BattleMessage) => {
-      if (msg.roomId) {
-        addBattleMessage(msg.roomId, msg);
-      }
-    });
-
     // Global direct message handler — receives DMs regardless of current page.
     // Stores in global directMessageStore so messages persist across page navigation.
+    // This now handles BOTH incoming (from peers) and echo (from own sends), so the
+    // sender's messages persist in the store for tab-switch survival.
     bind("receive_direct_message", (msg: DirectMessage) => {
-      if (msg.senderId && msg.receiverId && msg.senderId !== userId) {
+      if (msg.senderId && msg.receiverId) {
         addDirectMessage(msg.senderId, msg.receiverId, msg);
       }
     });
@@ -1176,7 +1117,7 @@ bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnli
     });
   }, [userId]);
 
-  const leaveBattleRoom = useCallback((
+   const leaveBattleRoom = useCallback((
     roomId: string,
     options?: { notifyParticipants?: boolean },
   ) => {
@@ -1184,6 +1125,18 @@ bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnli
     if (!socket) return;
 
     emitLeaveRoom(socket, roomId, options);
+    syncBattleRoomState();
+  }, [syncBattleRoomState]);
+
+  const resetBattleRoom = useCallback(() => {
+    battleRoomManager = {
+      roomId: null,
+      status: "NONE",
+      participantCount: 0,
+      userId: null,
+      pendingAcks: new Set(),
+      joinCallbacks: new Map(),
+    };
     syncBattleRoomState();
   }, [syncBattleRoomState]);
 
@@ -1251,18 +1204,6 @@ bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnli
       socketRef.current.emit("join_matchmaking", { difficulty: difficulty, waitingSeconds: 0 });
     }
   }, [isConnected]);
-
-  const sendBattleMessage = useCallback((roomId: string, content: string) => {
-    const socket = socketRef.current;
-    if (socket && socket.connected) {
-      socket.emit("send_battle_message", { roomId, content });
-    } else {
-      offlineEventQueue.push({
-        event: "send_battle_message",
-        args: [{ roomId, content }],
-      });
-    }
-  }, []);
 
   const createCustomRoom = useCallback((
     maxUsers = 2,
@@ -1376,13 +1317,11 @@ bind("presence_snapshot", (data: Array<{ userId: string; status?: string; isOnli
         sendDirectMessage,
         acceptChallenge,
         declineChallenge,
-        sendBattleMessage,
-        getBattleMessages,
-        subscribeToBattleMessages,
         getDirectMessages,
         subscribeToDirectMessages,
         joinBattleRoom,
         leaveBattleRoom,
+        resetBattleRoom,
         isClicked,
         waitingTime,
         requestPresence,

@@ -77,20 +77,22 @@ const GROUPS: { title: string; items: string[] }[] = [
   {
     title: "Battles",
     items: [
-      "Ranked 1v1 matchmaking over WebSockets: enter the queue, get matched, confirm, and the editor locks until the countdown ends.",
+      "Ranked 1v1 matchmaking over WebSockets with exponential backoff reconnection, transport fallback, and connection state recovery.",
       "Live opponent status and submission broadcasts for the duration of the match.",
       "Ratings use an ELO system with a speed bonus and an attempt penalty, mapped onto division tiers.",
       "Spectate a match in progress, then replay it submission by submission from the timeline.",
       "Focus-loss telemetry and structural plagiarism checks run against submissions.",
+      "Persistent battle chat survives navigation; history fetched via REST on Battle mount.",
     ],
   },
   {
     title: "Workspace",
     items: [
-      "Monaco editor with syntax highlighting, auto-format, and a custom dark theme.",
+      "Monaco editor with syntax highlighting, auto-format, and a custom dark cyberpunk theme.",
       "Run and Submit from the toolbar, or from the keyboard.",
       "Persistent scratchpad notes that follow you between problems and battles.",
       "Streaks, solved counts and per-structure progress, tracked from your own submissions.",
+      "Personal analytics dashboard with win rate trend chart, difficulty breakdown, activity heatmap, and language usage stats.",
     ],
   },
 ];

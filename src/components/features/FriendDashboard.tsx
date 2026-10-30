@@ -206,20 +206,52 @@ export default function FriendsDashboard() {
   // DB history instead of replacing it — previously the first sent message made
   // displayedMessages prefer the session array, hiding the whole conversation.
   // Deduped by id: socket deliveries carry the DB id, so a message that arrives
-  // live and again via refetch renders once.
+  // live and again via refetch renders once. Sorted by createdAt so messages
+  // always appear in chronological order regardless of insertion order in the
+  // session store or optimistic-send timing.
   const displayedMessages = useMemo<Message[]>(() => {
     const history = directMessages as Message[];
-    if (messages.length === 0) return history;
-    const historyIds = new Set(history.map((m) => m.id));
-    return [...history, ...messages.filter((m) => !historyIds.has(m.id))];
-  }, [directMessages, messages]);
+    if (messages.length === 0) {
+      return [...history].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+    }
+    // Build a lookup of confirmed (non-optimistic) messages keyed by an
+    // effective-sender + content string so we can drop stale local copies
+    // once the server has acknowledged them.
+    const confirmedKeys = new Set<string>();
+    for (const msg of [...history, ...messages]) {
+      const sid = msg.senderId === "ME" ? user?.id ?? null : msg.senderId;
+      if (sid) confirmedKeys.add(`${sid}|${msg.content}`);
+    }
+    const seen = new Set<string>();
+    const merged: Message[] = [];
+    for (const msg of [...history, ...messages]) {
+      if (seen.has(msg.id)) continue;
+      // Drop optimistic "local-" messages once a confirmed copy exists.
+      if (msg.id.startsWith("local-")) {
+        const sid = msg.senderId === "ME" ? user?.id ?? null : msg.senderId;
+        const key = `${sid ?? "ME"}|${msg.content}`;
+        if (confirmedKeys.has(key)) continue;
+      }
+      seen.add(msg.id);
+      merged.push(msg);
+    }
+    return merged.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  }, [directMessages, messages, user?.id]);
 
   // Ownership: DB history carries real user ids for both directions, while
   // optimistic sends use the "ME" sentinel — so a literal === "ME" check made
   // every reloaded conversation render as received. Compare against the
-  // signed-in user's id instead.
+  // signed-in user's id instead. When user.id is not yet loaded, fall back to
+  // receiverId === activeTab.id: in a 1:1 DM, if the receiver is the active
+  // friend then the sender must be the current user.
   const isOwnMessage = (msg: Message) =>
-    msg.senderId === "ME" || (user?.id != null && msg.senderId === user.id);
+    msg.senderId === "ME"
+    || (user?.id != null && msg.senderId === user.id)
+    || (activeTab?.id != null && msg.receiverId === activeTab.id);
 
   /**
    * Task 5 — ordered + grouped bubbles with day separators (display-only).
@@ -261,7 +293,7 @@ export default function FriendsDashboard() {
       }
     }
     return groups;
-  }, [displayedMessages, user?.id]);
+  }, [displayedMessages, user?.id, activeTab?.id]);
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({
@@ -286,12 +318,17 @@ export default function FriendsDashboard() {
     const conversationKey = activeTab?.id && user?.id ? [user.id, activeTab.id].sort().join(":") : null;
     if (!conversationKey) return;
 
-    const unsubscribe = subscribeToDirectMessages((key, msgs) => {
+     const unsubscribe = subscribeToDirectMessages((key, msgs) => {
       if (key !== conversationKey) return;
       // Merge store messages with any locally-optimistic messages (dedup by id).
+      // Sort the combined array by timestamp so messages always appear in
+      // chronological order regardless of store insertion order.
       setMessages((prev) => {
         const storeIds = new Set(msgs.map((m) => m.id));
-        return [...msgs, ...prev.filter((m) => !storeIds.has(m.id))];
+        const merged = [...msgs, ...prev.filter((m) => !storeIds.has(m.id))];
+        return merged.sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
       });
     });
     return unsubscribe;
@@ -302,17 +339,27 @@ export default function FriendsDashboard() {
   // state (optimistic) and updates the query cache. The global store handler
   // in SocketContext already persists the message; this effect keeps the local
   // reactive subscription in sync for the active conversation.
-  useEffect(() => {
+   useEffect(() => {
     if (!socket) return;
     const handleMessage = (data: { senderId: string; content: string; createdAt: string; id: string }) => {
       if (activeTab && data.senderId === activeTab.id) {
         const optimisticMsg = { ...data, receiverId: "ME" };
-        setMessages((prev) => [...prev, optimisticMsg]);
+        // The store subscription above already persists this message into
+        // `messages`; avoid a duplicate by checking for the same id.
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === optimisticMsg.id)) return prev;
+          return [...prev, optimisticMsg];
+        });
         // Also append into the query cache so the message survives a refetch
-        // before the DB-side message list refreshes.
+        // before the DB-side message list refreshes. Dedup by id as well.
         queryClient.setQueryData<Message[]>(
           ["direct-messages", activeTab.id],
-          (old) => [...(old ?? []), optimisticMsg],
+          (old) => {
+            const existing = old ?? [];
+            return existing.some((m) => m.id === optimisticMsg.id)
+              ? existing
+              : [...existing, optimisticMsg];
+          },
         );
       }
     };
@@ -763,7 +810,7 @@ const handleRemoveFriend = async (friendId: string) => {
                     {
                       label: "rate",
                       value: activeFriendRecord
-                        ? `${Math.round(activeFriendRecord.winRate)}%`
+                        ? `${Math.round(activeFriendRecord.winRate ?? 0)}%`
                         : undefined,
                       tone: "text-accent-primary",
                     },
@@ -948,7 +995,7 @@ function StatsOverlay({ friend, record, onClose }: StatsOverlayProps) {
                 </div>
                 <div className="px-1 py-3 text-center">
                   <b className="block font-mono text-sm font-bold tabular-nums text-accent-primary">
-                    {record.totalMatches ? `${Math.round(record.winRate)}%` : "—"}
+                    {record.totalMatches ? `${Math.round(record.winRate ?? 0)}%` : "—"}
                   </b>
                   <span className="mt-1 block text-[8px] uppercase tracking-widest text-muted">
                     rate

@@ -81,7 +81,6 @@ roomsRouter.post(
   roomController.unblockParticipant,
 );
 roomsRouter.get("/:eventId/blocks", roomController.getBlockedParticipants);
-roomsRouter.get("/:eventId/messages", roomController.getBattleMessages);
 roomsRouter.get("/:eventId/analytics", roomController.getEventAnalytics);
 
 export { roomsRouter };

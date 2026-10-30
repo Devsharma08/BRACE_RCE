@@ -272,8 +272,19 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
                 return socket.emit('host_error', 'Only the host can unblock players.');
             }
 
-            await prisma.eventBlock.deleteMany({
+            const deleted = await prisma.eventBlock.deleteMany({
                 where: { eventId: event.id, blockedUserId: targetUserId }
+            });
+
+            if (deleted.count === 0) {
+                return socket.emit('host_error', 'No block record found for this user.');
+            }
+
+            // Reset the user's performance status from FAILED back to PENDING so
+            // they can rejoin the event after being unblocked.
+            await prisma.userPersonalPerformance.updateMany({
+                where: { eventId: event.id, userId: targetUserId },
+                data: { status: 'PENDING' }
             });
 
             // Broadcast to ALL room aliases.
@@ -284,6 +295,7 @@ export function registerHostHandlers(ctx: HandlerCtx): void {
             console.log(`[HOST] User ${targetUserId} unblocked from room ${roomId} by host ${userId}`);
         } catch (e) {
             console.error('[host_unblock_user] error:', e);
+            socket.emit('host_error', 'Failed to unblock participant.');
         }
     })
 

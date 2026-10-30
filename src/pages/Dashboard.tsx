@@ -251,7 +251,7 @@ export const Dashboard: React.FC = () => {
   // rather than a fabricated number (this slot previously hardcoded 1250).
   const opponentRating = leaderboardRows?.find((row) => row.userId === pendingOpponent?.id)?.rating;
   const matchesPlayed = stats?.totalMatches ?? myRating?.totalMatches ?? 0;
-  const winRate = stats ? Math.round(stats.winRate) : Math.round(myRating?.winRate ?? 0);
+  const winRate = stats ? Math.round(stats.winRate ?? 0) : Math.round(myRating?.winRate ?? 0);
   const winStreak = analytics?.summary?.currentStreak ?? 0;
   const isQueued = matchmakingStatus === "SEARCHING";
   const kpiLoading = statsLoading || analyticsLoading || ratingLoading;

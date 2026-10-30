@@ -71,7 +71,7 @@ export const LeaderboardTable = memo(({ limit = 10 }: { limit?: number }) => {
                 <span className={`text-[10px] font-mono font-bold ${TIER_COLORS[entry.tier] ?? "text-subtle"}`}>
                   {entry.tier}
                 </span>
-                <span className="text-xs font-mono font-bold text-accent-primary">{entry.rating}</span>
+                <span className="text-xs font-mono font-bold text-accent-primary">{entry.rating ?? "—"}</span>
               </div>
             );
           })}

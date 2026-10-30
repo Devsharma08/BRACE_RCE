@@ -60,7 +60,6 @@ describe("About", () => {
     expect(what.getByText(/spectate a match/i)).toBeVisible();
     expect(what.getByText(/plagiarism checks/i)).toBeVisible();
     expect(what.getByText(/Monaco editor/i)).toBeVisible();
-    expect(what.getByText(/custom problem studio/i)).toBeVisible();
   });
 
   test("carries no invented percentages or unverifiable claims", () => {

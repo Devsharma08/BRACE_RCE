@@ -43,10 +43,9 @@ import {
   User,
   Users,
   X,
-  ChevronLeft,
-  ChevronRight,
-  MessageSquare,
-  Flag,
+   ChevronLeft,
+   ChevronRight,
+   Flag,
   Code,
   Activity,
   Radio,
@@ -68,17 +67,6 @@ import { CodePane } from "./CodePane";
 import { PerformanceChart } from "./PerformanceChart";
 import { ProblemHintsAccordion } from "./HintsAccordion";
 import { SkeletonBox } from "../../../components/ui/Skeleton";
-
-export interface BattleMessage {
-  id: string;
-  socketId: string;
-  senderId: string;
-  username: string;
-  role: string;
-  isHost: boolean;
-  content: string;
-  createdAt: string;
-}
 
 interface ParticipantLayoutProps {
   match: any;
@@ -110,12 +98,8 @@ interface ParticipantLayoutProps {
   handleRunSingleTestCase: (tc: any) => void;
   handleResetCode: () => void;
    handleLanguageChange: (lang: SupportedLanguage) => void;
-  handleCodeChange: (code: string) => void;
-  handleJoinBattleMessage: (e: any) => void;
-  newBattleMessage: string;
-  setNewBattleMessage: (val: string) => void;
-  battleMessages: any[];
-  handleHostEndMatch: () => void;
+   handleCodeChange: (code: string) => void;
+   handleHostEndMatch: () => void;
   setIsBattleMenuOpen: (val: boolean) => void;
   isBattleMenuOpen: boolean;
   handleSurrenderClick: () => void;
@@ -172,12 +156,8 @@ export function ParticipantLayout(props: ParticipantLayoutProps) {
     handleRunSingleTestCase,
     handleResetCode,
     handleLanguageChange,
-    handleCodeChange,
-    handleJoinBattleMessage,
-    newBattleMessage,
-    setNewBattleMessage,
-    battleMessages,
-    handleHostEndMatch,
+     handleCodeChange,
+     handleHostEndMatch,
     setIsBattleMenuOpen,
     isBattleMenuOpen,
     handleSurrenderClick,

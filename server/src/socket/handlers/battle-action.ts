@@ -172,5 +172,20 @@ export function registerBattleActionHandlers(ctx: HandlerCtx): void {
         // their dashboard/active list and refresh the lobby room list
         io.emit("rooms:invalidate", { type: "battle_ended", roomId });
     });
+
+    socket.on('focus_loss', (data: { roomId?: string; userId?: string; focusLossCount: number }) => {
+        const payload = data ?? {};
+        const { roomId, focusLossCount } = payload;
+        if (!roomId) return;
+        const currentUserId = socket.data.userId || payload.userId;
+        if (!currentUserId) return;
+
+        // Relay the local focus-loss count to the rest of the room so each
+        // peer can display it in their opponent-telemetry panel.
+        socket.to(roomId).emit('opponent_focus_loss', {
+            userId: currentUserId,
+            focusLossCount,
+        });
+    });
 }
 

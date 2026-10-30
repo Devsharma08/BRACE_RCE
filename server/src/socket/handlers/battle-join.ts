@@ -55,6 +55,27 @@ export function registerBattleJoinHandlers(ctx: HandlerCtx): void {
                 return;
             }
 
+            // If no performance record exists, create a PENDING one so the user
+            // appears in the participant roster for the moderator's UI.
+            if (!existingPerf && event.status === "WAITING") {
+                const currentCount = (await prisma.userPersonalPerformance.count({
+                    where: { eventId: event.id },
+                })) || 0;
+                if (currentCount < (event.maxUsers || 2)) {
+                    try {
+                        await prisma.userPersonalPerformance.create({
+                            data: {
+                                userId,
+                                eventId: event.id,
+                                status: "PENDING",
+                            },
+                        });
+                    } catch (perfErr) {
+                        console.error('[join_battle] performance creation error:', perfErr);
+                    }
+                }
+            }
+
             // Join the socket room
             socket.join(roomId);
             if (event.roomCode && event.roomCode !== roomId) {

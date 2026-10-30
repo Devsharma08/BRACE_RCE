@@ -633,18 +633,19 @@ class Rooms {
           });
       }
 
-      // Admin can spectate any room; for non-admins, only allow spectate if room is public or they're a participant
       if (isSpectate && !isAdmin) {
         const isParticipant = event.performances?.some(
           (p: any) => p.userId === userId,
         );
         const isHost = event.hostId === userId;
         if (!event.isPublic && !isParticipant && !isHost) {
+          console.log(`[getLiveRoom] 403 - Not authorized to spectate: isPublic=${event.isPublic}, isParticipant=${isParticipant}, isHost=${isHost}`);
           return res
             .status(403)
             .json({ message: "Not authorized to spectate this room" });
         }
       }
+      console.log(`[getLiveRoom] Spectate check passed`);
 
       // Password check: non-host, non-admin users must supply the correct password
       // for password-protected rooms (unless pure spectating by invitation).
@@ -653,12 +654,14 @@ class Rooms {
           const suppliedPassword =
             (req.query.password as string) || (req as any).body?.password;
           if (!suppliedPassword || suppliedPassword !== event.password) {
+            console.log(`[getLiveRoom] 401 - Incorrect/missing password`);
             return res
               .status(401)
               .json({ message: "Incorrect or missing password for this room" });
           }
         }
       }
+      console.log(`[getLiveRoom] Password check passed`);
 
       // Block list check: if the requesting user is blocked from this event, deny access
       if (!isAdmin && !isSpectate && userId) {
@@ -667,12 +670,14 @@ class Rooms {
           select: { reason: true },
         });
         if (isBlocked) {
+          console.log(`[getLiveRoom] 403 - Blocked: userId=${userId}, eventId=${event.id}`);
           return res.status(403).json({
             message: "You are blocked from this event",
             blockReason: isBlocked.reason ?? undefined,
           });
         }
       }
+      console.log(`[getLiveRoom] Block check passed for userId=${userId}, eventId=${event.id}`);
 
       // Non-host participant: auto-enroll them if needed
       if (userId && !isSpectate && !isAdmin && event.hostId !== userId) {
@@ -681,8 +686,9 @@ class Rooms {
         ) as any | undefined;
 
         if (existingPerf) {
-          // User already has a performance record — check for ban/block status
+          console.log(`[getLiveRoom] Existing perf found: userId=${userId}, status=${existingPerf.status}`);
           if (existingPerf.status === "REJECTED") {
+            console.log(`[getLiveRoom] 403 - REJECTED status`);
             return res
               .status(403)
               .json({
@@ -1005,10 +1011,17 @@ class Rooms {
       const userId = req.userId as string;
       const { eventId, targetUserId } = req.body;
 
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { id: true, hostId: true },
-      });
+      // Resolve eventId (could be UUID or roomCode)
+      const event =
+        (await prisma.event.findUnique({
+          where: { id: eventId },
+          select: { id: true, hostId: true },
+        })) ??
+        (await prisma.event.findFirst({
+          where: { roomCode: eventId, isTemplate: false },
+          select: { id: true, hostId: true },
+        }));
+
       if (!event) return res.status(404).json({ message: "Event not found" });
       if (event.hostId !== userId) {
         return res
@@ -1016,9 +1029,21 @@ class Rooms {
           .json({ message: "Only the host can unblock participants" });
       }
 
-      await prisma.eventBlock.deleteMany({
-        where: { eventId, blockedUserId: targetUserId },
+      const deleted = await prisma.eventBlock.deleteMany({
+        where: { eventId: event.id, blockedUserId: targetUserId },
       });
+      
+      if (deleted.count === 0) {
+        return res.status(404).json({ message: "No block record found for this user" });
+      }
+
+      // Reset the user's performance status from FAILED back to PENDING so they
+      // can rejoin the event after being unblocked.
+      await prisma.userPersonalPerformance.updateMany({
+        where: { eventId: event.id, userId: targetUserId },
+        data: { status: "PENDING" },
+      });
+      
       emitRoomsInvalidate();
       return res.json({ status: "success", message: "Participant unblocked" });
     } catch (error) {
@@ -1071,55 +1096,6 @@ class Rooms {
       return res.json({ status: "success", blocks });
     } catch (error) {
       console.error("Get blocked error:", error);
-      return res.status(500).json({ message: "Server error" });
-    }
-  }
-
-  // GET BATTLE CHAT HISTORY
-  async getBattleMessages(req: AuthRequest, res: Response) {
-    try {
-      const userId = req.userId as string;
-      const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
-      const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
-      const before = req.query.before as string | undefined;
-
-      // Verify user is participant of this event
-      const performance = await prisma.userPersonalPerformance.findFirst({
-        where: { eventId: eventId, userId },
-        select: { id: true },
-      });
-
-      if (!performance) {
-        return res.status(403).json({ message: "Not a participant of this event" });
-      }
-
-      const where: any = {
-        data: {
-          path: ["eventId"],
-          equals: eventId,
-        },
-      };
-
-      if (before) {
-        where.createdAt = { lt: new Date(before) };
-      }
-
-      const messages = await prisma.message.findMany({
-        where,
-        orderBy: { createdAt: "asc" },
-        take: limit,
-        select: {
-          id: true,
-          senderId: true,
-          content: true,
-          createdAt: true,
-          sender: { select: { username: true, avatarUrl: true } },
-        },
-      });
-
-      return res.json({ status: "success", messages });
-    } catch (error) {
-      console.error("Get battle messages error:", error);
       return res.status(500).json({ message: "Server error" });
     }
   }

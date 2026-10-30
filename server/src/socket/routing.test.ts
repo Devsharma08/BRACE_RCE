@@ -7,7 +7,6 @@ import { initSocketServer } from "./index.js";
 
 const EXPECTED_SOCKET_EVENTS = [
     "send_direct_message",
-    "send_battle_message",
     "send_challenge",
     "accept_challenge",
     "decline_challenge",
@@ -39,7 +38,7 @@ const EXPECTED_SOCKET_EVENTS = [
 ];
 
 describe("Socket routing (refactor lock)", () => {
-    test.skip("registers all 29 domain events plus central disconnect", () => {
+    test.skip("registers all 28 domain events plus central disconnect", () => {
         // This test is skipped because it relies on mocking socket.on which is 
         // wrapped by the rate limiter middleware. The test doesn't go through
         // the socket.io connection process so the middleware is never applied.

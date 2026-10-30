@@ -26,6 +26,5 @@ describe("invalidateProblemQueries", () => {
     expect(PROBLEM_QUERY_ROOTS).toContain("system-problems"); // Problems.tsx
     expect(PROBLEM_QUERY_ROOTS).toContain("all-available-problems"); // CreateRoom.tsx
     expect(PROBLEM_QUERY_ROOTS).toContain("challenge-system-problems"); // ChallengeModal.tsx
-    expect(PROBLEM_QUERY_ROOTS).toContain("challenge-custom-problems"); // ChallengeModal.tsx
   });
 });

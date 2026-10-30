@@ -185,43 +185,6 @@ export const removeFriendSchema = z.object({
 });
 
 // Problems schemas
-export const createCustomProblemSchema = z.object({
-  name: z.string().min(1, "Problem name is required").max(200, "Name too long"),
-  problem_definition: z.string().min(1, "Problem definition is required"),
-  problem_hints: z.array(z.string()).optional(),
-  difficulty_level: z.enum(["EASY", "MEDIUM", "HARD"]).default("MEDIUM"),
-  test_cases: z
-    .array(
-      z.object({
-        input: z.string().min(1, "Test case input is required"),
-        expectedOutput: z.string().min(1, "Expected output is required"),
-        is_public: z.boolean().optional().default(true),
-      }),
-    )
-    .min(1, "At least one test case is required"),
-  code_snippets: z
-    .array(
-      z.object({
-        language: z.string().min(1, "Language is required"),
-        code: z.string().min(1, "Code is required"),
-        wrapperCode: z.string().optional(),
-      }),
-    )
-    .optional(),
-  signature: z
-    .object({
-      funcName: z.string().min(1),
-      returnType: z.string().min(1),
-      args: z.array(
-        z.object({
-          name: z.string().min(1),
-          type: z.string().min(1),
-        }),
-      ),
-    })
-    .optional(),
-});
-
 export const seedSystemProblemsSchema = z.object({
   problems: z
     .array(
