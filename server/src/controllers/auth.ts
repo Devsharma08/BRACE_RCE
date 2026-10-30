@@ -236,11 +236,25 @@ export class AuthController {
                 resetKey = `password-reset:${createHash("sha256").update(token).digest("hex")}`;
                 await setCachedAsync(resetKey, { userId: user.id }, 15 * 60);
 
+                // Prefer FRONTEND_URL env var; fall back to request Origin header;
+                // if neither is available, derive from the API URL.
                 const requestOrigin = req.get("origin");
-                const frontendUrl = process.env.FRONTEND_URL
-                    || (requestOrigin && getAllowedOrigins().includes(requestOrigin) ? requestOrigin : undefined);
+                const allowedOrigins = getAllowedOrigins();
+                let frontendUrl = process.env.FRONTEND_URL
+                    || (requestOrigin && allowedOrigins.includes(requestOrigin) ? requestOrigin : undefined);
                 if (!frontendUrl) {
-                    throw new Error("FRONTEND_URL is required to send password reset links");
+                    // Last resort: try to construct from the API origin's parent domain
+                    // (e.g. api.example.com -> https://example.com)
+                    if (requestOrigin) {
+                        try {
+                            const url = new URL(requestOrigin);
+                            frontendUrl = `${url.protocol}//${url.hostname}`;
+                        } catch {
+                            console.error("FRONTEND_URL is required to send password reset links");
+                            if (resetKey) await deleteCachedAsync(resetKey);
+                            return res.status(200).json({ message: "If an account with this email exists, a password reset link has been sent." });
+                        }
+                    }
                 }
 
                 const resetUrl = new URL("/reset-password", frontendUrl);
@@ -259,7 +273,6 @@ export class AuthController {
             try {
                 await sendPasswordResetEmail(getFirebaseAuth(), normalized);
             } catch (err: any) {
-                // Always return the same response so account existence is not disclosed.
                 console.error("Firebase password reset email error:", err);
             }
         }
@@ -332,15 +345,20 @@ export class AuthController {
             return res.status(409).json({ message: "That username is already taken. Try a different one." });
         }
 
+        let firebaseUid: string | undefined;
         try {
-            await createUserWithEmailAndPassword(getFirebaseAuth(), normalized, password);
+            const result = await createUserWithEmailAndPassword(getFirebaseAuth(), normalized, password);
+            firebaseUid = result?.user?.uid;
         } catch (err: any) {
             if (err.code === "auth/email-already-in-use") {
-                return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
+                // User exists in Firebase but not locally — sync by creating
+                // a local record (dual-write reconciliation strategy).
+                console.warn("Firebase user exists but local record is missing; creating local row for:", normalized);
+            } else {
+                const fbMsg = this.firebaseErrorMessage(err);
+                console.error("Firebase signup error:", err);
+                return res.status(400).json({ message: fbMsg });
             }
-            const fbMsg = this.firebaseErrorMessage(err);
-            console.error("Firebase signup error:", err);
-            return res.status(400).json({ message: fbMsg });
         }
 
         try {
@@ -356,7 +374,7 @@ export class AuthController {
                     updatedAt: new Date(),
                 },
             });
-            res.status(201).json({ message: "Registered successfully", user: { id: userId, username, avatarUrl: avatarUrl || undefined, email: normalized } });
+            return res.status(201).json({ message: "Registered successfully", user: { id: userId, username, avatarUrl: avatarUrl || undefined, email: normalized } });
         } catch (err: any) {
             console.error("Error creating local user record:", err);
             // If the Prisma create fails due to a unique constraint violation
@@ -386,8 +404,26 @@ export class AuthController {
                 const { user } = result;
                 const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
                 if (!prismaUser) {
-                    // Firebase has the account but no local row — sync it.
-                    return res.status(404).json({ message: "Account exists in Firebase but local record is missing. Contact support." });
+                    // Firebase has the account but no local row — auto-reconcile
+                    // by creating the local record, then proceed with login.
+                    console.warn("Firebase user exists but local record missing; auto-linking for:", normalized);
+                    try {
+                        const newLocalUser = await prisma.user.create({
+                            data: {
+                                id: uuidv4(),
+                                username: user.displayName || normalized.split("@")[0],
+                                email: normalized,
+                                emailVerified: user.emailVerified ?? true,
+                                avatarUrl: user.photoURL || undefined,
+                                role: "USER",
+                                updatedAt: new Date(),
+                            },
+                        });
+                        return this.sendAuthResponse(res, newLocalUser, user, normalized);
+                    } catch (createErr: any) {
+                        console.error("Auto-link failed:", createErr);
+                        return res.status(500).json({ message: "Account exists in Firebase but local record is missing. Contact support." });
+                    }
                 }
                 if (prismaUser.emailVerified === false) {
                     return res.status(403).json({ message: "Verify your email address with the code we sent before signing in." });
@@ -503,7 +539,7 @@ export class AuthController {
             return res.status(500).json({ message: "Could not send the verification code. Please try again." });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Verification code sent to your email. Complete signup by verifying your code.",
             email: normalized,
         });

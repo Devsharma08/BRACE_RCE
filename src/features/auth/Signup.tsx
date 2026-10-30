@@ -75,13 +75,14 @@ export const Signup = () => {
       setOtpInfo(`A verification code was sent to ${email}.`);
     } catch (err: any) {
       const msg = err.response?.data?.message || "Registration failed";
-      if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('taken')) {
-        setError(msg);
-      } else {
-        // On any error, still show the OTP field so the user can retry
-        setOtpSent(true);
-        setOtpError(msg);
-      }
+      // On ANY error, keep the user on the signup form so they can correct
+      // their input or retry. Only a successful 200 response advances to
+      // the OTP verification step.
+      setOtpSent(false);
+      setOtpCode('');
+      setOtpError('');
+      setOtpInfo('');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -101,7 +102,10 @@ export const Signup = () => {
       await checkAuth();
       navigate('/');
     } catch (err: any) {
+      // On error, do NOT proceed. Show error in the OTP form so the user
+      // can retry with a different code or re-request a new one.
       setOtpError(err.response?.data?.message || "Invalid or expired code");
+      // Keep otpSent = true so the OTP form stays visible for retry
     } finally {
       setOtpLoading(false);
     }

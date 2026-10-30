@@ -46,11 +46,14 @@ const CSRF_COOKIE_NAME = "csrf_token";
 const CSRF_HEADER_NAME = "x-csrf-token";
 
 /** Routes that don't require CSRF protection (public auth endpoints, health checks). */
-const CSRF_EXEMPT_PATHS = [
+  const CSRF_EXEMPT_PATHS = [
   `${API_PREFIX}/auth/signup`,
   `${API_PREFIX}/auth/signin`,
   `${API_PREFIX}/auth/signout`,
   `${API_PREFIX}/auth/google`,
+  `${API_PREFIX}/auth/google/callback`,
+  `${API_PREFIX}/auth/firebase/signup`,
+  `${API_PREFIX}/auth/firebase/signin`,
   `${API_PREFIX}/auth/otp/send`,
   `${API_PREFIX}/auth/otp/verify`,
   `${API_PREFIX}/auth/password-reset/request`,
@@ -59,6 +62,9 @@ const CSRF_EXEMPT_PATHS = [
   "/api/auth/signin",   // legacy
   "/api/auth/signout",  // legacy
   "/api/auth/google",   // legacy
+  "/api/auth/google/callback",   // legacy
+  "/api/auth/firebase/signup",   // legacy
+  "/api/auth/firebase/signin",   // legacy
   "/api/auth/otp/send",     // legacy
   "/api/auth/otp/verify",   // legacy
   "/api/auth/password-reset/request", // legacy
@@ -128,18 +134,16 @@ function csrfMiddleware() {
     const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
     const headerToken = req.headers[CSRF_HEADER_NAME] as string | undefined;
 
-    // If no cookie token, generate one (first visit)
+    // If no cookie token, the client must fetch /csrf-token first.
+    // Do NOT auto-generate and allow — the freshly generated cookie token
+    // cannot be echoed back in the header for *this* request, which would
+    // always fail the double-submit check and confuse the client about whether
+    // a CSRF failure means the token was bad or the request was blocked.
     if (!cookieToken) {
-      const token = generateCsrfToken();
-      res.cookie(CSRF_COOKIE_NAME, token, {
-        httpOnly: false,
-        sameSite,
-        secure,
-        maxAge: 24 * 60 * 60 * 1000,
+      return res.status(403).json({
+        status: "error",
+        message: "CSRF token not found. Call GET /csrf-token before making POST/PUT/DELETE requests.",
       });
-      // For the first mutating request after token generation, allow it but warn
-      console.warn("[csrf] No CSRF cookie found, generated new token for", req.path);
-      return next();
     }
 
     // Verify header token matches cookie token

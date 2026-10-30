@@ -103,14 +103,8 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
   });
 
   describe("POST /api/v1/auth/signup", () => {
-    test("should successfully register a new user", async () => {
-      (prisma.user.findFirst as jest.Mock<any>).mockResolvedValue(null);
-      (prisma.user.create as jest.Mock<any>).mockResolvedValue({
-        id: "user-123",
-        username: "testuser",
-        email: "test@example.com",
-        avatarUrl: "http://avatar.com",
-      });
+    test("should send verification code without creating the user", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
 
       const res = await request(app)
         .post("/api/v1/auth/signup")
@@ -121,30 +115,48 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
           avatarUrl: "http://avatar.com",
         });
 
-      expect(res.status).toBe(201);
-      expect(res.body.message).toBe("Registered successfully");
-      expect(res.body.user).toEqual({
-        id: "user-123",
-        username: "testuser",
-        email: "test@example.com",
-        avatarUrl: "http://avatar.com",
-      });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Verification code sent to your email. Complete signup by verifying your code.");
+      expect(res.body.email).toBe("test@example.com");
+      // No local user record created yet
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      // No auth token issued
       expect(res.headers["set-cookie"]?.some((cookie: string) => cookie.startsWith("token=")) ?? false).toBe(false);
+      // Email was queued
+      expect(sendQueuedEmail).toHaveBeenCalledTimes(1);
     });
 
-    test("should return 409 if email or username already exists", async () => {
-      (prisma.user.findFirst as jest.Mock<any>).mockResolvedValue({ id: "existing-id" });
+    test("should return 409 if email already exists", async () => {
+      (prisma.user.findUnique as jest.Mock<any>)
+        .mockResolvedValueOnce({ id: "existing-id" });
 
       const res = await request(app)
         .post("/api/v1/auth/signup")
         .send({
-          username: "existinguser",
+          username: "newuser",
           email: "existing@example.com",
           password: "password123",
         });
 
       expect(res.status).toBe(409);
-      expect(res.body.message).toBe("Username or email already exists");
+      expect(res.body.message).toBe("An account with this email already exists. Sign in instead.");
+    });
+
+    test("should return 409 if username is taken", async () => {
+      (prisma.user.findUnique as jest.Mock<any>)
+        .mockResolvedValueOnce(null)    // email check
+        .mockResolvedValueOnce({ id: "existing-id" }); // username check
+
+      const res = await request(app)
+        .post("/api/v1/auth/signup")
+        .send({
+          username: "existinguser",
+          email: "new@example.com",
+          password: "password123",
+        });
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toBe("That username is already taken. Try a different one.");
     });
   });
 
@@ -415,20 +427,31 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(createUserWithEmailAndPassword).not.toHaveBeenCalled();
     });
 
-    test("should return 409 when Firebase reports the email is already in use", async () => {
+    test("reconciles the account by creating a local row when Firebase reports the email is in use but local record is missing", async () => {
       isFirebaseConfigured.mockReturnValue(true);
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
       createUserWithEmailAndPassword.mockRejectedValue(
         Object.assign(new Error("email in use"), { code: "auth/email-already-in-use" })
       );
+      (prisma.user.create as jest.Mock<any>).mockResolvedValue({
+        id: "reconciled-id",
+        username: "takenuser",
+        email: "taken@example.com",
+        emailVerified: false,
+        avatarUrl: undefined,
+        role: "USER",
+      });
 
       const res = await request(app)
         .post("/api/v1/auth/firebase/signup")
         .send({ username: "takenuser", email: "taken@example.com", password: "password123" });
 
-      expect(res.status).toBe(409);
-      expect(res.body.message).toBe("An account with this email already exists. Sign in instead.");
-      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(res.status).toBe(201);
+      expect(res.body.message).toBe("Registered successfully");
+      // createUserWithEmailAndPassword was attempted but Firebase already knew about the user
+      expect(createUserWithEmailAndPassword).toHaveBeenCalledTimes(1);
+      // Local Prisma record was created to reconcile the mismatch
+      expect(prisma.user.create).toHaveBeenCalledTimes(1);
     });
 
     test("should return 503 when Firebase is not configured", async () => {
@@ -489,6 +512,32 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(res.body.message).toBe("Logged in successfully");
       expect(res.body.user.id).toBe("user-123");
       expect(signInWithEmailAndPassword).toHaveBeenCalledTimes(1);
+    });
+
+    test("auto-links a Firebase user that has no local record", async () => {
+      isFirebaseConfigured.mockReturnValue(true);
+      signInWithEmailAndPassword.mockResolvedValue({
+        user: { uid: "fb-uid-1", displayName: "FB User", photoURL: null, emailVerified: true },
+      });
+      // No local record found — should create one
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
+      (prisma.user.create as jest.Mock<any>).mockResolvedValue({
+        id: "new-local-id",
+        username: "fbuser",
+        email: "test@example.com",
+        emailVerified: true,
+        avatarUrl: undefined,
+        role: "USER",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/auth/firebase/signin")
+        .send({ email: "test@example.com", password: "password123" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("Logged in successfully");
+      expect(prisma.user.create).toHaveBeenCalledTimes(1);
+      expect(prisma.user.create.mock.calls[0][0].data.email).toBe("test@example.com");
     });
   });
 
@@ -703,6 +752,29 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("If an account with this email exists, a password reset link has been sent.");
+    });
+
+    test("falls back to request Origin when FRONTEND_URL is unset", async () => {
+      const saved = process.env.FRONTEND_URL;
+      delete process.env.FRONTEND_URL;
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+        id: "local-user",
+        email: "reset@example.com",
+        password: "existing-hash",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/auth/password-reset/request")
+        .set("Origin", "https://bracerce.devsharma.dev")
+        .send({ email: "Reset@Example.com" });
+
+      expect(res.status).toBe(200);
+      expect(sendQueuedEmail).toHaveBeenCalledTimes(1);
+      const email = sendQueuedEmail.mock.calls[0][0] as { text: string };
+      // Should derive frontend URL from the request Origin
+      expect(email.text).toContain("bracerce.devsharma.dev");
+
+      process.env.FRONTEND_URL = saved;
     });
   });
 
