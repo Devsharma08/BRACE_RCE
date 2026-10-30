@@ -38,10 +38,11 @@ jest.unstable_mockModule("../lib/firebase.js", () => ({
   getFirebaseAuth,
 }));
 
+const sendGmailEmail = jest.fn<(...args: any[]) => Promise<any>>();
 const sendQueuedEmail = jest.fn<(...args: any[]) => Promise<string>>();
 const mockEmailQueueAdd = jest.fn().mockResolvedValue({ id: "mock-job-id" });
 jest.unstable_mockModule("../lib/gmail.js", () => ({
-  sendGmailEmail: jest.fn(),
+  sendGmailEmail,
   sendQueuedEmail,
 }));
 jest.unstable_mockModule("../lib/queues.js", () => ({
@@ -51,13 +52,15 @@ jest.unstable_mockModule("../lib/queues.js", () => ({
 }));
 
 // Imported after the mock registrations above — see the note at the top.
+(globalThis as typeof globalThis & { jest?: typeof jest }).jest = jest;
 const { createApp } = await import("../app.js");
-const { setCached, getCached } = await import("../lib/cache.js");
+const { setCachedAsync, getCachedAsync } = await import("../lib/cache.js");
 
 // Mock Prisma user delegate methods directly
 (prisma.user.findFirst as any) = jest.fn();
 (prisma.user.findUnique as any) = jest.fn();
 (prisma.user.create as any) = jest.fn();
+(prisma.user.update as any) = jest.fn();
 
 // Mock Google OAuth2Client prototype method verifyIdToken
 jest.spyOn(OAuth2Client.prototype, "verifyIdToken").mockImplementation(async (options: any) => {
@@ -85,8 +88,13 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (prisma.user.findFirst as jest.Mock<any>).mockReset();
+    (prisma.user.findUnique as jest.Mock<any>).mockReset();
+    (prisma.user.create as jest.Mock<any>).mockReset();
+    (prisma.user.update as jest.Mock<any>).mockReset();
     // Firebase-off defaults: legacy bcrypt signup/signin paths stay covered.
     isFirebaseConfigured.mockReturnValue(false);
+    sendGmailEmail.mockResolvedValue({ messageId: "mock-message-id" });
     sendQueuedEmail.mockResolvedValue("test-job-id");
     createUserWithEmailAndPassword.mockResolvedValue({ user: { uid: "fb-new-uid" } });
     signInWithEmailAndPassword.mockRejectedValue(new Error("auth/invalid-credential"));
@@ -121,7 +129,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
         email: "test@example.com",
         avatarUrl: "http://avatar.com",
       });
-      expect(res.headers["set-cookie"]).toBeDefined();
+      expect(res.headers["set-cookie"]?.some((cookie: string) => cookie.startsWith("token=")) ?? false).toBe(false);
     });
 
     test("should return 409 if email or username already exists", async () => {
@@ -161,14 +169,14 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(res.headers["set-cookie"]).toBeDefined();
     });
 
-    test("should return 404 if user not found", async () => {
+    test("should return 401 if user not found", async () => {
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
 
       const res = await request(app)
         .post("/api/v1/auth/signin")
         .send({ email: "nonexistent@example.com", password: "password123" });
 
-       expect(res.status).toBe(404);
+       expect(res.status).toBe(401);
        expect(res.body.message).toBe("Invalid email or password");
      });
 
@@ -186,6 +194,23 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
        expect(res.status).toBe(401);
        expect(res.body.message).toBe("Invalid email or password");
+     });
+
+     test("requires email verification before password sign-in", async () => {
+       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+         id: "user-123",
+         email: "test@example.com",
+         emailVerified: false,
+         password: await bcrypt.hash("password123", 10),
+       });
+
+       const res = await request(app)
+         .post("/api/v1/auth/signin")
+         .send({ email: "test@example.com", password: "password123" });
+
+       expect(res.status).toBe(403);
+       expect(res.body.message).toMatch(/verify your email/i);
+       expect(res.headers["set-cookie"]).toBeUndefined();
      });
   });
 
@@ -334,6 +359,21 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
   });
 
   describe("POST /api/v1/auth/firebase/signup", () => {
+    test("returns JSON when a database query fails", async () => {
+      isFirebaseConfigured.mockReturnValue(true);
+      (prisma.user.findUnique as jest.Mock<any>).mockRejectedValue(
+        new Error('The column "User.emailVerified" does not exist in the current database.')
+      );
+
+      const res = await request(app)
+        .post("/api/v1/auth/firebase/signup")
+        .send({ username: "newuser", email: "new@example.com", password: "password123" });
+
+      expect(res.status).toBe(500);
+      expect(res.headers["content-type"]).toMatch(/application\/json/);
+      expect(res.body).toEqual({ status: "error", message: "Internal server error" });
+    });
+
     test("registers the account in Firebase and creates the local row", async () => {
       isFirebaseConfigured.mockReturnValue(true);
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue(null);
@@ -358,7 +398,8 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(createUserWithEmailAndPassword).toHaveBeenCalledTimes(1);
       // Email must be normalised before it reaches Firebase.
       expect(createUserWithEmailAndPassword.mock.calls[0][1]).toBe("fbuser@example.com");
-      expect(res.headers["set-cookie"]).toBeDefined();
+      expect(res.headers["set-cookie"]?.some((cookie: string) => cookie.startsWith("token=")) ?? false).toBe(false);
+      expect((prisma.user.create as jest.Mock<any>).mock.calls[0][0].data.emailVerified).toBe(false);
     });
 
     test("should return 409 when the local row already exists (no Firebase call)", async () => {
@@ -470,7 +511,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(mail.to).toBe("otp-send@example.com");
       expect(mail.text).toMatch(/verification code is: \d{6}/);
       // The code must be cached so /otp/verify can check it.
-      expect(getCached(`otp:otp-send@example.com`)).toBeDefined();
+      expect(await getCachedAsync(`otp:otp-send@example.com`)).toBeDefined();
     });
 
     test("should return 404 for an unknown email", async () => {
@@ -485,7 +526,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(sendQueuedEmail).not.toHaveBeenCalled();
     });
 
-    test("returns 500 and stores no code when delivery fails", async () => {
+    test("sends OTP directly through Gmail if the queue is unavailable", async () => {
       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
         id: "user-otp",
         username: "otpuser",
@@ -497,14 +538,31 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
         .post("/api/v1/auth/otp/send")
         .send({ email: "otp-fail@example.com" });
 
+      expect(res.status).toBe(200);
+      expect(sendGmailEmail).toHaveBeenCalledTimes(1);
+      expect(await getCachedAsync(`otp:otp-fail@example.com`)).toBeDefined();
+    });
+
+    test("clears the OTP if both queued and direct email delivery fail", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+        id: "user-otp",
+        email: "otp-fail@example.com",
+      });
+      sendQueuedEmail.mockRejectedValue(new Error("Queue unavailable"));
+      sendGmailEmail.mockRejectedValue(new Error("SMTP unavailable"));
+
+      const res = await request(app)
+        .post("/api/v1/auth/otp/send")
+        .send({ email: "otp-fail@example.com" });
+
       expect(res.status).toBe(500);
-      expect(getCached(`otp:otp-fail@example.com`)).toBeUndefined();
+      expect(await getCachedAsync(`otp:otp-fail@example.com`)).toBeUndefined();
     });
   });
 
   describe("POST /api/v1/auth/otp/verify", () => {
     test("issues a session for the matching code", async () => {
-      setCached(`otp:otp-verify@example.com`, {
+      await setCachedAsync(`otp:otp-verify@example.com`, {
         otp: "123456",
         expiresAt: Date.now() + 10 * 60 * 1000,
       }, 600);
@@ -513,6 +571,10 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
         username: "otpuser",
         email: "otp-verify@example.com",
         avatarUrl: "http://avatar.com",
+      });
+      (prisma.user.update as jest.Mock<any>).mockResolvedValue({
+        id: "user-otp",
+        emailVerified: true,
       });
 
       const res = await request(app)
@@ -524,12 +586,16 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
       expect(res.body.user.id).toBe("user-otp");
       expect(res.body.token).toBeUndefined();
       expect(res.headers["set-cookie"]).toBeDefined();
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user-otp" },
+        data: { emailVerified: true },
+      });
       // Codes are single-use.
-      expect(getCached(`otp:otp-verify@example.com`)).toBeUndefined();
+      expect(await getCachedAsync(`otp:otp-verify@example.com`)).toBeUndefined();
     });
 
     test("should return 401 for a wrong code without touching the user table", async () => {
-      setCached(`otp:otp-wrong@example.com`, {
+      await setCachedAsync(`otp:otp-wrong@example.com`, {
         otp: "123456",
         expiresAt: Date.now() + 10 * 60 * 1000,
       }, 600);
@@ -553,7 +619,7 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
     });
 
     test("should return 401 for an expired code", async () => {
-      setCached(`otp:otp-expired@example.com`, {
+      await setCachedAsync(`otp:otp-expired@example.com`, {
         otp: "123456",
         expiresAt: Date.now() - 1,
       }, 600);
@@ -564,19 +630,52 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
 
       expect(res.status).toBe(401);
       expect(res.body.message).toBe("Invalid or expired verification code");
-      expect(getCached(`otp:otp-expired@example.com`)).toBeUndefined();
+      expect(await getCachedAsync(`otp:otp-expired@example.com`)).toBeUndefined();
     });
   });
 
   describe("POST /api/v1/auth/password-reset/request", () => {
-    test("should return 503 when Firebase is not configured", async () => {
+    test("returns the generic response when no account exists and Firebase is not configured", async () => {
       const res = await request(app)
         .post("/api/v1/auth/password-reset/request")
         .send({ email: "reset@example.com" });
 
-      expect(res.status).toBe(503);
-      expect(res.body.message).toBe("Password reset is not configured on the server");
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe("If an account with this email exists, a password reset link has been sent.");
       expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+    });
+
+    test("sends a reset link for local password accounts", async () => {
+      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+        id: "local-user",
+        email: "reset@example.com",
+        password: "existing-hash",
+      });
+
+      const res = await request(app)
+        .post("/api/v1/auth/password-reset/request")
+        .set("Origin", "http://localhost:5173")
+        .send({ email: "Reset@Example.com" });
+
+      expect(res.status).toBe(200);
+      expect(sendQueuedEmail).toHaveBeenCalledTimes(1);
+      const email = sendQueuedEmail.mock.calls[0][0] as { text: string };
+      expect(email.text).toContain("http://localhost:5173/reset-password");
+      expect(email.text).toMatch(/oobCode=[\w-]+/);
+
+      const resetLink = email.text.match(/https?:\/\/\S+/)?.[0];
+      expect(resetLink).toBeDefined();
+      const token = new URL(resetLink!).searchParams.get("oobCode");
+      expect(token).toBeTruthy();
+
+      (prisma.user.update as jest.Mock<any>).mockResolvedValue({});
+      const confirmRes = await request(app)
+        .post("/api/v1/auth/password-reset/confirm")
+        .send({ oobCode: token, newPassword: "newpassword123" });
+
+      expect(confirmRes.status).toBe(200);
+      const updatedPassword = (prisma.user.update as jest.Mock<any>).mock.calls[0][0].data.password;
+      expect(await bcrypt.compare("newpassword123", updatedPassword)).toBe(true);
     });
 
     test("sends the Firebase reset email and returns a generic message", async () => {
@@ -608,12 +707,13 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
   });
 
   describe("POST /api/v1/auth/password-reset/confirm", () => {
-    test("should return 503 when Firebase is not configured", async () => {
+    test("rejects an unknown local reset code when Firebase is not configured", async () => {
       const res = await request(app)
         .post("/api/v1/auth/password-reset/confirm")
         .send({ oobCode: "code-123", newPassword: "newpassword123" });
 
-      expect(res.status).toBe(503);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("The reset link is invalid or has expired");
       expect(confirmPasswordReset).not.toHaveBeenCalled();
     });
 

@@ -69,11 +69,30 @@ neon projects create --name brace-rce-prod --region aws-us-east-1
 
 ### 1.3 Run Migrations
 ```bash
-# Local with production DATABASE_URL
-DATABASE_URL="postgresql://..." npx prisma migrate deploy
+# New databases:
+pnpm --prefix server exec prisma migrate deploy
 
 # Or use Neon's SQL Editor to run migration SQL
 ```
+
+For an existing database created before Prisma Migrate was introduced, first
+back it up and verify its schema matches the initial migration. A populated
+database with no `_prisma_migrations` history returns `P3005`; baseline its
+existing schema before applying pending migrations:
+
+```bash
+pnpm --prefix server exec prisma migrate resolve --applied 20261028104039_init_schema
+
+# Only if Message.data is already present in the database:
+pnpm --prefix server exec prisma migrate resolve --applied 20261028123558_add_message_data_field
+
+pnpm --prefix server exec prisma migrate deploy
+```
+
+Check `Message.data` in the Neon SQL Editor before marking its migration as
+applied. If the column is absent, skip that `migrate resolve` command so
+`migrate deploy` creates it. Never mark a migration as applied unless all its
+schema changes are already present.
 
 ### 1.4 Seed Production Data
 ```bash

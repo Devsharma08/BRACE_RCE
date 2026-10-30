@@ -100,6 +100,7 @@ All secrets managed via `.env` on EC2 and Vercel Dashboard:
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | EC2 `.env` + Vercel |
 | `FIREBASE_*` | EC2 `.env` |
 | `ALLOWED_ORIGINS` | EC2 `.env` (Vercel + EC2 domains) |
+| `FRONTEND_URL` | EC2 `.env` (frontend origin used for local-account password reset links) |
 | `SENTRY_DSN` | EC2 `.env` (optional) |
 | `PISTON_URL` | EC2 `.env` (internal `http://piston:2000`) |
  
@@ -144,11 +145,11 @@ All secrets managed via `.env` on EC2 and Vercel Dashboard:
 - **One-Shot Boots**: Hero boot and leaderboard stagger reveal animate once per browser-tab session (`src/utils/sessionBoot.ts`); hover glow effects stay live on return visits.
 - **Guarded Auth Routes**: Logged-in users visiting `/signin` / `/signup` are redirected to `/dashboard` (with skeleton while auth resolves).
 
-### 8. 🔐 Firebase Authentication Suite (New)
-- **Firebase-First Email/Password**: `POST /api/auth/firebase/signup` & `/firebase/signin` create & authenticate users against Firebase Auth, mirroring every user into the Prisma `User` table. When Firebase is not configured (missing env vars), `/auth/signup` & `/auth/login` transparently fall back to the **legacy bcrypt path**, so pre-Firebase accounts keep working unchanged.
-- **Email OTP Login**: `POST /auth/otp/send` emails a **6-digit code via Gmail SMTP** (10-minute TTL, single-use, resend supported) and `POST /auth/otp/verify` exchanges it for a full session. Existing accounts only — OTP is a sign-in method, not a signup path.
-- **Password Reset Flow**: `POST /auth/password-reset/request` triggers Firebase's reset email (anti-enumeration — always returns a generic success), and `POST /auth/password-reset/confirm` completes the reset from the emailed action code. The in-app UI lives at `/reset-password` (works when the Firebase email template's Action URL points at it; otherwise Firebase's hosted page completes the flow).
-- **Session Model**: JWT issued by the API, stored in an **httpOnly cookie** and also returned in the response body; `GET /auth/me` restores the session.
+### 8. 🔐 Authentication
+- **Email/Password Signup and Sign-in**: Signup uses Firebase Auth when configured and falls back to local bcrypt accounts otherwise. New accounts remain unverified until their emailed OTP is confirmed; password sign-in is blocked until then.
+- **Email OTP**: `POST /auth/otp/send` emails a **6-digit code** (10-minute TTL, single-use, resend supported) using Redis-backed storage, queued Gmail delivery, and direct-SMTP fallback. `POST /auth/otp/verify` verifies the address and starts the session. OTP also supports passwordless sign-in.
+- **Password Reset**: Firebase-backed accounts use Firebase reset emails; local bcrypt accounts use a hashed, 15-minute reset token delivered by Gmail. Both complete in the `/reset-password` UI.
+- **Session Model**: JWT is stored in an **httpOnly cookie**; `GET /auth/me` restores the session.
 - **Hardening**: All auth endpoints are Zod-validated and rate-limited (`AUTH_RATE_MAX`, default 25 requests / IP / 15 min).
 - **UI**: Three-view login card — password sign-in, one-time email code, and forgot-password — plus dedicated `/signup` and `/reset-password` pages (`src/features/auth/`).
 
@@ -204,12 +205,12 @@ All routes are mounted under both the versioned prefix **`/api/v1`** and the leg
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/auth/signup` | Sign up — Firebase-first, legacy bcrypt fallback when Firebase is unconfigured |
-| `POST` | `/api/auth/login` | Sign in — same dual-path behaviour as signup |
+| `POST` | `/api/auth/signin` | Sign in — same dual-path behaviour as signup |
 | `POST` | `/api/auth/firebase/signup` | Firebase-native email/password account creation (503 if Firebase env missing) |
 | `POST` | `/api/auth/firebase/signin` | Firebase-native email/password sign-in (bcrypt fallback for pre-Firebase accounts) |
-| `POST` | `/api/auth/otp/send` | Email a 6-digit login OTP via Gmail SMTP (existing accounts only) |
+| `POST` | `/api/auth/otp/send` | Email a 6-digit signup-verification or passwordless-login OTP |
 | `POST` | `/api/auth/otp/verify` | Verify the OTP (single-use, 10-min TTL) and start a session |
-| `POST` | `/api/auth/password-reset/request` | Send a Firebase password-reset email (always generic response — no account enumeration) |
+| `POST` | `/api/auth/password-reset/request` | Send an account-appropriate reset link (always generic response — no account enumeration) |
 | `POST` | `/api/auth/password-reset/confirm` | Complete a reset using the emailed action code (`oobCode`) |
 | `POST` | `/api/auth/google` | Start Google OAuth (ID-token flow) |
 | `POST` | `/api/auth/google/callback` | Complete the PKCE redirect flow |
@@ -264,7 +265,7 @@ BRACE_RCE/
 - **PostgreSQL** (Docker compose service, local install, or Neon for production)
 - **Piston** (optional, for code execution) — `piston/` ships a self-hosted instance; point `PISTON_URL` at it
 - **Compilers** for the Piston runtimes you enable: Node.js, Python 3, JDK, GCC, G++
-- *(Optional, for full auth flows)* a **Firebase project** with Email/Password sign-in enabled, and a **Gmail App Password** for OTP delivery
+- A **Gmail App Password** for OTP delivery and local-account password resets. Firebase is optional; when configured it backs email/password credentials and password resets.
 
 ### 1. Clone & Install
 ```bash
@@ -304,21 +305,22 @@ cp .env.example .env        # frontend
 | `SENTRY_DSN` | Sentry error reporting (optional) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth (ID-token flow needs only the ID; PKCE redirect flow needs the secret) |
 
-**Server — Firebase Authentication** (gates `/auth/firebase/*`, `/auth/otp/*`, `/auth/password-reset/*`)
+**Server — Firebase Authentication** (Firebase-backed email/password signup, sign-in, and password reset)
 
 | Variable | Purpose |
 | :--- | :--- |
-| `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | **Required.** Web-app config from Firebase Console → Project settings → Your apps. If any is missing, Firebase-only routes return 503 and signup/signin use the legacy bcrypt path |
+| `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | Web-app config from Firebase Console → Project settings → Your apps. If any is missing, signup/sign-in use local bcrypt accounts and password reset uses the app's Gmail-delivered link |
 | `FIREBASE_DATABASE_URL`, `FIREBASE_MEASUREMENT_ID` | Optional (Realtime DB / Analytics only) |
 
 Setup: create a project at [console.firebase.google.com](https://console.firebase.google.com) → Project settings → **Your apps (Web)** → copy the config values above → **Authentication → Sign-in method → enable Email/Password**. Optionally, to use the in-app reset page, set **Authentication → Templates → Password reset → Action URL** to your `/reset-password` route (e.g. `http://localhost:5173/reset-password`).
 
-**Server — Gmail SMTP (OTP email delivery)**
+**Server — Gmail SMTP (OTP and local password-reset email delivery)**
 
 | Variable | Purpose |
 | :--- | :--- |
 | `GMAIL_USER` | Gmail address used as SMTP login and the `From:` header |
 | `GMAIL_APP_PASSWORD` | 16-character **App Password** — enable 2-Step Verification on the Google account, then create one at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). Never use your normal Gmail password |
+| `FRONTEND_URL` | Frontend origin for local password-reset links (also set this when the frontend origin is not in `ALLOWED_ORIGINS`) |
 
 **Server — abuse controls**
 
@@ -347,6 +349,10 @@ pnpm seed                   # seed the problem bank (prisma/seed.ts)
 pnpm seed:learning-paths    # seed learning paths
 cd ..
 ```
+
+For an existing database with no Prisma migration history, see the safe
+`P3005` baseline procedure in [DEPLOYMENT_PLAN.md](./DEPLOYMENT_PLAN.md) before
+running `prisma migrate deploy`.
 
 ### 4. Launch Development Servers
 ```bash
@@ -392,7 +398,7 @@ pnpm problem:verify-exec              # end-to-end execution validation
  
 - `Dockerfile` + `docker-compose.yml` define the production stack (`app`, `postgres:16-alpine`, execution services).
 - Production runs the compiled server (`pnpm --prefix server build` → `pnpm --prefix server start`) with `NODE_MODE=production`, which loads `server/.env.production`.
-- Set `ALLOWED_ORIGINS` to your real frontend origins, use managed Postgres (e.g. Neon) `DATABASE_URL`/`DIRECT_URL`, and point the Firebase password-reset template Action URL at your deployed `/reset-password` route.
+- Set `ALLOWED_ORIGINS` and `FRONTEND_URL` to your frontend origin, use managed Postgres (e.g. Neon) `DATABASE_URL`/`DIRECT_URL`, apply Prisma migrations, and point the Firebase password-reset template Action URL at your deployed `/reset-password` route.
  
 ### Deploy Script (New EC2 Instance)
  

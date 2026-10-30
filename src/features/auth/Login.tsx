@@ -60,7 +60,13 @@ export const Login = () => {
       await checkAuth();
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed");
+      const message = err.response?.data?.message || "Login failed";
+      if (err.response?.status === 403 && message.toLowerCase().includes("verify your email")) {
+        switchView('otp');
+        setError("Verify your email with a one-time code before signing in.");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }

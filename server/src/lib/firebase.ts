@@ -7,7 +7,7 @@ import { getAuth } from 'firebase/auth';
  * server can start even when Firebase is not configured (in which case the
  * auth routes will respond with 503 until the variables are set).
  *
- * Required variables for email/OTP/password-reset flows:
+ * Required variables for Firebase-backed email/password and password-reset flows:
  *   FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID, FIREBASE_APP_ID
  */
 interface FirebaseConfig {
@@ -69,4 +69,3 @@ export function getFirebaseAuth(): import('firebase/auth').Auth {
   }
   return cachedAuth as import('firebase/auth').Auth;
 }
-

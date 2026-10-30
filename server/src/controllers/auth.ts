@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response } from "express";
+import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,9 +8,10 @@ import { getToken, JWT_SECRET } from "../lib/jwt.js";
 import type { AuthRequest } from "../middleware/authentication.js";
 import { OAuth2Client } from "google-auth-library";
 import { generateOtp } from "../lib/otp.js";
-import { sendGmailEmail, sendQueuedEmail } from "../lib/gmail.js";
+import { sendGmailEmail, sendQueuedEmail, type SendEmailOptions } from "../lib/gmail.js";
 import { isFirebaseConfigured, getFirebaseAuth } from "../lib/firebase.js";
-import { setCached, getCached, deleteCached } from "../lib/cache.js";
+import { consumeCachedAsync, deleteCachedAsync, setCachedAsync } from "../lib/cache.js";
+import { getAllowedOrigins } from "../lib/origins.js";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, confirmPasswordReset } from "firebase/auth";
 
 export class AuthController {
@@ -39,6 +41,15 @@ export class AuthController {
         return res.cookie("token", token, this.tokenCookieOptions())
     }
 
+    private async queueOrSendEmail(options: SendEmailOptions): Promise<void> {
+        try {
+            await sendQueuedEmail(options);
+        } catch (queueError) {
+            console.error("Email queue unavailable; sending directly through Gmail SMTP:", queueError);
+            await sendGmailEmail(options);
+        }
+    }
+
     private validateSignupBody(body: any) {
         const username = typeof body.username === "string" ? body.username.trim() : "";
         const email = (typeof body.email === "string" ? body.email.trim().toLowerCase() : "");
@@ -62,7 +73,7 @@ export class AuthController {
 
     /**
      * Send a single-use verification code to the user's email. The code is
-     * generated locally, stored in the in-memory cache with a 10-minute TTL, and
+     * generated locally, stored in Redis (with a process-local fallback) for 10 minutes, and
      * delivered through Gmail's SMTP server.
      */
     otpSend = async (req: Request, res: Response) => {
@@ -78,23 +89,23 @@ export class AuthController {
         try {
             otp = generateOtp();
             const key = `otp:${normalized}`;
-            deleteCached(key);
+            await deleteCachedAsync(key);
             storedOtp = { otp, expiresAt: Date.now() + 10 * 60 * 1000 };
-            setCached(key, storedOtp, 600);
+            await setCachedAsync(key, storedOtp, 600);
         } catch (err) {
             console.error("Error generating OTP:", err);
             return res.status(500).json({ message: "Could not generate a verification code" });
         }
 
         try {
-            await sendQueuedEmail({
+            await this.queueOrSendEmail({
                 to: normalized,
                 subject: "Your BRACE RCE login code",
                 text: `Your BRACE RCE verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
             });
         } catch (err) {
             console.error("Error queueing OTP email:", err);
-            deleteCached(`otp:${normalized}`);
+            await deleteCachedAsync(`otp:${normalized}`);
             return res.status(500).json({ message: "Could not queue the verification code. Please try again." });
         }
 
@@ -113,54 +124,98 @@ export class AuthController {
         }
         const normalized = email.trim().toLowerCase();
 
-        const stored: { otp: string; expiresAt: number } | undefined = getCached(`otp:${normalized}`);
+        const stored: { otp: string; expiresAt: number } | undefined = await consumeCachedAsync(`otp:${normalized}`);
         if (!stored || stored.otp !== otp || Date.now() > stored.expiresAt) {
-            deleteCached(`otp:${normalized}`);
             return res.status(401).json({ message: "Invalid or expired verification code" });
         }
-        deleteCached(`otp:${normalized}`);
 
         try {
-            // The OTP proves mailbox ownership for this email, so we issue our own
-            // session directly instead of attempting a Firebase password sign-in
-            // (the OTP is not a Firebase password).
             const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
             if (!prismaUser) {
                 return res.status(401).json({ message: "Invalid or expired verification code" });
             }
-            return this.sendAuthResponse(res, prismaUser, { uid: prismaUser.id }, normalized);
+            await prisma.user.update({
+                where: { id: prismaUser.id },
+                data: { emailVerified: true },
+            });
+            return this.sendAuthResponse(res, { ...prismaUser, emailVerified: true }, { uid: prismaUser.id }, normalized);
         } catch (err: any) {
             console.error("OTP sign-in error:", err);
-            return res.status(401).json({ message: "Invalid or expired verification code" });
+            return res.status(500).json({ message: "Could not verify the email address. Please try again." });
         }
     }
 
-    /** Request a Firebase password reset email (sent to the user's registered email). */
+    /** Request a password reset email without disclosing whether the account exists. */
     passwordResetRequest = async (req: Request, res: Response) => {
-        if (!isFirebaseConfigured()) return res.status(503).json({ message: "Password reset is not configured on the server" });
         const { email } = req.body;
         if (typeof email !== "string") return res.status(400).json({ message: "Email is required" });
         const normalized = email.trim().toLowerCase();
 
-        try {
-            await sendPasswordResetEmail(getFirebaseAuth(), normalized);
-        } catch (err: any) {
-            // Deliberately swallowed: reporting failures here would let an attacker
-            // distinguish registered from unregistered emails (account enumeration).
-            // The failure is visible server-side for operators to diagnose.
-            console.error("Password reset email error:", err);
+        const user = await prisma.user.findUnique({ where: { email: normalized } });
+        if (user?.password) {
+            let resetKey: string | undefined;
+            try {
+                const token = randomBytes(32).toString("base64url");
+                resetKey = `password-reset:${createHash("sha256").update(token).digest("hex")}`;
+                await setCachedAsync(resetKey, { userId: user.id }, 15 * 60);
+
+                const requestOrigin = req.get("origin");
+                const frontendUrl = process.env.FRONTEND_URL
+                    || (requestOrigin && getAllowedOrigins().includes(requestOrigin) ? requestOrigin : undefined);
+                if (!frontendUrl) {
+                    throw new Error("FRONTEND_URL is required to send password reset links");
+                }
+
+                const resetUrl = new URL("/reset-password", frontendUrl);
+                resetUrl.searchParams.set("oobCode", token);
+                resetUrl.searchParams.set("mode", "resetPassword");
+                await this.queueOrSendEmail({
+                    to: normalized,
+                    subject: "Reset your BRACE RCE password",
+                    text: `Use this link to reset your BRACE RCE password:\n\n${resetUrl.toString()}\n\nThis link expires in 15 minutes. If you did not request a reset, you can ignore this email.`,
+                });
+            } catch (err) {
+                console.error("Local password reset email error:", err);
+                if (resetKey) await deleteCachedAsync(resetKey);
+            }
+        } else if (isFirebaseConfigured()) {
+            try {
+                await sendPasswordResetEmail(getFirebaseAuth(), normalized);
+            } catch (err: any) {
+                // Always return the same response so account existence is not disclosed.
+                console.error("Firebase password reset email error:", err);
+            }
         }
 
-        // Always return the same response so the existence of the account cannot be inferred from this endpoint.
         res.status(200).json({ message: "If an account with this email exists, a password reset link has been sent." });
     }
 
-    /** Confirm the reset using the oobCode from the Firebase reset email. */
+    /** Confirm a local reset token or Firebase action code. */
     passwordResetConfirm = async (req: Request, res: Response) => {
-        if (!isFirebaseConfigured()) return res.status(503).json({ message: "Password reset is not configured on the server" });
         const { oobCode, newPassword } = req.body;
         if (typeof oobCode !== "string" || typeof newPassword !== "string") {
             return res.status(400).json({ message: "Oob code and new password are required" });
+        }
+
+        const resetKey = `password-reset:${createHash("sha256").update(oobCode).digest("hex")}`;
+        const reset = await consumeCachedAsync<{ userId: string }>(resetKey);
+        if (reset) {
+            try {
+                const password = await bcrypt.hash(newPassword, 10);
+                await prisma.user.update({
+                    where: { id: reset.userId },
+                    data: { password, updatedAt: new Date() },
+                });
+            } catch (err) {
+                console.error("Local password reset error:", err);
+                return res.status(500).json({ message: "Could not reset the password" });
+            }
+
+            return res.status(200).json({ message: "Password reset successful. You can now sign in with your new password." });
+        }
+
+        if (!isFirebaseConfigured()) {
+            return res.status(400).json({ message: "The reset link is invalid or has expired" });
         }
 
         try {
@@ -195,6 +250,10 @@ export class AuthController {
         if (existing) {
             return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
         }
+        const usernameExists = await prisma.user.findUnique({ where: { username: username.trim() } });
+        if (usernameExists) {
+            return res.status(409).json({ message: "That username is already taken. Try a different one." });
+        }
 
         try {
             await createUserWithEmailAndPassword(getFirebaseAuth(), normalized, password);
@@ -214,12 +273,12 @@ export class AuthController {
                     id: userId,
                     username: typeof username === "string" ? username.trim() : "",
                     email: normalized,
+                    emailVerified: false,
                     avatarUrl: typeof avatarUrl === "string" ? avatarUrl : undefined,
                     role: "USER",
                     updatedAt: new Date(),
                 },
             });
-            await this.setTokenCookie(res, userId);
             res.status(201).json({ message: "Registered successfully", user: { id: userId, username, avatarUrl: avatarUrl || undefined, email: normalized } });
         } catch (err: any) {
             console.error("Error creating local user record:", err);
@@ -253,6 +312,9 @@ export class AuthController {
                     // Firebase has the account but no local row — sync it.
                     return res.status(404).json({ message: "Account exists in Firebase but local record is missing. Contact support." });
                 }
+                if (prismaUser.emailVerified === false) {
+                    return res.status(403).json({ message: "Verify your email address with the code we sent before signing in." });
+                }
                 return this.sendAuthResponse(res, prismaUser, user, normalized);
             } catch (err: any) {
                 // Firebase rejected the credentials — fall through to the legacy
@@ -270,6 +332,9 @@ export class AuthController {
         try {
             const user = await prisma.user.findUnique({ where: { email: normalized } });
             if (!user) return res.status(401).json({ message: "Invalid email or password" });
+            if (user.emailVerified === false) {
+                return res.status(403).json({ message: "Verify your email address with the code we sent before signing in." });
+            }
             const validPassword = await bcrypt.compare(password, user.password || "");
             if (!validPassword) return res.status(401).json({ message: "Invalid email or password" });
             await this.setTokenCookie(res, user.id);
@@ -321,10 +386,10 @@ export class AuthController {
                     email,
                     avatarUrl: typeof req.body.avatarUrl === "string" ? req.body.avatarUrl : undefined,
                     password: hashedpassword,
+                    emailVerified: false,
                     updatedAt: new Date()
                 }
             })
-            await this.setTokenCookie(res, newUser.id);
             res.status(201).json({ message: "Registered successfully", user: { id: newUser.id, username: newUser.username, avatarUrl: newUser.avatarUrl, email: newUser.email } });
         } catch (error) {
             console.error("Error in signup:", error);
@@ -419,6 +484,7 @@ export class AuthController {
                 data: {
                     id: uuidv4(),
                     email,
+                    emailVerified: true,
                     avatarUrl: payload.picture || `https://api.dicebear.com/9.x/avataaars/svg?seed=${uniqueUsername}`,
                     username: uniqueUsername,
                     updatedAt: new Date()

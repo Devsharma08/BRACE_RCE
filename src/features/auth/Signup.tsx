@@ -66,12 +66,19 @@ export const Signup = () => {
         password,
         avatarUrl: getInitialsAvatar(username)
       });
-      // Send OTP for email verification
-      await api.post(`/auth/otp/send`, { email });
+      // Keep the verification form available even if mail delivery needs a retry.
       setOtpSent(true);
-      setLoading(false);
+      setOtpError('');
+      setOtpInfo('');
+      try {
+        await api.post(`/auth/otp/send`, { email });
+        setOtpInfo(`A verification code was sent to ${email}.`);
+      } catch (err: any) {
+        setOtpError(err.response?.data?.message || "Account created, but the code could not be sent. Please try resending it.");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed");
+    } finally {
       setLoading(false);
     }
   };
@@ -87,7 +94,7 @@ export const Signup = () => {
       setOtpError('');
       setOtpInfo('');
       await api.post(`/auth/otp/verify`, { email, otp: otpCode });
-      // OTP verified, user is logged in
+      await checkAuth();
       navigate('/');
     } catch (err: any) {
       setOtpError(err.response?.data?.message || "Invalid or expired code");
@@ -112,8 +119,9 @@ const handleGoogleClick = () => {
           <input
             type="text"
             value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value)}
+            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
             maxLength={6}
+            inputMode="numeric"
             className="w-full pl-10 pr-4 py-3 border-2 border-subtle-line/50 bg-raised/50 rounded font-mono tracking-[0.4em] text-fg transition-all placeholder:text-muted focus:outline-none focus:border-accent focus:bg-raised focus:shadow-[0_0_0_2px_rgba(0,212,255,0.2)]"
             placeholder="123456"
             required
@@ -151,8 +159,8 @@ const handleGoogleClick = () => {
               await api.post(`/auth/otp/send`, { email });
               setOtpError("");
               setOtpInfo("Code resent — check your inbox.");
-            } catch {
-              setOtpError("Could not resend the code. Try again.");
+            } catch (err: any) {
+              setOtpError(err.response?.data?.message || "Could not resend the code. Try again.");
             }
           }}
           disabled={otpLoading}

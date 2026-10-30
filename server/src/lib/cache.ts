@@ -29,7 +29,7 @@ export async function getCachedAsync<T>(key: string): Promise<T | undefined> {
     const client = getRedisClient();
     try {
       const raw = await client.get(key);
-      return raw ? (JSON.parse(raw) as T) : undefined;
+      if (raw) return JSON.parse(raw) as T;
     } catch {
       // Fall through to memory cache
     }
@@ -37,17 +37,50 @@ export async function getCachedAsync<T>(key: string): Promise<T | undefined> {
   return cache.get<T>(key);
 }
 
+export async function consumeCachedAsync<T>(key: string): Promise<T | undefined> {
+  if (await tryRedis()) {
+    const client = getRedisClient();
+    try {
+      const raw = await client.getDel(key);
+      if (raw) {
+        cache.del(key);
+        return JSON.parse(raw) as T;
+      }
+    } catch {
+      // Fall through to the process-local cache.
+    }
+  }
+  const value = cache.get<T>(key);
+  cache.del(key);
+  return value;
+}
+
 export async function setCachedAsync<T>(key: string, value: T, ttlSeconds = 300): Promise<void> {
   if (await tryRedis()) {
     const client = getRedisClient();
     try {
       await client.set(key, JSON.stringify(value), { EX: ttlSeconds });
+      cache.del(key);
       return;
     } catch {
       // Fall through to memory cache
     }
   }
   cache.set(key, value, ttlSeconds);
+}
+
+export async function deleteCachedAsync(key: string): Promise<void> {
+  if (await tryRedis()) {
+    const client = getRedisClient();
+    try {
+      await client.del(key);
+      cache.del(key);
+      return;
+    } catch {
+      // Fall through to the process-local cache.
+    }
+  }
+  cache.del(key);
 }
 
 export function getCached<T>(key: string): T | undefined {

@@ -300,5 +300,20 @@ app.use(`${API_PREFIX}/matchmaking`, matchmakingRouter);
     app.use(sentryErrorHandler());
   }
 
+  // Keep uncaught API failures in the same JSON shape as handled errors rather
+  // than exposing Express' default HTML stack trace to API clients.
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(err);
+
+    logger.error(
+      { err: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err) },
+      "Unhandled API error"
+    );
+    return res.status(500).json({
+      status: "error",
+      message: "Internal server error",
+    });
+  });
+
   return app;
 };
