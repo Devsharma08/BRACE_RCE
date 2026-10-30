@@ -23,7 +23,14 @@ function createClient(): PrismaClient {
     throw new Error("DIRECT_URL or DATABASE_URL must be configured before Prisma starts.");
   }
 
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({
+    connectionString,
+    max: 20,
+    min: 2,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+    maxUses: 7500,
+  });
   const adapter = new PrismaPg(pool);
 
   return new PrismaClient({

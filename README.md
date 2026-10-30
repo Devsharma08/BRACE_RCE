@@ -294,6 +294,8 @@ cp .env.example .env        # frontend
 
 **Server — core variables** (`server/.env.example` has the full commented list)
 
+The server loads `server/.env` as defaults, then overlays `server/.env.development` or `server/.env.production` according to `NODE_MODE`. Put shared credentials in `.env`, or provide them in the mode-specific file to override the defaults.
+
 | Variable | Purpose |
 | :--- | :--- |
 | `PORT` | API port (dev default `3000`) |

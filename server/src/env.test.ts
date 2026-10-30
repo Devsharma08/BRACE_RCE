@@ -1,5 +1,6 @@
 import { jest } from "@jest/globals";
 import dotenv from "dotenv";
+import { resolve } from "path";
 
 describe("env.ts module", () => {
   let warnSpy: any;
@@ -51,5 +52,20 @@ describe("env.ts module", () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining("Environment variable GITHUB_KEY appears to be a placeholder value")
     );
+  });
+
+  it("loads the base env file before the mode-specific overrides", async () => {
+    process.env.NODE_MODE = "development";
+
+    await import(`./env.js?test=overrides-${Date.now()}`);
+
+    expect(dotenvSpy).toHaveBeenNthCalledWith(1, {
+      path: resolve(process.cwd(), ".env"),
+      override: false,
+    });
+    expect(dotenvSpy).toHaveBeenNthCalledWith(2, {
+      path: resolve(process.cwd(), ".env.development"),
+      override: true,
+    });
   });
 });

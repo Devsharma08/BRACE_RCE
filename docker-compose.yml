@@ -22,8 +22,8 @@ services:
       - PORT=5000
       - NODE_ENV=${NODE_ENV:-production}
       - NODE_MODE=${NODE_MODE:-production}
-      - DATABASE_URL=${DATABASE_URL}
-      - DIRECT_URL=${DIRECT_URL}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://brace_user:brace_password@postgres:5432/brace_rce}
+      - DIRECT_URL=${DIRECT_URL:-postgresql://brace_user:brace_password@postgres:5432/brace_rce}
       - GITHUB_KEY=${GITHUB_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
@@ -72,6 +72,25 @@ services:
         sleep 12h & wait $$!;
       done;"
 
+  # PostgreSQL Database (self-hosted, containerized for self-contained deployments)
+  # EC2 production already runs PostgreSQL on port 5432; omit this service there
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-brace_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brace_password}
+      POSTGRES_DB: ${POSTGRES_DB:-brace_rce}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brace_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # Redis — caching, BullMQ job queue, Socket.io adapter backing store
   redis:
     image: redis:7-alpine
@@ -92,3 +111,6 @@ services:
     command: ["sh", "-c", "mkdir -p /piston && cd /sys/fs/cgroup && mkdir -p isolate/init && echo 1 > isolate/cgroup.procs && echo '+cpuset +cpu +io +memory +pids' > cgroup.subtree_control && cd isolate && echo 1 > init/cgroup.procs && echo '+cpuset +memory' > cgroup.subtree_control && echo 'Initialized cgroup' && chown -R piston:piston /piston_api /piston && exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'"]
     volumes:
       - ./piston/data/piston/packages:/piston/packages
+
+volumes:
+  postgres_data:

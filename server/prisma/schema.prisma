@@ -39,6 +39,10 @@ model User {
   problemProgress      UserProblemProgress[]
   User_A               User[]                    @relation("UserFriends")
   User_B               User[]                    @relation("UserFriends")
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
 }
 
 model FriendRequest {
@@ -74,6 +78,11 @@ model Problem {
   test_cases         TestCase[]
   userProgress       UserProblemProgress[]
   events             Event[]               @relation("EventProblems")
+
+  @@index([difficulty_level])
+  @@index([problem_number])
+  @@index([data_structure])
+  @@index([createdAt])
 }
 
 model TestCase {
@@ -83,6 +92,9 @@ model TestCase {
   is_public      Boolean @default(true)
   problemId      String
   problem        Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([is_public])
 }
 
 model CodeSnippet {
@@ -92,6 +104,9 @@ model CodeSnippet {
   wrapperCode String?
   problemId   String
   problem     Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([language])
 }
 
 model Event {
@@ -122,6 +137,14 @@ model Event {
   subscribers      TemplateSubscription[]
   performances     UserPersonalPerformance[]
   problems         Problem[]                 @relation("EventProblems")
+
+  @@index([status])
+  @@index([type])
+  @@index([isPublic])
+  @@index([roomCode])
+  @@index([hostId])
+  @@index([createdAt])
+  @@index([startedAt, finishedAt])
 }
 
 model UserPersonalPerformance {
@@ -144,6 +167,10 @@ model UserPersonalPerformance {
 
   @@index([userId])
   @@index([eventId])
+  @@index([status])
+  @@index([outcome])
+  @@index([eventId, status])
+  @@index([userId, createdAt])
 }
 
 model EventBlock {
@@ -286,6 +313,8 @@ model UserProblemProgress {
   @@unique([userId, problemId])
   @@index([userId])
   @@index([problemId])
+  @@index([isSolved])
+  @@index([userId, isSolved])
 }
 
 model LearningItem {
@@ -319,6 +348,8 @@ model UserLearningProgress {
   @@unique([userId, learningItemId])
   @@index([userId])
   @@index([learningItemId])
+  @@index([progressStatus])
+  @@index([userId, progressStatus])
 }
 
 model UserLearningSummary {

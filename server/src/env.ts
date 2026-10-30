@@ -1,19 +1,23 @@
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 
+const baseEnvPath = resolve(process.cwd(), '.env');
 const envPath = resolve(process.cwd(), process.env.NODE_MODE === 'production' ? '.env.production' : '.env.development');
+const baseResult = dotenv.config({
+    path: baseEnvPath,
+    override: false
+});
 const result = dotenv.config({
     path: envPath,
     override: true
 });
 
 if (result.error) {
-    const fallbackPath = resolve(process.cwd(), '.env');
-    dotenv.config({
-        path: fallbackPath,
-        override: false
-    });
-    console.warn(`Could not load ${envPath}. Falling back to ${fallbackPath}.`);
+    if (baseResult.error) {
+        console.warn(`Could not load ${envPath}. Falling back to ${baseEnvPath}.`);
+    } else {
+        console.warn(`Could not load ${envPath}. Using ${baseEnvPath}.`);
+    }
 }
 
 const requiredEnv = ['DIRECT_URL', 'DATABASE_URL', 'GITHUB_KEY'];
