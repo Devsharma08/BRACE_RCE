@@ -1,0 +1,61 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SSH deploy and restart
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: 3.142.197.207
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd /opt/brace
+            
+            echo "=== Pulling latest changes ==="
+            git fetch --all
+            git reset --hard origin/main
+            git clean -fd
+            
+            echo "=== Applying database migrations ==="
+            APP_CONTAINER=$(docker ps -q -f name=brace_rce-app-1 2>/dev/null || docker ps -q -f name=app 2>/dev/null || echo "")
+            if [ -n "$APP_CONTAINER" ]; then
+              docker exec "$APP_CONTAINER" sh -c "cd /app/server && npx prisma generate" 2>&1
+              docker exec "$APP_CONTAINER" sh -c "cd /app/server && npx prisma db push" 2>&1 || true
+            fi
+            
+            echo "=== Building Docker image ==="
+            docker build -t brace-app:latest .
+            
+            echo "=== Restarting services ==="
+            docker compose down app 2>/dev/null || docker-compose down app 2>/dev/null || true
+            docker compose up -d app 2>/dev/null || docker-compose up -d app
+            
+            echo "=== Restarting nginx ==="
+            docker compose restart nginx 2>/dev/null || docker-compose restart nginx 2>/dev/null || true
+            
+            echo "=== Deployment complete ==="
