@@ -8,7 +8,6 @@ import { startRoomScheduler } from "./jobs/roomScheduler.js";
 import { prisma } from "./lib/prisma.js";
 import { initTracing } from "./lib/tracing.js";
 import { initSentry, flushSentry } from "./lib/sentry.js";
-import { startAllWorkers, stopAllWorkers } from "./lib/queue.js";
 import { closeRedisClient } from "./lib/redis.js";
 
 // Initialize observability early - only in production or when collector is configured
@@ -51,8 +50,10 @@ await initSocketServer(io);
 // Room scheduling worker (scheduled opens / T-5min warnings / auto-close)
 startRoomScheduler(io);
 
-// Start BullMQ queue workers (code execution, email, notifications)
-const workers = await startAllWorkers();
+// NOTE: Queue workers (code-execution, emails, notifications) are started by
+// the separate `queueWorker.js` PM2 process. Starting them here too would
+// create duplicate workers that compete for the same jobs and can cause
+// email/SMTP delivery to hang or duplicate.
 
 // ── Metrics: poll queue sizes every 10s ──
 import { codeExecutionQueueSize, emailQueueSize, notificationQueueSize } from "./lib/metrics.js";
@@ -114,14 +115,6 @@ httpServer.listen(port, () => {
 // Graceful shutdown
 const shutdown = async (signal: string) => {
   console.log(`[server] Received ${signal}, shutting down gracefully...`);
-
-  // Stop queue workers
-  try {
-    await stopAllWorkers(workers);
-    console.log('[server] Queue workers stopped');
-  } catch (e) {
-    console.error('[server] Error stopping workers:', e);
-  }
 
   // Close socket.io
   io.close(() => {

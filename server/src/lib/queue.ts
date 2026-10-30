@@ -1,14 +1,7 @@
 import { Worker, type Worker as WorkerType, type Processor, type Job } from "bullmq";
-import { createClient } from "redis";
 import { logger } from "./logger.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-
-function createRedisClient() {
-  const client = createClient({ url: REDIS_URL });
-  client.on("error", (err: Error) => logger.error(`Redis client error: ${err.message}`));
-  return client;
-}
 
 export function createQueueWorker<TJobData = unknown, TReturn = unknown>(
   name: string,
@@ -16,7 +9,7 @@ export function createQueueWorker<TJobData = unknown, TReturn = unknown>(
   concurrency: number
 ): WorkerType<TJobData, TReturn> {
   const worker = new Worker<TJobData, TReturn>(name, processor, {
-    connection: createRedisClient() as any,
+    connection: { url: REDIS_URL },
     concurrency,
     removeOnComplete: { age: 3600 },
     removeOnFail: { age: 86400 },

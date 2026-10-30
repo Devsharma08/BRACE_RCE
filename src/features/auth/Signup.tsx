@@ -60,24 +60,28 @@ export const Signup = () => {
     try {
       setLoading(true);
       setError('');
+      setOtpSent(true);
+      setOtpError('');
+      setOtpInfo('');
+      setOtpCode('');
       await api.post(`/auth/signup`, {
         username,
         email,
         password,
         avatarUrl: getInitialsAvatar(username)
       });
-      // Keep the verification form available even if mail delivery needs a retry.
-      setOtpSent(true);
-      setOtpError('');
-      setOtpInfo('');
-      try {
-        await api.post(`/auth/otp/send`, { email });
-        setOtpInfo(`A verification code was sent to ${email}.`);
-      } catch (err: any) {
-        setOtpError(err.response?.data?.message || "Account created, but the code could not be sent. Please try resending it.");
-      }
+      // Signup endpoint now sends the OTP email internally; no need for a
+      // separate /auth/otp/send call.
+      setOtpInfo(`A verification code was sent to ${email}.`);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Registration failed");
+      const msg = err.response?.data?.message || "Registration failed";
+      if (msg.toLowerCase().includes('already exists') || msg.toLowerCase().includes('taken')) {
+        setError(msg);
+      } else {
+        // On any error, still show the OTP field so the user can retry
+        setOtpSent(true);
+        setOtpError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -148,27 +152,41 @@ const handleGoogleClick = () => {
       >
         {otpLoading ? "Verifying..." : "Verify"} {!otpLoading && <ArrowRight size={18} />}
       </button>
-      <div className="mt-4 text-center text-sm text-subtle">
-        <button
-          type="button"
-          onClick={async () => {
-            // Local info state instead of the removed toast (the old
-            // `toast.success` referenced an undefined `toast` and crashed
-            // this button at runtime).
-            try {
-              await api.post(`/auth/otp/send`, { email });
-              setOtpError("");
-              setOtpInfo("Code resent — check your inbox.");
-            } catch (err: any) {
-              setOtpError(err.response?.data?.message || "Could not resend the code. Try again.");
-            }
-          }}
-          disabled={otpLoading}
-          className="text-accent hover:underline"
-        >
-          Resend code
-        </button>
-      </div>
+          <div className="mt-4 text-center text-sm text-subtle">
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await api.post(`/auth/otp/send`, { email });
+                  setOtpError("");
+                  setOtpInfo("Code resent — check your inbox.");
+                } catch (err: any) {
+                  // otp/send returns 404 for non-existent users during signup;
+                  // in that case, trigger a fresh signup attempt via the signup
+                  // endpoint which will generate a new OTP.
+                  const msg = err.response?.data?.message;
+                  if (err.response?.status === 404 || msg?.includes('No account')) {
+                    try {
+                      await api.post(`/auth/signup`, {
+                        username, email, password,
+                        avatarUrl: getInitialsAvatar(username)
+                      });
+                      setOtpError("");
+                      setOtpInfo("Code resent — check your inbox.");
+                    } catch (resendErr: any) {
+                      setOtpError(resendErr.response?.data?.message || "Could not resend the code. Try again.");
+                    }
+                  } else {
+                    setOtpError(msg || "Could not resend the code. Try again.");
+                  }
+                }
+              }}
+              disabled={otpLoading}
+              className="text-accent hover:underline"
+            >
+              Resend code
+            </button>
+          </div>
     </form>
   ) : (
     <form onSubmit={handleSignup} className="space-y-5">

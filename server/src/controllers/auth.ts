@@ -113,9 +113,20 @@ export class AuthController {
     }
 
     /**
-     * Verify an OTP that was previously emailed via /otp/send. On success the
-     * user is authenticated and issued the same session cookie + JWT used by the
-     * legacy /signin route, so OTP login is a drop-in replacement.
+     * Verify an OTP that was previously emailed via /otp/send.
+     *
+     * Two flows are supported:
+     *
+     * 1. **Post-signup verification** — The user submitted /signup but the
+     *    account was not yet created. Pending signup data (username, email,
+     *    password, avatarUrl) was stored in Redis under `pending-signup:<email>`.
+     *    On OTP success we create the Firebase account + local Prisma record,
+     *    mark `emailVerified: true`, and return an auth token.
+     *
+     * 2. **Login OTP flow** — The user already has an account but needs a
+     *    one-time login code (resend of the verification email). The user is
+     *    looked up by email, `emailVerified` is set to `true` if still false,
+     *    and an auth token is issued.
      */
     otpVerify = async (req: Request, res: Response) => {
         const { email, otp } = req.body;
@@ -129,18 +140,84 @@ export class AuthController {
             return res.status(401).json({ message: "Invalid or expired verification code" });
         }
 
+        // Clean up OTP keys regardless of which flow succeeds
+        const cleanup = async () => {
+            await deleteCachedAsync(`otp:${normalized}`);
+            await deleteCachedAsync(`pending-signup:${normalized}`);
+        };
+
         try {
-            const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
-            if (!prismaUser) {
+            // --- Flow 1: New signup verification ---
+            const pending = await consumeCachedAsync<{
+                username: string;
+                email: string;
+                password: string;
+                avatarUrl?: string;
+                createdAt: number;
+            }>(`pending-signup:${normalized}`);
+
+            if (pending) {
+                // Check username isn't taken (race condition safety)
+                const usernameTaken = await prisma.user.findUnique({ where: { username: pending.username } });
+                if (usernameTaken) {
+                    return res.status(409).json({ message: "That username is already taken. Try a different one." });
+                }
+
+                let userId: string;
+                let avatarUrl = pending.avatarUrl;
+
+                if (isFirebaseConfigured()) {
+                    try {
+                        await createUserWithEmailAndPassword(getFirebaseAuth(), normalized, pending.password);
+                    } catch (err: any) {
+                        if (err.code === "auth/email-already-in-use") {
+                            await cleanup();
+                            return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
+                        }
+                        console.error("Firebase signup error during OTP verify:", err);
+                        await cleanup();
+                        return res.status(400).json({ message: this.firebaseErrorMessage(err) });
+                    }
+                }
+
+                // Create the local Prisma user record with emailVerified: true
+                userId = uuidv4();
+                const newUser = await prisma.user.create({
+                    data: {
+                        id: userId,
+                        username: pending.username,
+                        email: normalized,
+                        emailVerified: true,
+                        avatarUrl,
+                        role: "USER",
+                        updatedAt: new Date(),
+                    },
+                });
+
+                await cleanup();
+                return this.sendAuthResponse(res, newUser, { uid: userId }, normalized);
+            }
+
+            // --- Flow 2: Existing user OTP login ---
+            const existingUser = await prisma.user.findUnique({ where: { email: normalized } });
+            if (!existingUser) {
                 return res.status(401).json({ message: "Invalid or expired verification code" });
             }
+
             await prisma.user.update({
-                where: { id: prismaUser.id },
+                where: { id: existingUser.id },
                 data: { emailVerified: true },
             });
-            return this.sendAuthResponse(res, { ...prismaUser, emailVerified: true }, { uid: prismaUser.id }, normalized);
+
+            await cleanup();
+            return this.sendAuthResponse(res, existingUser, { uid: existingUser.id }, normalized);
         } catch (err: any) {
-            console.error("OTP sign-in error:", err);
+            console.error("OTP verify error:", err);
+            // Clean up on error to prevent stale data
+            if (err.code === "P2002") {
+                const field = (err.meta?.target as string[])?.[0] ?? "field";
+                return res.status(409).json({ message: `That ${field} is already taken. Try a different one.` });
+            }
             return res.status(500).json({ message: "Could not verify the email address. Please try again." });
         }
     }
@@ -356,45 +433,80 @@ export class AuthController {
         }
     }
 
-    signup = async (req: Request, res: Response) => {
+    /**
+     * Signup flow with deferred account creation.
+     *
+     * Instead of creating the user account immediately (which leaves orphaned,
+     * unverifiable accounts if the OTP email fails to send), this flow:
+     *   1. Validates the request body
+     *   2. Checks for existing accounts (email or username conflicts)
+     *   3. Generates an OTP and stores the pending signup data in Redis
+     *   4. Sends the OTP email
+     *   5. Returns 200 — the user is NOT created yet
+     *
+     * Account creation happens in `otpVerify` after the OTP is confirmed.
+     */
+     signup = async (req: Request, res: Response) => {
         const { username, email, password, errors } = this.validateSignupBody(req.body);
+        const avatarUrl = typeof req.body.avatarUrl === "string" ? req.body.avatarUrl : undefined;
 
         if (errors.length > 0) {
             return res.status(400).json({ message: errors.join(", ") });
         }
 
-        // Prefer Firebase so all new accounts live in Firebase Auth. When Firebase
-        // is not configured (self-hosted/dev setups) fall back to the legacy bcrypt
-        // path so signup keeps working exactly as before.
-        if (isFirebaseConfigured()) {
-            return this.firebaseSignup(req, res);
+        const normalized = email.trim().toLowerCase();
+
+        // Check for existing accounts — reject early so we don't queue an email
+        // for an address that can't be used.
+        const existing = await prisma.user.findUnique({ where: { email: normalized } });
+        if (existing) {
+            return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
         }
+        const usernameExists = await prisma.user.findUnique({ where: { username: username.trim() } });
+        if (usernameExists) {
+            return res.status(409).json({ message: "That username is already taken. Try a different one." });
+        }
+
+        // Generate and store OTP + pending signup data
+        const otp = generateOtp();
+        const pendingKey = `pending-signup:${normalized}`;
+        const otpKey = `otp:${normalized}`;
 
         try {
-            const existingUser = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } })
-            if (existingUser) {
-                return res.status(409).json({ message: "Username or email already exists" })
-            }
+            await deleteCachedAsync(otpKey);
+            await deleteCachedAsync(pendingKey);
 
-            const salt = await bcrypt.genSalt(10);
-            const hashedpassword = await bcrypt.hash(password, salt);
-            const userId = uuidv4();
-            const newUser = await prisma.user.create({
-                data: {
-                    id: userId,
-                    username,
-                    email,
-                    avatarUrl: typeof req.body.avatarUrl === "string" ? req.body.avatarUrl : undefined,
-                    password: hashedpassword,
-                    emailVerified: false,
-                    updatedAt: new Date()
-                }
-            })
-            res.status(201).json({ message: "Registered successfully", user: { id: newUser.id, username: newUser.username, avatarUrl: newUser.avatarUrl, email: newUser.email } });
-        } catch (error) {
-            console.error("Error in signup:", error);
-            return res.status(500).json({ message: "Something went wrong during registration" })
+            await setCachedAsync(otpKey, { otp, expiresAt: Date.now() + 10 * 60 * 1000 }, 600);
+            await setCachedAsync(pendingKey, {
+                username: username.trim(),
+                email: normalized,
+                password,
+                avatarUrl: typeof avatarUrl === "string" ? avatarUrl : undefined,
+                createdAt: Date.now(),
+            }, 600);
+        } catch (err) {
+            console.error("Error generating OTP:", err);
+            return res.status(500).json({ message: "Could not generate a verification code" });
         }
+
+        // Send the OTP email (prefer queue, fall back to direct SMTP)
+        try {
+            await this.queueOrSendEmail({
+                to: normalized,
+                subject: "Your BRACE RCE verification code",
+                text: `Your BRACE RCE verification code is: ${otp}\n\nThis code expires in 10 minutes.`,
+            });
+        } catch (err) {
+            console.error("Error sending OTP email:", err);
+            await deleteCachedAsync(otpKey);
+            await deleteCachedAsync(pendingKey);
+            return res.status(500).json({ message: "Could not send the verification code. Please try again." });
+        }
+
+        res.status(200).json({
+            message: "Verification code sent to your email. Complete signup by verifying your code.",
+            email: normalized,
+        });
     }
 
     signout = async (req: Request, res: Response) => {
