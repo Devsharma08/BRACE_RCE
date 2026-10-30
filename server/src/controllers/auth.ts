@@ -186,7 +186,7 @@ export class AuthController {
         if (!isFirebaseConfigured()) return res.status(503).json({ message: "Email registration is not configured on the server" });
         const { username, email, password, avatarUrl } = req.body;
         const { errors } = this.validateSignupBody(req.body);
-        if (errors.length > 0) return res.status(400).json({ message: errors[0] });
+        if (errors.length > 0) return res.status(400).json({ message: errors.join(", ") });
 
         const normalized = typeof email === "string" ? email.trim().toLowerCase() : "";
 
@@ -202,8 +202,9 @@ export class AuthController {
             if (err.code === "auth/email-already-in-use") {
                 return res.status(409).json({ message: "An account with this email already exists. Sign in instead." });
             }
+            const fbMsg = this.firebaseErrorMessage(err);
             console.error("Firebase signup error:", err);
-            return res.status(500).json({ message: "Something went wrong during registration" });
+            return res.status(400).json({ message: fbMsg });
         }
 
         try {
@@ -211,7 +212,7 @@ export class AuthController {
             await prisma.user.create({
                 data: {
                     id: userId,
-                    username,
+                    username: typeof username === "string" ? username.trim() : "",
                     email: normalized,
                     avatarUrl: typeof avatarUrl === "string" ? avatarUrl : undefined,
                     role: "USER",
@@ -220,8 +221,14 @@ export class AuthController {
             });
             await this.setTokenCookie(res, userId);
             res.status(201).json({ message: "Registered successfully", user: { id: userId, username, avatarUrl: avatarUrl || undefined, email: normalized } });
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error creating local user record:", err);
+            // If the Prisma create fails due to a unique constraint violation
+            // (e.g., username taken but email wasn't), report it clearly.
+            if (err.code === "P2002") {
+                const field = (err.meta?.target as string[])?.[0] ?? "field";
+                return res.status(409).json({ message: `That ${field} is already taken. Try a different one.` });
+            }
             return res.status(500).json({ message: "Something went wrong" });
         }
     }
@@ -242,25 +249,34 @@ export class AuthController {
                 const result = await signInWithEmailAndPassword(getFirebaseAuth(), normalized, password);
                 const { user } = result;
                 const prismaUser = await prisma.user.findUnique({ where: { email: normalized } });
+                if (!prismaUser) {
+                    // Firebase has the account but no local row — sync it.
+                    return res.status(404).json({ message: "Account exists in Firebase but local record is missing. Contact support." });
+                }
                 return this.sendAuthResponse(res, prismaUser, user, normalized);
-            } catch (err) {
-                // Firebase rejected the credentials (or the account predates the
-                // Firebase migration) — fall through to the legacy bcrypt check so
-                // pre-existing accounts keep working.
-                console.error("Firebase sign-in failed, falling back to local credentials:", err);
+            } catch (err: any) {
+                // Firebase rejected the credentials — fall through to the legacy
+                // bcrypt check so pre-existing accounts that predate the Firebase
+                // migration keep working.
+                if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+                    // These are the expected "try the bcrypt fallback" cases; don't surface to user.
+                    console.error("Firebase sign-in rejected, trying local credentials:", err.code);
+                } else {
+                    console.error("Unexpected Firebase sign-in error:", err);
+                }
             }
         }
 
         try {
             const user = await prisma.user.findUnique({ where: { email: normalized } });
-            if (!user) return res.status(404).json({ message: "User not found" });
+            if (!user) return res.status(401).json({ message: "Invalid email or password" });
             const validPassword = await bcrypt.compare(password, user.password || "");
-            if (!validPassword) return res.status(401).json({ message: "Invalid password" });
+            if (!validPassword) return res.status(401).json({ message: "Invalid email or password" });
             await this.setTokenCookie(res, user.id);
             return res.status(200).json({ message: "Logged in successfully", user: { id: user.id, username: user.username, avatarUrl: user.avatarUrl, email: user.email } });
         } catch (bcryptErr) {
             console.error("Local sign-in fallback failed:", bcryptErr);
-            return res.status(500).json({ message: "Something went wrong" });
+            return res.status(500).json({ message: "Something went wrong during sign-in" });
         }
     }
 
@@ -279,14 +295,14 @@ export class AuthController {
         const { username, email, password, errors } = this.validateSignupBody(req.body);
 
         if (errors.length > 0) {
-            return res.status(400).json({ message: errors[0] });
+            return res.status(400).json({ message: errors.join(", ") });
         }
 
         // Prefer Firebase so all new accounts live in Firebase Auth. When Firebase
         // is not configured (self-hosted/dev setups) fall back to the legacy bcrypt
         // path so signup keeps working exactly as before.
         if (isFirebaseConfigured()) {
-            return this.firebaseSignup(req, res);
+            return this.firebaseSignup({ ...req.body, username, email, password }, res);
         }
 
         try {
@@ -312,7 +328,7 @@ export class AuthController {
             res.status(201).json({ message: "Registered successfully", user: { id: newUser.id, username: newUser.username, avatarUrl: newUser.avatarUrl, email: newUser.email } });
         } catch (error) {
             console.error("Error in signup:", error);
-            return res.status(500).json({ message: "Something went wrong" })
+            return res.status(500).json({ message: "Something went wrong during registration" })
         }
     }
 
@@ -344,7 +360,29 @@ export class AuthController {
         }
     }
 
-    /** Shared helper that issues the session cookie + JWT and returns the user payload. */
+     /**
+     * Shared helper that issues the session cookie + JWT and returns the user payload.
+     */
+    private firebaseErrorMessage(err: any): string {
+        const code = err?.code ?? "";
+        const map: Record<string, string> = {
+            "auth/invalid-email": "The email address is not valid.",
+            "auth/user-disabled": "This account has been disabled. Contact support.",
+            "auth/user-not-found": "No account found with that email.",
+            "auth/wrong-password": "Incorrect password. Please try again.",
+            "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
+            "auth/invalid-credential": "The email or password is incorrect.",
+            "auth/weak-password": "Password should be at least 6 characters.",
+            "auth/email-already-in-use": "An account with this email already exists.",
+            "auth/missing-android-pkg-name": "Missing Android package name.",
+            "auth/missing-continue-uri": "Missing continue URL.",
+            "auth/invalid-continue-uri": "The continue URL is invalid.",
+            "auth/unauthorized-continue-uri": "The continue URL is not authorized.",
+            "auth/misconfigured": "Server is not properly configured for authentication.",
+        };
+        return map[code] ?? err?.message ?? "An authentication error occurred.";
+    }
+
     private async sendAuthResponse(res: Response, prismaUser: any, firebaseUser: any, email: string) {
         const userId = prismaUser?.id ?? firebaseUser.uid;
         await this.setTokenCookie(res, userId);

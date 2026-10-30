@@ -168,25 +168,25 @@ describe("Auth Controller Routes (/api/v1/auth)", () => {
         .post("/api/v1/auth/signin")
         .send({ email: "nonexistent@example.com", password: "password123" });
 
-      expect(res.status).toBe(404);
-      expect(res.body.message).toBe("User not found");
-    });
+       expect(res.status).toBe(404);
+       expect(res.body.message).toBe("Invalid email or password");
+     });
 
-    test("should return 401 if password is wrong", async () => {
-      const hashedPassword = await bcrypt.hash("correctpassword", 10);
-      (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
-        id: "user-123",
-        email: "test@example.com",
-        password: hashedPassword,
-      });
+     test("should return 401 if password is wrong", async () => {
+       const hashedPassword = await bcrypt.hash("correctpassword", 10);
+       (prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({
+         id: "user-123",
+         email: "test@example.com",
+         password: hashedPassword,
+       });
 
-      const res = await request(app)
-        .post("/api/v1/auth/signin")
-        .send({ email: "test@example.com", password: "wrongpassword" });
+       const res = await request(app)
+         .post("/api/v1/auth/signin")
+         .send({ email: "test@example.com", password: "wrongpassword" });
 
-      expect(res.status).toBe(401);
-      expect(res.body.message).toBe("Invalid password");
-    });
+       expect(res.status).toBe(401);
+       expect(res.body.message).toBe("Invalid email or password");
+     });
   });
 
   describe("POST /api/v1/auth/signout", () => {

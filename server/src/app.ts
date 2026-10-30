@@ -51,10 +51,18 @@ const CSRF_EXEMPT_PATHS = [
   `${API_PREFIX}/auth/signin`,
   `${API_PREFIX}/auth/signout`,
   `${API_PREFIX}/auth/google`,
+  `${API_PREFIX}/auth/otp/send`,
+  `${API_PREFIX}/auth/otp/verify`,
+  `${API_PREFIX}/auth/password-reset/request`,
+  `${API_PREFIX}/auth/password-reset/confirm`,
   "/api/auth/signup",   // legacy
   "/api/auth/signin",   // legacy
   "/api/auth/signout",  // legacy
   "/api/auth/google",   // legacy
+  "/api/auth/otp/send",     // legacy
+  "/api/auth/otp/verify",   // legacy
+  "/api/auth/password-reset/request", // legacy
+  "/api/auth/password-reset/confirm", // legacy
   `${API_PREFIX}/execute`,
   "/api/execute",       // legacy
   `${API_PREFIX}/csrf-token`,  // CSRF token endpoint
