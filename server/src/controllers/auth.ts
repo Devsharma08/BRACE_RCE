@@ -41,7 +41,7 @@ export class AuthController {
 
     private validateSignupBody(body: any) {
         const username = typeof body.username === "string" ? body.username.trim() : "";
-        const email = typeof body.email === "string" ? body.email.trim() : "";
+        const email = (typeof body.email === "string" ? body.email.trim().toLowerCase() : "");
         const password = typeof body.password === "string" ? body.password : "";
 
         const errors: string[] = [];
@@ -302,7 +302,7 @@ export class AuthController {
         // is not configured (self-hosted/dev setups) fall back to the legacy bcrypt
         // path so signup keeps working exactly as before.
         if (isFirebaseConfigured()) {
-            return this.firebaseSignup({ ...req.body, username, email, password }, res);
+            return this.firebaseSignup(req, res);
         }
 
         try {
