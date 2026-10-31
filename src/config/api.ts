@@ -1,7 +1,5 @@
 import axios from "axios"
 import type { QueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { formatApiValidationError } from "../utils/apiErrors";
 
 const rawUrl = (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/+$/, "");
 // Use /api/v1 for new versioned API, fallback to /api for legacy
@@ -131,13 +129,6 @@ export function wireAuthInvalidation(queryClient: QueryClient): void {
             const url: string = err?.config?.url ?? "";
             const isAuthEndpoint =
                 url.includes("/auth/signin") || url.includes("/auth/google");
-            const validationError = formatApiValidationError(err?.response?.data);
-            if (validationError) {
-                toast.error(validationError.title, {
-                    description: validationError.description,
-                    duration: 10000,
-                });
-            }
             if (err?.response?.status === 401 && !isAuthEndpoint) {
                 queryClient.setQueryData(["auth-me"], null);
             }

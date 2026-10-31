@@ -53,10 +53,19 @@ export const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      setError("Password is required.");
+      return;
+    }
     try {
       setLoading(true);
       setError('');
-      await api.post(`/auth/signin`, { email, password });
+      await api.post(`/auth/signin`, { email: trimmedEmail, password });
       await checkAuth();
       navigate('/');
     } catch (err: any) {
@@ -83,13 +92,18 @@ export const Login = () => {
 
   // POST /auth/otp/send — the server emails a single-use 6-digit code.
   const sendOtp = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     try {
       setLoading(true);
       setError('');
       setInfo('');
-      await api.post(`/auth/otp/send`, { email });
+      await api.post(`/auth/otp/send`, { email: trimmedEmail });
       setOtpSent(true);
-      setInfo(`A 6-digit code was sent to ${email}. It expires in 10 minutes.`);
+      setInfo(`A 6-digit code was sent to ${trimmedEmail}. It expires in 10 minutes.`);
     } catch (err: any) {
       setError(err.response?.data?.message || "Could not send the verification code");
     } finally {
@@ -106,7 +120,7 @@ export const Login = () => {
     try {
       setLoading(true);
       setError('');
-      await api.post(`/auth/otp/verify`, { email, otp });
+      await api.post(`/auth/otp/verify`, { email: email.trim(), otp });
       await checkAuth();
       navigate('/');
     } catch (err: any) {
@@ -118,11 +132,16 @@ export const Login = () => {
 
   const handlePasswordResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     try {
       setLoading(true);
       setError('');
       setInfo('');
-      await api.post(`/auth/password-reset/request`, { email });
+      await api.post(`/auth/password-reset/request`, { email: trimmedEmail });
       setInfo("If an account with that email exists, a password reset link has been sent. Check your inbox.");
     } catch (err: any) {
       setError(err.response?.data?.message || "Could not send the password reset email");

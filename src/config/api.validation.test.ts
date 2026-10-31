@@ -18,7 +18,7 @@ describe('API validation error notifications', () => {
     toastError.mockClear();
   });
 
-  it('displays field details from API validation responses in the global toast', async () => {
+  it('does NOT show a global toast for validation errors (components handle their own)', async () => {
     const client = new QueryClient();
     wireAuthInvalidation(client);
 
@@ -39,10 +39,9 @@ describe('API validation error notifications', () => {
 
     await expect(api.post('/auth/signup', {})).rejects.toBeDefined();
 
-    expect(toastError).toHaveBeenCalledWith('Please check your input', {
-      description: 'username: Username must be at least 3 characters',
-      duration: 10000,
-    });
+    // The global interceptor should NOT display its own toast; component
+    // catch blocks own error display to prevent duplicates.
+    expect(toastError).not.toHaveBeenCalled();
     client.clear();
   });
 });

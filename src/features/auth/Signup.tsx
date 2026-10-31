@@ -30,8 +30,27 @@ export const Signup = () => {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [otpInfo, setOtpInfo] = useState('');
-  
-  const navigate = useNavigate();
+
+  const validateSignup = (usernameVal: string, emailVal: string, passwordVal: string): string | null => {
+    const trimmedUsername = usernameVal.trim();
+    const trimmedEmail = emailVal.trim();
+    if (!trimmedUsername || trimmedUsername.length < 3) {
+      return "Username must be at least 3 characters.";
+    }
+    if (!trimmedUsername || !/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+      return "Username may only contain letters, numbers, and underscores.";
+    }
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      return "Please enter a valid email address.";
+    }
+    if (!passwordVal || passwordVal.length < 8) {
+      return "Password must be at least 8 characters.";
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordVal)) {
+      return "Password must include at least one uppercase letter, lowercase letter, and number.";
+    }
+    return null;
+  };  const navigate = useNavigate();
   const { checkAuth, isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Handle Google OAuth callback on mount
@@ -56,7 +75,13 @@ export const Signup = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+    const validationError = validateSignup(username, email, password);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     try {
       setLoading(true);
       setError('');
@@ -65,10 +90,10 @@ export const Signup = () => {
       setOtpInfo('');
       setOtpCode('');
       await api.post(`/auth/signup`, {
-        username,
-        email,
+        username: trimmedUsername,
+        email: trimmedEmail,
         password,
-        avatarUrl: getInitialsAvatar(username)
+        avatarUrl: getInitialsAvatar(trimmedUsername)
       });
       // Signup endpoint now sends the OTP email internally; no need for a
       // separate /auth/otp/send call.
@@ -160,8 +185,13 @@ const handleGoogleClick = () => {
             <button
               type="button"
               onClick={async () => {
+                const trimmedEmailVal = email.trim();
+                if (!trimmedEmailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmailVal)) {
+                  setOtpError("Please enter a valid email address.");
+                  return;
+                }
                 try {
-                  await api.post(`/auth/otp/send`, { email });
+                  await api.post(`/auth/otp/send`, { email: trimmedEmailVal });
                   setOtpError("");
                   setOtpInfo("Code resent — check your inbox.");
                 } catch (err: any) {
@@ -172,8 +202,10 @@ const handleGoogleClick = () => {
                   if (err.response?.status === 404 || msg?.includes('No account')) {
                     try {
                       await api.post(`/auth/signup`, {
-                        username, email, password,
-                        avatarUrl: getInitialsAvatar(username)
+                        username: username.trim(),
+                        email: trimmedEmailVal,
+                        password,
+                        avatarUrl: getInitialsAvatar(username.trim())
                       });
                       setOtpError("");
                       setOtpInfo("Code resent — check your inbox.");

@@ -35,6 +35,14 @@ export const ResetPassword = () => {
       setError('Passwords do not match');
       return;
     }
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(newPassword)) {
+      setError('Password must include at least one uppercase letter, lowercase letter, and number.');
+      return;
+    }
     try {
       setLoading(true);
       setError('');
