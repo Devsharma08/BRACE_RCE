@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+!server/dist
 
 # IDE
 .vscode/
@@ -47,8 +48,38 @@ docker-compose.override.yml
 tmp/
 temp/
 
-# Nginx / certbot configs (removed in consolidated container)
+# Frontend source (not needed for server image build)
+src/
+public/
+docs/
+index.html
+vite.config.js
+vite.config.ts
+tsconfig.app.json
+tsconfig.node.json
+vitest.config.ts
+eslint.config.js
+README.md
+vercel.iml
+
+# Seed scripts and data (not needed for runtime)
+*.py
+*.json
+!package.json
+!pnpm-lock.yaml
+!server/tsconfig.json
+!server/prisma/schema.prisma
+!server/prisma/migrations
+
+# Deploy directory
+deploy/
+
+# SSL/certbot (removed in consolidated container)
 certbot/
 ssl/
 ssl-common.conf
 locations.conf
+
+# Piston (installed from base image)
+piston/
+piston.bak/

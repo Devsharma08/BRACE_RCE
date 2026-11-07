@@ -15,7 +15,9 @@ const PISTON_URL = (() => {
   }
   // In Docker, PISTON_URL points to the internal service (e.g. http://piston:2000)
   // and TLS is terminated at the Nginx edge. Only enforce HTTPS for external URLs.
-  if (process.env.NODE_MODE === "production" && !url.startsWith("https://") && !url.includes("piston")) {
+  // Allow http:// for localhost/127.0.0.1 (in-container Piston) and any URL
+  // containing "piston" (internal Docker service name).
+  if (process.env.NODE_MODE === "production" && !url.startsWith("https://") && !url.includes("piston") && !url.includes("127.0.0.1") && !url.includes("localhost")) {
     throw new Error("PISTON_URL must use HTTPS in production for external URLs");
   }
   return url;
