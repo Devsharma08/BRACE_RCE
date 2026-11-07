@@ -40,7 +40,7 @@ const PISTON_URL = (() => {
  * deployment. If a request is rejected outright the failure is reported
  * per-language rather than silently degrading every language.
  */
-type SandboxBudget = {
+export type SandboxBudget = {
   compileTimeoutMs: number;
   runTimeoutMs: number;
   runCpuTimeMs: number;
@@ -333,8 +333,8 @@ function sanitizeErrorMessage(raw: string): string {
     .trim();
 }
 
-type SupportedLanguage = "javascript" | "java" | "c" | "cpp" | "python";
-type ExecutionMode = "RUN" | "SUBMIT";
+export type SupportedLanguage = "javascript" | "java" | "c" | "cpp" | "python";
+export type ExecutionMode = "RUN" | "SUBMIT";
 
 type ExecuteBody = {
   code?: unknown;
@@ -403,7 +403,7 @@ type ExecutionDetail = {
   };
 };
 
-const normalize = (value: string) => (value || "").replace(/\r\n/g, "\n").trim();
+export const normalize = (value: string) => (value || "").replace(/\r\n/g, "\n").trim();
 
 /**
  * A problem whose correct answer is not a single canonical string (e.g. any
@@ -554,7 +554,7 @@ const getExtension = (language: SupportedLanguage) => {
   return extensionMap[language];
 };
 
-const pistonLanguageMap: Record<SupportedLanguage, string> = {
+export const pistonLanguageMap: Record<SupportedLanguage, string> = {
   javascript: "javascript",
   python: "python",
   java: "java",
@@ -562,7 +562,7 @@ const pistonLanguageMap: Record<SupportedLanguage, string> = {
   c: "c",
 };
 
-const getFileName = (language: SupportedLanguage) => {
+export const getFileName = (language: SupportedLanguage) => {
   if (language === "java") return "Main.java";
   return `main.${getExtension(language)}`;
 };
