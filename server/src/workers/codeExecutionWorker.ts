@@ -74,7 +74,7 @@ async function runOneCase(
   testCase: CodeExecutionJobData["cases"][number],
   budget: (typeof SANDBOX_BUDGETS)[SupportedLanguage],
 ): Promise<CodeExecutionResult["details"][number]> {
-  const payload = {
+  const payload: Record<string, unknown> = {
     language: pistonLanguageMap[executionLanguage],
     version: "*",
     files: [
@@ -90,6 +90,19 @@ async function runOneCase(
     compile_memory_limit: budget.compileMemoryLimitBytes,
     run_memory_limit: budget.runMemoryLimitBytes,
   };
+
+  // JVM startup burns ~2-3s of CPU (class loading, JIT init) before user
+  // code runs. Piston's deployment caps run_cpu_time at 3000ms, which is
+  // below JVM startup alone. Pass startup-reducing JVM flags via Piston's
+  // args so the JVM has a chance to fit within the cap.
+  if (executionLanguage === "java") {
+    payload.args = [
+      "-Xint",          // skip JIT compilation at startup
+      "-Xshare:on",     // use class data sharing
+      "-XX:+UseSerialGC", // simpler GC, lower startup overhead
+      "-XX:TieredStopAtLevel=1", // stop at C1 compilation
+    ];
+  }
 
   let data: any;
   try {

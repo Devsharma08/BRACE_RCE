@@ -2055,7 +2055,7 @@ export const executeCode = async (req: Request, res: Response) => {
         })
         .join("\n");
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
         "version": "*",
         "files": [{ "name": getFileName(executionLanguage), "content": finalCode }],
@@ -2066,6 +2066,14 @@ export const executeCode = async (req: Request, res: Response) => {
         "compile_memory_limit": budget.compileMemoryLimitBytes,
         "run_memory_limit": budget.runMemoryLimitBytes,
       };
+      if (executionLanguage === "java") {
+        payload.args = [
+          "-Xint",
+          "-Xshare:on",
+          "-XX:+UseSerialGC",
+          "-XX:TieredStopAtLevel=1",
+        ];
+      }
       payloadBytes += Buffer.byteLength(JSON.stringify(payload), "utf8");
 
       let data: any;
@@ -2162,7 +2170,7 @@ export const executeCode = async (req: Request, res: Response) => {
       // One clamped retry per case is enough; two would just hammer Piston.
       // Clamp/retry lives in fireOnPiston so the verification harnesses share it.
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
         "version": "*",
         "files": [
@@ -2180,7 +2188,14 @@ export const executeCode = async (req: Request, res: Response) => {
         "compile_memory_limit": budget.compileMemoryLimitBytes,
         "run_memory_limit": budget.runMemoryLimitBytes,
       };
-      payloadBytes += Buffer.byteLength(JSON.stringify(payload), "utf8");
+      if (executionLanguage === "java") {
+        payload.args = [
+          "-Xint",
+          "-Xshare:on",
+          "-XX:+UseSerialGC",
+          "-XX:TieredStopAtLevel=1",
+        ];
+      }
 
       let data: any;
 
