@@ -1,122 +1,58 @@
+# =====================================================================
+# BRACE RCE — Single-Container Docker Compose
+#
+# Consolidates all services into one container:
+#   • Node.js API + Socket.io (port 5000)
+#   • PM2 queue worker (code execution, emails, notifications)
+#   • Piston code execution engine (port 2000, Java/JS/Python/C/C++)
+#
+# Removed containers: piston, redis, postgres, nginx, certbot
+#
+# External dependencies (run on host or managed service):
+#   • PostgreSQL — DATABASE_URL
+#   • Redis — REDIS_URL
+#   • SSL/TLS — handled at load balancer / edge
+#
+# Build:  docker compose build
+# Run:    docker compose up -d
+# =====================================================================
+
 services:
-  # BRACE_RCE Main Application (PM2-managed: API server + queue worker)
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: brace-app:latest
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-    #   args:
-    #     # Vite inlines VITE_* into the browser bundle at build time. `.env` is
-    #     # dockerignored, so compose passes these explicitly (compose reads .env
-    #     # for ${...} interpolation — dockerignore does not affect that).
-    #     # Empty values => "not configured" banners in the UI.
-    #     VITE_BACKEND_URL: ${VITE_BACKEND_URL:-/api}
-    #     VITE_BASE_URL: ${VITE_BASE_URL:-/api}
-    #     VITE_API_URL: ${VITE_API_URL:-/api}
-    #     VITE_SOCKET_URL: ${VITE_SOCKET_URL:-}
-    #     VITE_TURNSTLE_SITE_KEY: ${VITE_TURNSTLE_SITE_KEY:-}
-    #     VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    container_name: brace-app
+    privileged: true
+    restart: always
     ports:
       - "5000:5000"
+      - "2000:2000"
     environment:
       - PORT=5000
       - NODE_ENV=${NODE_ENV:-production}
       - NODE_MODE=${NODE_MODE:-production}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://brace_user:brace_password@postgres:5432/brace_rce}
-      - DIRECT_URL=${DIRECT_URL:-postgresql://brace_user:brace_password@postgres:5432/brace_rce}
+      # External PostgreSQL (host or managed service)
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL}
+      # External Redis (host or managed service)
+      - REDIS_URL=${REDIS_URL}
+      # Piston runs locally in this container
+      - PISTON_URL=http://127.0.0.1:2000
+      - FRONTEND_URL=${FRONTEND_URL:-https://bracerce.devsharma.dev}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://bracerce.devsharma.dev,https://bracerce.server.devsharma.dev}
       - GITHUB_KEY=${GITHUB_KEY}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - GMAIL_USER=${GMAIL_USER}
       - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
       - JWT_SECRET=${JWT_SECRET:-production_super_secret_jwt_key_brace_2026}
-      - PISTON_URL=${PISTON_URL:-http://piston:2000}
-      - FRONTEND_URL=${FRONTEND_URL:-https://bracerce.devsharma.dev}
-      - REDIS_URL=redis://redis:6379
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://bracerce.devsharma.dev,https://bracerce.server.devsharma.dev}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_APP_ID=${FIREBASE_APP_ID}
       - FIREBASE_DATABASE_URL=${FIREBASE_DATABASE_URL}
       - FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
-    depends_on:
-      - piston
-      - redis
-
-  # Nginx reverse proxy — TLS termination, API/WebSocket proxy, rate limiting
-  # In production behind a load balancer (ALB/Cloudflare), this can be removed
-  # and TLS handled at the edge. For self-hosted deployments, use this service.
-  nginx:
-    image: nginx:1.27-alpine
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl-common.conf:/etc/nginx/ssl-common.conf:ro
-      - ./locations.conf:/etc/nginx/locations.conf:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-      - ./ssl:/etc/ssl/certs:ro
-    depends_on:
-      - app
-      - certbot
-
-  # Certbot for Let's Encrypt SSL certificates
-  certbot:
-    image: certbot/certbot:latest
-    restart: unless-stopped
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    entrypoint: ""
-    command: >
-      sh -c "trap 'exit 0' TERM; while :; do
-        certbot renew --webroot -w /var/www/certbot --quiet || true;
-        sleep 12h & wait $$!;
-      done;"
-
-  # PostgreSQL Database (self-hosted, containerized for self-contained deployments)
-  # EC2 production already runs PostgreSQL on port 5432; omit this service there
-  postgres:
-    image: postgres:16-alpine
-    restart: always
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-brace_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brace_password}
-      POSTGRES_DB: ${POSTGRES_DB:-brace_rce}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brace_user}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis — caching, BullMQ job queue, Socket.io adapter backing store
-  redis:
-    image: redis:7-alpine
-    restart: always
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
-
-  # Piston Code Execution Engine
-  piston:
-    image: ghcr.io/engineer-man/piston:latest
-    restart: always
-    privileged: true
-    security_opt:
-      - seccomp=unconfined
-    ports:
-      - "2000:2000"
-    command: ["sh", "-c", "mkdir -p /piston && cd /sys/fs/cgroup && mkdir -p isolate/init && echo 1 > isolate/cgroup.procs && echo '+cpuset +cpu +io +memory +pids' > cgroup.subtree_control && cd isolate && echo 1 > init/cgroup.procs && echo '+cpuset +memory' > cgroup.subtree_control && echo 'Initialized cgroup' && chown -R piston:piston /piston_api /piston && exec su -- piston -c 'ulimit -n 65536 && node /piston_api/src'"]
-    volumes:
-      - ./piston/data/piston/packages:/piston/packages
-
-volumes:
-  postgres_data:
+    # No volumes needed — certbot, postgres data removed
+    # No depends_on — Piston and Redis run in-container or externally

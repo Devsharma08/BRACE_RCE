@@ -37,9 +37,6 @@ coverage/
 .docker/
 docker-compose.override.yml
 
-# Certbot
-certbot/
-
 # Git
 .git/
 .gitignore
@@ -50,7 +47,8 @@ certbot/
 tmp/
 temp/
 
-# Piston packages (not needed for app build, can have restrictive permissions)
-piston/
-piston.bak/
+# Nginx / certbot configs (removed in consolidated container)
 certbot/
+ssl/
+ssl-common.conf
+locations.conf

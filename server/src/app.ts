@@ -263,7 +263,16 @@ export const createApp = (): Express => {
   if (process.env.NODE_MODE !== 'production') {
     setupSwagger(app);
   }
-  
+
+  // Serve frontend static files (replaces nginx static serving in consolidated container)
+  // The frontend build output lives at /app/dist (project root), one level above server/
+  app.use(express.static("../dist", { index: "index.html" }));
+
+  // SPA fallback: any non-API GET request returns index.html for client-side routing
+  app.get(/^\/(?!api\/|live|ready|health|metrics|csrf-token|socket\.io\/).*/, (_req: Request, res: Response) => {
+    res.sendFile("/app/dist/index.html");
+  });
+
   // API routes
   app.use(`${API_PREFIX}/execute`, executeRouter);
   app.use(`${API_PREFIX}/auth`, authRouter);
