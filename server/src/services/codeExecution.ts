@@ -3,6 +3,10 @@ import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { verifyToken } from '../lib/jwt.js';
 import CircuitBreaker from 'opossum';
+import { spawn } from "child_process";
+import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 
 /** PISTON_URL must be set in production; HTTPS required only when exposed externally. */
 const PISTON_URL = (() => {
@@ -153,9 +157,138 @@ function parseCapFromError(message: string): { key: BudgetKey; cap: number } | n
  * they reported failures the product cannot have, and could not reproduce the
  * ones it does.
  *
- * Returns the parsed Piston body. Throws with an actionable message when the
- * deployment genuinely cannot serve the request.
+/**
+ * Execute code directly using system runtimes instead of Piston.
+ *
+ * Used as a fallback when Piston has no language runner packages installed
+ * (common in consolidated/single-container deployments). Supports the same
+ * five languages: javascript, python, java, cpp, c.
+ *
+ * Returns a Piston-compatible response object:
+ *   { compile?: { code, output, stderr }, run: { stdout, code, signal,
+ *     cpu_time, wall_time, memory, status, message, stderr } }
  */
+async function executeDirectly(
+  lang: SupportedLanguage,
+  payload: Record<string, unknown>,
+): Promise<any> {
+  const spec = LANG_SPECS[lang];
+  const code = (Array.isArray(payload.files) ? payload.files[0]?.content : "") as string;
+  const stdin = (payload.stdin ?? "") as string;
+  const runTimeoutMs = (payload.run_timeout ?? 10000) as number;
+  const compileTimeoutMs = (payload.compile_timeout ?? 10000) as number;
+
+  const workDir = join(tmpdir(), `brace-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(workDir, { recursive: true });
+
+  const fileName = `Main${spec.ext}`;
+  const filePath = join(workDir, fileName);
+  writeFileSync(filePath, code, "utf8");
+
+  let compileError: string | undefined;
+  let runOutput = "";
+  let runExitCode: number | null = 0;
+  let runStderr = "";
+  let runCpuTime = 0;
+  let runWallTime = 0;
+  let runMemory = 0;
+
+  try {
+    // ── Compile step (C, C++, Java) ─────────────────────────────────────
+    if (spec.compileCmd) {
+      const compileResult = await runCommandDirect(
+        spec.compileCmd[0],
+        spec.compileCmd.slice(1),
+        { cwd: workDir, timeout: compileTimeoutMs },
+      );
+      if (compileResult.code !== 0) {
+        return {
+          compile: {
+            code: compileResult.code,
+            output: compileResult.stderr || "Compilation failed",
+            stderr: compileResult.stderr,
+          },
+          run: {
+            stdout: "",
+            code: -1,
+            signal: null,
+            cpu_time: 0,
+            wall_time: 0,
+            memory: 0,
+            status: "RE",
+            message: "Compilation failed",
+            stderr: compileResult.stderr,
+          },
+        };
+      }
+    }
+
+    // ── Run step ────────────────────────────────────────────────────────
+    const runResult = await runCommandDirect(
+      spec.runCmd[0],
+      spec.runCmd.slice(1),
+      { cwd: workDir, timeout: runTimeoutMs, input: stdin },
+    );
+    runOutput = runResult.stdout;
+    runExitCode = runResult.code;
+    runStderr = runResult.stderr;
+    runWallTime = runResult.runtimeMs;
+    runCpuTime = runResult.runtimeMs;
+    runMemory = runResult.memoryKb * 1024;
+  } catch (err) {
+    runStderr = String(err);
+  } finally {
+    try { rmSync(workDir, { recursive: true, force: true }); } catch {}
+  }
+
+  const stderr = runStderr || undefined;
+  return {
+    run: {
+      stdout: runOutput,
+      code: runExitCode ?? 0,
+      signal: runExitCode === null ? "SIGKILL" : null,
+      cpu_time: runCpuTime,
+      wall_time: runWallTime,
+      memory: runMemory,
+      status: runExitCode === 0 ? "OK" : "RE",
+      message: stderr,
+      stderr,
+    },
+  };
+}
+
+/** Command specs for direct execution (mirrors codeExecutionWorker.ts). */
+const LANG_SPECS: Record<SupportedLanguage, { ext: string; compileCmd?: string[]; runCmd: string[] }> = {
+  javascript: { ext: ".js", runCmd: ["node"] },
+  python: { ext: ".py", runCmd: ["python3"] },
+  java: { ext: ".java", runCmd: ["java", "Main"] },
+  cpp: { ext: ".cpp", compileCmd: ["g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
+  c: { ext: ".c", compileCmd: ["gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
+};
+
+async function runCommandDirect(
+  cmd: string,
+  args: string[],
+  opts: { cwd: string; timeout: number; input?: string },
+): Promise<{ code: number | null; stdout: string; stderr: string; runtimeMs: number; memoryKb: number }> {
+  const start = performance.now();
+  let stdout = "";
+  let stderr = "";
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { cwd: opts.cwd, stdio: ["pipe", "pipe", "pipe"] });
+    let timer: NodeJS.Timeout | null = null;
+    child.stdout?.on("data", (d) => { stdout += d; });
+    child.stderr?.on("data", (d) => { stderr += d; });
+    child.on("error", () => resolve({ code: -1, stdout, stderr, runtimeMs: Math.round(performance.now() - start), memoryKb: 0 }));
+    child.on("close", (code) => {
+      if (timer) clearTimeout(timer);
+      resolve({ code, stdout, stderr, runtimeMs: Math.round(performance.now() - start), memoryKb: 0 });
+    });
+    if (opts.input) { child.stdin?.write(opts.input); child.stdin?.end(); } else { child.stdin?.end(); }
+    timer = setTimeout(() => child.kill("SIGKILL"), opts.timeout);
+  });
+}
+
 export async function fireOnPiston(
   lang: SupportedLanguage,
   payload: Record<string, unknown>,
@@ -187,6 +320,14 @@ export async function fireOnPiston(
           applyLearnedCaps(lang, payload);
         });
         continue;
+      }
+
+      // Piston reports "runtime is unknown" when it has no runner packages
+      // installed for this language. Fall back to direct execution using
+      // system runtimes (gcc, g++, openjdk, python3, node) already present
+      // in the container.
+      if (/runtime is unknown/i.test(apiErrMsg)) {
+        return await executeDirectly(lang, payload);
       }
 
       throw new Error(
