@@ -25,7 +25,8 @@ RUN apk add --no-cache \
         python3 \
         curl \
         ca-certificates \
-        redis
+        redis \
+        postgresql
 
 # Copy Piston code execution engine from official image
 COPY --from=ghcr.io/engineer-man/piston:latest /piston_api /piston_api
@@ -56,7 +57,7 @@ RUN cd server && npx prisma generate
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# App port (5000) + Piston port (2000)
-EXPOSE 5000 2000
+# App port (5000) + Piston port (2000) + PostgreSQL port (5432, internal)
+EXPOSE 5000 2000 5432
 
 ENTRYPOINT ["docker-entrypoint.sh"]

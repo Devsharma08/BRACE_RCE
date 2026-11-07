@@ -13,12 +13,14 @@ set -eu
 
 PISTON_PID=""
 PM2_PID=""
+PG_PID=""
 
 cleanup() {
   code=${1:-0}
   echo "[entrypoint] Shutting down (code=$code)..."
   [ -n "${PM2_PID:-}" ] && kill -TERM "$PM2_PID" 2>/dev/null || true
   [ -n "${PISTON_PID:-}" ] && kill -TERM "$PISTON_PID" 2>/dev/null || true
+  [ -n "${PG_PID:-}" ] && kill -TERM "$PG_PID" 2>/dev/null || true
   wait 2>/dev/null || true
   exit "$code"
 }
@@ -46,6 +48,24 @@ if redis-cli ping 2>/dev/null | grep -q PONG; then
   echo "[entrypoint] Redis is ready"
 else
   echo "[entrypoint] WARNING: Redis did not start"
+fi
+
+# ── Start PostgreSQL (background, port 5432) ───────────────────────────
+echo "[entrypoint] Starting PostgreSQL on port 5432..."
+mkdir -p /run/postgresql
+chown -R postgres:postgres /run/postgresql /var/lib/postgresql 2>/dev/null || true
+su - postgres -c "pg_ctl initdb -D /var/lib/postgresql/data -o '--auth=trust'" 2>/dev/null || true
+su - postgres -c "pg_ctl start -D /var/lib/postgresql/data -o '-c listen_addresses=127.0.0.1'" 2>/dev/null || true
+PG_PID=$(pgrep -u postgres postgres 2>/dev/null | head -1)
+sleep 2
+# Create database and user
+su - postgres -c "psql -c \"CREATE USER brace_user WITH PASSWORD 'brace_password';\"" 2>/dev/null || true
+su - postgres -c "psql -c \"CREATE DATABASE brace_rce OWNER brace_user;\"" 2>/dev/null || true
+su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE brace_rce TO brace_user;\"" 2>/dev/null || true
+if su - postgres -c "psql -d brace_rce -tAc \"SELECT 1 FROM pg_database WHERE datname='brace_rce'\"" 2>/dev/null | grep -q 1; then
+  echo "[entrypoint] PostgreSQL is ready (database: brace_rce)"
+else
+  echo "[entrypoint] WARNING: PostgreSQL database setup may have failed"
 fi
 
 # Ensure Piston directories exist

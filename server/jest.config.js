@@ -12,7 +12,14 @@ export default {
     // generated Prisma client. The mock exports the same `prisma` proxy so
     // tests can assign delegate mocks directly (e.g. prisma.event.findUnique).
     '^(\\.{1,2}/.*?)lib/prisma\\.js$': '$1lib/prisma.test-mock.ts',
+    // Generated Prisma client uses import.meta.url (ESM) which Jest can't
+    // handle outside a module. Map to a test mock. Must come BEFORE the
+    // generic .js stripping rule below.
+    'prisma/client': '<rootDir>/test/__mocks__/prisma-client.test-mock.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    // uuid@14 is ESM-only ("type": "module"); Jest can't parse its export
+    // syntax. Map to a CJS-compatible test mock instead.
+    '^uuid$': '<rootDir>/test/__mocks__/uuid.ts',
   },
   transform: {
     '^.+\\.tsx?$': [
