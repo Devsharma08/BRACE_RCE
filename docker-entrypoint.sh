@@ -15,6 +15,18 @@ PISTON_PID=""
 PM2_PID=""
 PG_PID=""
 
+# Strip surrounding quotes from DATABASE_URL/DIRECT_URL
+# (Docker --env-file preserves quotes which breaks Prisma connection string parsing)
+for var in DATABASE_URL DIRECT_URL; do
+  eval "val=\$$var"
+  case "$val" in
+    \"*\")
+      val="${val#\"}"; val="${val%\"}"
+      eval "$var=\"\$val\"; export $var"
+      ;;
+  esac
+done
+
 cleanup() {
   code=${1:-0}
   echo "[entrypoint] Shutting down (code=$code)..."
