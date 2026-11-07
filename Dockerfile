@@ -6,32 +6,39 @@
 #   • Piston code execution engine (Java, JavaScript, Python, C, C++)
 #   • Language runtimes: gcc, g++, openjdk-17, python3
 #
+# Base image is Debian-based (node:20) so Piston's glibc-compiled
+# language runner packages work natively.
+#
 # Build:  docker build -t brace-app:latest .
 # Run:    docker run --privileged -p 5000:5000 -p 2000:2000 \
 #             --env-file .env brace-app:latest
 # =====================================================================
 
-FROM node:20-alpine
+FROM node:20
 
 ENV NODE_ENV=production
 ENV NODE_MODE=production
 ENV PISTON_URL=http://127.0.0.1:2000
+# Per-language Piston sandbox limit overrides. Java needs a higher
+# run_cpu_time ceiling (~5000ms) because JVM startup (class loading,
+# JIT init) burns several seconds of CPU before user code executes.
+ENV PISTON_LIMIT_OVERRIDES='{"java":{"run_timeout":5000,"run_cpu_time":5000}}'
 ENV PORT=5000
 
 # Install language runtimes required by Piston for all 5 languages
-RUN apk add --no-cache \
-        gcc g++ make musl-dev \
-        openjdk17 \
+# (PostgreSQL and Redis run externally, not in-container)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc g++ make \
+        openjdk-17-jdk \
         python3 \
         curl \
         ca-certificates \
-        redis \
-        postgresql
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy Piston code execution engine from official image
 COPY --from=ghcr.io/engineer-man/piston:latest /piston_api /piston_api
 
-# Reinstall Piston npm deps so native modules compile for Alpine/Node.js 20
+# Reinstall Piston npm deps so native modules compile for Debian/Node.js 20
 RUN cd /piston_api && npm install --production --ignore-scripts 2>/dev/null || true
 
 WORKDIR /app
