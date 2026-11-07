@@ -1,13 +1,12 @@
 import { logger } from "../lib/logger.js";
 import { createQueueWorker } from "../lib/queue.js";
 import type { Job } from "bullmq";
-import { spawn } from "child_process";
-import { mkdirSync, writeFileSync, unlinkSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
 import {
   prepareFinalCode,
   SANDBOX_BUDGETS,
+  fireOnPiston,
+  pistonLanguageMap,
+  getFileName,
   normalize,
   type SupportedLanguage,
 } from "../services/codeExecution.js";
@@ -69,230 +68,95 @@ function resolveLanguage(language: unknown): SupportedLanguage {
   }
 }
 
-/** Map language to file extension and execution command. */
-interface LangSpec {
-  ext: string;
-  compileCmd?: string[];    // undefined = no compile step
-  runCmd: string[];         // command + args to run the program
-  runCwd: string;           // working directory for run (contains binary)
-}
-
-const LANG_SPECS: Record<SupportedLanguage, LangSpec> = {
-  javascript: { ext: ".js", runCmd: ["node"], runCwd: "." },
-  python: { ext: ".py", runCmd: ["python3"], runCwd: "." },
-  java: { ext: ".java", runCmd: ["java", "Main"], runCwd: "." },
-  cpp: { ext: ".cpp", compileCmd: ["g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
-  c: { ext: ".c", compileCmd: ["gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
-};
-
-/**
- * Run a single test case directly using system runtimes instead of Piston.
- *
- * The code is written to a temp file, compiled (if needed), and executed
- * with stdin piped from the test case input. Resource limits are enforced
- * via the cgroup hierarchy set up by the container entrypoint plus
- * `timeout` for wall-clock enforcement.
- */
-async function runOneCaseDirectly(
+async function runOneCase(
   executionLanguage: SupportedLanguage,
   finalCode: string,
   testCase: CodeExecutionJobData["cases"][number],
   budget: (typeof SANDBOX_BUDGETS)[SupportedLanguage],
 ): Promise<CodeExecutionResult["details"][number]> {
-  const spec = LANG_SPECS[executionLanguage];
-  const testCaseInput = testCase.input || "";
-  const startTime = performance.now();
+  const payload = {
+    language: pistonLanguageMap[executionLanguage],
+    version: "*",
+    files: [
+      {
+        name: getFileName(executionLanguage),
+        content: finalCode,
+      },
+    ],
+    stdin: testCase.input || "",
+    compile_timeout: budget.compileTimeoutMs,
+    run_timeout: budget.runTimeoutMs,
+    run_cpu_time: budget.runCpuTimeMs,
+    compile_memory_limit: budget.compileMemoryLimitBytes,
+    run_memory_limit: budget.runMemoryLimitBytes,
+  };
 
-  // Create a temp working directory for this execution
-  const workDir = join(tmpdir(), `brace-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(workDir, { recursive: true });
-
-  const fileName = `Main${spec.ext}`;
-  const filePath = join(workDir, fileName);
-  writeFileSync(filePath, finalCode, "utf8");
-
-  let compileError: string | undefined;
-  let runError: string | undefined;
-  let output = "";
-  let exitCode: number | null = 0;
-  let runtimeMs = 0;
-  let memoryKb = 0;
-
+  let data: any;
   try {
-    // ── Compile step (C, C++, Java) ─────────────────────────────────────
-    if (spec.compileCmd) {
-      const compileResult = await runCommand(
-        spec.compileCmd[0],
-        spec.compileCmd.slice(1),
-        { cwd: workDir, timeout: budget.compileTimeoutMs },
-      );
-      if (compileResult.code !== 0) {
-        compileError = (compileResult.stderr || "Compilation failed").substring(0, 64 * 1024);
-      }
+    data = await fireOnPiston(executionLanguage, payload);
+    if (data.message && data.message.includes("runtime is unknown")) {
+      throw new Error("Piston runtime unknown: " + data.message);
     }
-
-    // ── Run step ────────────────────────────────────────────────────────
-    if (!compileError) {
-      const runResult = await runCommand(
-        spec.runCmd[0],
-        spec.runCmd.slice(1),
-        {
-          cwd: workDir,
-          timeout: budget.runTimeoutMs,
-          input: testCaseInput,
-          maxMemory: budget.runMemoryLimitBytes,
-          maxCpuTime: budget.runCpuTimeMs,
-        },
-      );
-      output = runResult.stdout;
-      exitCode = runResult.code;
-      runtimeMs = runResult.runtimeMs;
-      memoryKb = runResult.memoryKb;
-      runError = runResult.error;
+    if (!data.run) {
+      throw new Error("Piston invalid output format: " + JSON.stringify(data));
     }
-  } catch (err) {
-    runError = String(err).substring(0, 64 * 1024);
-  } finally {
-    // Clean up temp directory
-    try { rmSync(workDir, { recursive: true, force: true }); } catch {}
-  }
-
-  const endTime = performance.now();
-
-  // ── Compile error ─────────────────────────────────────────────────────
-  if (compileError) {
+  } catch (apiError) {
+    const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
     return {
       testCaseIndex: testCase.testCaseIndex,
       output: "",
       expectedOutput: testCase.expectedOutput,
       passed: false,
-      runtimeMs: Math.round(endTime - startTime),
+      runtimeMs: 0,
       memoryKb: 0,
-      runtimeError: `Compilation Error: ${compileError}`,
+      runtimeError: `Code execution service unavailable: ${apiErrMsg}`,
+      error: apiErrMsg,
+    };
+  }
+
+  const endTime = performance.now();
+
+  if (data.compile && data.compile.code !== 0) {
+    const compileOutput = String(data.compile?.output ?? "").substring(0, 64 * 1024);
+    return {
+      testCaseIndex: testCase.testCaseIndex,
+      output: "",
+      expectedOutput: testCase.expectedOutput,
+      passed: false,
+      runtimeMs: Math.round(endTime - performance.now()),
+      memoryKb: 0,
+      runtimeError: `Compilation Error: ${compileOutput || "Compilation failed"}`,
       error: "Compilation Error",
     };
   }
 
-  // ── Custom-input runs: no expected output, clean run = pass ────────────
+  const actualOutput = normalize(data.run?.stdout || "");
   const expectedOutput = normalize(testCase.expectedOutput);
-  const actualOutput = normalize(output);
-  const isCustomInputRun = expectedOutput === "";
+  const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
+
   const passed = expectedOutput !== ""
     ? actualOutput === expectedOutput
-    : exitCode === 0;
+    : processExitCode === 0;
+
+  let runtimeError: string | undefined;
+  if (processExitCode !== 0 && data.run?.stderr) {
+    runtimeError = String(data.run.stderr).substring(0, 64 * 1024);
+  } else if (data.run?.message) {
+    runtimeError = String(data.run.message).substring(0, 64 * 1024);
+  } else if (data.run?.signal) {
+    runtimeError = `Process terminated by ${data.run.signal}`;
+  }
 
   return {
     testCaseIndex: testCase.testCaseIndex,
     output: actualOutput,
     expectedOutput: testCase.expectedOutput,
     passed,
-    runtimeMs,
-    memoryKb,
-    ...(runError ? { runtimeError: runError } : {}),
-    ...(runError ? { error: runError } : {}),
+    runtimeMs: Math.round(Number(data.run.cpu_time) || Number(data.run.wall_time) || (endTime - performance.now())),
+    memoryKb: Math.round(Number(data.run.memory ?? 0) / 1024),
+    ...(runtimeError ? { runtimeError } : {}),
+    ...(runtimeError ? { error: runtimeError } : {}),
   };
-}
-
-/**
- * Spawn a command with resource limits, timeout, and optional stdin.
- *
- * Resource limits are enforced via cgroup (set up by container entrypoint)
- * plus `timeout` for wall-clock. Memory and CPU limits are applied via
- * cgroup files when available.
- */
-async function runCommand(
-  cmd: string,
-  args: string[],
-  opts: {
-    cwd: string;
-    timeout: number;
-    input?: string;
-    maxMemory?: number;   // bytes
-    maxCpuTime?: number;  // milliseconds
-  },
-): Promise<{
-  code: number | null;
-  stdout: string;
-  stderr: string;
-  runtimeMs: number;
-  memoryKb: number;
-  error?: string;
-}> {
-  const start = performance.now();
-  let stdout = "";
-  let stderr = "";
-  let error: string | undefined;
-
-  // Apply cgroup memory limit if available
-  const env = { ...process.env };
-  if (opts.maxMemory) {
-    try {
-      const memLimitKb = Math.floor(opts.maxMemory / 1024);
-      // Write to cgroup memory.max if writable
-      require("fs").writeFileSync("/sys/fs/cgroup/memory.max", `${memLimitKb}K`, { flag: "w" });
-    } catch {}
-  }
-
-  const child = spawn(cmd, args, {
-    cwd: opts.cwd,
-    env,
-    stdio: ["pipe", "pipe", "pipe"],
-    killSignal: "SIGTERM",
-  });
-
-  const timeoutMs = opts.timeout;
-  let timer: NodeJS.Timeout | null = null;
-
-  const promise = new Promise<{
-    code: number | null;
-    stdout: string;
-    stderr: string;
-    runtimeMs: number;
-    memoryKb: number;
-    error?: string;
-  }>((resolve) => {
-    child.stdout?.on("data", (d) => { stdout += d; });
-    child.stderr?.on("data", (d) => { stderr += d; });
-
-    child.on("error", (err) => {
-      error = err.message;
-      resolve({
-        code: -1,
-        stdout,
-        stderr,
-        runtimeMs: Math.round(performance.now() - start),
-        memoryKb: 0,
-        error,
-      });
-    });
-
-    child.on("close", (code) => {
-      if (timer) clearTimeout(timer);
-      resolve({
-        code,
-        stdout,
-        stderr,
-        runtimeMs: Math.round(performance.now() - start),
-        memoryKb: 0,
-        error,
-      });
-    });
-
-    if (opts.input) {
-      child.stdin?.write(opts.input);
-      child.stdin?.end();
-    } else {
-      child.stdin?.end();
-    }
-
-    timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      error = `Process timed out after ${timeoutMs}ms`;
-    }, timeoutMs);
-  });
-
-  const result = await promise;
-  return result;
 }
 
 const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionResult> => {
@@ -310,7 +174,6 @@ const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionR
   const { prepareFinalCode: importedPrepareFinalCode } = await import("../services/codeExecution.js");
   const finalCode = importedPrepareFinalCode(executionLanguage, code, undefined);
 
-  // MapWithConcurrency: bound concurrency per language
   async function mapWithConcurrency<T, R>(
     items: T[],
     limit: number,
@@ -332,7 +195,7 @@ const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionR
 
   const CONCURRENCY = CASE_CONCURRENCY[executionLanguage];
   const results = await mapWithConcurrency(cases, CONCURRENCY, (testCase) =>
-    runOneCaseDirectly(executionLanguage, finalCode, testCase, budget),
+    runOneCase(executionLanguage, finalCode, testCase, budget),
   );
 
   const passed = results.filter((r) => r.passed).length;
