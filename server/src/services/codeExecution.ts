@@ -158,49 +158,46 @@ export async function fireOnPiston(
   lang: SupportedLanguage,
   payload: Record<string, unknown>,
 ): Promise<any> {
-  // One clamped retry is enough; two would just hammer Piston.
-  let retriedWithCap = false;
-
-  try {
+  // Piston can reject multiple limit keys across separate requests
+  // (compile_timeout, then run_timeout, then run_cpu_time). Keep learning
+  // and clamping until Piston accepts the payload or returns a non-cap error.
+  const maxRetries = 5;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     applyLearnedCaps(lang, payload);
-    return await pistonBreaker.fire(payload);
-  } catch (apiError) {
-    const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
+    try {
+      return await pistonBreaker.fire(payload);
+    } catch (apiError) {
+      const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
 
-    // A rejection because a requested limit is above the deployment ceiling is
-    // recoverable: learn the ceiling and retry once, clamped.
-    const parsed = parseCapFromError(apiErrMsg);
-    if (parsed && !retriedWithCap) {
-      retriedWithCap = true;
-      const cacheKey = capCacheKey(lang, parsed.key);
-      await withCapLearnLock(lang, async () => {
-        if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
-          learnedCaps.set(cacheKey, parsed.cap);
-          console.warn(
-            `[piston] ${lang}: clamping ${parsed.key} to ${parsed.cap}ms ` +
-            `(learned from Piston; deployment limit is below what we request)`,
-          );
-        }
-        applyLearnedCaps(lang, payload);
-      });
-      try {
-        const clamped: any = await pistonBreaker.fire(payload);
-        if (clamped && !clamped.run) {
-          throw new Error(`Piston rejected the clamped request: ${JSON.stringify(clamped)}`);
-        }
-        return clamped;
-      } catch (retryError) {
-        const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
-        throw new Error(`Code execution is misconfigured for ${lang}: ${retryMsg}`);
+      // A rejection because a requested limit is above the deployment ceiling is
+      // recoverable: learn the ceiling, clamp, and retry.
+      const parsed = parseCapFromError(apiErrMsg);
+      if (parsed) {
+        const cacheKey = capCacheKey(lang, parsed.key);
+        await withCapLearnLock(lang, async () => {
+          if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
+            learnedCaps.set(cacheKey, parsed.cap);
+            console.warn(
+              `[piston] ${lang}: clamping ${parsed.key} to ${parsed.cap}ms ` +
+              `(learned from Piston; deployment limit is below what we request)`,
+            );
+          }
+          applyLearnedCaps(lang, payload);
+        });
+        continue;
       }
-    }
 
-    throw new Error(
-      /cannot exceed the configured limit/i.test(apiErrMsg)
-        ? `Code execution is misconfigured for ${lang}: ${apiErrMsg}`
-        : "Code execution service unavailable",
-    );
+      throw new Error(
+        /cannot exceed the configured limit/i.test(apiErrMsg)
+          ? `Code execution is misconfigured for ${lang}: ${apiErrMsg}`
+          : "Code execution service unavailable",
+      );
+    }
   }
+
+  throw new Error(
+    `Code execution is misconfigured for ${lang}: Piston rejected the request after ${maxRetries} cap-learning retries`,
+  );
 }
 
 /** Apply any ceiling Piston has already taught us for this language. */
