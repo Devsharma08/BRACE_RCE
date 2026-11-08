@@ -103,6 +103,70 @@ async function runOneCase(
   // For other languages, use Piston as primary, direct execution as fallback
   let pistonResult: any;
   try {
+    pistonResult = await fireOnPiston(executionLanguage, {
+      language: pistonLanguageMap[executionLanguage],
+      version: "*",
+      files: [{ name: getFileName(executionLanguage, finalCode), "content": finalCode }],
+      stdin: testCaseInput,
+      compile_timeout: budget.compileTimeoutMs,
+      run_timeout: budget.runTimeoutMs,
+      run_cpu_time: budget.runCpuTimeMs,
+      compile_memory_limit: budget.compileMemoryLimitBytes,
+      run_memory_limit: budget.runMemoryLimitBytes,
+    });
+  } catch (pistonErr) {
+    const pistonErrMsg = pistonErr instanceof Error ? pistonErr.message : String(pistonErr);
+    logger.warn({ language: executionLanguage, error: pistonErrMsg }, "Piston failed, falling back to direct execution");
+  }
+
+  // If Piston succeeded, use its result
+  if (pistonResult && pistonResult.run) {
+    const data = pistonResult;
+    const expectedOutput = normalize(testCase.expectedOutput);
+    const actualOutput = normalize(data.run?.stdout || "");
+    const exitCode = data.run?.code ?? data.run?.signal ?? 0;
+    const passed = expectedOutput !== ""
+      ? actualOutput === expectedOutput
+      : exitCode === 0;
+
+    let runtimeError: string | undefined;
+    if (exitCode !== 0 && data.run?.stderr) {
+      runtimeError = String(data.run.stderr).substring(0, 64 * 1024);
+    } else if (data.run?.message) {
+      runtimeError = String(data.run.message).substring(0, 64 * 1024);
+    } else if (data.run?.signal) {
+      runtimeError = `Process terminated by ${data.run.signal}`;
+    }
+
+    return {
+      testCaseIndex: testCase.testCaseIndex,
+      output: actualOutput,
+      expectedOutput: testCase.expectedOutput,
+      passed,
+      runtimeMs: Math.round(Number(data.run.cpu_time) || Number(data.run.wall_time) || (performance.now() - startTime)),
+      memoryKb: Math.round(Number(data.run.memory ?? 0) / 1024),
+      ...(runtimeError ? { runtimeError } : {}),
+      ...(runtimeError ? { error: runtimeError } : {}),
+    };
+  }
+
+  // Piston failed or returned no usable result — fall back to direct execution
+  logger.warn({ language: executionLanguage }, "Piston unavailable, using direct execution fallback");
+  let result: any;
+  try {
+    result = await executeDirectly(executionLanguage, finalCode, testCaseInput, budget.runTimeoutMs);
+  } catch (err) {
+    return {
+      testCaseIndex: testCase.testCaseIndex,
+      output: "",
+      expectedOutput: testCase.expectedOutput,
+      passed: false,
+      runtimeMs: Math.round(performance.now() - startTime),
+      memoryKb: 0,
+      runtimeError: String(err).substring(0, 64 * 1024),
+      error: String(err).substring(0, 64 * 1024),
+    };
+  }
 
   const expectedOutput = normalize(testCase.expectedOutput);
   const actualOutput = normalize(result.stdout);
