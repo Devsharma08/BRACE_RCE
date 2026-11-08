@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { verifyToken } from '../lib/jwt.js';
 import CircuitBreaker from 'opossum';
+import { executeDirectly } from "./directExecute.js";
 
 /** PISTON_URL must be set in production; HTTPS required only when exposed externally. */
 const PISTON_URL = (() => {
@@ -2078,8 +2079,28 @@ export const executeCode = async (req: Request, res: Response) => {
 
       let data: any;
       try {
-        data = await fireOnPiston(executionLanguage, payload as Record<string, unknown>);
-      } catch {
+        const directResult = await executeDirectly(
+          executionLanguage,
+          finalCode,
+          stdin,
+          budget.runTimeoutMs,
+        );
+        data = {
+          run: {
+            stdout: directResult.stdout,
+            code: directResult.exitCode ?? 0,
+            stderr: directResult.stderr,
+            cpu_time: directResult.runtimeMs,
+            wall_time: directResult.runtimeMs,
+            memory: 0,
+            status: directResult.exitCode === 0 ? "OK" : "RE",
+            message: directResult.error,
+          },
+          compile: directResult.error?.startsWith("Compilation Error")
+            ? { code: 1, output: directResult.error, stderr: directResult.error }
+            : { code: 0, output: "", stderr: "" },
+        };
+      } catch (apiError) {
         return null;
       }
       if (!data?.run) return null;
@@ -2199,20 +2220,33 @@ export const executeCode = async (req: Request, res: Response) => {
 
       let data: any;
 
-      // Clamps anything we already know this deployment will not accept, learns
-      // a ceiling from a rejection and retries once. Shared with the verification
-      // harnesses so they exercise the identical request path.
       try {
-        data = await fireOnPiston(executionLanguage, payload as Record<string, unknown>);
-        if (data.message && data.message.includes("runtime is unknown")) {
-          throw new Error("Piston runtime unknown: " + data.message);
-        }
-        if (!data.run) {
-          throw new Error("Piston invalid output format: " + JSON.stringify(data));
-        }
+        const directResult = await executeDirectly(
+          executionLanguage,
+          finalCode,
+          testCaseInput,
+          budget.runTimeoutMs,
+        );
+        // Map direct execution result to Piston-compatible format so the
+        // downstream result processing works unchanged.
+        data = {
+          run: {
+            stdout: directResult.stdout,
+            code: directResult.exitCode ?? 0,
+            stderr: directResult.stderr,
+            cpu_time: directResult.runtimeMs,
+            wall_time: directResult.runtimeMs,
+            memory: 0,
+            status: directResult.exitCode === 0 ? "OK" : "RE",
+            message: directResult.error,
+          },
+          compile: directResult.error?.startsWith("Compilation Error")
+            ? { code: 1, output: directResult.error, stderr: directResult.error }
+            : { code: 0, output: "", stderr: "" },
+        };
       } catch (apiError) {
         const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
-        console.error("Piston execution failed:", apiErrMsg);
+        console.error("Code execution failed:", apiErrMsg);
         throw new Error(apiErrMsg);
       }
 
