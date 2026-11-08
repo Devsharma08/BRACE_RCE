@@ -4,7 +4,7 @@ module.exports = {
       name: "brace-rce",
       script: "./dist/index.js",
       cwd: ".",
-      instances: "max",
+      instances: 1,
       exec_mode: "cluster",
       max_memory_restart: "512M",
       env: {
