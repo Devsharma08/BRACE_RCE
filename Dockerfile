@@ -23,6 +23,8 @@ ENV PISTON_URL=http://127.0.0.1:2000
 # run_cpu_time ceiling (~5000ms) because JVM startup (class loading,
 # JIT init) burns several seconds of CPU before user code executes.
 ENV PISTON_LIMIT_OVERRIDES='{"java":{"run_timeout":5000,"run_cpu_time":5000}}'
+# Cap Node.js heap at 512MB for 2GB container
+ENV NODE_OPTIONS=--max-old-space-size=512
 ENV PORT=5000
 
 # Install language runtimes required by Piston for all 5 languages

@@ -97,6 +97,7 @@ async function runOneCase(
   // args so the JVM has a chance to fit within the cap.
   if (executionLanguage === "java") {
     payload.args = [
+      "-Xmx256m",       // cap JVM heap at 256MB for 2GB container
       "-Xint",          // skip JIT compilation at startup
       "-Xshare:on",     // use class data sharing
       "-XX:+UseSerialGC", // simpler GC, lower startup overhead
