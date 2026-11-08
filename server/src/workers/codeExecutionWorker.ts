@@ -1,12 +1,13 @@
 import { logger } from "../lib/logger.js";
 import { createQueueWorker } from "../lib/queue.js";
 import type { Job } from "bullmq";
+import { spawn } from "child_process";
+import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 import {
   prepareFinalCode,
   SANDBOX_BUDGETS,
-  fireOnPiston,
-  pistonLanguageMap,
-  getFileName,
   normalize,
   type SupportedLanguage,
 } from "../services/codeExecution.js";
@@ -39,13 +40,6 @@ const SUPPORTED_LANGUAGES: ReadonlySet<SupportedLanguage> = new Set([
   "javascript", "python", "java", "cpp", "c",
 ]);
 
-/**
- * Per-language concurrency limits for concurrent test-case execution.
- *
- * Java/JVM is the most expensive (startup + JIT + GC burn multiple cores),
- * so it is limited to 2 concurrent cases. The interpreted/compiled
- * languages are cheaper and can run 4 at a time.
- */
 const CASE_CONCURRENCY: Record<SupportedLanguage, number> = {
   javascript: 4,
   python: 4,
@@ -54,7 +48,6 @@ const CASE_CONCURRENCY: Record<SupportedLanguage, number> = {
   java: 2,
 };
 
-/** Validate and normalize a language string from the job payload. */
 function resolveLanguage(language: unknown): SupportedLanguage {
   const lang = String(language ?? "").toLowerCase();
   switch (lang) {
@@ -68,97 +61,186 @@ function resolveLanguage(language: unknown): SupportedLanguage {
   }
 }
 
+interface LangSpec {
+  ext: string;
+  compileCmd?: string[];
+  runCmd: string[];
+  runCwd: string;
+}
+
+const LANG_SPECS: Record<SupportedLanguage, LangSpec> = {
+  javascript: { ext: ".js", runCmd: ["node"], runCwd: "." },
+  python: { ext: ".py", runCmd: ["python3"], runCwd: "." },
+  java: { ext: ".java", compileCmd: ["javac"], runCmd: ["java", "Main"], runCwd: "." },
+  cpp: { ext: ".cpp", compileCmd: ["g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
+  c: { ext: ".c", compileCmd: ["gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
+};
+
+async function runCommand(
+  cmd: string,
+  args: string[],
+  opts: {
+    cwd: string;
+    timeout: number;
+    input?: string;
+  },
+): Promise<{
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  runtimeMs: number;
+  memoryKb: number;
+  error?: string;
+}> {
+  const start = performance.now();
+  let stdout = "";
+  let stderr = "";
+  let error: string | undefined;
+
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, {
+      cwd: opts.cwd,
+      stdio: ["pipe", "pipe", "pipe"],
+      killSignal: "SIGTERM",
+    });
+
+    let timer: NodeJS.Timeout | null = null;
+
+    child.stdout?.on("data", (d) => { stdout += d; });
+    child.stderr?.on("data", (d) => { stderr += d; });
+
+    child.on("error", (err) => {
+      error = err.message;
+      resolve({
+        code: -1,
+        stdout,
+        stderr,
+        runtimeMs: Math.round(performance.now() - start),
+        memoryKb: 0,
+        error,
+      });
+    });
+
+    child.on("close", (code) => {
+      if (timer) clearTimeout(timer);
+      resolve({
+        code,
+        stdout,
+        stderr,
+        runtimeMs: Math.round(performance.now() - start),
+        memoryKb: 0,
+        error,
+      });
+    });
+
+    if (opts.input) {
+      child.stdin?.write(opts.input);
+      child.stdin?.end();
+    } else {
+      child.stdin?.end();
+    }
+
+    timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      error = `Process timed out after ${opts.timeout}ms`;
+    }, opts.timeout);
+  });
+}
+
 async function runOneCase(
   executionLanguage: SupportedLanguage,
   finalCode: string,
   testCase: CodeExecutionJobData["cases"][number],
   budget: (typeof SANDBOX_BUDGETS)[SupportedLanguage],
 ): Promise<CodeExecutionResult["details"][number]> {
-  const payload: Record<string, unknown> = {
-    language: pistonLanguageMap[executionLanguage],
-    version: "*",
-    files: [
-      {
-        name: getFileName(executionLanguage),
-        content: finalCode,
-      },
-    ],
-    stdin: testCase.input || "",
-    compile_timeout: budget.compileTimeoutMs,
-    run_timeout: budget.runTimeoutMs,
-    run_cpu_time: budget.runCpuTimeMs,
-    compile_memory_limit: budget.compileMemoryLimitBytes,
-    run_memory_limit: budget.runMemoryLimitBytes,
-  };
+  const spec = LANG_SPECS[executionLanguage];
+  const testCaseInput = testCase.input || "";
+  const startTime = performance.now();
 
-  // JVM startup burns ~2-3s of CPU (class loading, JIT init) before user
-  // code runs. Piston's deployment caps run_cpu_time at 3000ms, which is
-  // below JVM startup alone. Pass startup-reducing JVM flags via Piston's
-  // args so the JVM has a chance to fit within the cap.
-  if (executionLanguage === "java") {
-    payload.args = [
-      "-Xmx256m",       // cap JVM heap at 256MB for 2GB container
-      "-Xint",          // skip JIT compilation at startup
-      "-Xshare:on",     // use class data sharing
-      "-XX:+UseSerialGC", // simpler GC, lower startup overhead
-      "-XX:TieredStopAtLevel=1", // stop at C1 compilation
-    ];
-  }
+  const workDir = join(tmpdir(), `brace-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(workDir, { recursive: true });
 
-  let data: any;
+  const fileName = `Main${spec.ext}`;
+  const filePath = join(workDir, fileName);
+  writeFileSync(filePath, finalCode, "utf8");
+
+  let compileError: string | undefined;
+  let runError: string | undefined;
+  let output = "";
+  let exitCode: number | null = 0;
+  let runtimeMs = 0;
+  let memoryKb = 0;
+
   try {
-    data = await fireOnPiston(executionLanguage, payload);
-    if (data.message && data.message.includes("runtime is unknown")) {
-      throw new Error("Piston runtime unknown: " + data.message);
+    // Compile step (Java, C, C++)
+    if (spec.compileCmd) {
+      const compileResult = await runCommand(
+        spec.compileCmd[0],
+        spec.compileCmd.slice(1),
+        { cwd: workDir, timeout: budget.compileTimeoutMs },
+      );
+      if (compileResult.code !== 0) {
+        compileError = (compileResult.stderr || "Compilation failed").substring(0, 64 * 1024);
+      }
     }
-    if (!data.run) {
-      throw new Error("Piston invalid output format: " + JSON.stringify(data));
+
+    // Run step
+    if (!compileError) {
+      const runResult = await runCommand(
+        spec.runCmd[0],
+        spec.runCmd.slice(1),
+        { cwd: workDir, timeout: budget.runTimeoutMs, input: testCaseInput },
+      );
+      output = runResult.stdout;
+      exitCode = runResult.code;
+      runtimeMs = runResult.runtimeMs;
+      memoryKb = runResult.memoryKb;
+      runError = runResult.error;
     }
-  } catch (apiError) {
-    const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
-    return {
-      testCaseIndex: testCase.testCaseIndex,
-      output: "",
-      expectedOutput: testCase.expectedOutput,
-      passed: false,
-      runtimeMs: 0,
-      memoryKb: 0,
-      runtimeError: `Code execution service unavailable: ${apiErrMsg}`,
-      error: apiErrMsg,
-    };
+  } catch (err) {
+    runError = String(err).substring(0, 64 * 1024);
+  } finally {
+    try { rmSync(workDir, { recursive: true, force: true }); } catch {}
   }
 
   const endTime = performance.now();
 
-  if (data.compile && data.compile.code !== 0) {
-    const compileOutput = String(data.compile?.output ?? "").substring(0, 64 * 1024);
+  if (compileError) {
     return {
       testCaseIndex: testCase.testCaseIndex,
       output: "",
       expectedOutput: testCase.expectedOutput,
       passed: false,
-      runtimeMs: Math.round(endTime - performance.now()),
+      runtimeMs: Math.round(endTime - startTime),
       memoryKb: 0,
-      runtimeError: `Compilation Error: ${compileOutput || "Compilation failed"}`,
+      runtimeError: `Compilation Error: ${compileError}`,
       error: "Compilation Error",
     };
   }
-
-  const actualOutput = normalize(data.run?.stdout || "");
   const expectedOutput = normalize(testCase.expectedOutput);
-  const processExitCode = data.run?.code ?? data.run?.signal ?? 0;
-
+  const actualOutput = normalize(output);
+  const isCustomInputRun = expectedOutput === "";
   const passed = expectedOutput !== ""
     ? actualOutput === expectedOutput
-    : processExitCode === 0;
+    : exitCode === 0;
 
   let runtimeError: string | undefined;
-  if (processExitCode !== 0 && data.run?.stderr) {
-    runtimeError = String(data.run.stderr).substring(0, 64 * 1024);
-  } else if (data.run?.message) {
-    runtimeError = String(data.run.message).substring(0, 64 * 1024);
-  } else if (data.run?.signal) {
-    runtimeError = `Process terminated by ${data.run.signal}`;
+
+  if (runError) {
+    return {
+      testCaseIndex: testCase.testCaseIndex,
+      output: actualOutput,
+      expectedOutput: testCase.expectedOutput,
+      passed: false,
+      runtimeMs,
+      memoryKb,
+      runtimeError: runError,
+      error: runError,
+    };
+  }
+
+  if (exitCode !== 0 && output) {
+    // runtimeError may be set below
   }
 
   return {
@@ -166,8 +248,8 @@ async function runOneCase(
     output: actualOutput,
     expectedOutput: testCase.expectedOutput,
     passed,
-    runtimeMs: Math.round(Number(data.run.cpu_time) || Number(data.run.wall_time) || (endTime - performance.now())),
-    memoryKb: Math.round(Number(data.run.memory ?? 0) / 1024),
+    runtimeMs,
+    memoryKb,
     ...(runtimeError ? { runtimeError } : {}),
     ...(runtimeError ? { error: runtimeError } : {}),
   };
