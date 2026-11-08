@@ -2076,12 +2076,13 @@ export const executeCode = async (req: Request, res: Response) => {
       payloadBytes += Buffer.byteLength(JSON.stringify(payload), "utf8");
 
       let data: any;
-      try {
+try {
         const directResult = await executeDirectly(
           executionLanguage,
           finalCode,
           stdin,
           budget.runTimeoutMs,
+          budget.compileTimeoutMs,
         );
         data = {
           run: {
@@ -2224,6 +2225,7 @@ export const executeCode = async (req: Request, res: Response) => {
           finalCode,
           testCaseInput,
           budget.runTimeoutMs,
+          budget.compileTimeoutMs,
         );
         // Map direct execution result to Piston-compatible format so the
         // downstream result processing works unchanged.

@@ -36,7 +36,8 @@ export async function executeDirectly(
   language: string,
   code: string,
   stdin: string,
-  timeoutMs: number,
+  runTimeoutMs: number,
+  compileTimeoutMs: number,
 ): Promise<ExecutionResult> {
   const spec = LANG_SPECS[language];
   if (!spec) {
@@ -60,12 +61,12 @@ export async function executeDirectly(
   let runError: string | undefined;
 
   try {
-    // Compile step (Java, C, C++)
+// Compile step (Java, C, C++)
     if (spec.compileCmd) {
       const compileResult = await runCommand(
         spec.compileCmd[0],
-        spec.compileCmd.slice(1),
-        { cwd: workDir, timeout: 30000 },
+        [...spec.compileCmd.slice(1), fileName],
+        { cwd: workDir, timeout: compileTimeoutMs },
       );
       if (compileResult.code !== 0) {
         compileError = (compileResult.stderr || "Compilation failed").substring(0, 64 * 1024);
@@ -77,7 +78,7 @@ export async function executeDirectly(
       const runResult = await runCommand(
         spec.runCmd[0],
         spec.runCmd.slice(1),
-        { cwd: workDir, timeout: timeoutMs, input: stdin },
+        { cwd: workDir, timeout: runTimeoutMs, input: stdin },
       );
       runOutput = runResult.stdout;
       runExitCode = runResult.code;

@@ -71,7 +71,7 @@ async function runOneCase(
   // because Piston runner packages are not installed and disk space
   // is too limited to install them.
   try {
-    const result = await executeDirectly(executionLanguage, finalCode, testCaseInput, budget.runTimeoutMs);
+    const result = await executeDirectly(executionLanguage, finalCode, testCaseInput, budget.runTimeoutMs, budget.compileTimeoutMs);
     const expectedOutput = normalize(testCase.expectedOutput);
     const actualOutput = normalize(result.stdout);
     const passed = expectedOutput !== ""
