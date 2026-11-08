@@ -132,6 +132,7 @@ async function runCommand(
   stdout: string;
   stderr: string;
   runtimeMs: number;
+  memoryKb: number;
   error?: string;
 }> {
   const start = performance.now();
@@ -156,6 +157,7 @@ async function runCommand(
         stdout,
         stderr,
         runtimeMs: Math.round(performance.now() - start),
+        memoryKb: 0,
         error: err.message,
       });
     });
@@ -167,6 +169,7 @@ async function runCommand(
         stdout,
         stderr,
         runtimeMs: Math.round(performance.now() - start),
+        memoryKb: 0,
       });
     });
 
