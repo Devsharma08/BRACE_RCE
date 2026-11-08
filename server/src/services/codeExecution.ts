@@ -88,22 +88,11 @@ export const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
     runMemoryLimitBytes: 268435456,
   },
   java: {
+    // JVM startup burns CPU; Piston caps run_cpu_time at 3000ms. Measured
+    // JVM startup+run for trivial program: ~2.7s CPU, well within the cap.
     compileTimeoutMs: 15000,
-    // Generous, because these are wall-clock ceilings and JVM startup is the
-    // cost being measured. Measured through the API: one trivial Two Sum case
-    // runs ~2.9s of wall time when it has the box to itself and ~7.5s when two
-    // JVMs share it. At the old 8000ms a 13-case submission died mid-run with
-    // "Time limit exceeded (wall clock)" and a SIGKILL — the JVM was killed
-    // while still starting up, not because the user's code was slow.
-    //
-    // This is a sandbox *startup* budget, not a limit on the submitted code: the
-    // user's method itself runs in single-digit milliseconds, as `avgCpu` of
-    // ~10ms on the C++/JS runs shows. Loosening it lets a correct submission
-    // finish; it cannot let an infinite loop run much longer, because that is
-    // bounded by runCpuTimeMs and, in practice, by the client's own budget.
-    runTimeoutMs: 20000,
-    // The JVM needs seconds of CPU across GC/JIT threads for a trivial program.
-    runCpuTimeMs: 20000,
+    runTimeoutMs: 3000,
+    runCpuTimeMs: 3000,
     compileMemoryLimitBytes: 768 * MB,
     runMemoryLimitBytes: 512 * MB,
   },
