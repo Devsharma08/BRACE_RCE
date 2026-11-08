@@ -47,6 +47,8 @@ export async function executeDirectly(
   mkdirSync(workDir, { recursive: true });
 
   const fileName = language === "java" ? `${getJavaClassName(code)}.java` : `Main${spec.ext}`;
+  console.log(`[DEBUG] Executing ${language}: file=${fileName}, code length=${code.length}`);
+  console.log(`[DEBUG] Code preview: ${code.substring(0, 200)}`);
   const filePath = join(workDir, fileName);
   writeFileSync(filePath, code, "utf8");
 
