@@ -51,14 +51,17 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 COPY server/prisma ./server/prisma/
 
-# Install production Node.js dependencies only (no dev deps needed at runtime)
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts --store=/.pnpm-store
+# Install all dependencies (including dev for TypeScript build)
+RUN pnpm install --frozen-lockfile --store=/.pnpm-store
 
-# Copy source and pre-built dist
+# Copy source and build
 COPY . .
 
-# Generate Prisma client (needed at runtime)
-RUN cd server && npx prisma generate
+# Generate Prisma client and compile TypeScript
+RUN cd server && npx prisma generate && NODE_MODE=production npx tsc
+
+# Prune dev deps for smaller production image
+RUN pnpm prune --prod
 
 # Copy entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/
