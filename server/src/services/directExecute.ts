@@ -18,11 +18,11 @@ interface LangSpec {
 }
 
 const LANG_SPECS: Record<string, LangSpec> = {
-  javascript: { ext: ".js", runCmd: ["node"] },
-  python: { ext: ".py", runCmd: ["python3"] },
-  java: { ext: ".java", compileCmd: ["javac"], runCmd: ["java", "Main"] },
-  cpp: { ext: ".cpp", compileCmd: ["g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
-  c: { ext: ".c", compileCmd: ["gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
+  javascript: { ext: ".js", runCmd: ["/usr/local/bin/node"] },
+  python: { ext: ".py", runCmd: ["/usr/bin/python3"] },
+  java: { ext: ".java", compileCmd: ["/usr/bin/javac"], runCmd: ["/usr/bin/java", "Main"] },
+  cpp: { ext: ".cpp", compileCmd: ["/usr/bin/g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
+  c: { ext: ".c", compileCmd: ["/usr/bin/gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"] },
 };
 
 /**

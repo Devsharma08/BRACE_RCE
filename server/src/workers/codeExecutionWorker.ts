@@ -1,16 +1,13 @@
 import { logger } from "../lib/logger.js";
 import { createQueueWorker } from "../lib/queue.js";
 import type { Job } from "bullmq";
-import { spawn } from "child_process";
-import { writeFileSync, mkdirSync, rmSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
 import {
   prepareFinalCode,
   SANDBOX_BUDGETS,
   normalize,
   type SupportedLanguage,
 } from "../services/codeExecution.js";
+import { executeDirectly } from "../services/directExecute.js";
 
 export interface CodeExecutionJobData {
   submissionId: string;
@@ -61,198 +58,59 @@ function resolveLanguage(language: unknown): SupportedLanguage {
   }
 }
 
-interface LangSpec {
-  ext: string;
-  compileCmd?: string[];
-  runCmd: string[];
-  runCwd: string;
-}
-
-const LANG_SPECS: Record<SupportedLanguage, LangSpec> = {
-  javascript: { ext: ".js", runCmd: ["node"], runCwd: "." },
-  python: { ext: ".py", runCmd: ["python3"], runCwd: "." },
-  java: { ext: ".java", compileCmd: ["javac"], runCmd: ["java", "Main"], runCwd: "." },
-  cpp: { ext: ".cpp", compileCmd: ["g++", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
-  c: { ext: ".c", compileCmd: ["gcc", "-O2", "-o", "a.out"], runCmd: ["./a.out"], runCwd: "." },
-};
-
-async function runCommand(
-  cmd: string,
-  args: string[],
-  opts: {
-    cwd: string;
-    timeout: number;
-    input?: string;
-  },
-): Promise<{
-  code: number | null;
-  stdout: string;
-  stderr: string;
-  runtimeMs: number;
-  memoryKb: number;
-  error?: string;
-}> {
-  const start = performance.now();
-  let stdout = "";
-  let stderr = "";
-  let error: string | undefined;
-
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      cwd: opts.cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-      killSignal: "SIGTERM",
-    });
-
-    let timer: NodeJS.Timeout | null = null;
-
-    child.stdout?.on("data", (d) => { stdout += d; });
-    child.stderr?.on("data", (d) => { stderr += d; });
-
-    child.on("error", (err) => {
-      error = err.message;
-      resolve({
-        code: -1,
-        stdout,
-        stderr,
-        runtimeMs: Math.round(performance.now() - start),
-        memoryKb: 0,
-        error,
-      });
-    });
-
-    child.on("close", (code) => {
-      if (timer) clearTimeout(timer);
-      resolve({
-        code,
-        stdout,
-        stderr,
-        runtimeMs: Math.round(performance.now() - start),
-        memoryKb: 0,
-        error,
-      });
-    });
-
-    if (opts.input) {
-      child.stdin?.write(opts.input);
-      child.stdin?.end();
-    } else {
-      child.stdin?.end();
-    }
-
-    timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      error = `Process timed out after ${opts.timeout}ms`;
-    }, opts.timeout);
-  });
-}
-
 async function runOneCase(
   executionLanguage: SupportedLanguage,
   finalCode: string,
   testCase: CodeExecutionJobData["cases"][number],
   budget: (typeof SANDBOX_BUDGETS)[SupportedLanguage],
 ): Promise<CodeExecutionResult["details"][number]> {
-  const spec = LANG_SPECS[executionLanguage];
   const testCaseInput = testCase.input || "";
   const startTime = performance.now();
 
-  const workDir = join(tmpdir(), `brace-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(workDir, { recursive: true });
-
-  const fileName = `Main${spec.ext}`;
-  const filePath = join(workDir, fileName);
-  writeFileSync(filePath, finalCode, "utf8");
-
-  let compileError: string | undefined;
-  let runError: string | undefined;
-  let output = "";
-  let exitCode: number | null = 0;
-  let runtimeMs = 0;
-  let memoryKb = 0;
-
   try {
-    // Compile step (Java, C, C++)
-    if (spec.compileCmd) {
-      const compileResult = await runCommand(
-        spec.compileCmd[0],
-        spec.compileCmd.slice(1),
-        { cwd: workDir, timeout: budget.compileTimeoutMs },
-      );
-      if (compileResult.code !== 0) {
-        compileError = (compileResult.stderr || "Compilation failed").substring(0, 64 * 1024);
-      }
+    const result = await executeDirectly(
+      executionLanguage,
+      finalCode,
+      testCaseInput,
+      budget.runTimeoutMs,
+    );
+
+    const expectedOutput = normalize(testCase.expectedOutput);
+    const actualOutput = normalize(result.stdout);
+    const passed = expectedOutput !== ""
+      ? actualOutput === expectedOutput
+      : result.exitCode === 0;
+
+    let runtimeError: string | undefined;
+
+    if (result.error) {
+      runtimeError = result.error.substring(0, 64 * 1024);
+    } else if (result.exitCode !== 0 && result.stderr) {
+      runtimeError = result.stderr.substring(0, 64 * 1024);
     }
 
-    // Run step
-    if (!compileError) {
-      const runResult = await runCommand(
-        spec.runCmd[0],
-        spec.runCmd.slice(1),
-        { cwd: workDir, timeout: budget.runTimeoutMs, input: testCaseInput },
-      );
-      output = runResult.stdout;
-      exitCode = runResult.code;
-      runtimeMs = runResult.runtimeMs;
-      memoryKb = runResult.memoryKb;
-      runError = runResult.error;
-    }
+    return {
+      testCaseIndex: testCase.testCaseIndex,
+      output: actualOutput,
+      expectedOutput: testCase.expectedOutput,
+      passed,
+      runtimeMs: result.runtimeMs,
+      memoryKb: 0,
+      ...(runtimeError ? { runtimeError } : {}),
+      ...(runtimeError ? { error: runtimeError } : {}),
+    };
   } catch (err) {
-    runError = String(err).substring(0, 64 * 1024);
-  } finally {
-    try { rmSync(workDir, { recursive: true, force: true }); } catch {}
-  }
-
-  const endTime = performance.now();
-
-  if (compileError) {
     return {
       testCaseIndex: testCase.testCaseIndex,
       output: "",
       expectedOutput: testCase.expectedOutput,
       passed: false,
-      runtimeMs: Math.round(endTime - startTime),
+      runtimeMs: Math.round(performance.now() - startTime),
       memoryKb: 0,
-      runtimeError: `Compilation Error: ${compileError}`,
-      error: "Compilation Error",
+      runtimeError: String(err).substring(0, 64 * 1024),
+      error: String(err).substring(0, 64 * 1024),
     };
   }
-  const expectedOutput = normalize(testCase.expectedOutput);
-  const actualOutput = normalize(output);
-  const isCustomInputRun = expectedOutput === "";
-  const passed = expectedOutput !== ""
-    ? actualOutput === expectedOutput
-    : exitCode === 0;
-
-  let runtimeError: string | undefined;
-
-  if (runError) {
-    return {
-      testCaseIndex: testCase.testCaseIndex,
-      output: actualOutput,
-      expectedOutput: testCase.expectedOutput,
-      passed: false,
-      runtimeMs,
-      memoryKb,
-      runtimeError: runError,
-      error: runError,
-    };
-  }
-
-  if (exitCode !== 0 && output) {
-    // runtimeError may be set below
-  }
-
-  return {
-    testCaseIndex: testCase.testCaseIndex,
-    output: actualOutput,
-    expectedOutput: testCase.expectedOutput,
-    passed,
-    runtimeMs,
-    memoryKb,
-    ...(runtimeError ? { runtimeError } : {}),
-    ...(runtimeError ? { error: runtimeError } : {}),
-  };
 }
 
 const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionResult> => {
