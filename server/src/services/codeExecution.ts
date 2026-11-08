@@ -559,10 +559,19 @@ export const pistonLanguageMap: Record<SupportedLanguage, string> = {
   c: "c",
 };
 
-export const getFileName = (language: SupportedLanguage) => {
-  if (language === "java") return "Main.java";
-  return `main.${getExtension(language)}`;
-};
+export const getFileName = (language: SupportedLanguage, code?: string) => {
+  if (language === "java") {
+    const className = code ? getJavaClassName(code) : 'Main';
+    return `${className}.java`;
+  }
+  return `Main${getExtension(language)}`;
+}
+
+/** Extract class name from Java source code for filename matching */
+function getJavaClassName(code: string): string {
+  const match = code.match(/^\s*(?:public\s+)?class\s+(\w+)/m);
+  return match ? match[1] : 'Main';
+}
 
 import { buildOperationWrapper, detectOperationSignature } from './operationWrapper.js';
 
@@ -2059,7 +2068,7 @@ export const executeCode = async (req: Request, res: Response) => {
       const payload: Record<string, unknown> = {
         "language": pistonLanguageMap[executionLanguage] || executionLanguage,
         "version": "*",
-        "files": [{ "name": getFileName(executionLanguage), "content": finalCode }],
+        "files": [{ "name": getFileName(executionLanguage, finalCode), "content": finalCode }],
         "stdin": stdin,
         "compile_timeout": budget.compileTimeoutMs,
         "run_timeout": budget.runTimeoutMs,
@@ -2196,7 +2205,7 @@ export const executeCode = async (req: Request, res: Response) => {
         "version": "*",
         "files": [
           {
-            "name": getFileName(executionLanguage),
+            "name": getFileName(executionLanguage, finalCode),
             "content": finalCode,
           }
         ],
