@@ -20,6 +20,7 @@ ENV PISTON_URL=http://127.0.0.1:2000
 # run_cpu_time ceiling (~5000ms) because JVM startup (class loading,
 # JIT init) burns several seconds of CPU before user code executes.
 ENV PISTON_LIMIT_OVERRIDES='{"java":{"run_timeout":5000,"run_cpu_time":5000}}'
+ENV NODE_OPTIONS=--max-old-space-size=512
 ENV PORT=5000
 
 # Install language runtimes required by Piston for all 5 languages
@@ -29,12 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         curl \
         ca-certificates \
-        postgresql-client \
     && rm -rf /var/lib/apt/lists/*
-
-# Fix pg_hba.conf for trust authentication (so Piston can connect to PostgreSQL)
-RUN sed -i 's/local all postgres peer/local all postgres trust/' /etc/postgresql/15/main/pg_hba.conf && \
-    sed -i 's/local all postgres peer/local all postgres trust/' /etc/postgresql/15/main/pg_hba.conf
 
 # Copy Piston code execution engine from official image
 COPY --from=ghcr.io/engineer-man/piston:latest /piston_api /piston_api
@@ -52,7 +48,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY server/package.json ./server/
 COPY server/prisma ./server/prisma/
 
-# Install production Node.js dependencies
+# Install production Node.js dependencies only
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts --store=/.pnpm-store
 
 # Copy source and build
