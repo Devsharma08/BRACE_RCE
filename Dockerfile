@@ -60,9 +60,6 @@ COPY . .
 # Generate Prisma client and compile TypeScript
 RUN cd server && npx prisma generate && NODE_MODE=production npx tsc
 
-# Prune dev deps for smaller production image
-RUN pnpm prune --prod
-
 # Copy entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
