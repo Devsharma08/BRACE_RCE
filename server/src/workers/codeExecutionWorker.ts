@@ -5,6 +5,9 @@ import {
   prepareFinalCode,
   SANDBOX_BUDGETS,
   normalize,
+  fireOnPiston,
+  pistonLanguageMap,
+  getFileName,
   type SupportedLanguage,
 } from "../services/codeExecution.js";
 import { executeDirectly } from "../services/directExecute.js";
@@ -67,26 +70,46 @@ async function runOneCase(
   const testCaseInput = testCase.input || "";
   const startTime = performance.now();
 
+  // Piston is the primary execution path; direct execution is the fallback
+  // when Piston is unavailable or returns an error.
+  let pistonResult: any;
   try {
-    const result = await executeDirectly(
-      executionLanguage,
-      finalCode,
-      testCaseInput,
-      budget.runTimeoutMs,
-    );
+    pistonResult = await fireOnPiston(executionLanguage, {
+      language: pistonLanguageMap[executionLanguage],
+      version: "*",
+      files: [{ name: getFileName(executionLanguage, finalCode), "content": finalCode }],
+      stdin: testCaseInput,
+      compile_timeout: budget.compileTimeoutMs,
+      run_timeout: budget.runTimeoutMs,
+      run_cpu_time: budget.runCpuTimeMs,
+      compile_memory_limit: budget.compileMemoryLimitBytes,
+      run_memory_limit: budget.runMemoryLimitBytes,
+      ...(executionLanguage === "java" ? {
+        args: ["-Xmx256m", "-Xint", "-Xshare:on", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1"],
+      } : {}),
+    });
+  } catch (pistonErr) {
+    const pistonErrMsg = pistonErr instanceof Error ? pistonErr.message : String(pistonErr);
+    logger.warn({ language: executionLanguage, error: pistonErrMsg }, "Piston failed, falling back to direct execution");
+  }
 
+  // If Piston succeeded, use its result
+  if (pistonResult && pistonResult.run) {
+    const data = pistonResult;
     const expectedOutput = normalize(testCase.expectedOutput);
-    const actualOutput = normalize(result.stdout);
+    const actualOutput = normalize(data.run?.stdout || "");
+    const exitCode = data.run?.code ?? data.run?.signal ?? 0;
     const passed = expectedOutput !== ""
       ? actualOutput === expectedOutput
-      : result.exitCode === 0;
+      : exitCode === 0;
 
     let runtimeError: string | undefined;
-
-    if (result.error) {
-      runtimeError = result.error.substring(0, 64 * 1024);
-    } else if (result.exitCode !== 0 && result.stderr) {
-      runtimeError = result.stderr.substring(0, 64 * 1024);
+    if (exitCode !== 0 && data.run?.stderr) {
+      runtimeError = String(data.run.stderr).substring(0, 64 * 1024);
+    } else if (data.run?.message) {
+      runtimeError = String(data.run.message).substring(0, 64 * 1024);
+    } else if (data.run?.signal) {
+      runtimeError = `Process terminated by ${data.run.signal}`;
     }
 
     return {
@@ -94,11 +117,18 @@ async function runOneCase(
       output: actualOutput,
       expectedOutput: testCase.expectedOutput,
       passed,
-      runtimeMs: result.runtimeMs,
-      memoryKb: 0,
+      runtimeMs: Math.round(Number(data.run.cpu_time) || Number(data.run.wall_time) || (performance.now() - startTime)),
+      memoryKb: Math.round(Number(data.run.memory ?? 0) / 1024),
       ...(runtimeError ? { runtimeError } : {}),
       ...(runtimeError ? { error: runtimeError } : {}),
     };
+  }
+
+  // Piston failed or returned no usable result — fall back to direct execution
+  logger.warn({ language: executionLanguage }, "Piston unavailable, using direct execution fallback");
+  let result: any;
+  try {
+    result = await executeDirectly(executionLanguage, finalCode, testCaseInput, budget.runTimeoutMs);
   } catch (err) {
     return {
       testCaseIndex: testCase.testCaseIndex,
@@ -111,6 +141,30 @@ async function runOneCase(
       error: String(err).substring(0, 64 * 1024),
     };
   }
+
+  const expectedOutput = normalize(testCase.expectedOutput);
+  const actualOutput = normalize(result.stdout);
+  const passed = expectedOutput !== ""
+    ? actualOutput === expectedOutput
+    : result.exitCode === 0;
+
+  let runtimeError: string | undefined;
+  if (result.error) {
+    runtimeError = result.error.substring(0, 64 * 1024);
+  } else if (result.exitCode !== 0 && result.stderr) {
+    runtimeError = result.stderr.substring(0, 64 * 1024);
+  }
+
+  return {
+    testCaseIndex: testCase.testCaseIndex,
+    output: actualOutput,
+    expectedOutput: testCase.expectedOutput,
+    passed,
+    runtimeMs: result.runtimeMs,
+    memoryKb: 0,
+    ...(runtimeError ? { runtimeError } : {}),
+    ...(runtimeError ? { error: runtimeError } : {}),
+  };
 }
 
 const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionResult> => {
