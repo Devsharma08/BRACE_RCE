@@ -26,7 +26,7 @@ ENV PORT=5000
 # Install language runtimes required by Piston for all 5 languages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc g++ make \
-        openjdk-11-jdk \
+        default-jdk \
         python3 \
         curl \
         ca-certificates \
