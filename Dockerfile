@@ -4,7 +4,7 @@
 # Consolidates every runtime dependency into one image:
 #   • Node.js app (API + Socket.io + PM2 cluster/worker) on Node.js 20
 #   • Piston code execution engine (Java, JavaScript, Python, C, C++)
-#   • Language runtimes: gcc, g++, openjdk-21, python3
+#   • Language runtimes: gcc, g++, openjdk-17, python3
 #
 # Build:  docker build -t brace-app:latest .
 # Run:    docker run --privileged -p 5000:5000 -p 2000:2000 \
@@ -26,7 +26,7 @@ ENV PORT=5000
 # Install language runtimes required by Piston for all 5 languages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc g++ make \
-        openjdk-17-jdk \
+        openjdk-17-jdk-headless \
         python3 \
         curl \
         ca-certificates \
