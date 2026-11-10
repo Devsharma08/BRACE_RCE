@@ -283,6 +283,8 @@ export async function executeDirectly(
     }
   }
 
+  const useSandbox = sandboxOk;
+
   // Per-job work directory...
 
   const workDir = mkdtempSync(join(tmpdir(), "brace-exec-"));
