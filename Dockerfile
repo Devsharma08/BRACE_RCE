@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         default-jdk \
         python3 \
         curl \
-        ca-certificates \
+        ca-certificates redis-server postgresql \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Piston code execution engine from official image
@@ -49,13 +49,13 @@ COPY server/package.json ./server/
 COPY server/prisma ./server/prisma/
 
 # Install production Node.js dependencies only
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts --store=/.pnpm-store
+    RUN pnpm install --frozen-lockfile --ignore-scripts --store=/.pnpm-store
 
 # Copy source and build
 COPY . .
 
-# Generate Prisma client and compile TypeScript
-RUN cd server && npx prisma generate && NODE_MODE=production npx tsc
+    # Generate Prisma client and compile TypeScript
+    RUN npx prisma generate --schema ./server/prisma/schema.prisma && NODE_MODE=production cd server && npx tsc
 
 # Copy entrypoint
 COPY docker-entrypoint.sh /usr/local/bin/

@@ -1,0 +1,18 @@
+# brace-runner: minimal code-execution sandbox image
+# Contains only runtimes — no app source, no secrets, no .env.
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc g++ make \
+        default-jdk \
+        python3 \
+        ca-certificates \
+        coreutils \
+        procps \
+        tini \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /work
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["sleep", "infinity"]

@@ -66,15 +66,15 @@ fi
 echo "[entrypoint] Starting PostgreSQL on port 5432..."
 mkdir -p /run/postgresql
 chown -R postgres:postgres /run/postgresql /var/lib/postgresql 2>/dev/null || true
-su - postgres -c "pg_ctl initdb -D /var/lib/postgresql/data -o '--auth=trust'" 2>/dev/null || true
-su - postgres -c "pg_ctl start -D /var/lib/postgresql/data -o '-c listen_addresses=127.0.0.1'" 2>/dev/null || true
+su - postgres -c "/usr/lib/postgresql/15/bin/pg_ctl initdb -D /var/lib/postgresql/data -o '--auth=trust'" 2>/dev/null || true
+su - postgres -c "/usr/lib/postgresql/15/bin/pg_ctl start -D /var/lib/postgresql/data -o '-c listen_addresses=127.0.0.1'" 2>/dev/null || true
 PG_PID=$(pgrep -u postgres postgres 2>/dev/null | head -1)
 sleep 2
 # Create database and user
-su - postgres -c "psql -c \"CREATE USER brace_user WITH PASSWORD 'brace_password';\"" 2>/dev/null || true
-su - postgres -c "psql -c \"CREATE DATABASE brace_rce OWNER brace_user;\"" 2>/dev/null || true
-su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE brace_rce TO brace_user;\"" 2>/dev/null || true
-if su - postgres -c "psql -d brace_rce -tAc \"SELECT 1 FROM pg_database WHERE datname='brace_rce'\"" 2>/dev/null | grep -q 1; then
+su - postgres -c "/usr/lib/postgresql/15/bin/psql -c \"CREATE USER brace_user WITH PASSWORD 'brace_password';\"" 2>/dev/null || true
+su - postgres -c "/usr/lib/postgresql/15/bin/psql -c \"CREATE DATABASE brace_rce OWNER brace_user;\"" 2>/dev/null || true
+su - postgres -c "/usr/lib/postgresql/15/bin/psql -c \"GRANT ALL PRIVILEGES ON DATABASE brace_rce TO brace_user;\"" 2>/dev/null || true
+if su - postgres -c "/usr/lib/postgresql/15/bin/psql -d brace_rce -tAc \"SELECT 1 FROM pg_database WHERE datname='brace_rce'\"" 2>/dev/null | grep -q 1; then
   echo "[entrypoint] PostgreSQL is ready (database: brace_rce)"
 else
   echo "[entrypoint] WARNING: PostgreSQL database setup may have failed"

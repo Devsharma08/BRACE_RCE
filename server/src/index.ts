@@ -1,6 +1,7 @@
 import "./env.js";
 import { createApp, getAllowedOrigins } from "./app.js";
 import { assertRuntimeEnv } from "./config/runtime.js";
+import { assertProductionSafety } from "./services/directExecute.js";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { initSocketServer } from "./socket/index.js";
@@ -17,6 +18,7 @@ if (process.env.NODE_ENV === 'production' || process.env.OTEL_EXPORTER_OTLP_ENDP
 initSentry();
 
 assertRuntimeEnv();
+await assertProductionSafety();
 
 const app = createApp();
 const port = process.env.PORT || 5000;

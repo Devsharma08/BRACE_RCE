@@ -13,7 +13,6 @@ export interface HealthCheckResult {
     database: ComponentHealth;
     cache: ComponentHealth;
     redis: ComponentHealth;
-    piston: ComponentHealth;
   };
 }
 
@@ -54,51 +53,6 @@ async function checkDatabase(): Promise<ComponentHealth> {
 }
 
 /**
- * Check Piston API availability
- */
-async function checkPiston(): Promise<ComponentHealth> {
-  const pistonUrl = process.env.PISTON_URL || "http://127.0.0.1:2000";
-  const start = Date.now();
-  
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(`${pistonUrl}/api/v2/runtimes`, {
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    const latency = Date.now() - start;
-    
-    if (!response.ok) {
-      return {
-        status: "unhealthy",
-        latencyMs: latency,
-        message: `Piston API returned ${response.status}`,
-        details: { status: response.status },
-      };
-    }
-    
-    const runtimes: any = await response.json();
-    
-    return {
-      status: latency > 5000 ? "degraded" : "healthy",
-      latencyMs: latency,
-      message: `Piston API responding (${runtimes?.length || 0} runtimes available)`,
-      details: { runtimesCount: runtimes?.length || 0 },
-    };
-  } catch (error) {
-    return {
-      status: "unhealthy",
-      latencyMs: Date.now() - start,
-      message: error instanceof Error ? error.message : "Piston API unreachable",
-      details: { error: String(error) },
-    };
-  }
-}
-
-/**
  * Deep health check endpoint with caching
  */
 export async function deepHealthCheck(_req: Request, res: Response) {
@@ -110,11 +64,10 @@ export async function deepHealthCheck(_req: Request, res: Response) {
   const start = Date.now();
   
   // Run all checks in parallel
-  const [database, cacheRaw, redisHealth, piston] = await Promise.all([
+  const [database, cacheRaw, redisHealth] = await Promise.all([
     checkDatabase(),
     checkCacheHealth(),
     checkRedisHealth(),
-    checkPiston(),
   ]);
 
   const cache: ComponentHealth = {
@@ -127,10 +80,10 @@ export async function deepHealthCheck(_req: Request, res: Response) {
     status: redisHealth.healthy ? "healthy" : "unhealthy",
     latencyMs: redisHealth.latencyMs,
     message: `Redis backend: ${redisHealth.backend}`,
-    details: { backend: redisHealth.backend },
+    details: { backend: cacheRaw.backend },
   };
 
-  const statuses = [database, cache, redis, piston].map((c) => c.status);
+  const statuses = [database, cache, redis].map((c) => c.status);
   let overallStatus: "healthy" | "degraded" | "unhealthy" = "healthy";
   
   if (statuses.includes("unhealthy")) {
@@ -148,7 +101,6 @@ export async function deepHealthCheck(_req: Request, res: Response) {
       database,
       cache,
       redis,
-      piston,
     },
   };
 
@@ -167,7 +119,6 @@ export async function deepHealthCheck(_req: Request, res: Response) {
         database: database.status,
         cache: cache.status,
         redis: redis.status,
-        piston: piston.status,
       },
     },
     `Health check: ${overallStatus}`

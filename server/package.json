@@ -27,7 +27,8 @@
     "problem:verify-legacy": "tsx src/scripts/verify_legacy_execution.ts",
     "problem:verify-matrix": "tsx src/scripts/verify_matrix.ts",
     "problem:refresh-cases": "tsx src/scripts/refresh_bank_cases.ts",
-    "problem:audit-bank": "tsx src/scripts/audit_bank.ts"
+    "problem:audit-bank": "tsx src/scripts/audit_bank.ts",
+    "verify:full": "tsx src/scripts/verify_execution_full.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

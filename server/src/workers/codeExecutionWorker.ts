@@ -8,6 +8,58 @@ import {
   type SupportedLanguage,
 } from "../services/codeExecution.js";
 import { executeDirectly } from "../services/directExecute.js";
+import { createClient } from "redis";
+
+const GLOBAL_CONCURRENCY_KEY = "brace:exec:global:concurrency";
+const MAX_GLOBAL_CONCURRENCY = 1;
+const GLOBAL_CONCURRENCY_TTL_MS = 90000; // 90s: worst-case Java compile+run
+const MAX_ACQUIRE_WAIT_MS = 30000; // fail fast after 30s waiting
+
+const redis = createClient({
+  url: process.env.REDIS_URL || "redis://localhost:6379",
+});
+redis.connect().catch(() => {});
+
+const acquireLockScript = `
+  local current = redis.call('GET', KEYS[1])
+  if current == false or current == '' then
+    redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
+    return 1
+  end
+  return 0
+`;
+
+const releaseLockScript = `
+  local current = redis.call('GET', KEYS[1])
+  if current == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+  end
+  return 0
+`;
+
+const lockToken = crypto.randomBytes(16).toString('hex');
+
+async function acquireGlobalSemaphore(): Promise<void> {
+  const deadline = Date.now() + MAX_ACQUIRE_WAIT_MS;
+  while (true) {
+    const acquired = await redis.eval(acquireLockScript, {
+      keys: [GLOBAL_CONCURRENCY_KEY],
+      arguments: [lockToken, String(GLOBAL_CONCURRENCY_TTL_MS)],
+    });
+    if (acquired === 1) return;
+    if (Date.now() >= deadline) {
+      throw new Error("judge busy: too many concurrent executions");
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
+function releaseGlobalSemaphore(): void {
+  redis.eval(releaseLockScript, {
+    keys: [GLOBAL_CONCURRENCY_KEY],
+    arguments: [lockToken],
+  }).catch(() => {});
+}
 
 export interface CodeExecutionJobData {
   submissionId: string;
@@ -144,9 +196,14 @@ const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionR
   }
 
   const CONCURRENCY = CASE_CONCURRENCY[executionLanguage];
-  const results = await mapWithConcurrency(cases, CONCURRENCY, (testCase) =>
-    runOneCase(executionLanguage, finalCode, testCase, budget),
-  );
+  await acquireGlobalSemaphore();
+  try {
+    const results = await mapWithConcurrency(cases, CONCURRENCY, (testCase) =>
+      runOneCase(executionLanguage, finalCode, testCase, budget),
+    );
+  } finally {
+    releaseGlobalSemaphore();
+  }
 
   const passed = results.filter((r) => r.passed).length;
   const runCases = results.filter((r) => r.runtimeMs > 0);
@@ -182,5 +239,5 @@ const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionR
 export const codeExecutionWorker = createQueueWorker<CodeExecutionJobData, CodeExecutionResult>(
   "code-execution",
   processor,
-  Number(process.env.CODE_EXEC_CONCURRENCY || 4)
+  Number(process.env.CODE_EXEC_CONCURRENCY || 1)
 );

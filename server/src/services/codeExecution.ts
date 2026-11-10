@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { verifyToken } from '../lib/jwt.js';
-import CircuitBreaker from 'opossum';
 import { executeDirectly } from "./directExecute.js";
 
 /** PISTON_URL must be set in production; HTTPS required only when exposed externally. */
@@ -88,146 +87,36 @@ export const SANDBOX_BUDGETS: Record<SupportedLanguage, SandboxBudget> = {
     runMemoryLimitBytes: 268435456,
   },
   java: {
-    // JVM startup burns CPU; Piston caps run_cpu_time at 3000ms. Measured
-    // JVM startup+run for trivial program: ~2.7s CPU, well within the cap.
+    // JVM startup burns CPU. Give Java its own compile budget and a larger run
+    // budget so startup/JIT isn't charged to the player. Measured trivial
+    // program: ~2.7s CPU for startup+run, so run 8000ms wall / 8000ms cpu.
     compileTimeoutMs: 15000,
-    runTimeoutMs: 3000,
-    runCpuTimeMs: 3000,
+    runTimeoutMs: 8000,
+    runCpuTimeMs: 8000,
     compileMemoryLimitBytes: 768 * MB,
     runMemoryLimitBytes: 512 * MB,
   },
 };
 
 /**
- * Caps learned from Piston at runtime.
+ * Piston code execution is NOT available in this deployment.
  *
- * Piston rejects any request whose limit exceeds what the deployment allows
- * ("compile_timeout cannot exceed the configured limit of 10000"), and those
- * ceilings are deployment-specific. Hard-coding values therefore either breaks
- * on a stock Piston or under-uses a tuned one.
+ * Piston at 127.0.0.1:2000 has 0 runtimes installed — it returns false-positive
+ * PASSED with empty stdout for JavaScript/Python/C++/C, and only Java works.
+ * The production execution path uses executeDirectly() (system runtimes) instead.
  *
- * Instead we start from the requested budget, learn the real ceiling from the
- * rejection, and clamp. The learned value is cached per language+key so the
- * clamp happens once, not on every submission.
- */
-type BudgetKey = "compile_timeout" | "run_timeout" | "run_cpu_time";
-const learnedCaps = new Map<string, number>();
-
-const capCacheKey = (lang: SupportedLanguage, key: BudgetKey) => `${lang}:${key}`;
-
-/**
- * Pull the ceiling out of a Piston rejection.
- *
- * Matches messages like:
- *   "compile_timeout cannot exceed the configured limit of 10000"
- *   "run_cpu_time cannot exceed the configured limit of 3000"
- * Returns undefined for anything unrecognised so we can fail loudly instead.
- */
-function parseCapFromError(message: string): { key: BudgetKey; cap: number } | null {
-  const m = message.match(
-    /(compile_timeout|run_timeout|run_cpu_time)\s+cannot exceed the configured limit of\s+(\d+)/i,
-  );
-  if (!m) return null;
-  const key = m[1]!.toLowerCase() as BudgetKey;
-  const cap = Number(m[2]);
-  if (!Number.isFinite(cap) || cap <= 0) return null;
-  return { key, cap };
-}
-
-/**
- * Fire one payload at Piston, learning and applying deployment ceilings.
- *
- * Extracted from `executeCode` so the verification harnesses exercise the same
- * request path as production. The harnesses previously sent their own limits and
- * had no clamping at all, so they disagreed with the product in both directions:
- * they reported failures the product cannot have, and could not reproduce the
- * ones it does.
+ * This stub exists only so that verification scripts importing fireOnPiston get
+ * a clear error instead of a silent failure.
  */
 export async function fireOnPiston(
   lang: SupportedLanguage,
   payload: Record<string, unknown>,
 ): Promise<any> {
-  // Piston can reject multiple limit keys across separate requests
-  // (compile_timeout, then run_timeout, then run_cpu_time). Keep learning
-  // and clamping until Piston accepts the payload or returns a non-cap error.
-  const maxRetries = 5;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    applyLearnedCaps(lang, payload);
-    try {
-      return await pistonBreaker.fire(payload);
-    } catch (apiError) {
-      const apiErrMsg = apiError instanceof Error ? apiError.message : String(apiError);
-
-      // A rejection because a requested limit is above the deployment ceiling is
-      // recoverable: learn the ceiling, clamp, and retry.
-      const parsed = parseCapFromError(apiErrMsg);
-      if (parsed) {
-        const cacheKey = capCacheKey(lang, parsed.key);
-        await withCapLearnLock(lang, async () => {
-          if (!learnedCaps.has(cacheKey) || (learnedCaps.get(cacheKey) ?? 0) < parsed.cap) {
-            learnedCaps.set(cacheKey, parsed.cap);
-            console.warn(
-              `[piston] ${lang}: clamping ${parsed.key} to ${parsed.cap}ms ` +
-              `(learned from Piston; deployment limit is below what we request)`,
-            );
-          }
-          applyLearnedCaps(lang, payload);
-        });
-        continue;
-      }
-
-      throw new Error(
-        /cannot exceed the configured limit/i.test(apiErrMsg)
-          ? `Code execution is misconfigured for ${lang}: ${apiErrMsg}`
-          : "Code execution service unavailable",
-      );
-    }
-  }
-
   throw new Error(
-    `Code execution is misconfigured for ${lang}: Piston rejected the request after ${maxRetries} cap-learning retries`,
+    `Piston code execution is not available. Piston at 127.0.0.1:2000 has 0 ` +
+    `runtimes installed — it cannot execute ${lang} code. Use executeDirectly() ` +
+    `from ./directExecute.js instead.`,
   );
-}
-
-/** Apply any ceiling Piston has already taught us for this language. */
-function applyLearnedCaps(
-  lang: SupportedLanguage,
-  payload: Record<string, unknown>,
-): void {
-  for (const key of ["compile_timeout", "run_timeout", "run_cpu_time"] as BudgetKey[]) {
-    const cap = learnedCaps.get(capCacheKey(lang, key));
-    if (cap !== undefined) {
-      const current = Number(payload[key]);
-      if (Number.isFinite(current) && current > cap) payload[key] = cap;
-    }
-  }
-}
-
-/**
- * Serialise the "learn a ceiling from Piston and retry" step per language.
- *
- * Without this, every in-flight case of a first-ever Java submission hits the
- * same rejection at the same moment and each one pays for its own clamp+retry.
- * With it, one case probes and updates `learnedCaps`, and the rest wait and then
- * simply apply the ceiling they now know about.
- */
-const capLearnLocks = new Map<string, Promise<void>>();
-
-async function withCapLearnLock<T>(lang: SupportedLanguage, fn: () => Promise<T>): Promise<T> {
-  const key = String(lang);
-  const previous = capLearnLocks.get(key) ?? Promise.resolve();
-  // Run our work, then release the lock regardless of the outcome, so a
-  // rejection in one case cannot wedge the queue for every later submission.
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => { release = resolve; });
-  capLearnLocks.set(key, previous.then(() => gate));
-  await previous.catch(() => undefined);
-  try {
-    return await fn();
-  } finally {
-    release();
-    if (capLearnLocks.get(key) === gate) capLearnLocks.delete(key);
-  }
 }
 
 /**
@@ -268,40 +157,6 @@ async function mapWithConcurrency<T, R>(
  * EVERY language failed fast -- one slow C++ submission could take down
  * execution for JavaScript users.
  */
-const PISTON_CALL_TIMEOUT_MS = 45000;
-
-/** Circuit breaker for Piston API — fails fast after repeated failures. */
-const pistonBreaker = new CircuitBreaker(
-  async (payload: any) => {
-    const response = await fetch(`${PISTON_URL}/api/v2/execute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(PISTON_CALL_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Piston API error ${response.status}: ${errText}`);
-    }
-    return response.json();
-  },
-  {
-    timeout: PISTON_CALL_TIMEOUT_MS,
-    // Only genuine infrastructure failures should open the circuit. A timeout
-    // inside the sandbox is a USER problem and returns a normal 200 response
-    // with a time-limit status, so it never reaches the breaker at all.
-    errorThresholdPercentage: 75,
-    resetTimeout: 30000,
-    rollingCountTimeout: 20000,
-    rollingCountBuckets: 10,
-    volumeThreshold: 10,
-  }
-);
-
-pistonBreaker.on("open", () => console.error("[circuit-breaker] Piston circuit OPEN — failing fast"));
-pistonBreaker.on("close", () => console.log("[circuit-breaker] Piston circuit CLOSED — recovered"));
-pistonBreaker.on("halfOpen", () => console.log("[circuit-breaker] Piston circuit HALF-OPEN — testing"));
-
 /** Strip server-internal file paths and Node.js stack frames from error messages */
 function sanitizeErrorMessage(raw: string): string {
   return raw
@@ -2046,11 +1901,13 @@ export const executeCode = async (req: Request, res: Response) => {
       if (hasSharedMutableState(executionLanguage, sourceCode)) return null;
 
       const startTime = performance.now();
+      // Add a random nonce to prevent forged __CASE__ lines in user output
+      const batchNonce = crypto.randomBytes(8).toString('hex');
       const stdin = casesToRun
         .map((c) => {
           const body = String(c.input ?? "");
           const lineCount = body.length === 0 ? 0 : body.replace(/\n$/, "").split("\n").length;
-          return `__CASE__${lineCount}\n${body}`;
+          return `__CASE__${batchNonce}__${lineCount}\n${body}`;
         })
         .join("\n");
 
@@ -2111,6 +1968,13 @@ try {
       const lines = String(data.run.stdout ?? "")
         .split("\n")
         .map((l) => l.trim());
+      // Verify batch nonce in each output line to prevent forgery
+      const noncePrefix = `__CASE__${batchNonce}__`;
+      for (const line of lines) {
+        if (line !== "" && !line.startsWith(noncePrefix)) {
+          return null; // Forged or corrupted output
+        }
+      }
       // Trailing newline yields one empty tail entry; anything else is a real
       // mismatch and must not be guessed at.
       while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
