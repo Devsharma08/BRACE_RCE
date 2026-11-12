@@ -2,8 +2,6 @@ import { spawn } from "child_process";
 import { writeFileSync, mkdtempSync, chmodSync, rmSync, existsSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { createClient } from "redis";
-import { randomBytes } from "crypto";
 
 export interface ExecutionResult {
   stdout: string;
@@ -61,80 +59,6 @@ const MEMORY_LIMITS_MB: Record<string, { compile: number; run: number }> = {
 const TMPFS_WORK_MB = 32;
 const TMPFS_TMP_RUN_MB = 32;
 const TMPFS_TMP_COMPILE_MB = 64;
-
-// Global execution semaphore (Redis-backed): one job at a time across all
-// workers/API instances. Prevents OOM on the 2GB box from concurrent Java
-// compiles (768MB each).
-const GLOBAL_CONCURRENCY_KEY = "brace:exec:global:concurrency";
-const GLOBAL_CONCURRENCY_TTL_MS = 90000; // 90s: worst-case Java compile+run
-const MAX_ACQUIRE_WAIT_MS = 30000; // fail fast after 30s waiting
-
-const redis = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379",
-});
-redis.connect().catch(() => {});
-
-const acquireLockScript = `
-  local current = redis.call('GET', KEYS[1])
-  if current == false or current == '' then
-    redis.call('SET', KEYS[1], ARGV[1], 'PX', ARGV[2])
-    return 1
-  end
-  return 0
-`;
-
-const releaseLockScript = `
-  local current = redis.call('GET', KEYS[1])
-  if current == ARGV[1] then
-    return redis.call('DEL', KEYS[1])
-  end
-  return 0
-`;
-
-const lockToken = randomBytes(16).toString('hex');
-
-async function acquireGlobalSemaphore(): Promise<void> {
-  // If Redis is not available, fail closed in production to avoid
-  // unbounded concurrency on a memory-constrained host. Fail open only
-  // with explicit ALLOW_UNSANDBOXED=1 opt-in for development.
-  if (!redis.isOpen) {
-    if (process.env.ALLOW_UNSANDBOXED === '1') {
-      console.warn('WARNING: Redis unavailable, running without global concurrency limit');
-      return;
-    }
-    throw new Error('judge unavailable: Redis not reachable, concurrency cannot be enforced');
-  }
-  try {
-    const deadline = Date.now() + MAX_ACQUIRE_WAIT_MS;
-    while (true) {
-      const acquired = await redis.eval(acquireLockScript, {
-        keys: [GLOBAL_CONCURRENCY_KEY],
-        arguments: [lockToken, String(GLOBAL_CONCURRENCY_TTL_MS)],
-      });
-      if (acquired === 1) return;
-      if (Date.now() >= deadline) {
-        throw new Error("judge busy: too many concurrent executions");
-      }
-      await new Promise((r) => setTimeout(r, 50));
-    }
-  } catch (err: any) {
-    if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
-      if (process.env.ALLOW_UNSANDBOXED === '1') {
-        console.warn('WARNING: Redis unavailable, running without global concurrency limit');
-        return;
-      }
-      throw new Error('judge unavailable: Redis not reachable, concurrency cannot be enforced');
-    }
-    throw err;
-  }
-}
-
-function releaseGlobalSemaphore(): void {
-  redis.eval(releaseLockScript, {
-    keys: [GLOBAL_CONCURRENCY_KEY],
-    arguments: [lockToken],
-  }).catch(() => {});
-}
 
 let sandboxCache: boolean | null = null;
 let sandboxCachePromise: Promise<boolean> | null = null;
@@ -284,8 +208,6 @@ export async function executeDirectly(
   }
 
   const useSandbox = sandboxOk;
-
-  // Per-job work directory...
 
   const workDir = mkdtempSync(join(tmpdir(), "brace-exec-"));
   chmodSync(workDir, 0o700);
