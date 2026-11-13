@@ -48,7 +48,8 @@ import { AdminRoute } from "./components/shared/AdminRoute.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { wireAuthInvalidation } from "./config/api.ts";
+import { wireAuthInvalidation, fetchCsrfToken } from "./config/api.ts";
+import { useEffect } from "react";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "not-configured";
 
@@ -67,6 +68,12 @@ const queryClient = new QueryClient({
 wireAuthInvalidation(queryClient);
 
 export const Root = () => {
+  useEffect(() => {
+    fetchCsrfToken().catch(() => {
+      // Silently fail - CSRF token will be fetched lazily on first POST if needed
+    });
+  }, []);
+
   return (
     <StrictMode>
       <QueryClientProvider client={queryClient}>

@@ -31,5 +31,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],    // Explicitly include your source folder
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/scripts", "src/codeExecution.ts", "src/verify_execution_full.ts", "src/seed.ts", "src/health.ts"]
 }

@@ -9,6 +9,7 @@ import {
 } from "../services/codeExecution.js";
 import { executeDirectly } from "../services/directExecute.js";
 import { createClient } from "redis";
+import { randomBytes } from "crypto";
 
 const GLOBAL_CONCURRENCY_KEY = "brace:exec:global:concurrency";
 const MAX_GLOBAL_CONCURRENCY = 1;
@@ -37,7 +38,7 @@ const releaseLockScript = `
   return 0
 `;
 
-const lockToken = crypto.randomBytes(16).toString('hex');
+const lockToken = randomBytes(16).toString('hex');
 
 async function acquireGlobalSemaphore(): Promise<void> {
   const deadline = Date.now() + MAX_ACQUIRE_WAIT_MS;
@@ -196,14 +197,16 @@ const processor = async (job: Job<CodeExecutionJobData>): Promise<CodeExecutionR
   }
 
   const CONCURRENCY = CASE_CONCURRENCY[executionLanguage];
-  await acquireGlobalSemaphore();
-  try {
-    const results = await mapWithConcurrency(cases, CONCURRENCY, (testCase) =>
-      runOneCase(executionLanguage, finalCode, testCase, budget),
-    );
-  } finally {
-    releaseGlobalSemaphore();
-  }
+  const results = await (async () => {
+    await acquireGlobalSemaphore();
+    try {
+      return await mapWithConcurrency(cases, CONCURRENCY, (testCase) =>
+        runOneCase(executionLanguage, finalCode, testCase, budget),
+      );
+    } finally {
+      releaseGlobalSemaphore();
+    }
+  })();
 
   const passed = results.filter((r) => r.passed).length;
   const runCases = results.filter((r) => r.runtimeMs > 0);

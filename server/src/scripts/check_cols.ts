@@ -8,13 +8,15 @@ async function main() {
     password: 'BraceDb2024Secure',
     database: 'brace_rce'
   });
+
   try {
     await client.connect();
-    const r = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name='Problem' ORDER BY column_name");
-    console.log(r.rows.map(r => r.column_name).join(', '));
+    const r = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'CodeSnippet' ORDER BY ordinal_position");
+    console.log('CodeSnippet columns:', r.rows.map(r => r.column_name).join(', '));
     await client.end();
   } catch (e: any) {
-    console.error('ERR:', e.message);
+    console.error('Error:', e.message);
   }
 }
+
 main();

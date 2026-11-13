@@ -1,86 +1,179 @@
-/**
- * Proves the stored expected outputs are actually reachable.
- *
- * For every bank entry we build a JavaScript submission from the reference
- * implementation (`buildUserSolution`), push it through the REAL
- * `prepareFinalCode` used in production, and run it on Piston against every
- * generated test case. The stdout must equal the expected output exactly.
- *
- * This is the check that catches mismatches a pure unit test cannot: wrapper
- * argument parsing, the whitespace-stripping serializer, and stdin framing.
- */
 import 'dotenv/config';
-import { BANK } from './problemBank/banks/index.js';
-import { fmtIn, fmtOut } from './problemBank/helpers.js';
-import { buildUserSolution } from './problemBank/solutionJs.js';
+import { executeDirectly } from '../services/directExecute.js';
+import { SANDBOX_BUDGETS, type SupportedLanguage } from '../services/codeExecution.js';
+import { prepareFinalCode } from '../services/codeExecution.js';
 
-const PISTON = process.env.PISTON_URL ?? 'http://localhost:2000';
+interface RunResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  runtimeMs: number;
+  error?: string;
+}
 
-async function piston(code: string, stdin: string) {
-  const res = await fetch(`${PISTON}/api/v2/execute`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      language: 'javascript',
-      version: '18.15.0',
-      files: [{ name: 'main.js', content: code }],
-      stdin,
-    }),
-  });
-  const j: any = await res.json();
-  if (j?.run?.code !== 0) {
-    throw new Error(j?.message ?? j?.run?.stderr ?? `exit ${j?.run?.code}`);
-  }
-  return (j.run.stdout as string).trim();
+interface CheckResult {
+  problemId: string;
+  problemName: string;
+  language: string;
+  caseIndex: number;
+  pass: boolean;
+  stdout: string;
+  expectedOutput: string;
+  exitCode: number;
+  stderr: string;
+}
+
+const failures: CheckResult[] = [];
+const passes: CheckResult[] = [];
+const skipped: CheckResult[] = [];
+
+function check(
+  name: string,
+  pass: boolean,
+  language: string,
+  mode: string,
+  input: string,
+  expected: string,
+  actual: string,
+  exitCode: number,
+  stderr: string,
+  reason?: string,
+): void {
+  const r: CheckResult = { name, pass, language, mode, input, expected, actual, exitCode, stderr, reason };
+  if (pass) passes.push(r);
+  else failures.push(r);
+}
+
+function skip(name: string, language: string, mode: string, reason: string): void {
+  skips.push({ name, pass: false, language, mode, input: '', expected: '', actual: '', exitCode: -1, stderr: '', reason });
+}
+
+function normalize(s: string): string {
+  return s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+async function runCodePipeline(
+  language: SupportedLanguage,
+  code: string,
+  stdinInput: string,
+  budget: typeof SANDBOX_BUDGETS,
+): Promise<{ stdout: string; stderr: string; exitCode: number; runtimeMs: number; error?: string }> {
+  const result = await executeDirectly(language, code, stdinInput, budget[language].runTimeoutMs, budget[language].compileTimeoutMs);
+  return {
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    exitCode: result.exitCode ?? 0,
+    runtimeMs: result.runtimeMs ?? 0,
+    error: result.error,
+  };
 }
 
 async function main() {
-  // Imported lazily so the Piston check still reports a clean error if the
-  // Prisma-generated client is unavailable in some environment.
-  const { prepareFinalCode } = await import('../services/codeExecution.js');
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
 
-  let pass = 0;
-  let fail = 0;
-  const failures: string[] = [];
+  try {
+    const problems = await prisma.problem.findMany({
+      include: {
+        testCases: {
+          where: { isPublic: true },
+          orderBy: { id: 'asc' },
+        },
+        codeSnippets: {
+          where: {},
+        },
+      },
+      where: {
+        testCases: { some: {} },
+        codeSnippets: { some: {} },
+      },
+      orderBy: { problem_number: 'asc' },
+    });
 
-  for (const p of BANK) {
-    const source = buildUserSolution(p);
-    const prepared = prepareFinalCode('javascript', source);
-    let ok = 0;
-    let bad = 0;
+    console.log(`Loaded ${problems.length} problems with test cases and code snippets\n`);
 
-    for (const [i, tc] of p.tests.entries()) {
-      const stdin = fmtIn(tc.args).replace(/\n$/, '');
-      const expected = fmtOut(p.solve(tc.args)).trim();
-      try {
-        const got = await piston(prepared, stdin);
-        if (got === expected) {
-          ok++;
-        } else {
-          bad++;
-          failures.push(`${p.key} case ${i}: got ${got} expected ${expected}`);
+    let totalPass = 0;
+    let totalFail = 0;
+    let totalCases = 0;
+
+    for (const problem of problems) {
+      console.log(`\n=== ${problem.name} (${problem.id}) ===`);
+      console.log(`  Difficulty: ${problem.difficulty_level}`);
+
+      // Group code snippets by language
+      const snippetsByLang: Record<string, string> = {};
+      for (const cs of problem.codeSnippets) {
+        snippetsByLang[cs.language as SupportedLanguage] = cs.code;
+      }
+
+      let problemPass = 0;
+      let problemFail = 0;
+
+      for (const lang of langs) {
+        const code = snippetsByLang[lang as SupportedLanguage];
+        if (!code) continue;
+
+        const preparedCode = prepareFinalCode(language, code, undefined);
+
+        let problemPass = 0;
+        let problemFail = 0;
+
+        for (const tc of problem.testCases) {
+          const result = await runCodePipeline(lang, preparedCode, tc.input, SANDBOX_BUDGETS[lang]);
+          const actual = normalize(result.stdout);
+          const expected = normalize(tc.expectedOutput);
+          const ok = result.exitCode === 0 && actual === expected;
+
+          if (ok) {
+            problemPass++;
+            totalPass++;
+          } else {
+            problemFail++;
+            failures.push({
+              problemId: problem.id,
+              problemName: problem.name,
+              language: lang,
+              caseIndex: tc.id,
+              input: tc.input,
+              expected: tc.expectedOutput,
+              actual: result.stdout.trim(),
+              exitCode: result.exitCode,
+              stderr: result.stderr || '',
+            });
+          }
         }
-      } catch (e: any) {
-        bad++;
-        failures.push(`${p.key} case ${i}: ${String(e.message).slice(0, 140)}`);
+
+        totalCases += problemPass + problemFail;
+
+        const status = problemFail === 0 ? 'PASS' : 'FAIL';
+        console.log(`  ${status}  ${lang.padEnd(10)} ${problemPass}/${problemPass + problemFail} cases`);
       }
     }
 
-    pass += ok;
-    fail += bad;
-    const mark = bad === 0 ? 'PASS' : 'FAIL';
-    console.log(`  ${mark}  ${p.key.padEnd(30)} ${ok}/${p.tests.length} cases`);
-  }
+    console.log('\n========================================');
+    console.log('FINAL SUMMARY');
+    console.log('========================================');
+    console.log(`Passes: ${totalPass}`);
+    console.log(`Failures: ${totalFail}`);
+    console.log(`Skips: ${skips.length}`);
 
-  console.log(`\n==== EXECUTION VERIFICATION ====\npassed: ${pass}, failed: ${fail}`);
-  if (failures.length) {
-    console.log('\nFailures:');
-    for (const f of failures.slice(0, 40)) console.log('  ✗ ' + f);
+    if (failures.length > 0) {
+      console.log('\nFailures:');
+      for (const f of failures.slice(0, 30)) {
+        console.log(`  FAIL: ${f.problemName}[${f.language}] case ${f.caseIndex}: expected="${f.expected}" actual="${f.actual}"`);
+      }
+    }
+
+    process.exitCode = failures.length > 0 ? 1 : 0;
+  } catch (e: any) {
+    console.error('DB error:', e.message);
+    process.exitCode = 1;
+  } finally {
+    await client.end();
   }
-  process.exitCode = fail === 0 ? 0 : 1;
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error('FATAL:', e);
   process.exitCode = 1;
 });

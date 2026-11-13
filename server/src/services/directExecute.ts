@@ -458,7 +458,7 @@ async function runDirectCommand(
         stdio: ["pipe", "pipe", "pipe"],
         killSignal: "SIGTERM",
         env: {
-          PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+          PATH: '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/user/1000/fnm_multishells/23025_1794546079314/bin',
           HOME: workDir,
           LANG: 'C.UTF-8',
           LC_ALL: 'C.UTF-8',

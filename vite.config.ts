@@ -32,13 +32,13 @@ export default defineConfig({
     // Proxy API requests to backend for cookie-based auth
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         ws: true,
       },
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5000',
         ws: true,
       },
     },

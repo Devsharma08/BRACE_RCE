@@ -50,15 +50,9 @@ const headerValue = (req: Request, name: string): string | undefined => {
 
 const sha256 = (input: string): string => createHash("sha256").update(input).digest("hex");
 
-/** Allow-list check: configured origins, else the API's own host. */
-const originAllowed = (origin: string, req: Request): boolean => {
-  if (getAllowedOrigins().includes(origin)) return true;
-  try {
-    const host = headerValue(req, "host");
-    return Boolean(host) && new URL(origin).host === host;
-  } catch {
-    return false;
-  }
+/** Allow-list check: configured origins only (no host fallback). */
+const originAllowed = (origin: string): boolean => {
+  return getAllowedOrigins().includes(origin);
 };
 
 /** Identify the requester: authenticated user when the cookie verifies, else IP. */
@@ -90,7 +84,7 @@ export function executionGuard() {
     const requestedWith = headerValue(req, "x-requested-with");
 
     if (origin) {
-      if (!originAllowed(origin, req)) {
+      if (!originAllowed(origin)) {
         return res.status(403).json({
           status: "error",
           message: "Origin not allowed for code execution.",

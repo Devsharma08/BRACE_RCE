@@ -95,14 +95,18 @@ function readCsrfCookie(): string | null {
 }
 
 // Add CSRF token to mutating requests
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
     const method = config.method?.toUpperCase();
     const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
     if (method && mutatingMethods.includes(method)) {
         // Prefer the live cookie (source of truth); fall back to the token
         // fetchCsrfToken() cached so a POST still works if the cookie was
         // cleared but a token was fetched earlier in the session.
-        const token = readCsrfCookie() || csrfToken;
+        let token = readCsrfCookie() || csrfToken;
+        if (!token) {
+            // Token not available - fetch it first
+            token = await fetchCsrfToken();
+        }
         if (token) {
             config.headers.set('x-csrf-token', token);
         }

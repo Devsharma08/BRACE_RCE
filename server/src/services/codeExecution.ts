@@ -1,27 +1,16 @@
 import type { Request, Response } from "express";
+import { randomBytes } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { saveSubmisssion } from "./submissionEvaluator.js";
 import { verifyToken } from '../lib/jwt.js';
 import { executeDirectly } from "./directExecute.js";
 
-/** PISTON_URL must be set in production; HTTPS required only when exposed externally. */
-const PISTON_URL = (() => {
-  const url = process.env.PISTON_URL;
-  if (!url) {
-    if (process.env.NODE_MODE === "production") {
-      throw new Error("PISTON_URL must be set in production");
-    }
-    return "http://127.0.0.1:2000";
-  }
-  // In Docker, PISTON_URL points to the internal service (e.g. http://piston:2000)
-  // and TLS is terminated at the Nginx edge. Only enforce HTTPS for external URLs.
-  // Allow http:// for localhost/127.0.0.1 (in-container Piston) and any URL
-  // containing "piston" (internal Docker service name).
-  if (process.env.NODE_MODE === "production" && !url.startsWith("https://") && !url.includes("piston") && !url.includes("127.0.0.1") && !url.includes("localhost")) {
-    throw new Error("PISTON_URL must use HTTPS in production for external URLs");
-  }
-  return url;
-})();
+/**
+ * Piston code execution is NOT available in this deployment.
+ * The production execution path uses executeDirectly() (system runtimes via Docker)
+ * instead of Piston. PISTON_URL is not required.
+ */
+export const PISTON_URL = "";
 
 /**
  * Per-language sandbox budgets.
@@ -1902,7 +1891,7 @@ export const executeCode = async (req: Request, res: Response) => {
 
       const startTime = performance.now();
       // Add a random nonce to prevent forged __CASE__ lines in user output
-      const batchNonce = crypto.randomBytes(8).toString('hex');
+      const batchNonce = randomBytes(8).toString('hex');
       const stdin = casesToRun
         .map((c) => {
           const body = String(c.input ?? "");
