@@ -460,7 +460,11 @@ function hasSharedMutableState(language: string, code: string): boolean {
 export function prepareFinalCode(
   executionLanguage: SupportedLanguage,
   sourceCode: string,
-  snippet?: { code?: string; wrapperCode?: string | null }
+  snippet?: { code?: string; wrapperCode?: string | null },
+  fileData?: { 
+    code_snippets?: Array<{ code?: string }>;
+    test_cases?: Array<{ expectedOutput?: string }>;
+  }
 ): string {
   let wrapperCode = snippet?.wrapperCode || "";
 
@@ -515,7 +519,7 @@ export function prepareFinalCode(
   type TypeKind =
     | 'int' | 'long' | 'double' | 'float' | 'bool' | 'string' | 'char'
     | 'int_array' | 'int_array_2d' | 'string_array' | 'long_array' | 'double_array'
-    | 'list_node' | 'tree_node' | 'node' | 'out_size_ptr'
+    | 'list_node' | 'tree_node' | 'random_node' | 'graph_node' | 'node' | 'out_size_ptr'
     | 'void' | 'unknown';
 
   function detectKind(rawType: string): TypeKind {
@@ -581,12 +585,19 @@ export function prepareFinalCode(
           const tokens = part.replace(/[&*]/g, ' ').trim().split(/\s+/);
           const paramName = tokens[tokens.length - 1] ?? `p${params.length}`;
           let kind = detectKind(part);
+          // Override kind for random pointer list and graph problems based on method name
+          if (name === 'copyRandomList' && kind === 'list_node') kind = 'random_node';
+          if (name === 'cloneGraph' && kind === 'list_node') kind = 'graph_node';
           if (paramName.toLowerCase().includes('returnsize') || paramName.toLowerCase().includes('retsize')) kind = 'out_size_ptr';
           params.push({ rawType: part, name: paramName, kind });
         }
       }
       const returnKind = detectKind(retRaw);
-      return { returnKind, funcName: name, params, isVoid: returnKind === 'void' };
+      // Override return kind for random pointer list and graph problems
+      let finalReturnKind = returnKind;
+      if (name === 'copyRandomList' && returnKind === 'list_node') finalReturnKind = 'random_node';
+      if (name === 'cloneGraph' && returnKind === 'list_node') finalReturnKind = 'graph_node';
+      return { returnKind: finalReturnKind, funcName: name, params, isVoid: finalReturnKind === 'void' };
     }
     return null;
   }
@@ -654,6 +665,10 @@ function Node(val, left, right, next, random) {
   this.next = (next===undefined ? null : next);
   this.random = (random===undefined ? null : random);
 }
+function GraphNode(val, neighbors) {
+  this.val = (val===undefined ? 0 : val);
+  this.neighbors = (neighbors===undefined ? [] : neighbors);
+}
 function arrayToListNode(arr) {
   if (!Array.isArray(arr) || arr.length === 0) return null;
   const dummy = new ListNode(0);
@@ -719,6 +734,42 @@ function randomListToArray(head) {
   while (curr) { map.set(curr, nodes.length); nodes.push(curr); curr = curr.next; }
   return nodes.map(node => [node.val, node.random && map.has(node.random) ? map.get(node.random) : null]);
 }
+function isGraphNode(obj) { return obj && typeof obj === 'object' && ('val' in obj && 'neighbors' in obj && Array.isArray(obj.neighbors)); }
+function arrayToGraph(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const nodes = arr.map((_, i) => new GraphNode(i + 1, []));
+  for (let i = 0; i < arr.length; i++) {
+    const neighbors = arr[i];
+    if (Array.isArray(neighbors)) {
+      for (const nbIdx of neighbors) {
+        if (nbIdx >= 1 && nbIdx <= nodes.length) {
+          nodes[i].neighbors.push(nodes[nbIdx - 1]);
+        }
+      }
+    }
+  }
+  return nodes[0];
+}
+function graphToArray(node) {
+  if (!node) return [];
+  const nodes = [];
+  const queue = [node];
+  const visited = new Set();
+  visited.add(node);
+  while (queue.length > 0) {
+    const curr = queue.shift();
+    nodes.push(curr);
+    for (const nb of curr.neighbors) {
+      if (!visited.has(nb)) {
+        visited.add(nb);
+        queue.push(nb);
+      }
+    }
+  }
+  const nodeToIdx = new Map();
+  nodes.forEach((n, i) => nodeToIdx.set(n, i + 1));
+  return nodes.map(n => n.neighbors.map(nb => nodeToIdx.get(nb)).filter(x => x !== undefined));
+}
 function isRandomNode(obj) { return obj && typeof obj === 'object' && ('val' in obj && ('random' in obj || ('next' in obj && 'val' in obj))); }
 `;
 
@@ -730,21 +781,35 @@ function isRandomNode(obj) { return obj && typeof obj === 'object' && ('val' in 
         const argCount = argsStr ? argsStr.split(',').length : 0;
         const paramNames = argsStr.split(',').map(s => s.trim().toLowerCase());
         const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random") || sourceCode.includes("_Node");
-        const isTreeProblem = !isRandomProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode"));
-        // A linked-list problem is detected from the code OR from a list-like
-        // parameter NAME *combined with actual node access*. LeetCode's
-        // canonical list parameter is `head` (also `l1`/`l2`, and `list`).
-        //
-        // The param-name check is deliberately gated on node access (`.next` /
-        // `.val`): problems like Reorder List (#34) use only `head` and none of
-        // the method-name keywords, so they were previously missed — the JSON
-        // array was passed UNCONVERTED, the in-place mutation did nothing, and
-        // the untouched original was graded (correct solutions always failed).
-        // But some array-based problems reuse the SAME names (`l1`/`l2` in the
-        // bank's "add two numbers" treat them as plain arrays), so the name
-        // alone must not trigger conversion — only when the body walks nodes.
+        const isGraphProblem = sourceCode.includes("cloneGraph") || sourceCode.includes("GraphNode");
+        const isTreeProblem = !isRandomProblem && !isGraphProblem && (sourceCode.includes(".left") || sourceCode.includes(".right") || sourceCode.includes("TreeNode"));
+        // Detect return type from JSDoc @return or TypeScript annotation
+        let returnTypeMatch = (snippet?.code || sourceCode).match(/@return\s+\{([^}]+)\}|\)\s*:\s*([\w\[\]<>,| ]+)\s*\{/);
+        if (!returnTypeMatch && fileData?.code_snippets) {
+          for (const snip of fileData.code_snippets) {
+            const m = snip.code?.match(/@return\s+\{([^}]+)\}|\)\s*:\s*([\w\[\]<>,| ]+)\s*\{/);
+            if (m) { returnTypeMatch = m; break; }
+          }
+        }
+        const returnType = (returnTypeMatch?.[1] || returnTypeMatch?.[2] || '').toLowerCase().replace(/\s+/g, '');
+        // Only treat explicit float/double as float, NOT generic 'number' (which covers int in JS)
+        let isFloatReturn = returnType.includes('float') || returnType.includes('double');
+        let floatPrecision = 5; // default precision
+        // Fallback: infer from test case expected outputs (e.g., "2.50000", "2.5", "-0.5", "-1.5")
+        if (!isFloatReturn && fileData?.test_cases) {
+          for (const tc of fileData.test_cases) {
+            const exp = tc.expectedOutput?.trim();
+            if (exp && /^-?\d*\.\d+$/.test(exp)) {
+              isFloatReturn = true;
+              // Detect precision from expected output
+              const decimals = exp.split('.')[1].length;
+              if (decimals > 0 && decimals < floatPrecision) floatPrecision = decimals;
+              break;
+            }
+          }
+        }
         const usesNodeAccess = sourceCode.includes(".next") || sourceCode.includes(".val");
-        const isListProblem = !isRandomProblem && (
+        const isListProblem = !isRandomProblem && !isGraphProblem && (
           sourceCode.includes("ListNode") || sourceCode.includes("partition") ||
           sourceCode.includes("reverseList") || sourceCode.includes("mergeTwoLists") ||
           sourceCode.includes("deleteNode") || sourceCode.includes("reorderList") ||
@@ -775,6 +840,8 @@ if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided i
 `;
           wrapperCode += `const isArgList${i} = ${isListProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('head') || ${pNameStr}.includes('l1') || ${pNameStr}.includes('l2') || ${pNameStr}.includes('list'));
 `;
+          wrapperCode += `const isArgGraph${i} = ${isGraphProblem} && Array.isArray(rawArg${i}) && (${pNameStr}.includes('node') || ${pNameStr} === 'node');
+`;
           // "List of lists" params (e.g. Merge k Sorted Lists' `lists`) must become an
           // ARRAY of ListNodes, not a single ListNode. Without this the generic
           // isArgList branch ran arrayToListNode() over the 2D array and produced one
@@ -783,7 +850,7 @@ if (input.length === 0) { throw new Error("TEST CASE ERROR: The input provided i
           // `mergeKLists([]) === null` -> serialized `[]` contract.
           wrapperCode += `const isArgListOfLists${i} = ${isListProblem} && Array.isArray(rawArg${i}) && (${pNameStr} === 'lists' || ${pNameStr}.includes('lists'));
 `;
-          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : isArgTree${i} ? arrayToTree(rawArg${i}) : isArgListOfLists${i} ? rawArg${i}.map(sub => Array.isArray(sub) ? arrayToListNode(sub) : sub) : isArgList${i} ? arrayToListNode(rawArg${i}) : rawArg${i};
+          wrapperCode += `const arg${i} = (${isRandomProblem} && Array.isArray(rawArg${i})) ? arrayToRandomList(rawArg${i}) : ${isGraphProblem} ? arrayToGraph(rawArg${i}) : isArgTree${i} ? arrayToTree(rawArg${i}) : isArgListOfLists${i} ? rawArg${i}.map(sub => Array.isArray(sub) ? arrayToListNode(sub) : sub) : isArgList${i} ? arrayToListNode(rawArg${i}) : rawArg${i};
 `;
         }
         const callArgs = Array.from({ length: argCount }, (_, i) => `arg${i}`).join(', ');
@@ -821,12 +888,12 @@ try {
           argCount >= 2
             ? `(isTreeNode(res) && isTreeNode(arg0) && (${scalarLaterArgs})) ? res.val : `
             : '';
-        wrapperCode += `const outVal = isListNode(res) ? listNodeToArray(res) : isRandomNode(res) ? randomListToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && (${isTreeProblem} || ${isListProblem})) ? [] : ${lcaValuePrefix}(isTreeNode(res) ? treeToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : (isListNode(arg0) ? listNodeToArray(arg0) : ((arg0 == null && (${isTreeProblem} || ${isListProblem})) ? [] : arg0)))));
+        wrapperCode += `const outVal = isListNode(res) ? listNodeToArray(res) : isRandomNode(res) ? randomListToArray(res) : isGraphNode(res) ? graphToArray(res) : (res === null && ${isRandomProblem}) ? [] : (res === null && (${isTreeProblem} || ${isListProblem} || ${isGraphProblem})) ? [] : ${lcaValuePrefix}(isTreeNode(res) ? treeToArray(res) : (isGraphNode(res) ? graphToArray(res) : (res !== undefined ? res : (isTreeNode(arg0) ? treeToArray(arg0) : (isGraphNode(arg0) ? graphToArray(arg0) : (isListNode(arg0) ? listNodeToArray(arg0) : ((arg0 == null && (${isTreeProblem} || ${isListProblem} || ${isGraphProblem})) ? [] : arg0)))))));
 `;
         // NOTE: the backslash must be doubled. Inside a template literal `/\s/g`
         // would collapse to `/s/g`, stripping every literal "s" from the output
         // (e.g. `false` was printed as `fale`).
-        wrapperCode += `console.log(JSON.stringify(outVal).replace(/\\s/g, ''));`;
+        wrapperCode += `const outStr = typeof outVal === 'string' ? outVal : (typeof outVal === 'number' && !Number.isInteger(outVal) ? outVal.toFixed(${floatPrecision}) : JSON.stringify(outVal).replace(/\\s/g, '')); console.log(outStr);`;
       }
     }
 
@@ -924,16 +991,112 @@ def _from_tree_node(root):
         else:
             res.append(None)
     return res[:last_non_none]
+
+def _to_random_list(arr):
+    if not isinstance(arr, list): return arr
+    if not arr: return None
+    nodes = []
+    for item in arr:
+        val = item[0] if isinstance(item, list) else item
+        nodes.append(_Node(val))
+    for i, item in enumerate(arr):
+        if i < len(arr) - 1:
+            nodes[i].next = nodes[i + 1]
+        if isinstance(item, list) and len(item) > 1:
+            rand_idx = item[1]
+            if rand_idx is not None and 0 <= rand_idx < len(nodes):
+                nodes[i].random = nodes[rand_idx]
+    return nodes[0]
+
+def _from_random_list(head):
+    if not isinstance(head, _Node): return [] if head is None else head
+    nodes = []
+    curr = head
+    while curr:
+        nodes.append(curr)
+        curr = curr.next
+    node_to_idx = {node: i for i, node in enumerate(nodes)}
+    res = []
+    for node in nodes:
+        rand_idx = node_to_idx.get(node.random) if node.random else None
+        res.append([node.val, rand_idx])
+    return res
+
+class GraphNode:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = neighbors if neighbors is not None else []
+
+def _to_graph(arr):
+    if not isinstance(arr, list): return arr
+    if not arr: return None
+    nodes = [GraphNode(i + 1, []) for i in range(len(arr))]
+    for i, neighbors in enumerate(arr):
+        if isinstance(neighbors, list):
+            for nb_idx in neighbors:
+                if 1 <= nb_idx <= len(nodes):
+                    nodes[i].neighbors.append(nodes[nb_idx - 1])
+    return nodes[0]
+
+def _from_graph(node):
+    if not isinstance(node, GraphNode): return [] if node is None else node
+    nodes = []
+    queue = [node]
+    visited = set()
+    visited.add(id(node))
+    while queue:
+        curr = queue.pop(0)
+        nodes.append(curr)
+        for nb in curr.neighbors:
+            if id(nb) not in visited:
+                visited.add(id(nb))
+                queue.append(nb)
+    # Sort by node value to match expected output order
+    nodes.sort(key=lambda n: n.val)
+    node_to_idx = {id(n): i + 1 for i, n in enumerate(nodes)}
+    return [[node_to_idx[id(nb)] for nb in sorted(n.neighbors, key=lambda x: x.val)] for n in nodes]
 `;
 
     const isListProblem = sourceCode.includes("ListNode") || sourceCode.includes("head") || sourceCode.includes("partition") || sourceCode.includes("reverseList");
-    const isTreeProblem = sourceCode.includes("TreeNode") || sourceCode.includes("root");
+    const isTreeProblem = sourceCode.includes("TreeNode") || sourceCode.includes("root") || sourceCode.includes(".left") || sourceCode.includes(".right");
+    const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random") || sourceCode.includes("_Node");
+    const isGraphProblem = sourceCode.includes("cloneGraph") || sourceCode.includes("GraphNode");
 
     const sig = parsePythonSig(snippet?.code || sourceCode);
     const funcName = sig?.funcName || "solution";
     const isSolutionClass = sourceCode.includes('class Solution');
     const argCount = sig?.params.length || 2;
+    // Detect return type from Python type hints: def func(...) -> float:
+    // Also check other language snippets if Python snippet doesn't have it
+    let returnTypeMatch = (snippet?.code || sourceCode).match(/->\s*([\w\[\],| ]+)\s*:/);
+    if (!returnTypeMatch && fileData?.code_snippets) {
+      // Fallback: check other language snippets for @return type
+      for (const snip of fileData.code_snippets) {
+        const m = snip.code?.match(/@return\s+\{([^}]+)\}|\)\s*:\s*([\w\[\]<>,| ]+)\s*\{/);
+        if (m) { returnTypeMatch = m; break; }
+      }
+    }
+    const returnType = (returnTypeMatch?.[1] || returnTypeMatch?.[2] || '').toLowerCase().replace(/\s+/g, '');
+    let isFloatReturn = returnType.includes('float') || returnType.includes('double');
+    let floatPrecision = 5;
+    // Fallback: infer from test case expected outputs (e.g., "2.50000", "2.5", "-0.5", "-1.5")
+    if (!isFloatReturn && fileData?.test_cases) {
+      for (const tc of fileData.test_cases) {
+        const exp = tc.expectedOutput?.trim();
+        if (exp && /^-?\d*\.\d+$/.test(exp)) {
+          isFloatReturn = true;
+          const decimals = exp.split('.')[1].length;
+          if (decimals > 0 && decimals < floatPrecision) floatPrecision = decimals;
+          break;
+        }
+      }
+    }
 
+    const pyFloatReturn = isFloatReturn ? 'True' : 'False';
+    const pyPrecision = floatPrecision;
+    const pyTrue = 'True';
+    const pyIsGraphProblem = isGraphProblem ? 'True' : 'False';
+    const pyIsRandomProblem = isRandomProblem ? 'True' : 'False';
     let pyWrapper = `
 import sys, json, math, collections, heapq, itertools, functools, bisect
 `;
@@ -953,8 +1116,14 @@ except (ValueError, TypeError): raw_arg${i} = input_lines[${i}] if ${i} < len(in
       const pName = sig?.params[i]?.name.toLowerCase() || '';
       const isArgTree = isTreeProblem && (pName.includes('root') || pName.includes('tree') || pName.includes('node') || pName === 'p' || pName === 'q' || pName === 't1' || pName === 't2');
       const isArgList = isListProblem && (pName.includes('head') || pName.includes('l1') || pName.includes('l2') || pName.includes('list'));
-      if (isArgList) {
+      const isArgRandom = isRandomProblem && (pName.includes('head') || pName.includes('l1') || pName.includes('l2') || pName.includes('list'));
+      const isArgGraph = isGraphProblem && (pName.includes('node') || pName === 'node');
+      if (isArgRandom) {
+        pyWrapper += `arg${i} = _to_random_list(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
+      } else if (isArgList) {
         pyWrapper += `arg${i} = _to_list_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
+      } else if (isArgGraph) {
+        pyWrapper += `arg${i} = _to_graph(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
       } else if (isArgTree) {
         pyWrapper += `arg${i} = _to_tree_node(raw_arg${i}) if isinstance(raw_arg${i}, list) else raw_arg${i}\n`;
       } else {
@@ -976,9 +1145,19 @@ if hasattr(sol, '${funcName}'): res = getattr(sol, '${funcName}')(${callArgs})
 `;
     pyWrapper += `if isinstance(out_val, ListNode): out_val = _from_list_node(out_val)
 `;
+    pyWrapper += `elif isinstance(out_val, _Node): out_val = _from_random_list(out_val)
+`;
+    pyWrapper += `elif isinstance(out_val, GraphNode): out_val = _from_graph(out_val)
+`;
+    pyWrapper += `elif out_val is None and ${pyIsGraphProblem}: out_val = []
+`;
+    pyWrapper += `elif out_val is None and ${pyIsRandomProblem}: out_val = []
+`;
     pyWrapper += `elif isinstance(out_val, TreeNode): out_val = _from_tree_node(out_val)
 `;
-    pyWrapper += `print(json.dumps(out_val, separators=(',', ':')))
+    pyWrapper += `if isinstance(out_val, str): print(out_val)
+elif isinstance(out_val, float) and out_val != int(out_val): print("{:.${pyPrecision}f}".format(out_val))
+else: print(json.dumps(int(out_val) if isinstance(out_val, float) and out_val == int(out_val) else out_val, separators=(',', ':')))
 `;
 
     return `from typing import *
@@ -992,6 +1171,22 @@ ${pyWrapper}`;
   //  3. JAVA  (reflection-based — handles all types dynamically)
   // ═══════════════════════════════════════════════════════════
   if (executionLanguage === "java") {
+    // Determine problem type for Node parsing (graph vs random list)
+    const isGraphProblem = sourceCode.includes("cloneGraph") || sourceCode.includes("GraphNode");
+    const isRandomProblem = sourceCode.includes("copyRandomList") || sourceCode.includes("random");
+    let floatPrecision = 5; // Will be updated if test cases indicate different precision
+    // Infer float precision from test case expected outputs
+    if (fileData?.test_cases) {
+      for (const tc of fileData.test_cases) {
+        const exp = tc.expectedOutput?.trim();
+        if (exp && /^-?\d*\.\d+$/.test(exp)) {
+          const decimals = exp.split('.')[1].length;
+          if (decimals > 0 && decimals < floatPrecision) floatPrecision = decimals;
+          break;
+        }
+      }
+    }
+    
     let sanitizedSource = sourceCode
       .replace(/^package\s+[\w.]+;\s*/gm, "")
       .replace(/public\s+class\s+Solution/g, "class Solution")
@@ -1010,7 +1205,7 @@ ${pyWrapper}`;
     if (storedWrapperIsUsable) return `${wrapperCode}
 ${sanitizedSource}`;
 
-    const javaReflectionMain = `import java.util.*;
+const javaReflectionMain = `import java.util.*;
 import java.io.*;
 import java.lang.reflect.*;
 import java.util.stream.*;
@@ -1022,6 +1217,11 @@ import java.util.stream.*;
 // are therefore emitted AFTER Main, which Java permits since forward references
 // between top-level classes are legal.
 public class Main {
+  // Problem type flags for Node parsing
+  private static final boolean IS_GRAPH_PROBLEM = ${isGraphProblem};
+  private static final boolean IS_RANDOM_PROBLEM = ${isRandomProblem};
+  private static final int FLOAT_PRECISION = ${floatPrecision};
+
   // Batched execution.
   //
   // JVM startup costs ~2.4s of CPU before any user code runs, and Piston charges
@@ -1106,6 +1306,8 @@ public class Main {
     return text;
   }
 
+  private static boolean CURRENT_IS_GRAPH_OR_RANDOM = false;
+
   private static void runCaseBody(String[] inputLines) throws Exception {
     if (isDesignCase(Solution.class, inputLines)) { runDesignCase(Solution.class, inputLines); return; }
     if (isDesignActionCase(Solution.class, inputLines)) { runDesignActionCase(Solution.class, inputLines); return; }
@@ -1114,12 +1316,13 @@ public class Main {
         .toArray(Method[]::new);
     InvocationPlan plan = selectInvocation(candidates, inputLines);
     Method target = plan.method;
+    boolean isGraphOrRandom = target.getName().equals("copyRandomList") || target.getName().equals("cloneGraph");
     Object instance = Modifier.isStatic(target.getModifiers()) ? null : Solution.class.getDeclaredConstructor().newInstance();
     Object result = invokeTarget(target, instance, plan.args);
     if (target.getReturnType() == void.class) {
       if (plan.args.length > 0) System.out.println(format(plan.args[0]));
     } else {
-      System.out.println(result != null ? format(result) : "null");
+      System.out.println(result != null ? format(result) : (isGraphOrRandom ? "[]" : "null"));
     }
   }
   private static Object invokeTarget(Method m, Object inst, Object[] args) throws Exception {
@@ -1280,23 +1483,41 @@ public class Main {
   }
   private static Object parseNodeVal(String raw) throws Exception {
     String t=raw.trim(); if(t.equals("[]")||t.equals("null"))return null;
-    Class<?>cls=Class.forName("Node"); boolean isGraph=false;
-    try{cls.getField("neighbors");isGraph=true;}catch(Exception e){}
+    Class<?>cls=Class.forName("Node");
     List<String>items=getArrayItems(t); if(items.isEmpty())return null;
-    if(isGraph){
+    if(IS_GRAPH_PROBLEM){
       Constructor<?>ctor=cls.getConstructor(int.class);Field nf=cls.getField("neighbors");
       int n=items.size(); Object[]nodes=new Object[n]; for(int i=0;i<n;i++)nodes[i]=ctor.newInstance(i+1);
       for(int i=0;i<n;i++){String nb=items.get(i).trim();if(nb.equals("[]"))continue;
         @SuppressWarnings("unchecked")List<Object>nbList=(List<Object>)nf.get(nodes[i]);
         for(String id:getArrayItems(nb))nbList.add(nodes[parseInt(id)-1]);}
       return nodes[0];
-    } else {
+    } else if (IS_RANDOM_PROBLEM) {
       Constructor<?>ctor=cls.getConstructor(int.class);Field nextF=cls.getField("next"),randF=cls.getField("random");
       int n=items.size();Object[]nodes=new Object[n];int[]randIdx=new int[n];Arrays.fill(randIdx,-1);
       for(int i=0;i<n;i++){List<String>pair=getArrayItems(items.get(i).trim());nodes[i]=ctor.newInstance(parseInt(pair.get(0)));
         String ri=pair.get(1).trim();if(!isNull(ri))randIdx[i]=parseInt(ri);}
       for(int i=0;i<n;i++){if(i<n-1)nextF.set(nodes[i],nodes[i+1]);if(randIdx[i]!=-1)randF.set(nodes[i],nodes[randIdx[i]]);}
       return nodes[0];
+    } else {
+      // Fallback: detect by input format
+      boolean isGraph=false;
+      try{cls.getField("neighbors");isGraph=true;}catch(Exception e){}
+      if(isGraph){
+        Constructor<?>ctor=cls.getConstructor(int.class);Field nf=cls.getField("neighbors");
+        int n=items.size(); Object[]nodes=new Object[n]; for(int i=0;i<n;i++)nodes[i]=ctor.newInstance(i+1);
+        for(int i=0;i<n;i++){String nb=items.get(i).trim();if(nb.equals("[]"))continue;
+          @SuppressWarnings("unchecked")List<Object>nbList=(List<Object>)nf.get(nodes[i]);
+          for(String id:getArrayItems(nb))nbList.add(nodes[parseInt(id)-1]);}
+        return nodes[0];
+      } else {
+        Constructor<?>ctor=cls.getConstructor(int.class);Field nextF=cls.getField("next"),randF=cls.getField("random");
+        int n=items.size();Object[]nodes=new Object[n];int[]randIdx=new int[n];Arrays.fill(randIdx,-1);
+        for(int i=0;i<n;i++){List<String>pair=getArrayItems(items.get(i).trim());nodes[i]=ctor.newInstance(parseInt(pair.get(0)));
+          String ri=pair.get(1).trim();if(!isNull(ri))randIdx[i]=parseInt(ri);}
+        for(int i=0;i<n;i++){if(i<n-1)nextF.set(nodes[i],nodes[i+1]);if(randIdx[i]!=-1)randF.set(nodes[i],nodes[randIdx[i]]);}
+        return nodes[0];
+      }
     }
   }
   private static Object parseObject(String raw, Class<?>clazz) throws Exception {
@@ -1306,13 +1527,21 @@ public class Main {
     catch(Exception e){throw new IllegalArgumentException("Cannot construct "+clazz.getSimpleName()+" from: "+raw);}
   }
   private static String format(Object v) {
-    if(v==null)return "null"; Class<?>c=v.getClass();
+    if(v==null){
+      return CURRENT_IS_GRAPH_OR_RANDOM ? "[]" : "null";
+    }
+    Class<?>c=v.getClass();
     if(c.getSimpleName().equals("ListNode"))return formatListNode(v);
     if(c.getSimpleName().equals("TreeNode"))return formatTreeNode(v);
     if(c.getSimpleName().equals("Node"))return formatNode(v);
     if(c.isArray()){int len=Array.getLength(v);List<String>items=new ArrayList<>();for(int i=0;i<len;i++)items.add(format(Array.get(v,i)));return "["+String.join(",",items)+"]";}
     if(v instanceof Collection<?>){List<String>items=new ArrayList<>();for(Object o:(Collection<?>)v)items.add(format(o));return "["+String.join(",",items)+"]";}
-    if(c.getSimpleName().equals("String")){return (char)34+v.toString()+(char)34;}
+    if(c.getSimpleName().equals("String")){return v.toString();}
+    if(c==Double.class||c==double.class||c==Float.class||c==float.class){
+      double d = ((Number)v).doubleValue();
+      if(d == Math.floor(d)) return String.valueOf((long)d);
+      return String.format(java.util.Locale.US,"%."+FLOAT_PRECISION+"f",v);
+    }
     return v.toString();
   }
   private static String formatListNode(Object head){
@@ -1327,16 +1556,43 @@ public class Main {
       return "["+String.join(",",elems.subList(0,lastNN))+"]";}catch(Exception e){return "[]";}
   }
   private static String formatNode(Object root){
-    try{Class<?>cls=Class.forName("Node");boolean isGraph=false;try{cls.getField("neighbors");isGraph=true;}catch(Exception e){}
-      if(isGraph){Field nf=cls.getField("neighbors");Map<Object,Integer>nm=new LinkedHashMap<>();List<Object>q=new ArrayList<>();q.add(root);nm.put(root,1);int idx=0;
+    if(root == null) {
+      if(IS_RANDOM_PROBLEM || IS_GRAPH_PROBLEM) return "[]";
+      return "null";
+    }
+    try{Class<?>cls=Class.forName("Node");
+      if(IS_GRAPH_PROBLEM){Field nf=cls.getField("neighbors");
+        Map<Object,Integer>nm=new LinkedHashMap<>();List<Object>q=new ArrayList<>();q.add(root);nm.put(root,1);int idx=0;
         while(idx<q.size()){Object curr=q.get(idx++);for(Object nb:(List<?>)nf.get(curr)){if(!nm.containsKey(nb)){nm.put(nb,nm.size()+1);q.add(nb);}}}
-        List<String>rep=new ArrayList<>();for(Object curr:q){List<String>ids=new ArrayList<>();for(Object nb:(List<?>)nf.get(curr))ids.add(String.valueOf(nm.get(nb)));rep.add("["+String.join(",",ids)+"]");}
+        // Collect all nodes and sort by value for consistent output order
+        List<Object> sortedNodes = new ArrayList<>(q);
+        sortedNodes.sort((a, b) -> {
+          try{Field vf=cls.getField("val"); return ((Integer)vf.get(a)).compareTo((Integer)vf.get(b));
+          }catch(Exception e){ return 0; }
+        });
+        List<String>rep=new ArrayList<>();for(Object curr:sortedNodes){List<String>ids=new ArrayList<>();for(Object nb:(List<?>)nf.get(curr)){
+          try{Field vf=cls.getField("val"); ids.add(String.valueOf(vf.get(nb)));
+          }catch(Exception e){ ids.add("0"); }
+        }rep.add("["+String.join(",",ids)+"]");}
         return "["+String.join(",",rep)+"]";
-      }else{Field vf=cls.getField("val"),nextF=cls.getField("next"),randF=cls.getField("random");
+      }else if(IS_RANDOM_PROBLEM){Field vf=cls.getField("val"),nextF=cls.getField("next"),randF=cls.getField("random");
         Map<Object,Integer>nm=new LinkedHashMap<>();List<Object>list=new ArrayList<>();Object curr=root;int i=0;
         while(curr!=null){list.add(curr);nm.put(curr,i++);curr=nextF.get(curr);}
         List<String>rep=new ArrayList<>();for(Object node:list){Object rand=randF.get(node);String ri=rand==null?"null":String.valueOf(nm.get(rand));rep.add("["+vf.get(node)+","+ri+"]");}
-        return "["+String.join(",",rep)+"]";}}catch(Exception e){return "null";}
+        return "["+String.join(",",rep)+"]";
+      }else{
+        // Fallback: detect by class structure
+        boolean isGraph=false;try{cls.getField("neighbors");isGraph=true;}catch(Exception e){}
+        if(isGraph){Field nf=cls.getField("neighbors");Map<Object,Integer>nm=new LinkedHashMap<>();List<Object>q=new ArrayList<>();q.add(root);nm.put(root,1);int idx=0;
+          while(idx<q.size()){Object curr=q.get(idx++);for(Object nb:(List<?>)nf.get(curr)){if(!nm.containsKey(nb)){nm.put(nb,nm.size()+1);q.add(nb);}}}
+          List<String>rep=new ArrayList<>();for(Object curr:q){List<String>ids=new ArrayList<>();for(Object nb:(List<?>)nf.get(curr))ids.add(String.valueOf(nm.get(nb)));rep.add("["+String.join(",",ids)+"]");}
+          return "["+String.join(",",rep)+"]";
+        }else{Field vf=cls.getField("val"),nextF=cls.getField("next"),randF=cls.getField("random");
+          Map<Object,Integer>nm=new LinkedHashMap<>();List<Object>list=new ArrayList<>();Object curr=root;int i=0;
+          while(curr!=null){list.add(curr);nm.put(curr,i++);curr=nextF.get(curr);}
+          List<String>rep=new ArrayList<>();for(Object node:list){Object rand=randF.get(node);String ri=rand==null?"null":String.valueOf(nm.get(rand));rep.add("["+vf.get(node)+","+ri+"]");}
+          return "["+String.join(",",rep)+"]";}}
+    }catch(Exception e){return "null";}
   }
   private static boolean looksLikeArray(String s){s=s==null?"":s.trim();return s.startsWith("[")&&s.endsWith("]");}
   private static boolean isNull(String s){return s==null||s.trim().equalsIgnoreCase("null")||s.trim().isEmpty();}
@@ -1366,6 +1622,16 @@ class TreeNode {
   public TreeNode(int val) { this.val = val; }
   public TreeNode(int val, TreeNode left, TreeNode right) { this.val = val; this.left = left; this.right = right; }
 }
+
+class Node {
+  public int val;
+  public Node next;
+  public Node random;
+  public List<Node> neighbors;
+  public Node() { this.neighbors = new ArrayList<>(); }
+  public Node(int val) { this.val = val; this.neighbors = new ArrayList<>(); }
+  public Node(int val, Node next, Node random) { this.val = val; this.next = next; this.random = random; this.neighbors = new ArrayList<>(); }
+}
 `;
 
     return `${javaReflectionMain}${sanitizedSource}`;
@@ -1379,11 +1645,23 @@ class TreeNode {
     if (storedWrapperIsUsable && !wrapperCode.includes("return 0;")) return `${sourceCode}
 ${wrapperCode}`;
 
-    const sig = parseCppJavaSig(snippet?.code || sourceCode);
+    const sig = parseCppJavaSig(sourceCode);
     const funcName = sig?.funcName || "solution";
     const params = sig?.params || [];
     const returnKind = sig?.returnKind || 'unknown';
     const isVoid = returnKind === 'void';
+    let floatPrecision = 5;
+    // Infer float precision from test case expected outputs
+    if (fileData?.test_cases) {
+      for (const tc of fileData.test_cases) {
+        const exp = tc.expectedOutput?.trim();
+        if (exp && /^-?\d*\.\d+$/.test(exp)) {
+          const decimals = exp.split('.')[1].length;
+          if (decimals > 0 && decimals < floatPrecision) floatPrecision = decimals;
+          break;
+        }
+      }
+    }
 
     function cppReadArg(kind: TypeKind, varName: string, idx: number): string {
       const safe = `(lines.size()>${idx}?lines[${idx}]:"[]")`;
@@ -1392,6 +1670,10 @@ ${wrapperCode}`;
         case 'list_node':    return `    auto ${varName} = parseListNode(${safe});
 `;
         case 'tree_node':    return `    auto ${varName} = parseTreeNode(${safe});
+`;
+        case 'random_node':  return `    auto ${varName} = parseRandomList(${safe});
+`;
+        case 'graph_node':   return `    auto ${varName} = parseGraph(${safe});
 `;
         case 'int_array':    return `    auto ${varName} = parseIntVec(${safe});
 `;
@@ -1422,13 +1704,19 @@ ${wrapperCode}`;
 `;
         case 'tree_node':    return `    printTreeNode(${varName});
 `;
+        case 'random_node':  return `    printRandomList(${varName});
+`;
+        case 'graph_node':   return `    printGraph(${varName});
+`;
         case 'int_array': case 'long_array': case 'double_array': case 'string_array': return `    printVec(${varName});
 `;
         case 'int_array_2d': return `    print2DVec(${varName});
 `;
         case 'bool': return `    cout<<(${varName}?"true":"false")<<endl;
 `;
-        case 'string': return `    cout<<char(34)<<${varName}<<char(34)<<endl;
+        case 'string': return `    cout<<${varName}<<endl;
+`;
+        case 'double': case 'float': return `    { double v = ${varName}; if(v == floor(v)) cout<< (long long)v; else cout<<fixed<<setprecision(${floatPrecision})<<v; } cout<<endl;
 `;
         default:     return `    cout<<${varName}<<endl;
 `;
@@ -1451,6 +1739,7 @@ ${wrapperCode}`;
 #include<map>
 #include<numeric>
 #include<functional>
+#include<iomanip>
 using namespace std;
 
 struct ListNode {
@@ -1467,6 +1756,15 @@ struct TreeNode {
     TreeNode() : val(0), left(nullptr), right(nullptr) {}
     TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
     TreeNode(int x, TreeNode *left, TreeNode *right) : val(x), left(left), right(right) {}
+};
+struct Node {
+    int val;
+    Node *next;
+    Node *random;
+    vector<Node*> neighbors;
+    Node() : val(0), next(nullptr), random(nullptr) {}
+    Node(int x) : val(x), next(nullptr), random(nullptr) {}
+    Node(int x, Node *next, Node *random) : val(x), next(next), random(random) {}
 };
 `;
 
@@ -1485,6 +1783,103 @@ void printListNode(ListNode* head){cout<<"[";ListNode* c=head;while(c){cout<<c->
 vector<string> parseRawTokens(const string& s){vector<string>r;if(s.size()<2)return r;string inner=s.substr(1,s.size()-2);stringstream ss(inner);string tok;while(getline(ss,tok,',')){while(!tok.empty()&&(tok.front()==' '||tok.front()=='\t'))tok.erase(0,1);while(!tok.empty()&&(tok.back()==' '||tok.back()=='\t'))tok.pop_back();if(!tok.empty())r.push_back(tok);}return r;}
 TreeNode* parseTreeNode(const string& s){vector<string>v=parseRawTokens(s);if(v.empty()||v[0]=="null"||v[0]=="None"||v[0]=="[]")return nullptr;TreeNode* root=new TreeNode(stoi(v[0]));queue<TreeNode*>q;q.push(root);size_t i=1;while(!q.empty()&&i<v.size()){TreeNode* c=q.front();q.pop();if(i<v.size()){if(v[i]!="null"&&v[i]!="None"){c->left=new TreeNode(stoi(v[i]));q.push(c->left);}}i++;if(i<v.size()){if(v[i]!="null"&&v[i]!="None"){c->right=new TreeNode(stoi(v[i]));q.push(c->right);}}i++;}return root;}
 void printTreeNode(TreeNode* root){if(!root){cout<<"[]"<<endl;return;}cout<<"[";queue<TreeNode*>q;q.push(root);vector<string>r;while(!q.empty()){TreeNode* c=q.front();q.pop();if(c){r.push_back(to_string(c->val));q.push(c->left);q.push(c->right);}else{r.push_back("null");}}while(!r.empty()&&r.back()=="null")r.pop_back();for(size_t i=0;i<r.size();i++){cout<<r[i];if(i+1<r.size())cout<<",";}cout<<"]"<<endl;}
+Node* parseRandomList(const string& s){
+  vector<vector<int>> pairs;
+  if(s.size()<2) return nullptr;
+  int d=0, st=0;
+  for(int i=0;i<(int)s.size();i++){
+    if(s[i]=='['){ d++; if(d==2) st=i; }
+    else if(s[i]==']'){ if(d==2){ pairs.push_back(parseIntVec(s.substr(st,i-st+1))); } d--; }
+  }
+  if(pairs.empty()) return nullptr;
+  vector<Node*> nodes;
+  vector<int> randIdx;
+  for(size_t i=0;i<pairs.size();i++){
+    if(pairs[i].size()>=1){
+      int val = pairs[i][0];
+      int rand = (pairs[i].size()>=2) ? pairs[i][1] : -1;
+      nodes.push_back(new Node(val));
+      randIdx.push_back(rand);
+    }
+  }
+  for(size_t i=0;i<nodes.size();i++){
+    if(i+1<nodes.size()) nodes[i]->next = nodes[i+1];
+    if(randIdx[i]>=0 && randIdx[i]<(int)nodes.size()) nodes[i]->random = nodes[randIdx[i]];
+  }
+  return nodes.empty() ? nullptr : nodes[0];
+}
+void printRandomList(Node* head){
+  if(!head){ cout<<"[]"<<endl; return; }
+  vector<Node*> nodes;
+  Node* curr=head;
+  unordered_map<Node*,int> idxMap;
+  int i=0;
+  while(curr){
+    nodes.push_back(curr);
+    idxMap[curr]=i++;
+    curr=curr->next;
+  }
+  cout<<"[";
+  for(size_t j=0;j<nodes.size();j++){
+    cout<<"["<<nodes[j]->val<<",";
+    if(nodes[j]->random && idxMap.count(nodes[j]->random)) cout<<idxMap[nodes[j]->random];
+    else cout<<"null";
+    cout<<"]";
+    if(j+1<nodes.size()) cout<<",";
+  }
+  cout<<"]"<<endl;
+}
+Node* parseGraph(const string& s){
+  if(s.size()<2) return nullptr;
+  vector<vector<int>> adj;
+  int d=0, st=0;
+  for(int i=0;i<(int)s.size();i++){
+    if(s[i]=='['){ d++; if(d==2) st=i; }
+    else if(s[i]==']'){ if(d==2){ adj.push_back(parseIntVec(s.substr(st,i-st+1))); } d--; }
+  }
+  if(adj.empty()) return nullptr;
+  vector<Node*> nodes;
+  for(size_t i=0;i<adj.size();i++) nodes.push_back(new Node(i+1));
+  for(size_t i=0;i<adj.size();i++){
+    for(int nb : adj[i]){
+      if(nb>=1 && nb<=(int)nodes.size()){
+        nodes[i]->neighbors.push_back(nodes[nb-1]);
+      }
+    }
+  }
+  return nodes[0];
+}
+void printGraph(Node* head){
+  if(!head){ cout<<"[]"<<endl; return; }
+  vector<Node*> allNodes;
+  unordered_map<Node*,bool> visited;
+  queue<Node*> q;
+  q.push(head);
+  visited[head]=true;
+  while(!q.empty()){
+    Node* u=q.front(); q.pop();
+    allNodes.push_back(u);
+    for(Node* v : u->neighbors){
+      if(!visited[v]){
+        visited[v]=true;
+        q.push(v);
+      }
+    }
+  }
+  // Sort by node value to match expected output order
+  sort(allNodes.begin(), allNodes.end(), [](Node* a, Node* b){ return a->val < b->val; });
+  cout<<"[";
+  for(size_t i=0;i<allNodes.size();i++){
+    cout<<"[";
+    for(size_t j=0;j<allNodes[i]->neighbors.size();j++){
+      cout<<allNodes[i]->neighbors[j]->val;
+      if(j+1<allNodes[i]->neighbors.size()) cout<<",";
+    }
+    cout<<"]";
+    if(i+1<allNodes.size()) cout<<",";
+  }
+  cout<<"]"<<endl;
+}
 `;
 
     let cppMain = '';
@@ -1611,7 +2006,7 @@ static void printListNode(struct ListNode* head) {
 }
 `;
 
-    const sig = parseCppJavaSig(snippet?.code || sourceCode);
+    const sig = parseCppJavaSig(sourceCode);
     const funcName = sig?.funcName || "";
     const params = sig?.params || [];
     const returnKind = sig?.returnKind || 'unknown';
@@ -1793,7 +2188,7 @@ export const executeCode = async (req: Request, res: Response) => {
         casesToRun = testCases.slice(0, 1);
       }
       const snippet = fileData?.code_snippets?.find((s: any) => s.language === executionLanguage);
-      finalCode = prepareFinalCode(executionLanguage, sourceCode, snippet);
+      finalCode = prepareFinalCode(executionLanguage, sourceCode, snippet, fileData);
 
       // Course Schedule II (and any future problem whose answer is "any valid
       // topological ordering") must grade semantically: exact-string matching

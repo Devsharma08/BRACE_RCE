@@ -34,12 +34,9 @@ export function detectSpecialKind(code: string): SpecialKind | null {
 function graphDriver(): string {
   return `
 // ── graph driver ──────────────────────────────────────────────────────────
-// Input encoding: [[val, [neighbourValues...]], ...] where every neighbour
-// value is guaranteed to be one of the declared node values. The cases that
-// used to be stored here ([[2,4],[1,3],...]) were not resolvable at all — the
-// node values were 2 and 1 while the declared neighbours were 4 and 3 — so the
-// generator now emits self-consistent graphs. Build the graph, call
-// cloneGraph, and print the clone back in the same encoding.
+// Input encoding: [[neighbourValues...], ...] where index+1 is the node value.
+// Neighbour values are 1-indexed node values.
+// Build the graph, call cloneGraph, and print the clone back in the same encoding.
 const __raw = require('fs').readFileSync(0, 'utf-8').trim();
 const __spec = __raw ? JSON.parse(__raw) : [];
 
@@ -50,39 +47,38 @@ function Node(val, neighbors) {
   this.neighbors = neighbors === undefined ? [] : neighbors;
 }
 
-function __build(entries) {
-  const nodes = entries.map(function (e) { return { val: e[0], neighbors: [] }; });
-  entries.forEach(function (e, i) {
-    let list = e[1];
-    if (list === null || list === undefined) list = [];
-    else if (!Array.isArray(list)) list = [list];
-    // Neighbours are given by value, so resolve each to its node. The graph
-    // is undirected, so an edge one way is an edge both ways.
-    list.forEach(function (v) {
-      for (const n of nodes) {
-        if (n.val !== v) continue;
-        if (nodes[i].neighbors.indexOf(n) === -1) nodes[i].neighbors.push(n);
-        if (n.neighbors.indexOf(nodes[i]) === -1) n.neighbors.push(nodes[i]);
+function __build(adjList) {
+  if (!adjList || adjList.length === 0) return null;
+  const nodes = adjList.map(function (_, i) { return { val: i + 1, neighbors: [] }; });
+  adjList.forEach(function (neighbors, i) {
+    if (!Array.isArray(neighbors)) return;
+    neighbors.forEach(function (v) {
+      const nbIdx = v - 1;
+      if (nbIdx >= 0 && nbIdx < nodes.length) {
+        if (nodes[i].neighbors.indexOf(nodes[nbIdx]) === -1) nodes[i].neighbors.push(nodes[nbIdx]);
+        if (nodes[nbIdx].neighbors.indexOf(nodes[i]) === -1) nodes[nbIdx].neighbors.push(nodes[i]);
       }
     });
   });
-  return nodes.length ? nodes[0] : null;
+  return nodes[0];
 }
 
 function __encode(head) {
-  // Re-number in discovery order, then report each node's neighbour VALUES.
-  const order = [];
+  if (!head) return [];
+  const nodes = [];
   const seen = new Set();
-  const queue = head ? [head] : [];
+  const queue = [head];
   while (queue.length) {
     const node = queue.shift();
     if (!node || seen.has(node)) continue;
     seen.add(node);
-    order.push(node);
+    nodes.push(node);
     for (const nb of node.neighbors) queue.push(nb);
   }
-  return order.map(function (node) {
-    return [node.val, node.neighbors.map(function (nb) { return nb.val; })];
+  // Sort by node value (which equals original index+1) to match expected output order
+  nodes.sort(function (a, b) { return a.val - b.val; });
+  return nodes.map(function (node) {
+    return node.neighbors.map(function (nb) { return nb.val; }).sort(function (a, b) { return a - b; });
   });
 }
 
