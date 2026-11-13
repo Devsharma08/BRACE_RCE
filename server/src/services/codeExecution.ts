@@ -1767,13 +1767,15 @@ export const executeCode = async (req: Request, res: Response) => {
            problem_number: true, 
            name: true 
          },
-        // MUST match the `orderBy` in problems.ts (getSystemProblems and
-        // getProblemById). The client renders card N from index N and matches
-        // each ExecutionDetail by testCaseIndex, so a different order here
-        // would paint every verdict onto the wrong card. TestCase has no
-        // ordinal column, so the id is what both sides pin to.
         orderBy: { id: "asc" },
       });
+
+      if (!fileData) {
+        return res.status(404).json({
+          status: "error",
+          message: "Problem not found",
+        });
+      }
 
       const testCases = (fileData?.test_cases ?? []) as TestCaseRecord[];
 
